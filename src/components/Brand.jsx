@@ -59,7 +59,7 @@ const Brand = () => {
   const fetchBrands = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch("http://localhost:5000/api/brand", {
+      const response = await fetch("http://apishpere.duckdns.org/api/brand", {
         headers: token
           ? {
               Authorization: `Bearer ${token}`,
@@ -158,8 +158,8 @@ const Brand = () => {
 
     try {
       const apiUrl = isEditing
-        ? `http://localhost:5000/api/brands/${editingId}`
-        : "http://localhost:5000/api/brands";
+        ? `http://apishpere.duckdns.org/api/brands/${editingId}`
+        : "http://apishpere.duckdns.org/api/brands";
 
       const method = isEditing ? "PUT" : "POST";
 
@@ -251,7 +251,7 @@ const Brand = () => {
     }
 
     try {
-      const response = await fetch(`http://localhost:5000/api/brands/${id}`, {
+      const response = await fetch(`http://apishpere.duckdns.org/api/brands/${id}`, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
@@ -282,7 +282,7 @@ const Brand = () => {
       const newStatus = brand.status === "active" ? "inactive" : "active";
 
       const response = await fetch(
-        `http://localhost:5000/api/brands/${brand.id}`,
+        `http://apishpere.duckdns.org/api/brands/${brand.id}`,
         {
           method: "PUT",
           headers: {
