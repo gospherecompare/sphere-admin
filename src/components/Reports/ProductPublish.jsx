@@ -39,7 +39,7 @@ const ProductPublishStatusReport = () => {
     try {
       const token = Cookies.get("authToken");
       const res = await fetch(
-        "http://localhost:5000/api/reports/publish-status",
+        "http://apishpere.duckdns.org/api/reports/publish-status",
         {
           method: "GET",
           headers: {
