@@ -51,7 +51,7 @@ const ViewHomeAppliances = () => {
       setError(null);
       try {
         const token = Cookies.get("authToken");
-        const res = await fetch("http://localhost:5000/api/homeappliance", {
+        const res = await fetch("http://apishpere.duckdns.org/api/homeappliance", {
           method: "GET",
           headers: {
             Authorization: token ? `Bearer ${token}` : undefined,
@@ -240,7 +240,7 @@ const ViewHomeAppliances = () => {
     try {
       const token = Cookies.get("authToken");
       const res = await fetch(
-        `http://localhost:5000/api/home-appliance/${id}`,
+        `http://apishpere.duckdns.org/api/home-appliance/${id}`,
         {
           method: "DELETE",
           headers: {
@@ -307,7 +307,7 @@ const ViewHomeAppliances = () => {
       };
 
       const res = await fetch(
-        `http://localhost:5000/api/products/${resolvedId}/publish`,
+        `http://apishpere.duckdns.org/api/products/${resolvedId}/publish`,
         {
           method: "PATCH",
           headers: {
@@ -367,7 +367,7 @@ const ViewHomeAppliances = () => {
     try {
       const token = Cookies.get("authToken");
       const res = await fetch(
-        "http://localhost:5000/api/home-appliances/export",
+        "http://apishpere.duckdns.org/api/home-appliances/export",
         {
           method: "GET",
           headers: {
@@ -418,7 +418,7 @@ const ViewHomeAppliances = () => {
       formData.append("file", file);
 
       const res = await fetch(
-        "http://localhost:5000/api/home-appliances/import",
+        "http://apishpere.duckdns.org/api/home-appliances/import",
         {
           method: "POST",
           headers: {
