@@ -63,7 +63,7 @@ export default function PublishAction({
       };
 
       const res = await fetch(
-        `http://localhost:5000/api/products/${id}/publish`,
+        `http://apishpere.duckdns.org/api/products/${id}/publish`,
         {
           method: "PATCH",
           headers: {
