@@ -56,7 +56,7 @@ const OnlineStoreManagement = () => {
     setError(null);
     try {
       const token = Cookies.get("authToken");
-      const res = await fetch("http://localhost:5000/api/online-stores", {
+      const res = await fetch("http://apishpere.duckdns.org/api/online-stores", {
         method: "GET",
         headers: {
           Authorization: token ? `Bearer ${token}` : "",
@@ -205,8 +205,8 @@ const OnlineStoreManagement = () => {
       const token = Cookies.get("authToken");
       const method = editingId ? "PUT" : "POST";
       const url = editingId
-        ? `http://localhost:5000/api/online-stores/${editingId}`
-        : "http://localhost:5000/api/online-stores";
+        ? `http://apishpere.duckdns.org/api/online-stores/${editingId}`
+        : "http://apishpere.duckdns.org/api/online-stores";
 
       const res = await fetch(url, {
         method,
@@ -250,7 +250,7 @@ const OnlineStoreManagement = () => {
 
     try {
       const token = Cookies.get("authToken");
-      const res = await fetch(`http://localhost:5000/api/online-stores/${id}`, {
+      const res = await fetch(`http://apishpere.duckdns.org/api/online-stores/${id}`, {
         method: "DELETE",
         headers: {
           Authorization: token ? `Bearer ${token}` : "",
@@ -274,7 +274,7 @@ const OnlineStoreManagement = () => {
       const newStatus = store.status === "active" ? "inactive" : "active";
 
       const res = await fetch(
-        `http://localhost:5000/api/online-stores/${store.id}/status`,
+        `http://apishpere.duckdns.org/api/online-stores/${store.id}/status`,
         {
           method: "PATCH",
           headers: {
