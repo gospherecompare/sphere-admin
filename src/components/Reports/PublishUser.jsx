@@ -46,7 +46,7 @@ const PublishedByUserReport = () => {
     try {
       const token = Cookies.get("authToken");
       const res = await fetch(
-        "http://localhost:5000/api/reports/published-by-user",
+        "http://apishpere.duckdns.org/api/reports/published-by-user",
         {
           method: "GET",
           headers: {
