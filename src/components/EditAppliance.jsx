@@ -142,7 +142,7 @@ const EditHomeAppliance = () => {
         setIsFetching(true);
         const token = Cookies.get("authToken");
         const res = await fetch(
-          `http://localhost:5000/api/home-appliances/${id}`,
+          `http://apishpere.duckdns.org/api/home-appliances/${id}`,
           {
             headers: token ? { Authorization: `Bearer ${token}` } : {},
           },
@@ -225,8 +225,8 @@ const EditHomeAppliance = () => {
       try {
         const token = Cookies.get("authToken");
         const storesEndpoint = token
-          ? "http://localhost:5000/api/online-stores"
-          : "http://localhost:5000/api/public/online-stores";
+          ? "http://apishpere.duckdns.org/api/online-stores"
+          : "http://apishpere.duckdns.org/api/public/online-stores";
         const storesRes = await fetch(storesEndpoint, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
@@ -237,7 +237,7 @@ const EditHomeAppliance = () => {
         }
 
         const ramRes = await fetch(
-          "http://localhost:5000/api/ram-storage-config",
+          "http://apishpere.duckdns.org/api/ram-storage-config",
           {
             headers: token ? { Authorization: `Bearer ${token}` } : {},
           },
@@ -272,7 +272,7 @@ const EditHomeAppliance = () => {
   useEffect(() => {
     const fetchBrands = async () => {
       try {
-        const res = await fetch("http://localhost:5000/api/brands");
+        const res = await fetch("http://apishpere.duckdns.org/api/brands");
         if (!res.ok) return;
         const data = await res.json();
         const brandsArray = data.brands || data || [];
@@ -298,7 +298,7 @@ const EditHomeAppliance = () => {
     const fetchApplianceCategories = async () => {
       try {
         const token = Cookies.get("authToken");
-        const res = await fetch("http://localhost:5000/api/categories", {
+        const res = await fetch("http://apishpere.duckdns.org/api/categories", {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
         if (!res.ok) return;
@@ -830,7 +830,7 @@ const EditHomeAppliance = () => {
       };
 
       const res = await fetch(
-        `http://localhost:5000/api/home-appliances/${id}`,
+        `http://apishpere.duckdns.org/api/home-appliances/${id}`,
         {
           method: "PUT",
           headers: {
