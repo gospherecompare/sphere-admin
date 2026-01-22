@@ -233,7 +233,7 @@ const EditMobile = () => {
     const fetchCategories = async () => {
       try {
         const token = Cookies.get("authToken");
-        const res = await fetch("http://localhost:5000/api/categories", {
+        const res = await fetch("http://apishpere.duckdns.org/api/categories", {
           headers: {
             Authorization: token ? `Bearer ${token}` : "",
             "Content-Type": "application/json",
@@ -262,7 +262,7 @@ const EditMobile = () => {
   useEffect(() => {
     const fetchBrands = async () => {
       try {
-        const res = await fetch("http://localhost:5000/api/brands");
+        const res = await fetch("http://apishpere.duckdns.org/api/brands");
         if (!res.ok) return;
         const data = await res.json();
         const brandsArray = data.brands || data || [];
@@ -337,7 +337,7 @@ const EditMobile = () => {
         const token = Cookies.get("authToken");
 
         const response = await fetch(
-          `http://localhost:5000/api/smartphone/${id}`,
+          `http://apishpere.duckdns.org/api/smartphone/${id}`,
           {
             headers: {
               Authorization: token ? `Bearer ${token}` : "",
@@ -537,8 +537,8 @@ const EditMobile = () => {
       try {
         const token = Cookies.get("authToken");
         const storesEndpoint = token
-          ? "http://localhost:5000/api/online-stores"
-          : "http://localhost:5000/api/public/online-stores";
+          ? "http://apishpere.duckdns.org/api/online-stores"
+          : "http://apishpere.duckdns.org/api/public/online-stores";
         const storesRes = await fetch(storesEndpoint, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
@@ -550,7 +550,7 @@ const EditMobile = () => {
         }
 
         const ramRes = await fetch(
-          "http://localhost:5000/api/ram-storage-config",
+          "http://apishpere.duckdns.org/api/ram-storage-config",
           {
             headers: token ? { Authorization: `Bearer ${token}` } : {},
           },
@@ -764,7 +764,7 @@ const EditMobile = () => {
     try {
       const token = Cookies.get("authToken");
       const res = await fetch(
-        `http://localhost:5000/api/smartphone/${id}/color/${index}`,
+        `http://apishpere.duckdns.org/api/smartphone/${id}/color/${index}`,
         {
           method: "DELETE",
           headers: {
@@ -797,7 +797,7 @@ const EditMobile = () => {
       try {
         const token = Cookies.get("authToken");
         const res = await fetch(
-          `http://localhost:5000/api/variant/${variant.id}`,
+          `http://apishpere.duckdns.org/api/variant/${variant.id}`,
           {
             method: "DELETE",
             headers: { Authorization: token ? `Bearer ${token}` : "" },
@@ -909,7 +909,7 @@ const EditMobile = () => {
       try {
         const token = Cookies.get("authToken");
         const res = await fetch(
-          `http://localhost:5000/api/storeprice/${sp.id}`,
+          `http://apishpere.duckdns.org/api/storeprice/${sp.id}`,
           {
             method: "DELETE",
             headers: { Authorization: token ? `Bearer ${token}` : "" },
@@ -1435,7 +1435,7 @@ const EditMobile = () => {
       };
 
       const token = Cookies.get("authToken");
-      const res = await fetch(`http://localhost:5000/api/smartphone/${id}`, {
+      const res = await fetch(`http://apishpere.duckdns.org/api/smartphone/${id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
