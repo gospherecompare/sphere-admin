@@ -98,9 +98,9 @@ const UserManagement = () => {
     try {
       setLoading(true);
       const [usersRes, rolesRes, permissionsRes] = await Promise.all([
-        axios.get("http://localhost:5000/api/users"), // You need to create this endpoint
-        axios.get("http://localhost:5000/api/rbac/roles"),
-        axios.get("http://localhost:5000/api/rbac/permissions"),
+        axios.get("http://apishpere.duckdns.org/api/users"), // You need to create this endpoint
+        axios.get("http://apishpere.duckdns.org/api/rbac/roles"),
+        axios.get("http://apishpere.duckdns.org/api/rbac/permissions"),
       ]);
       setUsers(usersRes.data);
       setRoles(rolesRes.data);
@@ -167,13 +167,13 @@ const UserManagement = () => {
       if (userForm.id) {
         // Update existing user
         await axios.put(
-          `/http://localhost:5000/api/users/${userForm.id}`,
+          `/http://apishpere.duckdns.org/api/users/${userForm.id}`,
           userForm
         );
         setSuccess("User updated successfully!");
       } else {
         // Create new user
-        await axios.post("http://localhost:5000/api/auth/register", userForm);
+        await axios.post("http://apishpere.duckdns.org/api/auth/register", userForm);
         setSuccess("User created successfully!");
       }
       setUserDialogOpen(false);
@@ -191,7 +191,7 @@ const UserManagement = () => {
     }
 
     try {
-      await axios.delete(`http://localhost:5000/api/users/${id}`);
+      await axios.delete(`http://apishpere.duckdns.org/api/users/${id}`);
       setUsers((prev) => prev.filter((user) => user.id !== id));
       setSuccess("User deleted successfully!");
     } catch (err) {
@@ -210,7 +210,7 @@ const UserManagement = () => {
   const handleAssignRole = async (roleId) => {
     try {
       await axios.post(
-        `http://localhost:5000/api/rbac/users/${selectedUser.id}/roles`,
+        `http://apishpere.duckdns.org/api/rbac/users/${selectedUser.id}/roles`,
         {
           role_id: roleId,
         }
