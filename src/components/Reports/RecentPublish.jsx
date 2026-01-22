@@ -50,7 +50,7 @@ const RecentPublishActivity = () => {
     try {
       const token = Cookies.get("authToken");
       const res = await fetch(
-        "http://localhost:5000/api/reports/recent-publish-activity",
+        "http://apishpere.duckdns.org/api/reports/recent-publish-activity",
         {
           method: "GET",
           headers: {
