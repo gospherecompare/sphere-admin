@@ -79,7 +79,7 @@ const AdminRatingManagement = () => {
     setLoading(true);
     try {
       const token = Cookies.get("authToken");
-      const res = await fetch("http://localhost:5000/api/smartphones", {
+      const res = await fetch("http://apishpere.duckdns.org/api/smartphones", {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
@@ -111,7 +111,7 @@ const AdminRatingManagement = () => {
     setLoading(true);
     try {
       const res = await fetch(
-        `http://localhost:5000/api/public/smartphone/${smartphoneId}/rating`
+        `http://apishpere.duckdns.org/api/public/smartphone/${smartphoneId}/rating`
       );
 
       if (res.ok) {
@@ -131,7 +131,7 @@ const AdminRatingManagement = () => {
   const fetchAverageRating = async (smartphoneId) => {
     try {
       const res = await fetch(
-        `http://localhost:5000/api/public/smartphone/${smartphoneId}/rating`
+        `http://apishpere.duckdns.org/api/public/smartphone/${smartphoneId}/rating`
       );
 
       if (res.ok) {
@@ -150,7 +150,7 @@ const AdminRatingManagement = () => {
     try {
       const token = Cookies.get("authToken");
       const res = await fetch(
-        `http://localhost:5000/api/private/smartphone/${selectedSmartphone.id}/rating`,
+        `http://apishpere.duckdns.org/api/private/smartphone/${selectedSmartphone.id}/rating`,
         {
           method: "PUT",
           headers: {
@@ -184,7 +184,7 @@ const AdminRatingManagement = () => {
     try {
       const token = Cookies.get("authToken");
       const res = await fetch(
-        `http://localhost:5000/api/private/smartphone/${selectedSmartphone.id}/rating`,
+        `http://apishpere.duckdns.org/api/private/smartphone/${selectedSmartphone.id}/rating`,
         {
           method: "DELETE",
           headers: {
@@ -215,7 +215,7 @@ const AdminRatingManagement = () => {
 
     try {
       const res = await fetch(
-        `http://localhost:5000/api/public/smartphone/${selectedSmartphone.id}/rating`,
+        `http://apishpere.duckdns.org/api/public/smartphone/${selectedSmartphone.id}/rating`,
         {
           method: "POST",
           headers: {
