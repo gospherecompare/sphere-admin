@@ -56,7 +56,7 @@ const CategoryManagement = () => {
     setError(null);
     try {
       const token = Cookies.get("authToken");
-      const res = await fetch("http://localhost:5000/api/categories", {
+      const res = await fetch("http://apishpere.duckdns.org/api/categories", {
         method: "GET",
         headers: {
           Authorization: token ? `Bearer ${token}` : "",
@@ -146,8 +146,8 @@ const CategoryManagement = () => {
       const token = Cookies.get("authToken");
       const method = editingId ? "PUT" : "POST";
       const url = editingId
-        ? `http://localhost:5000/api/categories/${editingId}`
-        : "http://localhost:5000/api/categories";
+        ? `http://apishpere.duckdns.org/api/categories/${editingId}`
+        : "http://apishpere.duckdns.org/api/categories";
 
       const res = await fetch(url, {
         method,
@@ -195,7 +195,7 @@ const CategoryManagement = () => {
 
     try {
       const token = Cookies.get("authToken");
-      const res = await fetch(`http://localhost:5000/api/categories/${id}`, {
+      const res = await fetch(`http://apishpere.duckdns.org/api/categories/${id}`, {
         method: "DELETE",
         headers: {
           Authorization: token ? `Bearer ${token}` : "",
