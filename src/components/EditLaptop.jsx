@@ -180,7 +180,7 @@ const EditLaptop = () => {
     try {
       setIsFetching(true);
       const token = Cookies.get("authToken");
-      const res = await fetch(`http://localhost:5000/api/laptops/${id}`, {
+      const res = await fetch(`http://apishpere.duckdns.org/api/laptops/${id}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
 
@@ -272,7 +272,7 @@ const EditLaptop = () => {
   useEffect(() => {
     const fetchBrands = async () => {
       try {
-        const res = await fetch("http://localhost:5000/api/brands");
+        const res = await fetch("http://apishpere.duckdns.org/api/brands");
         if (!res.ok) return;
         const data = await res.json();
         const brandsArray = data.brands || data || [];
@@ -300,8 +300,8 @@ const EditLaptop = () => {
       try {
         const token = Cookies.get("authToken");
         const storesEndpoint = token
-          ? "http://localhost:5000/api/online-stores"
-          : "http://localhost:5000/api/public/online-stores";
+          ? "http://apishpere.duckdns.org/api/online-stores"
+          : "http://apishpere.duckdns.org/api/public/online-stores";
         const storesRes = await fetch(storesEndpoint, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
@@ -313,7 +313,7 @@ const EditLaptop = () => {
         }
 
         const ramRes = await fetch(
-          "http://localhost:5000/api/ram-storage-config",
+          "http://apishpere.duckdns.org/api/ram-storage-config",
           {
             headers: token ? { Authorization: `Bearer ${token}` } : {},
           },
@@ -349,7 +349,7 @@ const EditLaptop = () => {
     const fetchCategories = async () => {
       try {
         const token = Cookies.get("authToken");
-        const res = await fetch("http://localhost:5000/api/categories", {
+        const res = await fetch("http://apishpere.duckdns.org/api/categories", {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
         if (!res.ok) return;
@@ -1030,7 +1030,7 @@ const EditLaptop = () => {
         published: publish,
       };
 
-      const res = await fetch(`http://localhost:5000/api/laptops/${id}`, {
+      const res = await fetch(`http://apishpere.duckdns.org/api/laptops/${id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
