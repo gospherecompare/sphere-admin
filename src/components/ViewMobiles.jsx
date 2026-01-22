@@ -43,7 +43,7 @@ const ViewMobiles = () => {
       setError(null);
       try {
         const token = Cookies.get("authToken");
-        const res = await fetch("http://localhost:5000/api/smartphone", {
+        const res = await fetch("http://apishpere.duckdns.org/api/smartphone", {
           method: "GET",
           headers: {
             Authorization: token ? `Bearer ${token}` : undefined,
@@ -240,7 +240,7 @@ const ViewMobiles = () => {
       }
 
       const res = await fetch(
-        `http://localhost:5000/api/smartphone/${encodeURIComponent(
+        `http://apishpere.duckdns.org/api/smartphone/${encodeURIComponent(
           resolvedId,
         )}`,
         {
@@ -332,7 +332,7 @@ const ViewMobiles = () => {
       };
 
       const res = await fetch(
-        `http://localhost:5000/api/products/${resolvedId}/publish`,
+        `http://apishpere.duckdns.org/api/products/${resolvedId}/publish`,
         {
           method: "PATCH",
           headers: {
@@ -409,7 +409,7 @@ const ViewMobiles = () => {
   const handleExport = async (publishedOnly = false) => {
     try {
       const token = Cookies.get("authToken");
-      const res = await fetch("http://localhost:5000/api/smartphones/export", {
+      const res = await fetch("http://apishpere.duckdns.org/api/smartphones/export", {
         method: "GET",
         headers: {
           Authorization: token ? `Bearer ${token}` : "",
@@ -457,7 +457,7 @@ const ViewMobiles = () => {
       const formData = new FormData();
       formData.append("file", file);
 
-      const res = await fetch("http://localhost:5000/api/smartphones/import", {
+      const res = await fetch("http://apishpere.duckdns.org/api/smartphones/import", {
         method: "POST",
         headers: {
           Authorization: token ? `Bearer ${token}` : "",
