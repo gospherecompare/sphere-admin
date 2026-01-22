@@ -72,7 +72,7 @@ const AccountManagement = () => {
       }
 
       const response = await axios.get(
-        "http://localhost:5000/api/auth/profile",
+        "http://apishpere.duckdns.org/api/auth/profile",
         {
           headers: { Authorization: `Bearer ${token}` },
         },
@@ -232,7 +232,7 @@ const AccountManagement = () => {
       const token = Cookies.get("authToken");
 
       const response = await axios.put(
-        "http://localhost:5000/api/auth/profile",
+        "http://apishpere.duckdns.org/api/auth/profile",
         {
           email: profileForm.email,
           phone: profileForm.phone,
@@ -275,7 +275,7 @@ const AccountManagement = () => {
       const token = Cookies.get("authToken");
 
       const response = await axios.post(
-        "http://localhost:5000/api/auth/change-password",
+        "http://apishpere.duckdns.org/api/auth/change-password",
         {
           currentPassword: passwordForm.currentPassword,
           newPassword: passwordForm.newPassword,
