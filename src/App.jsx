@@ -19,10 +19,12 @@ import PermissionManagement from "./components/Permissionmangement";
 import SpecificationsManager from "./components/SpecMangement";
 import MobileRatingCard from "./components/Rating";
 import ChangePasswordModal from "./components/Changepassword";
+import AccountManagement from "./components/AccountManagement";
 import CreateLaptop from "./components/CreateLaptop";
 import CreateHomeAppliance from "./components/CreateAppliance";
 import ViewLaptops from "./components/ViewLaptop";
 import ViewHomeAppliances from "./components/ViewAppliance";
+import ViewCustomers from "./components/ViewCustomers";
 import RamStorageConfig from "./components/Ramstorage";
 import Brand from "./components/Brand";
 import CategoryManagement from "./components/Category";
@@ -31,6 +33,8 @@ import ProductCategoryReport from "./components/Reports/ProductCategory";
 import ProductPublishStatusReport from "./components/Reports/ProductPublish";
 import PublishedByUserReport from "./components/Reports/PublishUser";
 import RecentPublishActivity from "./components/Reports/RecentPublish";
+import EditLaptop from "./components/EditLaptop";
+import EditHomeAppliance from "./components/EditAppliance";
 import Cookies from "js-cookie";
 
 function App() {
@@ -73,8 +77,8 @@ function App() {
             .map(function (c) {
               return "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2);
             })
-            .join("")
-        )
+            .join(""),
+        ),
       );
       if (!obj.exp) return false;
       const now = Math.floor(Date.now() / 1000);
@@ -104,7 +108,7 @@ function App() {
   // Main Layout Component for authenticated routes
   const MainLayout = () => {
     return (
-      <div className="flex h-screen bg-gray-50">
+      <div className="flex h-screen bg-gradient-to-br from-purple-50 to-indigo-100">
         {/* Mobile Overlay */}
         {isMobile && sidebarOpen && (
           <div
@@ -113,13 +117,12 @@ function App() {
           />
         )}
 
-        {/* Sidebar with mobile styles */}
+        {/* Sidebar with mobile styles (Sidebar handles mobile translate) */}
         <div
           className={`
             ${isMobile ? "fixed" : "relative"}
-            ${isMobile && sidebarOpen ? "translate-x-0" : "-translate-x-full"}
             lg:translate-x-0 lg:static
-            z-40 transition-transform duration-300 ease-in-out
+            z-40 transform transition-transform duration-300 ease-in-out
             h-full
           `}
         >
@@ -128,6 +131,8 @@ function App() {
             setCollapsed={setSidebarCollapsed}
             isMobile={isMobile}
             onClose={() => setSidebarOpen(false)}
+            mobileOpen={sidebarOpen}
+            setMobileOpen={setSidebarOpen}
           />
         </div>
 
@@ -158,114 +163,133 @@ function App() {
             }}
           />
           <main
-            className="flex-1 overflow-auto p-4 md:p-6"
+            className="flex-1 overflow-auto p-2 md:p-6"
             onClick={
               isMobile && sidebarOpen ? () => setSidebarOpen(false) : undefined
             }
           >
-            <div className="mb-1">
-              <Breadcrumbs />
+            <div className="max-w-7xl mx-auto w-full px-2 sm:px-6 lg:px-8">
+              <div className="mb-1 "></div>
+              <Routes>
+                <Route
+                  path="/"
+                  element={
+                    <Navigate
+                      to="/dashboard"
+                      replace
+                      onClick={handleRouteChange}
+                    />
+                  }
+                />
+                <Route
+                  path="/dashboard"
+                  element={<Dashboard isMobile={isMobile} />}
+                />
+                <Route
+                  path="/products/laptops/:id/edit"
+                  element={<EditLaptop />}
+                />
+                <Route
+                  path="/products/homeappliances/:id/edit"
+                  element={<EditHomeAppliance />}
+                />
+                <Route
+                  path="/products/smartphones/create"
+                  element={<CreateMobile />}
+                />
+                <Route
+                  path="/products/smartphones/inventory"
+                  element={<ViewMobiles />}
+                />
+                <Route
+                  path="/products"
+                  element={
+                    <Navigate to="/products/smartphones/inventory" replace />
+                  }
+                />
+                <Route
+                  path="/products/laptops/inventory"
+                  element={<ViewLaptops />}
+                />
+                <Route
+                  path="/products/homeappliances/inventory"
+                  element={<ViewHomeAppliances />}
+                />
+                <Route
+                  path="/products/laptops/create"
+                  element={<CreateLaptop />}
+                />
+                <Route
+                  path="/products/appliances/create"
+                  element={<CreateHomeAppliance />}
+                />
+                <Route path="/edit-mobile/:id" element={<EditMobile />} />
+                <Route path="/user-management" element={<UserManagement />} />
+                <Route
+                  path="/customer-management"
+                  element={<ViewCustomers />}
+                />
+                <Route
+                  path="/account-management"
+                  element={<AccountManagement />}
+                />
+                <Route
+                  path="/specifications-manager"
+                  element={<SpecificationsManager />}
+                />
+                <Route
+                  path="/specifications/memory-storage/configurations"
+                  element={<RamStorageConfig />}
+                />
+                <Route
+                  path="/specifications/categories/create"
+                  element={<CategoryManagement />}
+                />
+                <Route path="/specifications/brands" element={<Brand />} />
+                <Route
+                  path="/permission-management"
+                  element={<PermissionManagement />}
+                />
+                <Route
+                  path="/smartphonesrating"
+                  element={<MobileRatingCard />}
+                />
+                <Route
+                  path="/change-password"
+                  element={<ChangePasswordModal />}
+                />
+                <Route
+                  path="/specifications/store"
+                  element={<OnlineStoreManagement />}
+                />
+                <Route
+                  path="/reports/productcategories"
+                  element={<ProductCategoryReport />}
+                />
+                <Route
+                  path="/reports/productpublishstatus"
+                  element={<ProductPublishStatusReport />}
+                />
+                <Route
+                  path="/analytics"
+                  element={
+                    <Navigate to="/reports/productpublishstatus" replace />
+                  }
+                />
+                <Route
+                  path="/reports/useractivity"
+                  element={<PublishedByUserReport />}
+                />
+                <Route
+                  path="/reports/recentactivity"
+                  element={<RecentPublishActivity />}
+                />
+              </Routes>
+              <footer className="mt-8 text-center text-sm text-gray-500">
+                &copy; {new Date().getFullYear()} Smart Arena. All rights
+                reserved.
+              </footer>
             </div>
-            <Routes>
-              <Route
-                path="/"
-                element={
-                  <Navigate
-                    to="/dashboard"
-                    replace
-                    onClick={handleRouteChange}
-                  />
-                }
-              />
-              <Route
-                path="/dashboard"
-                element={<Dashboard isMobile={isMobile} />}
-              />
-              <Route
-                path="/products/smartphones/create"
-                element={<CreateMobile />}
-              />
-              <Route
-                path="/products/smartphones/inventory"
-                element={<ViewMobiles />}
-              />
-              <Route
-                path="/products"
-                element={
-                  <Navigate to="/products/smartphones/inventory" replace />
-                }
-              />
-              <Route
-                path="/products/laptops/inventory"
-                element={<ViewLaptops />}
-              />
-              <Route
-                path="/products/homeappliances/inventory"
-                element={<ViewHomeAppliances />}
-              />
-              <Route
-                path="/products/laptops/create"
-                element={<CreateLaptop />}
-              />
-              <Route
-                path="/products/appliances/create"
-                element={<CreateHomeAppliance />}
-              />
-              <Route path="/edit-mobile/:id" element={<EditMobile />} />
-              <Route path="/user-management" element={<UserManagement />} />
-              <Route
-                path="/specifications-manager"
-                element={<SpecificationsManager />}
-              />
-              <Route
-                path="/specifications/memory-storage/configurations"
-                element={<RamStorageConfig />}
-              />
-              <Route
-                path="/specifications/categories/create"
-                element={<CategoryManagement />}
-              />
-              <Route path="/specifications/brands" element={<Brand />} />
-              <Route
-                path="/permission-management"
-                element={<PermissionManagement />}
-              />
-              <Route path="/smartphonesrating" element={<MobileRatingCard />} />
-              <Route
-                path="/change-password"
-                element={<ChangePasswordModal />}
-              />
-              <Route
-                path="/specifications/store"
-                element={<OnlineStoreManagement />}
-              />
-              <Route
-                path="/reports/productcategories"
-                element={<ProductCategoryReport />}
-              />
-              <Route
-                path="/reports/productpublishstatus"
-                element={<ProductPublishStatusReport />}
-              />
-              <Route
-                path="/analytics"
-                element={
-                  <Navigate to="/reports/productpublishstatus" replace />
-                }
-              />
-              <Route
-                path="/reports/useractivity"
-                element={<PublishedByUserReport />}
-              />
-              <Route
-                path="/reports/recentactivity"
-                element={<RecentPublishActivity />}
-              />
-            </Routes>
-            <footer className="mt-8 text-center text-sm text-gray-500">
-              &copy; {new Date().getFullYear()} Smart Arena. All rights
-              reserved.
-            </footer>
           </main>
         </div>
       </div>

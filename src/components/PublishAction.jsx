@@ -40,7 +40,7 @@ export default function PublishAction({
             atob(padded)
               .split("")
               .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
-              .join("")
+              .join(""),
           );
           return JSON.parse(jsonPayload);
         } catch (e) {
@@ -55,7 +55,6 @@ export default function PublishAction({
         payload?.userId ||
         payload?.user_id ||
         null;
-      console.log("Publishing toggle by user:", userId);
 
       const body = {
         id,
@@ -72,7 +71,7 @@ export default function PublishAction({
             Authorization: token ? `Bearer ${token}` : "",
           },
           body: JSON.stringify(body),
-        }
+        },
       );
 
       if (!res.ok) {

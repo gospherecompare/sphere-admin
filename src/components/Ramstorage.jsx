@@ -143,7 +143,9 @@ const RamStorageConfig = () => {
 
       if (editingId) {
         setConfigs((prev) =>
-          prev.map((config) => (config.id === editingId ? savedConfig : config))
+          prev.map((config) =>
+            config.id === editingId ? savedConfig : config,
+          ),
         );
         showToast("Success", "Configuration updated successfully", "success");
       } else {
@@ -175,7 +177,7 @@ const RamStorageConfig = () => {
           headers: {
             Authorization: token ? `Bearer ${token}` : "",
           },
-        }
+        },
       );
 
       if (!res.ok) throw new Error("Delete failed");
@@ -193,7 +195,7 @@ const RamStorageConfig = () => {
     (config) =>
       config.ram.toLowerCase().includes(searchTerm.toLowerCase()) ||
       config.storage.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      config.long.toLowerCase().includes(searchTerm.toLowerCase())
+      config.long.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   // Pagination
@@ -201,11 +203,11 @@ const RamStorageConfig = () => {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedConfigs = filteredConfigs.slice(
     startIndex,
-    startIndex + itemsPerPage
+    startIndex + itemsPerPage,
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-6">
+    <div className="min-h-screen bg-gray-50 p-3 sm:p-4 md:p-6 lg:p-8">
       {/* Toast Container */}
       <div className="fixed top-4 right-4 z-50 space-y-2">
         {toasts.map((toast) => (
@@ -215,8 +217,8 @@ const RamStorageConfig = () => {
               toast.type === "success"
                 ? "border-green-200 bg-green-50"
                 : toast.type === "error"
-                ? "border-red-200 bg-red-50"
-                : "border-blue-200 bg-blue-50"
+                  ? "border-red-200 bg-red-50"
+                  : "border-blue-200 bg-blue-50"
             }`}
           >
             {toast.type === "success" && (
@@ -241,7 +243,7 @@ const RamStorageConfig = () => {
 
       {/* Header */}
       <div className="mb-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
               RAM & Storage Configuration
@@ -260,7 +262,7 @@ const RamStorageConfig = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-6">
           <div className="bg-white rounded-lg border border-gray-200 p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -424,7 +426,7 @@ const RamStorageConfig = () => {
                   scope="col"
                   className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                 >
-                  ID
+                  S.NO
                 </th>
                 <th
                   scope="col"
@@ -472,7 +474,7 @@ const RamStorageConfig = () => {
                   <tr key={config.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3">
                       <span className="text-sm text-gray-500">
-                        #{config.id}
+                        {startIndex + idx + 1}
                       </span>
                     </td>
                     <td className="px-4 py-3">

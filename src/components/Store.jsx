@@ -23,6 +23,7 @@ import {
   FaCamera,
 } from "react-icons/fa";
 import Cookies from "js-cookie";
+import { uploadToCloudinary } from "../config/cloudinary";
 import CountUp from "react-countup";
 
 const OnlineStoreManagement = () => {
@@ -123,7 +124,7 @@ const OnlineStoreManagement = () => {
       showToast(
         "Error",
         "Please upload a valid image (JPEG, PNG, SVG, WebP)",
-        "error"
+        "error",
       );
       return;
     }
@@ -142,26 +143,9 @@ const OnlineStoreManagement = () => {
       reader.onloadend = () => setImagePreview(reader.result);
       reader.readAsDataURL(file);
 
-      // Upload to Cloudinary (same preset used in Brand.jsx)
-      const uploadData = new FormData();
-      uploadData.append("file", file);
-      uploadData.append("upload_preset", "Mobile image");
-
-      const response = await fetch(
-        "https://api.cloudinary.com/v1_1/damoxc2du/image/upload",
-        {
-          method: "POST",
-          body: uploadData,
-        }
-      );
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Upload failed: ${response.status} - ${errorText}`);
-      }
-
-      const data = await response.json();
-      if (data.secure_url) {
+      // Upload to Cloudinary using shared utility (brands preset)
+      const data = await uploadToCloudinary(file, "brands");
+      if (data && data.secure_url) {
         setFormData((prev) => ({ ...prev, logo: data.secure_url }));
         showToast("Success", "Logo uploaded successfully", "success");
       } else {
@@ -243,7 +227,7 @@ const OnlineStoreManagement = () => {
 
       if (editingId) {
         setStores((prev) =>
-          prev.map((store) => (store.id === editingId ? savedStore : store))
+          prev.map((store) => (store.id === editingId ? savedStore : store)),
         );
         showToast("Success", "Online store updated successfully", "success");
       } else {
@@ -298,13 +282,13 @@ const OnlineStoreManagement = () => {
             Authorization: token ? `Bearer ${token}` : "",
           },
           body: JSON.stringify({ status: newStatus }),
-        }
+        },
       );
 
       if (!res.ok) throw new Error("Status update failed");
 
       setStores((prev) =>
-        prev.map((s) => (s.id === store.id ? { ...s, status: newStatus } : s))
+        prev.map((s) => (s.id === store.id ? { ...s, status: newStatus } : s)),
       );
 
       showToast("Success", `"${store.name}" marked as ${newStatus}`, "success");
@@ -323,7 +307,7 @@ const OnlineStoreManagement = () => {
       return store.status === statusFilter;
     })
     .filter((store) =>
-      store.name.toLowerCase().includes(searchTerm.toLowerCase())
+      store.name.toLowerCase().includes(searchTerm.toLowerCase()),
     )
     .sort((a, b) => {
       if (sortBy === "newest") {
@@ -346,7 +330,7 @@ const OnlineStoreManagement = () => {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedStores = filteredAndSortedStores.slice(
     startIndex,
-    startIndex + itemsPerPage
+    startIndex + itemsPerPage,
   );
 
   // Stats
@@ -355,7 +339,7 @@ const OnlineStoreManagement = () => {
   const inactiveStores = stores.filter((s) => s.status === "inactive").length;
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-6">
+    <div className="min-h-screen bg-gray-50 p-3 sm:p-4 md:p-6 lg:p-8">
       {/* Toast Container */}
       <div className="fixed top-4 right-4 z-50 space-y-2">
         {toasts.map((toast) => (
@@ -365,8 +349,8 @@ const OnlineStoreManagement = () => {
               toast.type === "success"
                 ? "border-green-200 bg-green-50"
                 : toast.type === "error"
-                ? "border-red-200 bg-red-50"
-                : "border-blue-200 bg-blue-50"
+                  ? "border-red-200 bg-red-50"
+                  : "border-blue-200 bg-blue-50"
             }`}
           >
             {toast.type === "success" && (
@@ -391,7 +375,7 @@ const OnlineStoreManagement = () => {
 
       {/* Header */}
       <div className="mb-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
               Online Store Management
@@ -411,7 +395,7 @@ const OnlineStoreManagement = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-6">
           <div className="bg-white rounded-lg border border-gray-200 p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -709,7 +693,7 @@ const OnlineStoreManagement = () => {
                                 onError={(e) => {
                                   e.target.onerror = null;
                                   e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                                    store.name
+                                    store.name,
                                   )}&background=3b82f6&color=fff&size=40`;
                                 }}
                               />
@@ -723,9 +707,6 @@ const OnlineStoreManagement = () => {
                         <div className="ml-3">
                           <div className="font-medium text-gray-900">
                             {store.name}
-                          </div>
-                          <div className="text-xs text-gray-500 mt-1">
-                            ID: #{store.id}
                           </div>
                         </div>
                       </div>
@@ -767,7 +748,7 @@ const OnlineStoreManagement = () => {
                           {store.created_at
                             ? new Date(store.created_at).toLocaleTimeString(
                                 [],
-                                { hour: "2-digit", minute: "2-digit" }
+                                { hour: "2-digit", minute: "2-digit" },
                               )
                             : ""}
                         </span>
@@ -829,7 +810,7 @@ const OnlineStoreManagement = () => {
                 <span className="font-medium">
                   {Math.min(
                     startIndex + itemsPerPage,
-                    filteredAndSortedStores.length
+                    filteredAndSortedStores.length,
                   )}
                 </span>{" "}
                 of{" "}

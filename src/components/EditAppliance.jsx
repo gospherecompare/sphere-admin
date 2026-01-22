@@ -1,5 +1,6 @@
-// components/CreateHomeAppliance.js
+// components/EditHomeAppliance.js
 import React, { useState, useEffect, useRef, createRef } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import Cookies from "js-cookie";
 import { uploadToCloudinary } from "../config/cloudinary";
 import {
@@ -33,9 +34,13 @@ import {
   FaIndustry,
   FaSearch,
   FaCalendar,
+  FaEdit,
+  FaEye,
 } from "react-icons/fa";
 
-const CreateHomeAppliance = () => {
+const EditHomeAppliance = () => {
+  const { id } = useParams();
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     product: {
       name: "",
@@ -45,7 +50,6 @@ const CreateHomeAppliance = () => {
       appliance_type: "",
       model_number: "",
       release_year: new Date().getFullYear(),
-      release_date: "",
       country_of_origin: "",
       specifications: {},
       features: [],
@@ -55,9 +59,11 @@ const CreateHomeAppliance = () => {
     },
     images: [],
     variants: [],
+    published: false,
   });
 
   const [isLoading, setIsLoading] = useState(false);
+  const [isFetching, setIsFetching] = useState(true);
   const [activeSpecTab, setActiveSpecTab] = useState("specifications");
   const [customJsonFields, setCustomJsonFields] = useState({});
   const [brandsList, setBrandsList] = useState([]);
@@ -67,7 +73,6 @@ const CreateHomeAppliance = () => {
     rams: [],
     storages: [],
   });
-  const [publishEnabled, setPublishEnabled] = useState(false);
   const [toasts, setToasts] = useState([]);
   const [expandedSections, setExpandedSections] = useState({
     basic: true,
@@ -84,33 +89,19 @@ const CreateHomeAppliance = () => {
   const [showBrandDropdown, setShowBrandDropdown] = useState(false);
   const [showApplianceDropdown, setShowApplianceDropdown] = useState(false);
   const [showYearDropdown, setShowYearDropdown] = useState(false);
-  const [brandSearch, setBrandSearch] = useState("");
-  const [applianceSearch, setApplianceSearch] = useState("");
-
-  // Memory and store dropdown states
-  const [showRamDropdown, setShowRamDropdown] = useState({});
   const [showStorageDropdown, setShowStorageDropdown] = useState({});
   const [showStoreDropdown, setShowStoreDropdown] = useState({});
-  const [ramSearch, setRamSearch] = useState({});
+  const [brandSearch, setBrandSearch] = useState("");
+  const [applianceSearch, setApplianceSearch] = useState("");
   const [storageSearch, setStorageSearch] = useState({});
   const [storeSearch, setStoreSearch] = useState({});
-
-  // Refs for variant dropdowns
-  const ramDropdownRefs = useRef({});
-  const storageDropdownRefs = useRef({});
-  const storeDropdownRefs = useRef({});
-
-  // Date picker state for year selection
-  const [selectedDate, setSelectedDate] = useState({
-    year: new Date().getFullYear(),
-    month: 0,
-    day: 1,
-  });
 
   // Refs for dropdown closing
   const brandDropdownRef = useRef(null);
   const applianceDropdownRef = useRef(null);
   const yearDropdownRef = useRef(null);
+  const storageDropdownRefs = useRef({});
+  const storeDropdownRefs = useRef({});
 
   // Appliance types with icons
   const applianceTypes = [
@@ -144,46 +135,93 @@ const CreateHomeAppliance = () => {
 
   const yearsList = generateYears();
 
-  // Helper function to get days in month
-  const getDaysInMonth = (year, month) => {
-    return new Date(year, month + 1, 0).getDate();
-  };
-
-  // Months array
-  const months = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
-  ];
-
-  // Fetch brands
+  // Fetch appliance data by ID
   useEffect(() => {
-    const fetchBrands = async () => {
+    const fetchApplianceData = async () => {
       try {
-        const res = await fetch("http://localhost:5000/api/brands");
-        if (!res.ok) return;
+        setIsFetching(true);
+        const token = Cookies.get("authToken");
+        const res = await fetch(
+          `http://localhost:5000/api/home-appliances/${id}`,
+          {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+          },
+        );
+
+        if (!res.ok) {
+          if (res.status === 404) {
+            showToast("Not Found", "Appliance not found", "error");
+            setIsFetching(false);
+            return;
+          }
+          const errText = await res.text().catch(() => "");
+          throw new Error(
+            errText || `Failed to fetch appliance data (${res.status})`,
+          );
+        }
+
         const data = await res.json();
-        const brandsArray = data.brands || data || [];
-        setBrandsList(brandsArray);
-      } catch (err) {
-        console.error("Failed to fetch brands:", err);
+
+        // Support both old and new response shapes: prefer data.home_appliance when present
+        const ha = data.home_appliance || data;
+
+        // Transform API response to match form structure
+        setFormData({
+          product: {
+            name: data.product?.name || ha.name || "",
+            brand_id: data.product?.brand_id ?? ha.brand_id ?? "",
+          },
+          home_appliance: {
+            appliance_type: ha.appliance_type || ha.applianceType || "",
+            model_number: ha.model_number || ha.modelNumber || "",
+            release_year:
+              ha.release_year || ha.releaseYear || new Date().getFullYear(),
+            country_of_origin: ha.country_of_origin || ha.countryOfOrigin || "",
+            specifications: ha.specifications || {},
+            features: ha.features || [],
+            performance: ha.performance || {},
+            physical_details: ha.physical_details || {},
+            warranty: ha.warranty || {},
+          },
+          images: data.images || [],
+          variants: data.variants || [],
+          published: data.published ?? data.is_published ?? false,
+        });
+
+        // Extract custom JSON fields
+        const customFields = {};
+        [
+          "specifications",
+          "performance",
+          "physical_details",
+          "warranty",
+        ].forEach((field) => {
+          const fieldData = ha[field] || {};
+          const defaultFields = getDefaultFields(
+            field,
+            ha.appliance_type || ha.applianceType,
+          );
+          const custom = Object.keys(fieldData).filter(
+            (key) => !defaultFields.includes(key),
+          );
+          if (custom.length) {
+            customFields[field] = custom;
+          }
+        });
+        setCustomJsonFields(customFields);
+      } catch (error) {
+        console.error("Error fetching appliance:", error);
+        showToast("Error", "Failed to load appliance data", "error");
+      } finally {
+        setIsFetching(false);
       }
     };
-    fetchBrands();
-  }, []);
 
-  // Fetch online stores and ram/storage options for dropdowns
-  useEffect(() => {
-    const fetchAuxiliary = async () => {
+    if (id) {
+      fetchApplianceData();
+    }
+    // Fetch auxiliary data (stores & ram/storage options)
+    const fetchAux = async () => {
       try {
         const token = Cookies.get("authToken");
         const storesEndpoint = token
@@ -193,10 +231,9 @@ const CreateHomeAppliance = () => {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
         if (storesRes.ok) {
-          const data = await storesRes.json();
-          const rows = (data && (data.data || data.rows || data)) || [];
-          const opts = (rows || []).map((r) => ({ id: r.id, name: r.name }));
-          setStoresList(opts);
+          const d = await storesRes.json();
+          const rows = (d && (d.data || d.rows || d)) || [];
+          setStoresList((rows || []).map((r) => ({ id: r.id, name: r.name })));
         }
 
         const ramRes = await fetch(
@@ -228,69 +265,35 @@ const CreateHomeAppliance = () => {
         console.error("Failed to fetch auxiliary data:", err);
       }
     };
-    fetchAuxiliary();
-  }, []);
+    fetchAux();
+  }, [id]);
 
-  // Close dropdowns when clicking outside
-  // Initialize date from form data
+  // Fetch brands
   useEffect(() => {
-    if (formData.home_appliance.release_date) {
-      const d = new Date(formData.home_appliance.release_date);
-      setSelectedDate({
-        year: d.getFullYear(),
-        month: d.getMonth(),
-        day: d.getDate(),
-      });
-    }
-  }, [formData.home_appliance.release_date]);
-
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (
-        brandDropdownRef.current &&
-        !brandDropdownRef.current.contains(event.target)
-      ) {
-        setShowBrandDropdown(false);
-      }
-      if (
-        applianceDropdownRef.current &&
-        !applianceDropdownRef.current.contains(event.target)
-      ) {
-        setShowApplianceDropdown(false);
-      }
-      if (
-        yearDropdownRef.current &&
-        !yearDropdownRef.current.contains(event.target)
-      ) {
-        setShowYearDropdown(false);
+    const fetchBrands = async () => {
+      try {
+        const res = await fetch("http://localhost:5000/api/brands");
+        if (!res.ok) return;
+        const data = await res.json();
+        const brandsArray = data.brands || data || [];
+        const normalized = (brandsArray || [])
+          .map((b, idx) => {
+            if (!b) return null;
+            if (typeof b === "string") return { id: String(b), name: b };
+            const id = b.id ?? b._id ?? b.value ?? b.name ?? String(idx);
+            const name = b.name ?? b.label ?? b.value ?? String(id);
+            return { id: String(id), name };
+          })
+          .filter(Boolean);
+        setBrandsList(normalized);
+      } catch (err) {
+        console.error("Failed to fetch brands:", err);
       }
     };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
+    fetchBrands();
   }, []);
 
-  // Filter brands based on search
-  const filteredBrands = brandsList.filter((brand) =>
-    brand.name.toLowerCase().includes(brandSearch.toLowerCase()),
-  );
-
-  // Filter appliance types based on search (use API-backed options when available)
-  const filteredApplianceTypes = (
-    applianceOptions && applianceOptions.length
-      ? applianceOptions
-      : applianceTypes.map((a) => ({
-          value: a.value,
-          label: a.label,
-          icon: a.icon,
-        }))
-  ).filter((appliance) =>
-    appliance.label.toLowerCase().includes(applianceSearch.toLowerCase()),
-  );
-
-  // Fetch appliance categories from API (use auth token)
+  // Fetch appliance categories from API
   useEffect(() => {
     const fetchApplianceCategories = async () => {
       try {
@@ -330,6 +333,57 @@ const CreateHomeAppliance = () => {
     };
     fetchApplianceCategories();
   }, []);
+
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        brandDropdownRef.current &&
+        !brandDropdownRef.current.contains(event.target)
+      ) {
+        setShowBrandDropdown(false);
+      }
+      if (
+        applianceDropdownRef.current &&
+        !applianceDropdownRef.current.contains(event.target)
+      ) {
+        setShowApplianceDropdown(false);
+      }
+      if (
+        yearDropdownRef.current &&
+        !yearDropdownRef.current.contains(event.target)
+      ) {
+        setShowYearDropdown(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  // Filter brands based on search
+  const filteredBrands = (brandsList || []).filter((brand) => {
+    const name =
+      typeof brand === "string"
+        ? brand
+        : brand?.name || brand?.label || brand?.value || "";
+    return name.toLowerCase().includes((brandSearch || "").toLowerCase());
+  });
+
+  // Filter appliance types based on search
+  const filteredApplianceTypes = (
+    applianceOptions && applianceOptions.length
+      ? applianceOptions
+      : applianceTypes.map((a) => ({
+          value: a.value,
+          label: a.label,
+          icon: a.icon,
+        }))
+  ).filter((appliance) =>
+    appliance.label.toLowerCase().includes(applianceSearch.toLowerCase()),
+  );
 
   // Toast system
   const showToast = (title, message, type = "success") => {
@@ -377,34 +431,44 @@ const CreateHomeAppliance = () => {
     }));
   };
 
-  // Handle brand selection
-  const handleBrandSelect = (brand) => {
-    setFormData((prev) => ({
-      ...prev,
-      product: {
-        ...prev.product,
-        brand_id: brand.id,
-      },
-      home_appliance: {
-        ...prev.home_appliance,
-        brand: brand.name,
-      },
-    }));
-    setShowBrandDropdown(false);
-    setBrandSearch("");
+  // Handle image upload (centralized utility)
+  const handleImageUpload = async (files) => {
+    if (!files || files.length === 0) return;
+    const fileList = Array.from(files);
+    setIsLoading(true);
+
+    try {
+      const uploadedImages = [];
+      for (const file of fileList) {
+        const data = await uploadToCloudinary(file, "appliances");
+        if (data && data.secure_url) uploadedImages.push(data.secure_url);
+      }
+
+      setFormData((prev) => ({
+        ...prev,
+        images: [...prev.images, ...uploadedImages],
+      }));
+    } catch (error) {
+      console.error("Image upload error:", error);
+      showToast(
+        "Upload Failed",
+        error.message || "Error uploading images",
+        "error",
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  // Handle appliance type selection
-  const handleApplianceSelect = (appliance) => {
+  const handleYearSelect = (year) => {
     setFormData((prev) => ({
       ...prev,
       home_appliance: {
         ...prev.home_appliance,
-        appliance_type: appliance.value,
+        release_year: year,
       },
     }));
-    setShowApplianceDropdown(false);
-    setApplianceSearch("");
+    setShowYearDropdown(false);
   };
 
   // Handle JSONB object changes
@@ -470,40 +534,7 @@ const CreateHomeAppliance = () => {
     showToast("Store Added", "New store added to variant", "success");
   };
 
-  // Handle image upload
-  const handleImageUpload = async (files) => {
-    if (!files || files.length === 0) return;
-    const fileList = Array.from(files);
-    setIsLoading(true);
-
-    try {
-      const uploadedImages = [];
-      for (const file of fileList) {
-        const data = await uploadToCloudinary(file, "appliances");
-        if (data && data.secure_url) uploadedImages.push(data.secure_url);
-      }
-
-      setFormData((prev) => ({
-        ...prev,
-        images: [...prev.images, ...uploadedImages],
-      }));
-
-      showToast(
-        "Upload Successful",
-        `${uploadedImages.length} image(s) uploaded`,
-        "success",
-      );
-    } catch (error) {
-      console.error("Image upload error:", error);
-      showToast(
-        "Upload Failed",
-        error.message || "Error uploading images",
-        "error",
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // Duplicate handler removed; using centralized uploadToCloudinary above
 
   // Remove image
   const removeImage = (index) => {
@@ -522,10 +553,30 @@ const CreateHomeAppliance = () => {
 
   // Get selected brand name
   const getSelectedBrandName = () => {
-    const selectedBrand = brandsList.find(
-      (brand) => brand.id === Number(formData.product.brand_id),
-    );
-    return selectedBrand ? selectedBrand.name : "";
+    if (!formData?.product?.brand_id) return "";
+    const bid = String(formData.product.brand_id);
+    const selectedBrand = (brandsList || []).find((brand) => {
+      if (!brand) return false;
+      if (typeof brand === "string") return String(brand) === bid;
+      return (
+        String(brand.id) === bid ||
+        String(brand._id) === bid ||
+        String(brand.value) === bid ||
+        String(brand.name) === bid
+      );
+    });
+    if (selectedBrand)
+      return typeof selectedBrand === "string"
+        ? selectedBrand
+        : selectedBrand.name ||
+            selectedBrand.label ||
+            selectedBrand.value ||
+            "";
+    const byName = (brandsList || []).find((b) => {
+      const n = typeof b === "string" ? b : b?.name || b?.label || "";
+      return n === formData.product.brand_id;
+    });
+    return byName ? (typeof byName === "string" ? byName : byName.name) : "";
   };
 
   // Get selected appliance label
@@ -536,17 +587,9 @@ const CreateHomeAppliance = () => {
     return selectedAppliance ? selectedAppliance.label : "";
   };
 
-  // Specification tabs for home appliances
-  const specTabs = [
-    { id: "specifications", label: "Specifications", icon: FaBox },
-    { id: "performance", label: "Performance", icon: FaBolt },
-    { id: "physical_details", label: "Physical Details", icon: FaRuler },
-    { id: "warranty", label: "Warranty", icon: FaShieldAlt },
-  ];
-
   // Get default fields for each specification category based on appliance type
-  const getDefaultFields = (category) => {
-    const { appliance_type } = formData.home_appliance;
+  const getDefaultFields = (category, applianceType) => {
+    const type = applianceType || formData.home_appliance.appliance_type;
 
     // Common fields for all appliances
     const commonSpecs = [
@@ -663,7 +706,7 @@ const CreateHomeAppliance = () => {
     };
 
     // Get fields based on appliance type, fallback to common
-    const specificFields = applianceSpecificFields[appliance_type] || {};
+    const specificFields = applianceSpecificFields[type] || {};
 
     const defaults = {
       specifications: specificFields.specifications || commonSpecs,
@@ -722,7 +765,7 @@ const CreateHomeAppliance = () => {
     showToast("Field Removed", `Custom field "${fieldName}" removed`, "info");
   };
 
-  // Form submit handler
+  // Form submit handler for update
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
@@ -783,61 +826,72 @@ const CreateHomeAppliance = () => {
             offer_text: s.offer_text || null,
           })),
         })),
-        published: publishEnabled,
+        published: formData.published,
       };
 
-      const res = await fetch("http://localhost:5000/api/home-appliances", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      const res = await fetch(
+        `http://localhost:5000/api/home-appliances/${id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify(submitData),
         },
-        body: JSON.stringify(submitData),
-      });
+      );
 
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.message || "Failed to create appliance");
+        throw new Error(errorData.message || "Failed to update appliance");
       }
+
+      const result = await res.json();
 
       showToast(
         "Success",
-        `"${formData.product.name}" created ${
-          publishEnabled ? "and published" : "as draft"
-        } successfully!`,
+        `"${formData.product.name}" updated ${
+          formData.published ? "and published" : "successfully"
+        }!`,
         "success",
       );
 
-      // Reset form
-      setFormData({
-        product: { name: "", brand_id: "" },
-        home_appliance: {
-          appliance_type: "",
-          model_number: "",
-          release_year: new Date().getFullYear(),
-          country_of_origin: "",
-          specifications: {},
-          features: [],
-          performance: {},
-          physical_details: {},
-          warranty: {},
-        },
-        images: [],
-        variants: [],
-      });
-      setCustomJsonFields({});
-      setPublishEnabled(false);
+      // Redirect after success to the appliances inventory view
+      setTimeout(() => {
+        navigate("/products/homeappliances/inventory");
+      }, 1500);
     } catch (error) {
-      console.error("Create appliance error:", error);
+      console.error("Update appliance error:", error);
       showToast(
-        "Creation Failed",
-        `Error creating appliance: ${error.message}`,
+        "Update Failed",
+        `Error updating appliance: ${error.message}`,
         "error",
       );
     } finally {
       setIsLoading(false);
     }
   };
+
+  // Toggle publish status
+  const togglePublish = () => {
+    setFormData((prev) => ({
+      ...prev,
+      published: !prev.published,
+    }));
+    showToast(
+      "Status Changed",
+      `Appliance set to ${!formData.published ? "published" : "draft"}`,
+      "info",
+    );
+  };
+
+  // Specification tabs for home appliances
+  const specTabs = [
+    { id: "specifications", label: "Specifications", icon: FaBox },
+    { id: "performance", label: "Performance", icon: FaBolt },
+    { id: "physical_details", label: "Physical Details", icon: FaRuler },
+    { id: "warranty", label: "Warranty", icon: FaShieldAlt },
+  ];
 
   // Toast Component
   const Toast = ({ toast }) => {
@@ -899,37 +953,31 @@ const CreateHomeAppliance = () => {
             if (type === "brand") setSearchValue("");
             if (type === "appliance") setSearchValue("");
           }}
-          className={`w-full px-4 py-2.5 border-2 transition-all rounded-lg bg-white text-left flex items-center justify-between ${
-            value
-              ? "border-blue-400 shadow-sm hover:shadow-md"
-              : "border-gray-300 hover:border-gray-400 hover:shadow-sm"
-          }`}
+          className={`w-full px-3 py-2 border ${
+            value ? "border-blue-300" : "border-gray-300"
+          } rounded-md bg-white text-left flex items-center justify-between hover:border-blue-400 transition-colors`}
         >
-          <span
-            className={`${
-              value ? "text-gray-900 font-medium" : "text-gray-500"
-            } truncate text-sm`}
-          >
+          <span className={`${value ? "text-gray-900" : "text-gray-500"}`}>
             {selectedLabel || placeholder}
           </span>
           <FaChevronDown
-            className={`text-gray-400 text-sm flex-shrink-0 ml-2 ${
+            className={`text-gray-400 ${
               isOpen ? "transform rotate-180" : ""
-            } transition-transform duration-200`}
+            } transition-transform`}
           />
         </button>
 
         {isOpen && (
-          <div className="absolute z-50 mt-2 w-full bg-white border-2 border-blue-200 rounded-lg shadow-xl overflow-hidden">
+          <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
             {/* Search input */}
-            <div className="sticky top-0 bg-gradient-to-r from-blue-50 to-white p-3 border-b-2 border-blue-100">
+            <div className="sticky top-0 bg-white p-2 border-b">
               <div className="relative">
-                <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-blue-400 text-sm" />
+                <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                 <input
                   type="text"
                   value={searchValue}
                   onChange={(e) => setSearchValue(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2.5 border-2 border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                  className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                   placeholder={`Search ${
                     type === "brand" ? "brands" : "appliances"
                   }...`}
@@ -939,59 +987,40 @@ const CreateHomeAppliance = () => {
             </div>
 
             {/* Options list */}
-            <div className="max-h-64 overflow-y-auto">
+            <div className="py-1">
               {filteredOptions.length > 0 ? (
                 filteredOptions.map((option, idx) => {
                   const Icon = option.icon;
+                  const optId = option?.id ?? option?.value ?? String(idx);
+                  const optLabel =
+                    option?.name ??
+                    option?.label ??
+                    option?.value ??
+                    String(option);
+                  const isSelected =
+                    String(optId) === String(value) ||
+                    String(optLabel) === String(value);
                   return (
                     <button
-                      key={type === "brand" ? option.id : option.value}
+                      key={optId}
                       type="button"
                       onClick={() => onSelect(option)}
-                      className={`w-full text-left px-4 py-3 transition-colors flex items-center space-x-3 ${
-                        (
-                          type === "brand"
-                            ? option.id === value
-                            : option.value === value
-                        )
-                          ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white font-medium shadow-md"
-                          : idx % 2 === 0
-                            ? "hover:bg-blue-50 text-gray-700"
-                            : "hover:bg-blue-100 text-gray-700"
-                      } ${idx !== filteredOptions.length - 1 ? "border-b border-gray-100" : ""}`}
+                      className={`w-full text-left px-3 py-2 hover:bg-blue-50 flex items-center space-x-3 ${
+                        isSelected
+                          ? "bg-blue-50 text-blue-600"
+                          : "text-gray-700"
+                      }`}
                     >
                       {type === "appliance" && Icon && (
-                        <Icon
-                          className={`text-lg flex-shrink-0 ${
-                            (
-                              type === "brand"
-                                ? option.id === value
-                                : option.value === value
-                            )
-                              ? "text-white"
-                              : "text-gray-400"
-                          }`}
-                        />
+                        <Icon className="text-gray-400" />
                       )}
-                      <span className="flex-1 truncate text-sm">
-                        {type === "brand" ? option.name : option.label}
-                      </span>
-                      {(type === "brand"
-                        ? option.id === value
-                        : option.value === value) && (
-                        <span className="flex-shrink-0">
-                          <FaCheckCircle className="text-lg" />
-                        </span>
-                      )}
+                      <span>{optLabel}</span>
                     </button>
                   );
                 })
               ) : (
-                <div className="px-4 py-8 text-center text-gray-500 text-sm">
-                  <p>No {type === "brand" ? "brands" : "appliances"} found</p>
-                  <p className="text-xs text-gray-400 mt-1">
-                    Try different search term
-                  </p>
+                <div className="px-3 py-4 text-center text-gray-500 text-sm">
+                  No {type === "brand" ? "brands" : "appliances"} found
                 </div>
               )}
             </div>
@@ -1001,266 +1030,73 @@ const CreateHomeAppliance = () => {
     );
   };
 
-  // Custom Date Picker Component (Calendar) for Release Year
+  // Custom Year Dropdown Component
   const YearDropdown = () => {
-    const daysInMonth = getDaysInMonth(selectedDate.year, selectedDate.month);
-    const firstDay = new Date(
-      selectedDate.year,
-      selectedDate.month,
-      1,
-    ).getDay();
-    const today = new Date();
-    const isToday = (day) =>
-      day === today.getDate() &&
-      selectedDate.month === today.getMonth() &&
-      selectedDate.year === today.getFullYear();
-
-    // Generate calendar days
-    const calendarDays = [];
-    // Add empty cells for days before month starts
-    for (let i = 0; i < firstDay; i++) {
-      calendarDays.push(null);
-    }
-    // Add days of current month
-    for (let day = 1; day <= daysInMonth; day++) {
-      calendarDays.push(day);
-    }
-
-    const handlePrevMonth = () => {
-      setSelectedDate((prev) => {
-        if (prev.month === 0) {
-          return { ...prev, month: 11, year: prev.year - 1 };
-        }
-        return { ...prev, month: prev.month - 1 };
-      });
-    };
-
-    const handleNextMonth = () => {
-      setSelectedDate((prev) => {
-        if (prev.month === 11) {
-          return { ...prev, month: 0, year: prev.year + 1 };
-        }
-        return { ...prev, month: prev.month + 1 };
-      });
-    };
-
-    const handleDaySelect = (day) => {
-      if (day) {
-        setSelectedDate((prev) => ({ ...prev, day }));
-      }
-    };
-
-    const handleToday = () => {
-      setSelectedDate({
-        year: today.getFullYear(),
-        month: today.getMonth(),
-        day: today.getDate(),
-      });
-    };
-
-    const handleApply = () => {
-      const date = new Date(
-        selectedDate.year,
-        selectedDate.month,
-        selectedDate.day,
-      );
-
-      setFormData((prev) => ({
-        ...prev,
-        home_appliance: {
-          ...prev.home_appliance,
-          release_year: date.getFullYear(),
-          release_date: date.toISOString().split("T")[0],
-        },
-      }));
-
-      setShowYearDropdown(false);
-    };
-
     return (
       <div className="relative" ref={yearDropdownRef}>
         <button
           type="button"
           onClick={() => setShowYearDropdown(!showYearDropdown)}
-          className={`w-full px-4 py-2.5 border-2 transition-all rounded-lg bg-white text-left flex items-center justify-between ${
+          className={`w-full px-3 py-2 border ${
             formData.home_appliance.release_year
-              ? "border-blue-400 shadow-sm"
-              : "border-gray-300 hover:border-gray-400"
-          } hover:shadow-md`}
+              ? "border-blue-300"
+              : "border-gray-300"
+          } rounded-md bg-white text-left flex items-center justify-between hover:border-blue-400 transition-colors`}
         >
-          <div className="flex items-center space-x-3">
-            <FaCalendar
-              className={`text-lg ${formData.home_appliance.release_year ? "text-blue-500" : "text-gray-400"}`}
-            />
-            <div>
-              <span
-                className={`block font-medium ${
-                  formData.home_appliance.release_date
-                    ? "text-gray-900"
-                    : "text-gray-500"
-                }`}
-              >
-                {formData.home_appliance.release_date
-                  ? new Date(
-                      formData.home_appliance.release_date,
-                    ).toLocaleDateString("en-US", {
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    })
-                  : "Select Release Date"}
-              </span>
-              {formData.home_appliance.release_date && (
-                <span className="text-xs text-gray-500">
-                  {new Date(
-                    formData.home_appliance.release_date,
-                  ).toLocaleDateString("en-US", {
-                    weekday: "short",
-                  })}
-                </span>
-              )}
-            </div>
+          <div className="flex items-center space-x-2">
+            <FaCalendar className="text-gray-400" />
+            <span
+              className={`${
+                formData.home_appliance.release_year
+                  ? "text-gray-900"
+                  : "text-gray-500"
+              }`}
+            >
+              {formData.home_appliance.release_year || "Select Year"}
+            </span>
           </div>
           <FaChevronDown
-            className={`text-gray-400 text-lg ${
+            className={`text-gray-400 ${
               showYearDropdown ? "transform rotate-180" : ""
-            } transition-transform duration-300`}
+            } transition-transform`}
           />
         </button>
 
         {showYearDropdown && (
-          <div className="absolute z-50 mt-2 w-96 bg-white border-2 border-blue-200 rounded-xl shadow-2xl p-5 backdrop-blur-sm bg-opacity-95">
-            {/* Header */}
-            <div className="bg-gradient-to-r from-blue-600 to-blue-500 rounded-lg p-4 mb-4 text-white">
-              <h3 className="text-lg font-bold text-center">
-                {months[selectedDate.month]} {selectedDate.year}
-              </h3>
-              <p className="text-center text-blue-100 text-sm mt-1">
-                Release Year: {selectedDate.year}
-              </p>
-            </div>
-
-            {/* Month/Year Navigation */}
-            <div className="flex items-center justify-between mb-5 pb-4 border-b border-gray-200">
-              <button
-                type="button"
-                onClick={handlePrevMonth}
-                className="p-2 hover:bg-blue-100 rounded-lg transition-colors text-gray-700 font-bold"
-              >
-                <FaChevronDown className="transform rotate-90 text-lg" />
-              </button>
-
-              <div className="flex gap-3">
-                <select
-                  value={selectedDate.month}
-                  onChange={(e) =>
-                    setSelectedDate((prev) => ({
-                      ...prev,
-                      month: parseInt(e.target.value),
-                    }))
-                  }
-                  className="px-3 py-1.5 border-2 border-gray-300 rounded-lg text-sm font-semibold focus:outline-none focus:border-blue-500 bg-white hover:border-blue-400 transition-colors"
-                >
-                  {months.map((month, idx) => (
-                    <option key={month} value={idx}>
-                      {month}
-                    </option>
-                  ))}
-                </select>
-
-                <select
-                  value={selectedDate.year}
-                  onChange={(e) =>
-                    setSelectedDate((prev) => ({
-                      ...prev,
-                      year: parseInt(e.target.value),
-                    }))
-                  }
-                  className="px-3 py-1.5 border-2 border-gray-300 rounded-lg text-sm font-semibold focus:outline-none focus:border-blue-500 bg-white hover:border-blue-400 transition-colors"
-                >
-                  {yearsList.map((year) => (
-                    <option key={year} value={year}>
-                      {year}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <button
-                type="button"
-                onClick={handleNextMonth}
-                className="p-2 hover:bg-blue-100 rounded-lg transition-colors text-gray-700 font-bold"
-              >
-                <FaChevronDown className="transform -rotate-90 text-lg" />
-              </button>
-            </div>
-
-            {/* Weekday Headers */}
-            <div className="grid grid-cols-7 gap-2 mb-3">
-              {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
-                <div
-                  key={day}
-                  className="text-center text-xs font-bold text-gray-600 py-2 bg-gray-50 rounded-md"
-                >
-                  {day}
-                </div>
-              ))}
-            </div>
-
-            {/* Calendar Grid */}
-            <div className="grid grid-cols-7 gap-2 mb-5">
-              {calendarDays.map((day, idx) => (
+          <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
+            <div className="py-2">
+              {yearsList.map((year) => (
                 <button
-                  key={idx}
+                  key={year}
                   type="button"
-                  onClick={() => handleDaySelect(day)}
-                  disabled={!day}
-                  className={`w-full aspect-square rounded-lg text-sm font-semibold transition-all transform ${
-                    !day
-                      ? "text-transparent cursor-default"
-                      : isToday(day)
-                        ? "bg-amber-100 text-amber-900 border-2 border-amber-400 shadow-md"
-                        : day === selectedDate.day
-                          ? "bg-blue-600 text-white shadow-lg scale-105"
-                          : "text-gray-700 bg-gray-50 hover:bg-blue-50 hover:border-2 hover:border-blue-300 hover:scale-105"
-                  } disabled:cursor-default`}
+                  onClick={() => handleYearSelect(year)}
+                  className={`w-full text-left px-3 py-2 hover:bg-blue-50 ${
+                    year === formData.home_appliance.release_year
+                      ? "bg-blue-50 text-blue-600 font-medium"
+                      : "text-gray-700"
+                  }`}
                 >
-                  {day}
+                  {year}
                 </button>
               ))}
-            </div>
-
-            {/* Today & Action Buttons */}
-            <div className="flex justify-between items-center pt-3 border-t border-gray-200">
-              <button
-                type="button"
-                onClick={handleToday}
-                className="px-3 py-1.5 text-xs font-semibold text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors border border-blue-300"
-              >
-                Today
-              </button>
-              <div className="flex space-x-2">
-                <button
-                  type="button"
-                  onClick={() => setShowYearDropdown(false)}
-                  className="px-4 py-1.5 text-sm font-semibold border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleApply}
-                  className="px-4 py-1.5 text-sm font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-md"
-                >
-                  Apply
-                </button>
-              </div>
             </div>
           </div>
         )}
       </div>
     );
   };
+
+  // Show loading state while fetching
+  if (isFetching) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <FaSpinner className="text-blue-600 text-4xl animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">Loading appliance data...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 p-3 sm:p-4 md:p-6 lg:p-8">
@@ -1275,17 +1111,23 @@ const CreateHomeAppliance = () => {
       <div className="mb-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
-              Create Home Appliance
-            </h1>
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                <FaEdit className="text-blue-600" />
+              </div>
+              <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
+                Edit Home Appliance
+              </h1>
+            </div>
             <p className="text-gray-600 mt-1">
-              Add a new home appliance to your inventory
+              Update appliance details for{" "}
+              <span className="font-medium">{formData.product.name}</span>
             </p>
           </div>
 
           <div className="flex items-center space-x-3">
             <button
-              onClick={() => window.history.back()}
+              onClick={() => navigate(-1)}
               className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md font-medium hover:bg-gray-50"
             >
               Cancel
@@ -1296,7 +1138,7 @@ const CreateHomeAppliance = () => {
               className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               {isLoading ? <FaSpinner className="animate-spin" /> : <FaSave />}
-              {isLoading ? "Creating..." : "Create Appliance"}
+              {isLoading ? "Updating..." : "Update Appliance"}
             </button>
           </div>
         </div>
@@ -1997,36 +1839,36 @@ const CreateHomeAppliance = () => {
               <div className="flex items-center space-x-3">
                 <div
                   className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                    publishEnabled ? "bg-green-100" : "bg-gray-100"
+                    formData.published ? "bg-green-100" : "bg-gray-100"
                   }`}
                 >
-                  <FaStar
-                    className={
-                      publishEnabled ? "text-green-600" : "text-gray-600"
-                    }
-                  />
+                  {formData.published ? (
+                    <FaEye className="text-green-600" />
+                  ) : (
+                    <FaStar className="text-gray-600" />
+                  )}
                 </div>
                 <div>
                   <div className="font-semibold text-gray-800">
                     Publish Status
                   </div>
                   <div className="text-sm text-gray-600">
-                    {publishEnabled
-                      ? "Appliance will be published immediately"
-                      : "Save as draft"}
+                    {formData.published
+                      ? "Appliance is currently published"
+                      : "Appliance is saved as draft"}
                   </div>
                 </div>
               </div>
 
               <button
-                onClick={() => setPublishEnabled(!publishEnabled)}
+                onClick={togglePublish}
                 className={`px-4 py-2 rounded-md font-medium ${
-                  publishEnabled
+                  formData.published
                     ? "bg-green-600 hover:bg-green-700 text-white"
                     : "bg-gray-200 hover:bg-gray-300 text-gray-800"
                 }`}
               >
-                {publishEnabled ? "Published" : "Draft"}
+                {formData.published ? "Published" : "Draft"}
               </button>
             </div>
           </div>
@@ -2042,21 +1884,29 @@ const CreateHomeAppliance = () => {
             {isLoading ? (
               <>
                 <FaSpinner className="animate-spin" />
-                <span>Creating...</span>
+                <span>Updating...</span>
               </>
             ) : (
               <>
                 <FaSave />
-                <span>Create Appliance</span>
+                <span>Update Appliance</span>
               </>
             )}
           </button>
 
           <button
-            onClick={() => window.history.back()}
+            onClick={() => navigate(-1)}
             className="px-6 py-3 border border-gray-300 text-gray-700 rounded-md font-medium hover:bg-gray-50"
           >
             Cancel
+          </button>
+
+          <button
+            onClick={() => navigate("/products/homeappliances/inventory")}
+            className="px-6 py-3 border border-blue-300 text-blue-600 rounded-md font-medium hover:bg-blue-50 flex items-center justify-center gap-2"
+          >
+            <FaEye />
+            <span>View</span>
           </button>
         </div>
       </div>
@@ -2064,4 +1914,4 @@ const CreateHomeAppliance = () => {
   );
 };
 
-export default CreateHomeAppliance;
+export default EditHomeAppliance;

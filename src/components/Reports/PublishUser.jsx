@@ -53,7 +53,7 @@ const PublishedByUserReport = () => {
             Authorization: token ? `Bearer ${token}` : "",
             "Content-Type": "application/json",
           },
-        }
+        },
       );
 
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -107,7 +107,7 @@ const PublishedByUserReport = () => {
     let filteredData = reportData.filter(
       (user) =>
         user.user_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.email?.toLowerCase().includes(searchTerm.toLowerCase())
+        user.email?.toLowerCase().includes(searchTerm.toLowerCase()),
     );
 
     return filteredData.sort((a, b) => {
@@ -136,7 +136,7 @@ const PublishedByUserReport = () => {
   const totalPublished = useMemo(() => {
     return reportData.reduce(
       (total, user) => total + parseInt(user.published_count || 0),
-      0
+      0,
     );
   }, [reportData]);
 
@@ -228,7 +228,7 @@ const PublishedByUserReport = () => {
         <FaSortDown className="ml-1 text-blue-600" />
       );
     },
-    [sortConfig]
+    [sortConfig],
   );
 
   // Handle search input change with debounce
@@ -247,7 +247,7 @@ const PublishedByUserReport = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-6 overflow-x-hidden">
+    <div className="min-h-screen bg-gray-50 p-3 sm:p-4 md:p-6 lg:p-8 overflow-x-hidden">
       {/* Toast Container */}
       <div className="fixed top-4 right-4 z-50 space-y-2">
         {toasts.map((toast) => (
@@ -257,8 +257,8 @@ const PublishedByUserReport = () => {
               toast.type === "success"
                 ? "border-green-200"
                 : toast.type === "error"
-                ? "border-red-200"
-                : "border-blue-200"
+                  ? "border-red-200"
+                  : "border-blue-200"
             }`}
           >
             {toast.type === "success" && (
@@ -402,7 +402,7 @@ const PublishedByUserReport = () => {
                       <>
                         <CountUp
                           end={parseInt(
-                            stats.topPerformer.published_count || 0
+                            stats.topPerformer.published_count || 0,
                           )}
                           duration={1.0}
                         />{" "}
@@ -507,7 +507,7 @@ const PublishedByUserReport = () => {
                         <div className="relative">
                           <div
                             className={`w-14 h-14 rounded-2xl flex items-center justify-center ${getUserAvatarColor(
-                              user.user_name
+                              user.user_name,
                             )}`}
                           >
                             <span className="font-bold text-lg">
@@ -656,7 +656,7 @@ const PublishedByUserReport = () => {
                           <div className="flex items-center">
                             <div
                               className={`w-12 h-12 rounded-2xl flex items-center justify-center ${getUserAvatarColor(
-                                user.user_name
+                                user.user_name,
                               )}`}
                             >
                               <span className="font-bold">

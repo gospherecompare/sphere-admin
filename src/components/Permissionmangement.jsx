@@ -52,7 +52,7 @@ const PermissionManagement = () => {
 
   // Get token from cookies
   const getAuthToken = () => {
-    return Cookies.get("auth_token");
+    return Cookies.get("authToken");
   };
 
   // Set up axios defaults

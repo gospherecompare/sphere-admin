@@ -179,7 +179,9 @@ const ViewHomeAppliances = () => {
         appliance.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         appliance.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
         appliance.model.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        appliance.applianceType.toLowerCase().includes(searchTerm.toLowerCase())
+        appliance.applianceType
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase()),
     )
     .sort((a, b) => {
       if (sortBy === "newest") {
@@ -212,12 +214,12 @@ const ViewHomeAppliances = () => {
 
   // Pagination
   const totalPages = Math.ceil(
-    filteredAndSortedAppliances.length / itemsPerPage
+    filteredAndSortedAppliances.length / itemsPerPage,
   );
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedAppliances = filteredAndSortedAppliances.slice(
     startIndex,
-    startIndex + itemsPerPage
+    startIndex + itemsPerPage,
   );
 
   // Close dropdowns when clicking outside
@@ -244,7 +246,7 @@ const ViewHomeAppliances = () => {
           headers: {
             Authorization: token ? `Bearer ${token}` : "",
           },
-        }
+        },
       );
 
       if (!res.ok) throw new Error("Delete failed");
@@ -282,7 +284,7 @@ const ViewHomeAppliances = () => {
             atob(padded)
               .split("")
               .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
-              .join("")
+              .join(""),
           );
           return JSON.parse(jsonPayload);
         } catch (e) {
@@ -313,7 +315,7 @@ const ViewHomeAppliances = () => {
             Authorization: token ? `Bearer ${token}` : "",
           },
           body: JSON.stringify(body),
-        }
+        },
       );
 
       if (!res.ok) {
@@ -330,14 +332,14 @@ const ViewHomeAppliances = () => {
         prev.map((a) =>
           (a.id || a.raw?.product_id) === resolvedId
             ? { ...a, published: updatedPublished }
-            : a
-        )
+            : a,
+        ),
       );
 
       showToast(
         "Success",
         `"${appliance.name}" ${updatedPublished ? "published" : "unpublished"}`,
-        "success"
+        "success",
       );
     } catch (err) {
       console.error("Publish toggle error:", err);
@@ -371,7 +373,7 @@ const ViewHomeAppliances = () => {
           headers: {
             Authorization: token ? `Bearer ${token}` : "",
           },
-        }
+        },
       );
 
       if (!res.ok) throw new Error("Export failed");
@@ -398,7 +400,7 @@ const ViewHomeAppliances = () => {
       showToast(
         "Export Successful",
         `${exportData.length} appliances exported`,
-        "success"
+        "success",
       );
     } catch (error) {
       console.error("Export error:", error);
@@ -423,7 +425,7 @@ const ViewHomeAppliances = () => {
             Authorization: token ? `Bearer ${token}` : "",
           },
           body: formData,
-        }
+        },
       );
 
       if (!res.ok) throw new Error("Import failed");
@@ -431,7 +433,7 @@ const ViewHomeAppliances = () => {
       showToast(
         "Import Successful",
         "Home appliances imported successfully",
-        "success"
+        "success",
       );
 
       // Reload the data
@@ -448,7 +450,7 @@ const ViewHomeAppliances = () => {
   const unpublishedAppliances = appliances.filter((a) => !a.published).length;
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-6">
+    <div className="min-h-screen bg-gray-50 p-3 sm:p-4 md:p-6 lg:p-8">
       {/* Toast Container */}
       <div className="fixed top-4 right-4 z-50 space-y-2">
         {toasts.map((toast) => (
@@ -458,8 +460,8 @@ const ViewHomeAppliances = () => {
               toast.type === "success"
                 ? "border-green-200 bg-green-50"
                 : toast.type === "error"
-                ? "border-red-200 bg-red-50"
-                : "border-blue-200 bg-blue-50"
+                  ? "border-red-200 bg-red-50"
+                  : "border-blue-200 bg-blue-50"
             }`}
           >
             {toast.type === "success" && (
@@ -484,7 +486,7 @@ const ViewHomeAppliances = () => {
 
       {/* Header */}
       <div className="mb-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
               Home Appliance Management
@@ -506,7 +508,7 @@ const ViewHomeAppliances = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-6">
           <div className="bg-white rounded-lg border border-gray-200 p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -866,9 +868,12 @@ const ViewHomeAppliances = () => {
                       <div className="flex items-center space-x-2">
                         <button
                           onClick={() =>
-                            navigate(`/edit-home-appliance/${appliance.id}`, {
-                              state: { appliance: appliance.raw },
-                            })
+                            navigate(
+                              `/products/homeappliances/${appliance.id}/edit`,
+                              {
+                                state: { appliance: appliance.raw },
+                              },
+                            )
                           }
                           className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50"
                           title="Edit appliance"
@@ -877,7 +882,11 @@ const ViewHomeAppliances = () => {
                         </button>
                         <button
                           onClick={() =>
-                            navigate(`/home-appliance/${appliance.id}`)
+                            navigate(
+                              `/home-appliance/${encodeURIComponent(
+                                appliance.name,
+                              )}`,
+                            )
                           }
                           className="text-green-600 hover:text-green-900 p-1 rounded hover:bg-green-50"
                           title="View details"
@@ -929,7 +938,7 @@ const ViewHomeAppliances = () => {
                 <span className="font-medium">
                   {Math.min(
                     startIndex + itemsPerPage,
-                    filteredAndSortedAppliances.length
+                    filteredAndSortedAppliances.length,
                   )}
                 </span>{" "}
                 of{" "}

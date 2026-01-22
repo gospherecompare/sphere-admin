@@ -1,6 +1,7 @@
 // components/Brand.js
 import React, { useState, useEffect } from "react";
 import Cookies from "js-cookie";
+import { uploadToCloudinary } from "../config/cloudinary";
 import CountUp from "react-countup";
 import ExportCategories from "./ExportCategories";
 import ImportExcel from "./ImportExcel";
@@ -28,10 +29,11 @@ const Brand = () => {
     name: "",
     logo: "",
     category: "",
+    description: "",
     status: "active",
   });
 
-  const token = Cookies.get("auth_token");
+  const token = Cookies.get("authToken");
 
   const [brands, setBrands] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -47,28 +49,17 @@ const Brand = () => {
 
   const categoryTypes = [
     "Electronics",
-    "Smartphones",
-    "Computers",
+    "Laptops",
     "Networking",
+    "Smartphones",
     "Home Appliances",
-    "Gaming",
-    "Wearables",
-    "Audio",
-    "Cameras",
-    "TV & Display",
-    "Premium",
-    "Budget",
-    "Flagship",
-    "Mid-range",
-    "Entry-level",
-    "Business",
   ];
 
   // Fetch brands from API
   const fetchBrands = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch("http://localhost:5000/api/brands", {
+      const response = await fetch("http://localhost:5000/api/brand", {
         headers: token
           ? {
               Authorization: `Bearer ${token}`,
@@ -81,7 +72,6 @@ const Brand = () => {
       }
 
       const data = await response.json();
-      console.log("Fetched brands data:", data); // Debug log
 
       // Handle different response structures
       const brandsArray = data.brands || data || [];
@@ -90,6 +80,7 @@ const Brand = () => {
         id: brand.id,
         name: brand.name || "",
         logo: brand.logo || "",
+        description: brand.description || "",
         category: brand.category || "",
         status: brand.status || "active",
         published_products: brand.published_products || "0",
@@ -131,33 +122,9 @@ const Brand = () => {
     setSuccess("");
 
     try {
-      const uploadData = new FormData();
-      uploadData.append("file", file);
-      uploadData.append("upload_preset", "Mobile image");
-
-      console.log("Uploading logo to Cloudinary..."); // Debug log
-
-      const response = await fetch(
-        "https://api.cloudinary.com/v1_1/damoxc2du/image/upload",
-        {
-          method: "POST",
-          body: uploadData,
-        }
-      );
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Upload failed: ${response.status} - ${errorText}`);
-      }
-
-      const data = await response.json();
-      console.log("Cloudinary response:", data); // Debug log
-
-      if (data.secure_url) {
-        setFormData((prev) => ({
-          ...prev,
-          logo: data.secure_url,
-        }));
+      const data = await uploadToCloudinary(file, "brands");
+      if (data && data.secure_url) {
+        setFormData((prev) => ({ ...prev, logo: data.secure_url }));
         setSuccess("Logo uploaded successfully!");
       } else {
         throw new Error("No secure_url in response");
@@ -199,12 +166,10 @@ const Brand = () => {
       const payload = {
         name: formData.name.trim(),
         logo: formData.logo,
+        description: formData.description || "",
         category: formData.category || "",
         status: formData.status,
       };
-
-      console.log("Submitting payload:", payload); // Debug log
-      console.log("URL:", apiUrl, "Method:", method); // Debug log
 
       const response = await fetch(apiUrl, {
         method,
@@ -215,10 +180,7 @@ const Brand = () => {
         body: JSON.stringify(payload),
       });
 
-      console.log("Response status:", response.status); // Debug log
-
       const responseText = await response.text();
-      console.log("Response body:", responseText); // Debug log
 
       let data;
       try {
@@ -249,13 +211,13 @@ const Brand = () => {
             data.error ||
             `Failed to ${isEditing ? "update" : "create"} brand. Status: ${
               response.status
-            }`
+            }`,
         );
       }
     } catch (error) {
       console.error("Brand operation error:", error);
       setError(
-        `Error ${isEditing ? "updating" : "creating"} brand: ${error.message}`
+        `Error ${isEditing ? "updating" : "creating"} brand: ${error.message}`,
       );
     } finally {
       setIsLoading(false);
@@ -263,10 +225,10 @@ const Brand = () => {
   };
 
   const handleEdit = (brand) => {
-    console.log("Editing brand:", brand); // Debug log
     setFormData({
       name: brand.name || "",
       logo: brand.logo || "",
+      description: brand.description || "",
       category: brand.category || "",
       status: brand.status || "active",
     });
@@ -282,15 +244,13 @@ const Brand = () => {
   const handleDelete = async (id) => {
     if (
       !window.confirm(
-        "Are you sure you want to delete this brand? This action cannot be undone."
+        "Are you sure you want to delete this brand? This action cannot be undone.",
       )
     ) {
       return;
     }
 
     try {
-      console.log("Deleting brand ID:", id); // Debug log
-
       const response = await fetch(`http://localhost:5000/api/brands/${id}`, {
         method: "DELETE",
         headers: {
@@ -335,18 +295,20 @@ const Brand = () => {
             category: brand.category || "",
             status: newStatus,
           }),
-        }
+        },
       );
 
       if (response.ok) {
         // Update local state
         setBrands((prev) =>
-          prev.map((b) => (b.id === brand.id ? { ...b, status: newStatus } : b))
+          prev.map((b) =>
+            b.id === brand.id ? { ...b, status: newStatus } : b,
+          ),
         );
         setSuccess(
           `Brand ${
             newStatus === "active" ? "activated" : "deactivated"
-          } successfully!`
+          } successfully!`,
         );
 
         // Auto-clear success message
@@ -354,7 +316,7 @@ const Brand = () => {
       } else {
         const errorText = await response.text();
         throw new Error(
-          `Status update failed: ${response.status} - ${errorText}`
+          `Status update failed: ${response.status} - ${errorText}`,
         );
       }
     } catch (err) {
@@ -369,6 +331,7 @@ const Brand = () => {
     setFormData({
       name: "",
       logo: "",
+      description: "",
       category: "",
       status: "active",
     });
@@ -390,7 +353,7 @@ const Brand = () => {
       (brand) =>
         brand.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (brand.category &&
-          brand.category.toLowerCase().includes(searchTerm.toLowerCase()))
+          brand.category.toLowerCase().includes(searchTerm.toLowerCase())),
     )
     .sort((a, b) => {
       if (sortBy === "newest") {
@@ -426,10 +389,10 @@ const Brand = () => {
   const inactiveBrands = brands.filter((b) => b.status === "inactive").length;
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-6">
+    <div className="min-h-screen bg-gray-50 p-3 sm:p-4 md:p-6 lg:p-8">
       {/* Header */}
       <div className="mb-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
               Brand Management
@@ -451,7 +414,7 @@ const Brand = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-6">
           <div className="bg-white rounded-lg border border-gray-200 p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -551,6 +514,21 @@ const Brand = () => {
                 />
               </div>
 
+              {/* Description */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Description
+                </label>
+                <textarea
+                  name="description"
+                  value={formData.description}
+                  onChange={handleChange}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Optional short description about the brand"
+                />
+              </div>
+
               {/* Logo Upload */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -606,7 +584,7 @@ const Brand = () => {
                           // Validate file size (2MB max)
                           if (file.size > 2 * 1024 * 1024) {
                             setError(
-                              "File size too large. Maximum 2MB allowed."
+                              "File size too large. Maximum 2MB allowed.",
                             );
                             return;
                           }
@@ -736,12 +714,6 @@ const Brand = () => {
                     </button>
                   )}
                 </div>
-
-                {isEditing && (
-                  <p className="text-xs text-gray-500 mt-2">
-                    Editing brand ID: {editingId}
-                  </p>
-                )}
               </div>
             </form>
           </div>
@@ -872,9 +844,7 @@ const Brand = () => {
                                 <div className="font-medium text-gray-900">
                                   {brand.name}
                                 </div>
-                                <div className="text-xs text-gray-500">
-                                  ID: {brand.id}
-                                </div>
+                                {/* id removed from UI */}
                               </div>
                             </div>
                           </td>

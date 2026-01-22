@@ -168,7 +168,7 @@ const CategoryManagement = () => {
 
       if (editingId) {
         setCategories((prev) =>
-          prev.map((cat) => (cat.id === editingId ? savedCategory : cat))
+          prev.map((cat) => (cat.id === editingId ? savedCategory : cat)),
         );
         showToast("Success", "Category updated successfully", "success");
       } else {
@@ -187,7 +187,7 @@ const CategoryManagement = () => {
   const handleDelete = async (id, name) => {
     if (
       !window.confirm(
-        `Are you sure you want to delete "${name}"? This action cannot be undone.`
+        `Are you sure you want to delete "${name}"? This action cannot be undone.`,
       )
     ) {
       return;
@@ -222,7 +222,7 @@ const CategoryManagement = () => {
       (cat) =>
         cat.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         cat.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        cat.type.toLowerCase().includes(searchTerm.toLowerCase())
+        cat.type.toLowerCase().includes(searchTerm.toLowerCase()),
     )
     .sort((a, b) => {
       if (sortBy === "newest") {
@@ -242,12 +242,12 @@ const CategoryManagement = () => {
 
   // Pagination
   const totalPages = Math.ceil(
-    filteredAndSortedCategories.length / itemsPerPage
+    filteredAndSortedCategories.length / itemsPerPage,
   );
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedCategories = filteredAndSortedCategories.slice(
     startIndex,
-    startIndex + itemsPerPage
+    startIndex + itemsPerPage,
   );
 
   // Get type icon
@@ -281,18 +281,18 @@ const CategoryManagement = () => {
   // Stats
   const totalCategories = categories.length;
   const smartphoneCategories = categories.filter(
-    (c) => c.type === "smartphone"
+    (c) => c.type === "smartphone",
   ).length;
   const laptopCategories = categories.filter((c) => c.type === "laptop").length;
   const homeApplianceCategories = categories.filter(
-    (c) => c.type === "homeappliance"
+    (c) => c.type === "homeappliance",
   ).length;
   const networkCategories = categories.filter(
-    (c) => c.type === "network"
+    (c) => c.type === "network",
   ).length;
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-6">
+    <div className="min-h-screen bg-gray-50 p-3 sm:p-4 md:p-6 lg:p-8">
       {/* Toast Container */}
       <div className="fixed top-4 right-4 z-50 space-y-2">
         {toasts.map((toast) => (
@@ -302,8 +302,8 @@ const CategoryManagement = () => {
               toast.type === "success"
                 ? "border-green-200 bg-green-50"
                 : toast.type === "error"
-                ? "border-red-200 bg-red-50"
-                : "border-blue-200 bg-blue-50"
+                  ? "border-red-200 bg-red-50"
+                  : "border-blue-200 bg-blue-50"
             }`}
           >
             {toast.type === "success" && (
@@ -328,7 +328,7 @@ const CategoryManagement = () => {
 
       {/* Header */}
       <div className="mb-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
               Category Management
@@ -347,7 +347,7 @@ const CategoryManagement = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 mb-6">
           <div className="bg-white rounded-lg border border-gray-200 p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -577,7 +577,7 @@ const CategoryManagement = () => {
                   scope="col"
                   className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                 >
-                  ID
+                  S.NO
                 </th>
                 <th
                   scope="col"
@@ -625,7 +625,7 @@ const CategoryManagement = () => {
                   <tr key={category.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3">
                       <span className="text-sm text-gray-500">
-                        #{category.id}
+                        {startIndex + idx + 1}
                       </span>
                     </td>
                     <td className="px-4 py-3">
@@ -652,7 +652,7 @@ const CategoryManagement = () => {
                         </div>
                         <span
                           className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${getTypeBadgeColor(
-                            category.type
+                            category.type,
                           )}`}
                         >
                           {getTypeLabel(category.type)}
@@ -675,7 +675,7 @@ const CategoryManagement = () => {
                           {category.created_at
                             ? new Date(category.created_at).toLocaleTimeString(
                                 [],
-                                { hour: "2-digit", minute: "2-digit" }
+                                { hour: "2-digit", minute: "2-digit" },
                               )
                             : ""}
                         </span>
@@ -737,7 +737,7 @@ const CategoryManagement = () => {
                 <span className="font-medium">
                   {Math.min(
                     startIndex + itemsPerPage,
-                    filteredAndSortedCategories.length
+                    filteredAndSortedCategories.length,
                   )}
                 </span>{" "}
                 of{" "}

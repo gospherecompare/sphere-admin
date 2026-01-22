@@ -1,0 +1,267 @@
+/* Responsive Design Utilities */
+
+/* Mobile-first approach - styles start at smallest breakpoint */
+
+/* Tailwind Breakpoints:
+   sm: 640px
+   md: 768px
+   lg: 1024px
+   xl: 1280px
+   2xl: 1536px
+*/
+
+/* Tables - Hide on mobile, show on desktop */
+@media (max-width: 767px) {
+  .table-responsive-hide {
+    display: none;
+  }
+}
+
+@media (min-width: 768px) {
+  .card-responsive-hide {
+    display: none;
+  }
+}
+
+/* Text Scaling */
+.text-responsive-sm {
+  font-size: 0.75rem; /* 12px */
+  line-height: 1rem;
+}
+
+@media (min-width: 640px) {
+  .text-responsive-sm {
+    font-size: 0.875rem; /* 14px */
+    line-height: 1.25rem;
+  }
+}
+
+.text-responsive-base {
+  font-size: 0.875rem; /* 14px */
+  line-height: 1.25rem;
+}
+
+@media (min-width: 640px) {
+  .text-responsive-base {
+    font-size: 1rem; /* 16px */
+    line-height: 1.5rem;
+  }
+}
+
+.text-responsive-lg {
+  font-size: 1rem; /* 16px */
+  line-height: 1.5rem;
+}
+
+@media (min-width: 640px) {
+  .text-responsive-lg {
+    font-size: 1.125rem; /* 18px */
+    line-height: 1.75rem;
+  }
+}
+
+.text-responsive-xl {
+  font-size: 1.25rem; /* 20px */
+  line-height: 1.75rem;
+}
+
+@media (min-width: 640px) {
+  .text-responsive-xl {
+    font-size: 1.5rem; /* 24px */
+    line-height: 2rem;
+  }
+}
+
+/* Padding Scaling */
+.p-responsive {
+  padding: 0.75rem; /* 12px */
+}
+
+@media (min-width: 640px) {
+  .p-responsive {
+    padding: 1rem; /* 16px */
+  }
+}
+
+@media (min-width: 1024px) {
+  .p-responsive {
+    padding: 1.5rem; /* 24px */
+  }
+}
+
+/* Grid Responsive */
+.grid-responsive-cols {
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+}
+
+@media (max-width: 640px) {
+  .grid-responsive-cols {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+}
+
+/* Form Elements Responsive */
+.form-input-responsive {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+}
+
+@media (min-width: 640px) {
+  .form-input-responsive {
+    padding: 0.625rem 1rem;
+    font-size: 1rem;
+  }
+}
+
+/* Button Responsive */
+.btn-responsive {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .btn-responsive {
+    padding: 0.625rem 1rem;
+    font-size: 0.875rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .btn-responsive {
+    padding: 0.75rem 1.25rem;
+    font-size: 1rem;
+  }
+}
+
+/* Sidebar Responsive */
+.sidebar-responsive {
+  position: fixed;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 100%;
+  max-width: 280px;
+  transform: translateX(-100%);
+  transition: transform 0.3s ease-in-out;
+  z-index: 40;
+}
+
+@media (min-width: 1024px) {
+  .sidebar-responsive {
+    position: relative;
+    transform: translateX(0);
+    max-width: none;
+  }
+}
+
+.sidebar-responsive.active {
+  transform: translateX(0);
+}
+
+/* Container Responsive */
+.container-responsive {
+  max-width: 100%;
+  padding: 0 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .container-responsive {
+    padding: 0 1rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .container-responsive {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+  }
+}
+
+/* Spacing Responsive */
+.space-responsive {
+  gap: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .space-responsive {
+    gap: 1rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .space-responsive {
+    gap: 1.5rem;
+  }
+}
+
+/* Hide/Show Utilities */
+.hidden-mobile {
+  display: none;
+}
+
+@media (min-width: 640px) {
+  .hidden-mobile {
+    display: block;
+  }
+}
+
+.hidden-tablet {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .hidden-tablet {
+    display: block;
+  }
+}
+
+.hidden-desktop {
+  display: block;
+}
+
+@media (min-width: 1024px) {
+  .hidden-desktop {
+    display: none;
+  }
+}
+
+/* Scroll Behavior */
+.overflow-x-mobile-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Touch-friendly buttons */
+.touch-target {
+  min-height: 2.5rem;
+  min-width: 2.5rem;
+}
+
+@media (min-width: 768px) {
+  .touch-target {
+    min-height: 2rem;
+    min-width: 2rem;
+  }
+}
+
+/* Flexible Typography */
+.text-fluid-sm {
+  font-size: clamp(0.75rem, 2vw, 0.875rem);
+}
+
+.text-fluid-base {
+  font-size: clamp(0.875rem, 2.5vw, 1rem);
+}
+
+.text-fluid-lg {
+  font-size: clamp(1rem, 3vw, 1.25rem);
+}
+
+.text-fluid-xl {
+  font-size: clamp(1.25rem, 4vw, 1.5rem);
+}
+
+.text-fluid-2xl {
+  font-size: clamp(1.5rem, 5vw, 1.875rem);
+}

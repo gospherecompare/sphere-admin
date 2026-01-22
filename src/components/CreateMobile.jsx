@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, createRef } from "react";
 import Cookies from "js-cookie";
+import { uploadToCloudinary } from "../config/cloudinary";
 import {
   FaMobile,
   FaSave,
@@ -60,6 +61,11 @@ const CreateMobile = () => {
   const [activeSpecTab, setActiveSpecTab] = useState("build_design");
   const [customJsonFields, setCustomJsonFields] = useState({});
   const [brandsList, setBrandsList] = useState([]);
+  const [storesList, setStoresList] = useState([]);
+  const [memoryOptions, setMemoryOptions] = useState({
+    rams: [],
+    storages: [],
+  });
   const [publishEnabled, setPublishEnabled] = useState(false);
   const [toasts, setToasts] = useState([]);
   const [expandedSections, setExpandedSections] = useState({
@@ -78,6 +84,19 @@ const CreateMobile = () => {
   const [brandSearch, setBrandSearch] = useState("");
   const [categorySearch, setCategorySearch] = useState("");
 
+  // Memory and store dropdown states
+  const [showRamDropdown, setShowRamDropdown] = useState({});
+  const [showStorageDropdown, setShowStorageDropdown] = useState({});
+  const [showStoreDropdown, setShowStoreDropdown] = useState({});
+  const [ramSearch, setRamSearch] = useState({});
+  const [storageSearch, setStorageSearch] = useState({});
+  const [storeSearch, setStoreSearch] = useState({});
+
+  // Refs for variant dropdowns
+  const ramDropdownRefs = useRef({});
+  const storageDropdownRefs = useRef({});
+  const storeDropdownRefs = useRef({});
+
   // Date picker states
   const [selectedDate, setSelectedDate] = useState({
     year: new Date().getFullYear(),
@@ -95,7 +114,7 @@ const CreateMobile = () => {
 
   // Filter categories based on search
   const filteredCategories = categoriesList.filter((category) =>
-    category.label.toLowerCase().includes(categorySearch.toLowerCase())
+    category.label.toLowerCase().includes(categorySearch.toLowerCase()),
   );
 
   // Months array
@@ -186,6 +205,59 @@ const CreateMobile = () => {
     fetchCategories();
   }, []);
 
+  // Fetch online stores and ram/storage options for dropdowns
+  useEffect(() => {
+    const fetchAuxiliary = async () => {
+      try {
+        const token = Cookies.get("authToken");
+
+        // Online stores - prefer authenticated endpoint when token present
+        const storesEndpoint = token
+          ? "http://localhost:5000/api/online-stores"
+          : "http://localhost:5000/api/public/online-stores";
+        const storesRes = await fetch(storesEndpoint, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (storesRes.ok) {
+          const data = await storesRes.json();
+          const rows = (data && (data.data || data.rows || data)) || [];
+          const opts = (rows || []).map((r) => ({ id: r.id, name: r.name }));
+          setStoresList(opts);
+        }
+
+        // RAM/storage options
+        const ramRes = await fetch(
+          "http://localhost:5000/api/ram-storage-config",
+          {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+          },
+        );
+        if (ramRes.ok) {
+          const d = await ramRes.json();
+          const rows = (d && (d.data || d.rows || d)) || [];
+          const rams = Array.from(
+            new Set(
+              (rows || [])
+                .map((r) => (r.ram ? String(r.ram).trim() : null))
+                .filter(Boolean),
+            ),
+          ).map((v) => ({ id: v, name: v }));
+          const storages = Array.from(
+            new Set(
+              (rows || [])
+                .map((r) => (r.storage ? String(r.storage).trim() : null))
+                .filter(Boolean),
+            ),
+          ).map((v) => ({ id: v, name: v }));
+          setMemoryOptions({ rams, storages });
+        }
+      } catch (err) {
+        console.error("Failed to fetch auxiliary data:", err);
+      }
+    };
+    fetchAuxiliary();
+  }, []);
+
   // Initialize date from form data
   useEffect(() => {
     if (formData.smartphone.launch_date) {
@@ -229,7 +301,7 @@ const CreateMobile = () => {
 
   // Filter brands based on search
   const filteredBrands = brandsList.filter((brand) =>
-    brand.name.toLowerCase().includes(brandSearch.toLowerCase())
+    brand.name.toLowerCase().includes(brandSearch.toLowerCase()),
   );
 
   // Toast system
@@ -324,17 +396,36 @@ const CreateMobile = () => {
   };
 
   // Handle JSONB object changes
-  const handleJsonbChange = (field, key, value) => {
-    setFormData((prev) => ({
-      ...prev,
-      smartphone: {
-        ...prev.smartphone,
-        [field]: {
-          ...prev.smartphone[field],
-          [key]: value,
+  const handleJsonbChange = (field, key, value, group = null) => {
+    setFormData((prev) => {
+      // If group provided (e.g., 'fold'|'flip'), write into nested object
+      if (group) {
+        return {
+          ...prev,
+          smartphone: {
+            ...prev.smartphone,
+            [field]: {
+              ...((prev.smartphone && prev.smartphone[field]) || {}),
+              [group]: {
+                ...(((prev.smartphone || {})[field] || {})[group] || {}),
+                [key]: value,
+              },
+            },
+          },
+        };
+      }
+
+      return {
+        ...prev,
+        smartphone: {
+          ...prev.smartphone,
+          [field]: {
+            ...((prev.smartphone && prev.smartphone[field]) || {}),
+            [key]: value,
+          },
         },
-      },
-    }));
+      };
+    });
   };
 
   // Add color with name and code
@@ -389,7 +480,8 @@ const CreateMobile = () => {
     showToast("Store Added", "New store added to variant", "success");
   };
 
-  // Handle image upload
+  // Handle image upload (uses central upload utility)
+
   const handleImageUpload = async (files) => {
     if (!files || files.length === 0) return;
     const fileList = Array.from(files);
@@ -397,24 +489,9 @@ const CreateMobile = () => {
 
     try {
       const uploadedImages = [];
-      const cloudName =
-        import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || "damoxc2du";
-      const uploadPreset =
-        import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || "Mobile image";
-
       for (const file of fileList) {
-        const uploadData = new FormData();
-        uploadData.append("file", file);
-        uploadData.append("upload_preset", uploadPreset);
-
-        const res = await fetch(
-          `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
-          { method: "POST", body: uploadData }
-        );
-
-        if (!res.ok) throw new Error("Upload failed");
-        const data = await res.json();
-        if (data.secure_url) uploadedImages.push(data.secure_url);
+        const data = await uploadToCloudinary(file, "smartphones");
+        if (data && data.secure_url) uploadedImages.push(data.secure_url);
       }
 
       setFormData((prev) => ({
@@ -425,11 +502,15 @@ const CreateMobile = () => {
       showToast(
         "Upload Successful",
         `${uploadedImages.length} image(s) uploaded`,
-        "success"
+        "success",
       );
     } catch (error) {
       console.error("Image upload error:", error);
-      showToast("Upload Failed", "Error uploading images", "error");
+      showToast(
+        "Upload Failed",
+        error.message || "Error uploading images",
+        "error",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -447,7 +528,7 @@ const CreateMobile = () => {
   // Get selected brand name
   const getSelectedBrandName = () => {
     const selectedBrand = brandsList.find(
-      (brand) => brand.id === Number(formData.product.brand_id)
+      (brand) => brand.id === Number(formData.product.brand_id),
     );
     return selectedBrand ? selectedBrand.name : "";
   };
@@ -455,7 +536,7 @@ const CreateMobile = () => {
   // Get selected category label
   const getSelectedCategoryLabel = () => {
     const selectedCategory = categoriesList.find(
-      (cat) => cat.value === formData.smartphone.category
+      (cat) => cat.value === formData.smartphone.category,
     );
     return selectedCategory ? selectedCategory.label : "";
   };
@@ -554,7 +635,7 @@ const CreateMobile = () => {
       showToast(
         "Field Added",
         `Custom field "${cleanFieldName}" added`,
-        "success"
+        "success",
       );
     }
   };
@@ -616,7 +697,7 @@ const CreateMobile = () => {
           model: formData.smartphone.model,
           launch_date: formData.smartphone.launch_date || null,
           colors: formData.smartphone.colors.filter(
-            (color) => color.name && color.code
+            (color) => color.name && color.code,
           ),
           build_design: formData.smartphone.build_design,
           display: formData.smartphone.display,
@@ -662,7 +743,7 @@ const CreateMobile = () => {
         `Mobile "${formData.product.name}" created ${
           publishEnabled ? "and published" : "as draft"
         } successfully!`,
-        "success"
+        "success",
       );
 
       // Reset form
@@ -695,7 +776,7 @@ const CreateMobile = () => {
       showToast(
         "Creation Failed",
         `Error creating mobile: ${error.message}`,
-        "error"
+        "error",
       );
     } finally {
       setIsLoading(false);
@@ -760,8 +841,17 @@ const CreateMobile = () => {
         return { valueKey: "id", labelKey: "name" };
       } else if (type === "category") {
         return { valueKey: "value", labelKey: "label" };
+      } else if (type === "memory" || type === "store") {
+        return { valueKey: "id", labelKey: "name" };
       }
       return { valueKey: "id", labelKey: "name" };
+    };
+
+    const getSearchPlaceholder = () => {
+      if (type === "memory") return "Search memory...";
+      if (type === "store") return "Search stores...";
+      if (type === "brand") return "Search brands...";
+      return "Search...";
     };
 
     const { valueKey, labelKey } = getKey();
@@ -774,37 +864,39 @@ const CreateMobile = () => {
             setIsOpen(!isOpen);
             setSearchValue("");
           }}
-          className={`w-full px-3 py-2 border ${
-            value ? "border-blue-300" : "border-gray-300"
-          } rounded-md bg-white text-left flex items-center justify-between hover:border-blue-400 transition-colors`}
+          className={`w-full px-4 py-2.5 border-2 transition-all rounded-lg bg-white text-left flex items-center justify-between ${
+            value
+              ? "border-blue-400 shadow-sm hover:shadow-md"
+              : "border-gray-300 hover:border-gray-400 hover:shadow-sm"
+          }`}
         >
           <span
-            className={`${value ? "text-gray-900" : "text-gray-500"} truncate`}
+            className={`${
+              value ? "text-gray-900 font-medium" : "text-gray-500"
+            } truncate text-sm`}
           >
             {selectedLabel || placeholder}
           </span>
           <FaChevronDown
-            className={`text-gray-400 ${
+            className={`text-gray-400 text-sm flex-shrink-0 ml-2 ${
               isOpen ? "transform rotate-180" : ""
-            } transition-transform`}
+            } transition-transform duration-200`}
           />
         </button>
 
         {isOpen && (
-          <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
+          <div className="absolute z-50 mt-2 w-full bg-white border-2 border-blue-200 rounded-lg shadow-xl overflow-hidden">
             {/* Search input */}
             {showSearch && (
-              <div className="sticky top-0 bg-white p-2 border-b">
+              <div className="sticky top-0 bg-gradient-to-r from-blue-50 to-white p-3 border-b-2 border-blue-100">
                 <div className="relative">
-                  <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                  <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-blue-400 text-sm" />
                   <input
                     type="text"
                     value={searchValue}
                     onChange={(e) => setSearchValue(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder={`Search ${
-                      type === "brand" ? "brands" : "categories"
-                    }...`}
+                    className="w-full pl-9 pr-3 py-2.5 border-2 border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                    placeholder={getSearchPlaceholder()}
                     autoFocus
                   />
                 </div>
@@ -812,25 +904,37 @@ const CreateMobile = () => {
             )}
 
             {/* Options list */}
-            <div className="py-1">
+            <div className="max-h-64 overflow-y-auto">
               {filteredOptions.length > 0 ? (
-                filteredOptions.map((option) => (
+                filteredOptions.map((option, idx) => (
                   <button
                     key={option[valueKey]}
                     type="button"
                     onClick={() => onSelect(option)}
-                    className={`w-full text-left px-3 py-2 hover:bg-blue-50 ${
+                    className={`w-full text-left px-4 py-3 transition-colors flex items-center space-x-3 ${
                       option[valueKey] === value
-                        ? "bg-blue-50 text-blue-600 font-medium"
-                        : "text-gray-700"
-                    }`}
+                        ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white font-medium shadow-md"
+                        : idx % 2 === 0
+                          ? "hover:bg-blue-50 text-gray-700"
+                          : "hover:bg-blue-100 text-gray-700"
+                    } ${idx !== filteredOptions.length - 1 ? "border-b border-gray-100" : ""}`}
                   >
-                    {option[labelKey]}
+                    <span className="flex-1 truncate text-sm">
+                      {option[labelKey]}
+                    </span>
+                    {option[valueKey] === value && (
+                      <span className="flex-shrink-0">
+                        <FaCheckCircle className="text-lg" />
+                      </span>
+                    )}
                   </button>
                 ))
               ) : (
-                <div className="px-3 py-4 text-center text-gray-500 text-sm">
-                  {type === "brand" ? "No brands found" : "No categories found"}
+                <div className="px-4 py-8 text-center text-gray-500 text-sm">
+                  <p>No {type === "brand" ? "brands" : "categories"} found</p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Try different search term
+                  </p>
                 </div>
               )}
             </div>
@@ -840,158 +944,240 @@ const CreateMobile = () => {
     );
   };
 
-  // Custom Date Picker Component
+  // Custom Date Picker Component with Calendar Grid
   const DatePicker = () => {
     const daysInMonth = getDaysInMonth(selectedDate.year, selectedDate.month);
-    const daysArray = Array.from({ length: daysInMonth }, (_, i) => i + 1);
-    const yearsArray = generateYears();
+    const firstDay = new Date(
+      selectedDate.year,
+      selectedDate.month,
+      1,
+    ).getDay();
+    const today = new Date();
+    const isToday = (day) =>
+      day === today.getDate() &&
+      selectedDate.month === today.getMonth() &&
+      selectedDate.year === today.getFullYear();
+
+    // Generate calendar days
+    const calendarDays = [];
+    // Add empty cells for days before month starts
+    for (let i = 0; i < firstDay; i++) {
+      calendarDays.push(null);
+    }
+    // Add days of current month
+    for (let day = 1; day <= daysInMonth; day++) {
+      calendarDays.push(day);
+    }
+
+    const handlePrevMonth = () => {
+      setSelectedDate((prev) => {
+        if (prev.month === 0) {
+          return { ...prev, month: 11, year: prev.year - 1 };
+        }
+        return { ...prev, month: prev.month - 1 };
+      });
+    };
+
+    const handleNextMonth = () => {
+      setSelectedDate((prev) => {
+        if (prev.month === 11) {
+          return { ...prev, month: 0, year: prev.year + 1 };
+        }
+        return { ...prev, month: prev.month + 1 };
+      });
+    };
+
+    const handleDaySelect = (day) => {
+      if (day) {
+        setSelectedDate((prev) => ({ ...prev, day }));
+      }
+    };
+
+    const handleToday = () => {
+      setSelectedDate({
+        year: today.getFullYear(),
+        month: today.getMonth(),
+        day: today.getDate(),
+      });
+    };
 
     return (
       <div className="relative" ref={datePickerRef}>
         <button
           type="button"
           onClick={() => setShowDatePicker(!showDatePicker)}
-          className={`w-full px-3 py-2 border ${
+          className={`w-full px-4 py-2.5 border-2 transition-all rounded-lg bg-white text-left flex items-center justify-between ${
             formData.smartphone.launch_date
-              ? "border-blue-300"
-              : "border-gray-300"
-          } rounded-md bg-white text-left flex items-center justify-between hover:border-blue-400 transition-colors`}
+              ? "border-blue-400 shadow-sm"
+              : "border-gray-300 hover:border-gray-400"
+          } hover:shadow-md`}
         >
-          <div className="flex items-center space-x-2">
-            <FaCalendar className="text-gray-400" />
-            <span
-              className={`${
-                formData.smartphone.launch_date
-                  ? "text-gray-900"
-                  : "text-gray-500"
-              }`}
-            >
-              {formData.smartphone.launch_date
-                ? new Date(formData.smartphone.launch_date).toLocaleDateString(
+          <div className="flex items-center space-x-3">
+            <FaCalendar
+              className={`text-lg ${formData.smartphone.launch_date ? "text-blue-500" : "text-gray-400"}`}
+            />
+            <div>
+              <span
+                className={`block font-medium ${
+                  formData.smartphone.launch_date
+                    ? "text-gray-900"
+                    : "text-gray-500"
+                }`}
+              >
+                {formData.smartphone.launch_date
+                  ? new Date(
+                      formData.smartphone.launch_date,
+                    ).toLocaleDateString("en-US", {
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    })
+                  : "Select Launch Date"}
+              </span>
+              {formData.smartphone.launch_date && (
+                <span className="text-xs text-gray-500">
+                  {new Date(formData.smartphone.launch_date).toLocaleDateString(
                     "en-US",
                     {
-                      year: "numeric",
-                      month: "short",
-                      day: "numeric",
-                    }
-                  )
-                : "Select Launch Date"}
-            </span>
+                      weekday: "short",
+                    },
+                  )}
+                </span>
+              )}
+            </div>
           </div>
           <FaChevronDown
-            className={`text-gray-400 ${
+            className={`text-gray-400 text-lg ${
               showDatePicker ? "transform rotate-180" : ""
-            } transition-transform`}
+            } transition-transform duration-300`}
           />
         </button>
 
         {showDatePicker && (
-          <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg p-4">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-sm font-medium text-gray-700">Select Date</h3>
+          <div className="absolute z-50 mt-2 w-96 bg-white border-2 border-blue-200 rounded-xl shadow-2xl p-5 backdrop-blur-sm bg-opacity-95">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-blue-600 to-blue-500 rounded-lg p-4 mb-4 text-white">
+              <h3 className="text-lg font-bold text-center">
+                {months[selectedDate.month]} {selectedDate.year}
+              </h3>
+              <p className="text-center text-blue-100 text-sm mt-1">
+                {selectedDate.day
+                  ? `${selectedDate.day} ${months[selectedDate.month]} ${selectedDate.year}`
+                  : "Pick a date"}
+              </p>
+            </div>
+
+            {/* Month/Year Navigation */}
+            <div className="flex items-center justify-between mb-5 pb-4 border-b border-gray-200">
               <button
                 type="button"
-                onClick={() => setShowDatePicker(false)}
-                className="text-gray-400 hover:text-gray-600"
+                onClick={handlePrevMonth}
+                className="p-2 hover:bg-blue-100 rounded-lg transition-colors text-gray-700 font-bold"
               >
-                <FaTimes />
+                <FaChevronDown className="transform rotate-90 text-lg" />
+              </button>
+
+              <div className="flex gap-3">
+                <select
+                  value={selectedDate.month}
+                  onChange={(e) =>
+                    setSelectedDate((prev) => ({
+                      ...prev,
+                      month: parseInt(e.target.value),
+                    }))
+                  }
+                  className="px-3 py-1.5 border-2 border-gray-300 rounded-lg text-sm font-semibold focus:outline-none focus:border-blue-500 bg-white hover:border-blue-400 transition-colors"
+                >
+                  {months.map((month, idx) => (
+                    <option key={month} value={idx}>
+                      {month}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  value={selectedDate.year}
+                  onChange={(e) =>
+                    setSelectedDate((prev) => ({
+                      ...prev,
+                      year: parseInt(e.target.value),
+                    }))
+                  }
+                  className="px-3 py-1.5 border-2 border-gray-300 rounded-lg text-sm font-semibold focus:outline-none focus:border-blue-500 bg-white hover:border-blue-400 transition-colors"
+                >
+                  {generateYears().map((year) => (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleNextMonth}
+                className="p-2 hover:bg-blue-100 rounded-lg transition-colors text-gray-700 font-bold"
+              >
+                <FaChevronDown className="transform -rotate-90 text-lg" />
               </button>
             </div>
 
-            <div className="grid grid-cols-3 gap-3 mb-4">
-              {/* Year Selector */}
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">
-                  Year
-                </label>
-                <div className="max-h-40 overflow-y-auto border rounded">
-                  {yearsArray.map((year) => (
-                    <button
-                      key={year}
-                      type="button"
-                      onClick={() =>
-                        setSelectedDate((prev) => ({ ...prev, year }))
-                      }
-                      className={`w-full text-center py-1 text-sm ${
-                        year === selectedDate.year
-                          ? "bg-blue-500 text-white"
-                          : "hover:bg-gray-100"
-                      }`}
-                    >
-                      {year}
-                    </button>
-                  ))}
+            {/* Weekday Headers */}
+            <div className="grid grid-cols-7 gap-2 mb-3">
+              {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
+                <div
+                  key={day}
+                  className="text-center text-xs font-bold text-gray-600 py-2 bg-gray-50 rounded-md"
+                >
+                  {day}
                 </div>
-              </div>
-
-              {/* Month Selector */}
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">
-                  Month
-                </label>
-                <div className="max-h-40 overflow-y-auto border rounded">
-                  {months.map((month, index) => (
-                    <button
-                      key={month}
-                      type="button"
-                      onClick={() =>
-                        setSelectedDate((prev) => ({ ...prev, month: index }))
-                      }
-                      className={`w-full text-center py-1 text-sm ${
-                        index === selectedDate.month
-                          ? "bg-blue-500 text-white"
-                          : "hover:bg-gray-100"
-                      }`}
-                    >
-                      {month.substring(0, 3)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Day Selector */}
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">
-                  Day
-                </label>
-                <div className="max-h-40 overflow-y-auto border rounded">
-                  {daysArray.map((day) => (
-                    <button
-                      key={day}
-                      type="button"
-                      onClick={() =>
-                        setSelectedDate((prev) => ({ ...prev, day }))
-                      }
-                      className={`w-full text-center py-1 text-sm ${
-                        day === selectedDate.day
-                          ? "bg-blue-500 text-white"
-                          : "hover:bg-gray-100"
-                      }`}
-                    >
-                      {day}
-                    </button>
-                  ))}
-                </div>
-              </div>
+              ))}
             </div>
 
-            <div className="flex justify-between items-center">
-              <div className="text-sm text-gray-600">
-                Selected: {selectedDate.day} {months[selectedDate.month]}{" "}
-                {selectedDate.year}
-              </div>
+            {/* Calendar Grid */}
+            <div className="grid grid-cols-7 gap-2 mb-5">
+              {calendarDays.map((day, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => handleDaySelect(day)}
+                  disabled={!day}
+                  className={`w-full aspect-square rounded-lg text-sm font-semibold transition-all transform ${
+                    !day
+                      ? "text-transparent cursor-default"
+                      : isToday(day)
+                        ? "bg-amber-100 text-amber-900 border-2 border-amber-400 shadow-md"
+                        : day === selectedDate.day
+                          ? "bg-blue-600 text-white shadow-lg scale-105"
+                          : "text-gray-700 bg-gray-50 hover:bg-blue-50 hover:border-2 hover:border-blue-300 hover:scale-105"
+                  } disabled:cursor-default`}
+                >
+                  {day}
+                </button>
+              ))}
+            </div>
+
+            {/* Today & Action Buttons */}
+            <div className="flex justify-between items-center pt-3 border-t border-gray-200">
+              <button
+                type="button"
+                onClick={handleToday}
+                className="px-3 py-1.5 text-xs font-semibold text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors border border-blue-300"
+              >
+                Today
+              </button>
               <div className="flex space-x-2">
                 <button
                   type="button"
                   onClick={() => setShowDatePicker(false)}
-                  className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50"
+                  className="px-4 py-1.5 text-sm font-semibold border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
                   onClick={handleDateSelect}
-                  className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+                  className="px-4 py-1.5 text-sm font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-md"
                 >
                   Apply
                 </button>
@@ -1004,9 +1190,9 @@ const CreateMobile = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-6">
+    <div className="min-h-screen bg-gray-50 p-3 sm:p-4 md:p-6 lg:p-8">
       {/* Toast Container */}
-      <div className="fixed top-4 right-4 z-50 space-y-2">
+      <div className="fixed top-4 right-4 z-50 space-y-2 max-w-xs">
         {toasts.map((toast) => (
           <Toast key={toast.id} toast={toast} />
         ))}
@@ -1014,63 +1200,74 @@ const CreateMobile = () => {
 
       {/* Header */}
       <div className="mb-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-6">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900">
               Create New Mobile
             </h1>
-            <p className="text-gray-600 mt-1">
+            <p className="text-xs sm:text-sm text-gray-600 mt-1">
               Add a new smartphone to your inventory
             </p>
           </div>
 
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <button
               onClick={() => window.history.back()}
-              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md font-medium hover:bg-gray-50"
+              className="px-3 sm:px-4 py-2 border border-gray-300 text-gray-700 rounded-md font-medium text-xs sm:text-sm hover:bg-gray-50"
             >
               Cancel
             </button>
             <button
               onClick={handleSubmit}
               disabled={isLoading}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="px-3 sm:px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-medium text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 whitespace-nowrap"
             >
-              {isLoading ? <FaSpinner className="animate-spin" /> : <FaSave />}
-              {isLoading ? "Creating..." : "Create Mobile"}
+              {isLoading ? (
+                <FaSpinner className="animate-spin text-sm" />
+              ) : (
+                <FaSave className="text-sm" />
+              )}
+              <span className="hidden sm:inline">
+                {isLoading ? "Creating..." : "Create Mobile"}
+              </span>
+              <span className="sm:hidden">{isLoading ? "..." : "Create"}</span>
             </button>
           </div>
         </div>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-3 sm:space-y-4">
         {/* Basic Information Section */}
-        <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+        <div className="bg-white rounded-lg shadow-md">
           <button
             onClick={() => toggleSection("basic")}
-            className="w-full px-4 py-3 border-b border-gray-200 flex items-center justify-between hover:bg-gray-50"
+            className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border-b border-gray-200 flex items-center justify-between hover:bg-gray-50 transition-colors"
           >
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                <FaMobile className="text-blue-600" />
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+              <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                <FaMobile className="text-blue-600 text-sm" />
               </div>
-              <div className="text-left">
-                <h2 className="font-semibold text-gray-800">
+              <div className="text-left min-w-0">
+                <h2 className="font-semibold text-sm sm:text-base text-gray-800">
                   Basic Information
                 </h2>
-                <p className="text-sm text-gray-600">
+                <p className="text-xs text-gray-600 hidden sm:block">
                   Name, brand, model and category
                 </p>
               </div>
             </div>
-            {expandedSections.basic ? <FaChevronDown /> : <FaChevronRight />}
+            {expandedSections.basic ? (
+              <FaChevronDown className="text-sm flex-shrink-0 ml-2" />
+            ) : (
+              <FaChevronRight className="text-sm flex-shrink-0 ml-2" />
+            )}
           </button>
 
           {expandedSections.basic && (
-            <div className="p-4 space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="p-3 sm:p-4 space-y-3 sm:space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                     Mobile Name *
                   </label>
                   <input
@@ -1079,13 +1276,13 @@ const CreateMobile = () => {
                     value={formData.product.name}
                     onChange={handleChange}
                     required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="e.g., iPhone 15 Pro Max"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                     Brand *
                   </label>
                   <CustomDropdown
@@ -1105,7 +1302,7 @@ const CreateMobile = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                     Model *
                   </label>
                   <input
@@ -1114,13 +1311,13 @@ const CreateMobile = () => {
                     value={formData.smartphone.model}
                     onChange={handleSmartphoneChange}
                     required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="e.g., A3103"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                     Category *
                   </label>
                   <CustomDropdown
@@ -1139,8 +1336,8 @@ const CreateMobile = () => {
                   />
                 </div>
 
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                <div className="sm:col-span-2">
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                     Launch Date
                   </label>
                   <DatePicker />
@@ -1151,33 +1348,39 @@ const CreateMobile = () => {
         </div>
 
         {/* Images Section */}
-        <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+        <div className="bg-white rounded-lg shadow-md">
           <button
             onClick={() => toggleSection("images")}
-            className="w-full px-4 py-3 border-b border-gray-200 flex items-center justify-between hover:bg-gray-50"
+            className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border-b border-gray-200 flex items-center justify-between hover:bg-gray-50 transition-colors"
           >
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
-                <FaCamera className="text-purple-600" />
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+              <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                <FaCamera className="text-purple-600 text-sm" />
               </div>
-              <div className="text-left">
-                <h2 className="font-semibold text-gray-800">Images</h2>
-                <p className="text-sm text-gray-600">
+              <div className="text-left min-w-0">
+                <h2 className="font-semibold text-sm sm:text-base text-gray-800">
+                  Images
+                </h2>
+                <p className="text-xs text-gray-600 hidden sm:block">
                   {formData.images.length} images uploaded
                 </p>
               </div>
             </div>
-            {expandedSections.images ? <FaChevronDown /> : <FaChevronRight />}
+            {expandedSections.images ? (
+              <FaChevronDown className="text-sm flex-shrink-0 ml-2" />
+            ) : (
+              <FaChevronRight className="text-sm flex-shrink-0 ml-2" />
+            )}
           </button>
 
           {expandedSections.images && (
-            <div className="p-4">
+            <div className="p-3 sm:p-4">
               {formData.images.length > 0 && (
                 <div className="mb-4">
                   <div className="flex flex-wrap gap-2">
                     {formData.images.map((src, idx) => (
                       <div key={idx} className="relative">
-                        <div className="w-20 h-20 bg-gray-100 border border-gray-200 rounded-md overflow-hidden">
+                        <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-100 border border-gray-200 rounded-md overflow-hidden">
                           <img
                             src={src}
                             alt={`img-${idx}`}
@@ -1186,7 +1389,7 @@ const CreateMobile = () => {
                         </div>
                         <button
                           onClick={() => removeImage(idx)}
-                          className="absolute -top-1 -right-1 bg-red-500 text-white w-5 h-5 rounded-full flex items-center justify-center text-xs"
+                          className="absolute -top-1 -right-1 bg-red-500 text-white w-5 h-5 rounded-full flex items-center justify-center text-xs hover:bg-red-600"
                         >
                           ×
                         </button>
@@ -1208,8 +1411,8 @@ const CreateMobile = () => {
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                 />
                 <div className="border-2 border-dashed border-gray-300 rounded-md p-4 text-center hover:border-blue-400 transition-colors">
-                  <FaCamera className="text-gray-400 text-xl mx-auto mb-2" />
-                  <p className="text-sm text-gray-600">
+                  <FaCamera className="text-gray-400 text-lg sm:text-xl mx-auto mb-2" />
+                  <p className="text-xs sm:text-sm text-gray-600">
                     {isLoading ? "Uploading..." : "Click to upload images"}
                   </p>
                   <p className="text-xs text-gray-500 mt-1">
@@ -1222,7 +1425,7 @@ const CreateMobile = () => {
         </div>
 
         {/* Colors Section with name and color picker */}
-        <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+        <div className="bg-white  shadow-md">
           <button
             onClick={() => toggleSection("colors")}
             className="w-full px-4 py-3 border-b border-gray-200 flex items-center justify-between hover:bg-gray-50"
@@ -1263,7 +1466,7 @@ const CreateMobile = () => {
                     <button
                       onClick={() => {
                         const newColors = formData.smartphone.colors.filter(
-                          (_, i) => i !== index
+                          (_, i) => i !== index,
                         );
                         setFormData((prev) => ({
                           ...prev,
@@ -1340,7 +1543,7 @@ const CreateMobile = () => {
         </div>
 
         {/* Variants Section with updated store fields */}
-        <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+        <div className="bg-white shadow-md">
           <button
             onClick={() => toggleSection("variants")}
             className="w-full px-4 py-3 border-b border-gray-200 flex items-center justify-between hover:bg-gray-50"
@@ -1383,7 +1586,7 @@ const CreateMobile = () => {
                     <button
                       onClick={() => {
                         const newVariants = formData.variants.filter(
-                          (_, i) => i !== index
+                          (_, i) => i !== index,
                         );
                         setFormData((prev) => ({
                           ...prev,
@@ -1401,44 +1604,109 @@ const CreateMobile = () => {
                       <label className="block text-xs font-medium text-gray-600 mb-1">
                         RAM
                       </label>
-                      <input
-                        type="text"
-                        value={variant.ram}
-                        onChange={(e) => {
+                      <CustomDropdown
+                        value={variant.ram || ""}
+                        placeholder="Select RAM"
+                        isOpen={showRamDropdown[index] || false}
+                        setIsOpen={(val) =>
+                          setShowRamDropdown((prev) => ({
+                            ...prev,
+                            [index]: val,
+                          }))
+                        }
+                        searchValue={ramSearch[index] || ""}
+                        setSearchValue={(val) =>
+                          setRamSearch((prev) => ({ ...prev, [index]: val }))
+                        }
+                        filteredOptions={(memoryOptions.rams || []).filter(
+                          (opt) =>
+                            opt.name
+                              .toLowerCase()
+                              .includes((ramSearch[index] || "").toLowerCase()),
+                        )}
+                        onSelect={(opt) => {
                           const newVariants = [...formData.variants];
                           newVariants[index] = {
                             ...newVariants[index],
-                            ram: e.target.value,
+                            ram: opt.name,
                           };
                           setFormData((prev) => ({
                             ...prev,
                             variants: newVariants,
                           }));
+                          setShowRamDropdown((prev) => ({
+                            ...prev,
+                            [index]: false,
+                          }));
                         }}
-                        placeholder="e.g., 8GB"
-                        className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        selectedLabel={
+                          memoryOptions.rams?.find(
+                            (r) => r.name === variant.ram,
+                          )?.name || ""
+                        }
+                        dropdownRef={
+                          ramDropdownRefs.current[index] ||
+                          (ramDropdownRefs.current[index] = createRef())
+                        }
+                        type="memory"
+                        showSearch={true}
                       />
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-gray-600 mb-1">
                         Storage
                       </label>
-                      <input
-                        type="text"
-                        value={variant.storage}
-                        onChange={(e) => {
+                      <CustomDropdown
+                        value={variant.storage || ""}
+                        placeholder="Select Storage"
+                        isOpen={showStorageDropdown[index] || false}
+                        setIsOpen={(val) =>
+                          setShowStorageDropdown((prev) => ({
+                            ...prev,
+                            [index]: val,
+                          }))
+                        }
+                        searchValue={storageSearch[index] || ""}
+                        setSearchValue={(val) =>
+                          setStorageSearch((prev) => ({
+                            ...prev,
+                            [index]: val,
+                          }))
+                        }
+                        filteredOptions={(memoryOptions.storages || []).filter(
+                          (opt) =>
+                            opt.name
+                              .toLowerCase()
+                              .includes(
+                                (storageSearch[index] || "").toLowerCase(),
+                              ),
+                        )}
+                        onSelect={(opt) => {
                           const newVariants = [...formData.variants];
                           newVariants[index] = {
                             ...newVariants[index],
-                            storage: e.target.value,
+                            storage: opt.name,
                           };
                           setFormData((prev) => ({
                             ...prev,
                             variants: newVariants,
                           }));
+                          setShowStorageDropdown((prev) => ({
+                            ...prev,
+                            [index]: false,
+                          }));
                         }}
-                        placeholder="e.g., 128GB"
-                        className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        selectedLabel={
+                          memoryOptions.storages?.find(
+                            (s) => s.name === variant.storage,
+                          )?.name || ""
+                        }
+                        dropdownRef={
+                          storageDropdownRefs.current[index] ||
+                          (storageDropdownRefs.current[index] = createRef())
+                        }
+                        type="memory"
+                        showSearch={true}
                       />
                     </div>
                     <div>
@@ -1489,22 +1757,69 @@ const CreateMobile = () => {
                             <label className="block text-xs font-medium text-gray-600 mb-1">
                               Store Name
                             </label>
-                            <input
-                              type="text"
-                              value={store.store_name}
-                              onChange={(e) => {
+                            <CustomDropdown
+                              value={store.store_name || ""}
+                              placeholder="Select Store"
+                              isOpen={
+                                showStoreDropdown[`${index}-${storeIndex}`] ||
+                                false
+                              }
+                              setIsOpen={(val) =>
+                                setShowStoreDropdown((prev) => ({
+                                  ...prev,
+                                  [`${index}-${storeIndex}`]: val,
+                                }))
+                              }
+                              searchValue={
+                                storeSearch[`${index}-${storeIndex}`] || ""
+                              }
+                              setSearchValue={(val) =>
+                                setStoreSearch((prev) => ({
+                                  ...prev,
+                                  [`${index}-${storeIndex}`]: val,
+                                }))
+                              }
+                              filteredOptions={(storesList || []).filter(
+                                (opt) =>
+                                  opt.name
+                                    .toLowerCase()
+                                    .includes(
+                                      (
+                                        storeSearch[`${index}-${storeIndex}`] ||
+                                        ""
+                                      ).toLowerCase(),
+                                    ),
+                              )}
+                              onSelect={(opt) => {
                                 const newVariants = [...formData.variants];
                                 newVariants[index].stores[storeIndex] = {
                                   ...newVariants[index].stores[storeIndex],
-                                  store_name: e.target.value,
+                                  store_name: opt.name,
                                 };
                                 setFormData((prev) => ({
                                   ...prev,
                                   variants: newVariants,
                                 }));
+                                setShowStoreDropdown((prev) => ({
+                                  ...prev,
+                                  [`${index}-${storeIndex}`]: false,
+                                }));
                               }}
-                              placeholder="e.g., Amazon, Flipkart"
-                              className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                              selectedLabel={
+                                storesList?.find(
+                                  (s) => s.name === store.store_name,
+                                )?.name || ""
+                              }
+                              dropdownRef={
+                                storeDropdownRefs.current[
+                                  `${index}-${storeIndex}`
+                                ] ||
+                                (storeDropdownRefs.current[
+                                  `${index}-${storeIndex}`
+                                ] = createRef())
+                              }
+                              type="store"
+                              showSearch={true}
                             />
                           </div>
                           <div>
@@ -1638,7 +1953,7 @@ const CreateMobile = () => {
         </div>
 
         {/* Specifications Section with updated connectivity fields */}
-        <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+        <div className="bg-white shadow-md">
           <button
             onClick={() => toggleSection("specs")}
             className="w-full px-4 py-3 border-b border-gray-200 flex items-center justify-between hover:bg-gray-50"
@@ -1686,6 +2001,52 @@ const CreateMobile = () => {
 
               {/* Specification Fields */}
               <div className="space-y-4">
+                {/* Foldable toggle - device level */}
+                <div className="flex items-center gap-3 mb-2">
+                  <label className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={!!formData.smartphone.is_foldable}
+                      onChange={(e) => {
+                        const enabled = e.target.checked;
+                        setFormData((prev) => {
+                          const cur = prev.smartphone || {};
+                          const updated = { ...cur, is_foldable: enabled };
+                          // If enabling, for current active tab, move current flat values into 'flip' group
+                          if (
+                            enabled &&
+                            cur[activeSpecTab] &&
+                            typeof cur[activeSpecTab] === "object"
+                          ) {
+                            const existing = cur[activeSpecTab];
+                            // if already has fold/flip, keep as is
+                            if (!existing.fold && !existing.flip) {
+                              updated[activeSpecTab] = {
+                                fold: {},
+                                flip: { ...existing },
+                              };
+                            }
+                          }
+                          // If disabling, flatten current flip into plain object for active tab
+                          if (
+                            !enabled &&
+                            cur[activeSpecTab] &&
+                            cur[activeSpecTab].flip
+                          ) {
+                            updated[activeSpecTab] = {
+                              ...cur[activeSpecTab].flip,
+                            };
+                          }
+                          return { ...prev, smartphone: updated };
+                        });
+                      }}
+                      className="h-4 w-4"
+                    />
+                    <span className="text-sm text-gray-700">
+                      Foldable device
+                    </span>
+                  </label>
+                </div>
                 {activeSpecTab === "connectivity_network" && (
                   <div className="mb-3 p-3 bg-blue-50 rounded-md border border-blue-100">
                     <div className="flex items-center space-x-2">
@@ -1699,28 +2060,97 @@ const CreateMobile = () => {
                 )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {getDefaultFields(activeSpecTab).map((field) => (
-                    <div key={field}>
-                      <label className="block text-xs font-medium text-gray-600 mb-1 capitalize">
-                        {field.replace(/_/g, " ")}
-                      </label>
-                      <input
-                        type="text"
-                        value={
-                          formData.smartphone[activeSpecTab]?.[field] || ""
-                        }
-                        onChange={(e) =>
-                          handleJsonbChange(
-                            activeSpecTab,
-                            field,
-                            e.target.value
-                          )
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
-                        placeholder={`Enter ${field.replace(/_/g, " ")}`}
-                      />
-                    </div>
-                  ))}
+                  {formData.smartphone.is_foldable ? (
+                    // Render fold & flip side-by-side (use two columns)
+                    <>
+                      <div className="lg:col-span-1">
+                        <h4 className="text-sm font-semibold mb-2">Fold</h4>
+                        {getDefaultFields(activeSpecTab).map((field) => (
+                          <div key={"fold-" + field} className="mb-3">
+                            <label className="block text-xs font-medium text-gray-600 mb-1 capitalize">
+                              {field.replace(/_/g, " ")}
+                            </label>
+                            <input
+                              type="text"
+                              value={
+                                (formData.smartphone[activeSpecTab] &&
+                                  formData.smartphone[activeSpecTab].fold &&
+                                  formData.smartphone[activeSpecTab].fold[
+                                    field
+                                  ]) ||
+                                ""
+                              }
+                              onChange={(e) =>
+                                handleJsonbChange(
+                                  activeSpecTab,
+                                  field,
+                                  e.target.value,
+                                  "fold",
+                                )
+                              }
+                              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
+                              placeholder={`Enter ${field.replace(/_/g, " ")}`}
+                            />
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="lg:col-span-1">
+                        <h4 className="text-sm font-semibold mb-2">Flip</h4>
+                        {getDefaultFields(activeSpecTab).map((field) => (
+                          <div key={"flip-" + field} className="mb-3">
+                            <label className="block text-xs font-medium text-gray-600 mb-1 capitalize">
+                              {field.replace(/_/g, " ")}
+                            </label>
+                            <input
+                              type="text"
+                              value={
+                                (formData.smartphone[activeSpecTab] &&
+                                  formData.smartphone[activeSpecTab].flip &&
+                                  formData.smartphone[activeSpecTab].flip[
+                                    field
+                                  ]) ||
+                                ""
+                              }
+                              onChange={(e) =>
+                                handleJsonbChange(
+                                  activeSpecTab,
+                                  field,
+                                  e.target.value,
+                                  "flip",
+                                )
+                              }
+                              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
+                              placeholder={`Enter ${field.replace(/_/g, " ")}`}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  ) : (
+                    getDefaultFields(activeSpecTab).map((field) => (
+                      <div key={field}>
+                        <label className="block text-xs font-medium text-gray-600 mb-1 capitalize">
+                          {field.replace(/_/g, " ")}
+                        </label>
+                        <input
+                          type="text"
+                          value={
+                            formData.smartphone[activeSpecTab]?.[field] || ""
+                          }
+                          onChange={(e) =>
+                            handleJsonbChange(
+                              activeSpecTab,
+                              field,
+                              e.target.value,
+                            )
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
+                          placeholder={`Enter ${field.replace(/_/g, " ")}`}
+                        />
+                      </div>
+                    ))
+                  )}
 
                   {(customJsonFields[activeSpecTab] || []).map(
                     (customField) => (
@@ -1738,13 +2168,13 @@ const CreateMobile = () => {
                             handleJsonbChange(
                               activeSpecTab,
                               customField,
-                              e.target.value
+                              e.target.value,
                             )
                           }
                           className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
                           placeholder={`Enter ${customField.replace(
                             /_/g,
-                            " "
+                            " ",
                           )}`}
                         />
                         <button
@@ -1756,7 +2186,7 @@ const CreateMobile = () => {
                           <FaTrash className="text-sm" />
                         </button>
                       </div>
-                    )
+                    ),
                   )}
                 </div>
 
@@ -1773,7 +2203,7 @@ const CreateMobile = () => {
         </div>
 
         {/* Sensors Section */}
-        <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+        <div className="bg-white  shadow-md">
           <button
             onClick={() => toggleSection("sensors")}
             className="w-full px-4 py-3 border-b border-gray-200 flex items-center justify-between hover:bg-gray-50"
@@ -1808,7 +2238,7 @@ const CreateMobile = () => {
         </div>
 
         {/* Publish Toggle */}
-        <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+        <div className="bg-white  shadow-md">
           <div className="p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">

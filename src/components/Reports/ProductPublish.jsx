@@ -46,7 +46,7 @@ const ProductPublishStatusReport = () => {
             Authorization: token ? `Bearer ${token}` : "",
             "Content-Type": "application/json",
           },
-        }
+        },
       );
 
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -112,7 +112,7 @@ const ProductPublishStatusReport = () => {
         published: acc.published + parseInt(item.published || 0),
         drafts: acc.drafts + parseInt(item.drafts || 0),
       }),
-      { total: 0, published: 0, drafts: 0 }
+      { total: 0, published: 0, drafts: 0 },
     );
 
     const overallPublishPercentage =
@@ -155,11 +155,11 @@ const ProductPublishStatusReport = () => {
 
       return { percentage, colorClass, bgClass, text };
     },
-    [calculatePercentage]
+    [calculatePercentage],
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-6">
+    <div className="min-h-screen bg-gray-50 p-3 sm:p-4 md:p-6 lg:p-8">
       {/* Toast Container */}
       <div className="fixed top-4 right-4 z-50 space-y-2">
         {toasts.map((toast) => (
@@ -169,8 +169,8 @@ const ProductPublishStatusReport = () => {
               toast.type === "success"
                 ? "border-green-200 bg-green-50"
                 : toast.type === "error"
-                ? "border-red-200 bg-red-50"
-                : "border-blue-200 bg-blue-50"
+                  ? "border-red-200 bg-red-50"
+                  : "border-blue-200 bg-blue-50"
             }`}
           >
             {toast.type === "success" && (
@@ -363,11 +363,11 @@ const ProductPublishStatusReport = () => {
             {reportData.map((item, index) => {
               const publishPercentage = calculatePercentage(
                 item.published,
-                item.total
+                item.total,
               );
               const draftPercentage = calculatePercentage(
                 item.drafts,
-                item.total
+                item.total,
               );
               const status = getStatusConfig(item.published, item.total);
 
@@ -536,7 +536,7 @@ const ProductPublishStatusReport = () => {
                   const publishPercentage = status.percentage;
                   const draftPercentage = calculatePercentage(
                     item.drafts,
-                    item.total
+                    item.total,
                   );
 
                   return (
@@ -618,10 +618,10 @@ const ProductPublishStatusReport = () => {
                                 publishPercentage >= 75
                                   ? "bg-green-500"
                                   : publishPercentage >= 50
-                                  ? "bg-yellow-500"
-                                  : publishPercentage >= 25
-                                  ? "bg-orange-500"
-                                  : "bg-red-500"
+                                    ? "bg-yellow-500"
+                                    : publishPercentage >= 25
+                                      ? "bg-orange-500"
+                                      : "bg-red-500"
                               }`}
                               style={{ width: `${publishPercentage}%` }}
                             />

@@ -47,7 +47,7 @@ const ProductCategoryReport = () => {
             Authorization: token ? `Bearer ${token}` : "",
             "Content-Type": "application/json",
           },
-        }
+        },
       );
 
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -111,7 +111,7 @@ const ProductCategoryReport = () => {
   const { totalProducts, topCategory, topProductType } = useMemo(() => {
     const totalProducts = reportData.totals.reduce(
       (sum, item) => sum + parseInt(item.count || 0),
-      0
+      0,
     );
 
     const topCategory =
@@ -179,7 +179,7 @@ const ProductCategoryReport = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-6">
+    <div className="min-h-screen bg-gray-50 p-3 sm:p-4 md:p-6 lg:p-8">
       {/* Toast Container */}
       <div className="fixed top-4 right-4 z-50 space-y-2">
         {toasts.map((toast) => (
@@ -189,8 +189,8 @@ const ProductCategoryReport = () => {
               toast.type === "success"
                 ? "border-green-200 bg-green-50"
                 : toast.type === "error"
-                ? "border-red-200 bg-red-50"
-                : "border-blue-200 bg-blue-50"
+                  ? "border-red-200 bg-red-50"
+                  : "border-blue-200 bg-blue-50"
             }`}
           >
             {toast.type === "success" && (
@@ -403,11 +403,11 @@ const ProductCategoryReport = () => {
                   {sortedCategories.map((category, index) => {
                     const percentage = calculatePercentage(
                       category.count,
-                      topCategory?.count || 1
+                      topCategory?.count || 1,
                     );
                     const colorClass = getCountColor(
                       category.count,
-                      topCategory?.count || 1
+                      topCategory?.count || 1,
                     );
 
                     return (
@@ -489,11 +489,11 @@ const ProductCategoryReport = () => {
                   {sortedProductTypes.map((productType, index) => {
                     const percentage = calculatePercentage(
                       productType.count,
-                      topProductType?.count || 1
+                      topProductType?.count || 1,
                     );
                     const colorClass = getCountColor(
                       productType.count,
-                      topProductType?.count || 1
+                      topProductType?.count || 1,
                     );
 
                     return (
@@ -505,7 +505,7 @@ const ProductCategoryReport = () => {
                           <div className="w-12 h-12 rounded-lg bg-purple-50 border border-purple-100 flex items-center justify-center">
                             {getProductTypeIcon(
                               productType.product_type,
-                              "text-xl"
+                              "text-xl",
                             )}
                           </div>
                           <div className="flex-1">
@@ -606,7 +606,7 @@ const ProductCategoryReport = () => {
                     <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
                       {getProductTypeIcon(
                         topProductType?.product_type,
-                        "text-lg"
+                        "text-lg",
                       )}
                     </div>
                   </div>
@@ -645,7 +645,7 @@ const ProductCategoryReport = () => {
                       style={{
                         width: `${Math.min(
                           (reportData.categories.length / 10) * 100,
-                          100
+                          100,
                         )}%`,
                       }}
                     />
@@ -665,7 +665,7 @@ const ProductCategoryReport = () => {
                       style={{
                         width: `${Math.min(
                           (reportData.totals.length / 10) * 100,
-                          100
+                          100,
                         )}%`,
                       }}
                     />
@@ -737,3 +737,4 @@ const ProductCategoryReport = () => {
 };
 
 export default ProductCategoryReport;
+[];

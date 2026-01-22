@@ -57,7 +57,7 @@ const RecentPublishActivity = () => {
             Authorization: token ? `Bearer ${token}` : "",
             "Content-Type": "application/json",
           },
-        }
+        },
       );
 
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -300,7 +300,7 @@ const RecentPublishActivity = () => {
   const filteredActivities = sortData(filterData(activities));
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-6">
+    <div className="min-h-screen bg-gray-50 p-3 sm:p-4 md:p-6 lg:p-8">
       {/* Toast Container */}
       <div className="fixed top-4 right-4 z-50 space-y-2">
         {toasts.map((toast) => (
@@ -310,8 +310,8 @@ const RecentPublishActivity = () => {
               toast.type === "success"
                 ? "border-green-200 bg-green-50"
                 : toast.type === "error"
-                ? "border-red-200 bg-red-50"
-                : "border-blue-200 bg-blue-50"
+                  ? "border-red-200 bg-red-50"
+                  : "border-blue-200 bg-blue-50"
             }`}
           >
             {toast.type === "success" && (
@@ -336,7 +336,7 @@ const RecentPublishActivity = () => {
 
       {/* Header */}
       <div className="mb-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
               Recent Publish Activity
@@ -358,7 +358,7 @@ const RecentPublishActivity = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
           {/* Total Activities */}
           <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
             <div className="flex items-center justify-between">
@@ -718,7 +718,7 @@ const RecentPublishActivity = () => {
                         <div className="text-xs text-gray-500">
                           {new Date(activity.updated_at).toLocaleTimeString(
                             [],
-                            { hour: "2-digit", minute: "2-digit" }
+                            { hour: "2-digit", minute: "2-digit" },
                           )}
                         </div>
                       </td>
@@ -832,10 +832,10 @@ const RecentPublishActivity = () => {
                           type === "smartphone"
                             ? "bg-blue-500"
                             : type === "laptop"
-                            ? "bg-purple-500"
-                            : type === "home_appliance"
-                            ? "bg-green-500"
-                            : "bg-orange-500"
+                              ? "bg-purple-500"
+                              : type === "home_appliance"
+                                ? "bg-green-500"
+                                : "bg-orange-500"
                         }`}
                         style={{ width: `${percentage}%` }}
                       />

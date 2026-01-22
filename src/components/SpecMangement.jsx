@@ -272,7 +272,7 @@ const SpecificationsManager = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen ">
       {/* Toast Notification */}
       <Toast toast={toast} />
 

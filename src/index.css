@@ -58,3 +58,35 @@ textarea:focus {
   border-color: blueviolet;
   outline: none;
 }
+.smartarena-logo {
+  font-family: "Arial Black", "Helvetica Neue", Arial, sans-serif;
+  font-size: 26px;
+  font-weight: 900;
+  font-style: italic;
+  letter-spacing: -1px;
+  text-transform: uppercase;
+  transform: skewX(-10deg); /* Vijay Sales slant */
+  /* Gradient text (Tailwind: bg-gradient-to-r from-purple-600 to-blue-600) */
+  background: linear-gradient(90deg, #7c3aed 0%, #2563eb 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: #000000; /* fallback for older browsers */
+}
+
+.smartarena-logo span {
+  margin-left: 4px;
+}
+
+.smartarena-logo_1 {
+  font-family: "Arial Black", "Helvetica Neue", Arial, sans-serif;
+  font-size: 26px;
+  font-weight: 900;
+  font-style: italic;
+  letter-spacing: -1px;
+  text-transform: uppercase;
+  transform: skewX(-10deg); /* Vijay Sales slant */
+  /* Gradient text (Tailwind: bg-gradient-to-r from-purple-600 to-blue-600) */
+  color: #ffffff; /* fallback for
+} older browsers */
+}

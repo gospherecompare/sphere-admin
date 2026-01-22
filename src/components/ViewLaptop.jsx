@@ -175,7 +175,7 @@ const ViewLaptops = () => {
         laptop.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         laptop.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
         laptop.cpu.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        laptop.os.toLowerCase().includes(searchTerm.toLowerCase())
+        laptop.os.toLowerCase().includes(searchTerm.toLowerCase()),
     )
     .sort((a, b) => {
       if (sortBy === "newest") {
@@ -201,7 +201,7 @@ const ViewLaptops = () => {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedLaptops = filteredAndSortedLaptops.slice(
     startIndex,
-    startIndex + itemsPerPage
+    startIndex + itemsPerPage,
   );
 
   // Close dropdowns when clicking outside
@@ -263,7 +263,7 @@ const ViewLaptops = () => {
             atob(padded)
               .split("")
               .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
-              .join("")
+              .join(""),
           );
           return JSON.parse(jsonPayload);
         } catch (e) {
@@ -294,7 +294,7 @@ const ViewLaptops = () => {
             Authorization: token ? `Bearer ${token}` : "",
           },
           body: JSON.stringify(body),
-        }
+        },
       );
 
       if (!res.ok) {
@@ -311,14 +311,14 @@ const ViewLaptops = () => {
         prev.map((l) =>
           (l.id || l.raw?.product_id) === resolvedId
             ? { ...l, published: updatedPublished }
-            : l
-        )
+            : l,
+        ),
       );
 
       showToast(
         "Success",
         `"${laptop.name}" ${updatedPublished ? "published" : "unpublished"}`,
-        "success"
+        "success",
       );
     } catch (err) {
       console.error("Publish toggle error:", err);
@@ -376,7 +376,7 @@ const ViewLaptops = () => {
       showToast(
         "Export Successful",
         `${exportData.length} laptops exported`,
-        "success"
+        "success",
       );
     } catch (error) {
       console.error("Export error:", error);
@@ -406,7 +406,7 @@ const ViewLaptops = () => {
       showToast(
         "Import Successful",
         "Laptops imported successfully",
-        "success"
+        "success",
       );
 
       // Reload the data
@@ -423,7 +423,7 @@ const ViewLaptops = () => {
   const unpublishedLaptops = laptops.filter((l) => !l.published).length;
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-6">
+    <div className="min-h-screen bg-gray-50 p-3 sm:p-4 md:p-6 lg:p-8">
       {/* Toast Container */}
       <div className="fixed top-4 right-4 z-50 space-y-2">
         {toasts.map((toast) => (
@@ -433,8 +433,8 @@ const ViewLaptops = () => {
               toast.type === "success"
                 ? "border-green-200 bg-green-50"
                 : toast.type === "error"
-                ? "border-red-200 bg-red-50"
-                : "border-blue-200 bg-blue-50"
+                  ? "border-red-200 bg-red-50"
+                  : "border-blue-200 bg-blue-50"
             }`}
           >
             {toast.type === "success" && (
@@ -459,7 +459,7 @@ const ViewLaptops = () => {
 
       {/* Header */}
       <div className="mb-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
               Laptop Management
@@ -481,7 +481,7 @@ const ViewLaptops = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-6">
           <div className="bg-white rounded-lg border border-gray-200 p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -812,7 +812,7 @@ const ViewLaptops = () => {
                       <div className="flex items-center space-x-2">
                         <button
                           onClick={() =>
-                            navigate(`/edit-laptop/${laptop.id}`, {
+                            navigate(`/products/laptops/${laptop.id}/edit`, {
                               state: { laptop: laptop.raw },
                             })
                           }
@@ -822,7 +822,11 @@ const ViewLaptops = () => {
                           <FaEdit />
                         </button>
                         <button
-                          onClick={() => navigate(`/laptop/${laptop.id}`)}
+                          onClick={() =>
+                            navigate(`/products/laptops/${laptop.id}/view`, {
+                              state: { laptop: laptop.raw },
+                            })
+                          }
                           className="text-green-600 hover:text-green-900 p-1 rounded hover:bg-green-50"
                           title="View details"
                         >
@@ -869,7 +873,7 @@ const ViewLaptops = () => {
                 <span className="font-medium">
                   {Math.min(
                     startIndex + itemsPerPage,
-                    filteredAndSortedLaptops.length
+                    filteredAndSortedLaptops.length,
                   )}
                 </span>{" "}
                 of{" "}

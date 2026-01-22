@@ -1,5 +1,12 @@
-// components/CreateLaptop.js
-import React, { useState, useEffect, useRef, createRef } from "react";
+// components/EditLaptop.js
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  createRef,
+} from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import Cookies from "js-cookie";
 import { uploadToCloudinary } from "../config/cloudinary";
 import {
@@ -35,9 +42,16 @@ import {
   FaCalendar,
   FaTag,
   FaPercent,
+  FaEdit,
+  FaHistory,
+  FaCopy,
+  FaEye,
 } from "react-icons/fa";
 
-const CreateLaptop = () => {
+const EditLaptop = () => {
+  const { id } = useParams();
+  const navigate = useNavigate();
+
   const [formData, setFormData] = useState({
     product: {
       name: "",
@@ -64,7 +78,10 @@ const CreateLaptop = () => {
     variants: [],
   });
 
+  const [originalData, setOriginalData] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  // UI-only mode: no API fetching
+  const [isFetching, setIsFetching] = useState(false);
   const [activeSpecTab, setActiveSpecTab] = useState("cpu");
   const [customJsonFields, setCustomJsonFields] = useState({});
   const [brandsList, setBrandsList] = useState([]);
@@ -76,6 +93,9 @@ const CreateLaptop = () => {
   });
   const [publishEnabled, setPublishEnabled] = useState(false);
   const [toasts, setToasts] = useState([]);
+  const [hasChanges, setHasChanges] = useState(false);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
+
   const [expandedSections, setExpandedSections] = useState({
     basic: true,
     images: true,
@@ -117,8 +137,9 @@ const CreateLaptop = () => {
   const brandDropdownRef = useRef(null);
   const categoryDropdownRef = useRef(null);
   const datePickerRef = useRef(null);
+  const modelRef = useRef(null);
 
-  // Filter categories based on search (use fetched categories only)
+  // Filter categories based on search
   const filteredCategories = (categoriesList || []).filter((category) =>
     (category.label || "").toLowerCase().includes(categorySearch.toLowerCase()),
   );
@@ -139,7 +160,7 @@ const CreateLaptop = () => {
     "December",
   ];
 
-  // Generate years for dropdown (2000 to current year + 2)
+  // Generate years for dropdown
   const generateYears = () => {
     const currentYear = new Date().getFullYear();
     const years = [];
@@ -154,6 +175,99 @@ const CreateLaptop = () => {
     return new Date(year, month + 1, 0).getDate();
   };
 
+  // Fetch laptop data
+  const fetchLaptopData = useCallback(async () => {
+    try {
+      setIsFetching(true);
+      const token = Cookies.get("authToken");
+      const res = await fetch(`http://localhost:5000/api/laptops/${id}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+
+      if (!res.ok) {
+        if (res.status === 404) {
+          showToast("Not Found", "Laptop not found", "error");
+        }
+        throw new Error("Failed to fetch laptop data");
+      }
+
+      const data = await res.json();
+      setOriginalData(data);
+
+      // Transform data to match form structure
+      const transformedData = {
+        product: {
+          name: data.product?.name || "",
+          brand_id: data.product?.brand_id || "",
+        },
+        laptop: {
+          category: data.laptop?.category || "",
+          brand: data.laptop?.brand || "",
+          model: data.laptop?.model || "",
+          launch_date: data.laptop?.launch_date || "",
+          colors: data.laptop?.colors || [],
+          cpu: data.laptop?.cpu || {},
+          display: data.laptop?.display || {},
+          memory: data.laptop?.memory || {},
+          storage: data.laptop?.storage || {},
+          battery: data.laptop?.battery || {},
+          connectivity: data.laptop?.connectivity || {},
+          physical: data.laptop?.physical || {},
+          software: data.laptop?.software || {},
+          features: data.laptop?.features || [],
+          warranty: data.laptop?.warranty || {},
+        },
+        images: data.images || [],
+        variants: data.variants || [],
+      };
+
+      setFormData(transformedData);
+      setPublishEnabled(data.published || false);
+
+      // Set date picker if launch date exists
+      if (data.laptop?.launch_date) {
+        const date = new Date(data.laptop.launch_date);
+        setSelectedDate({
+          year: date.getFullYear(),
+          month: date.getMonth(),
+          day: date.getDate(),
+        });
+      }
+
+      // Extract custom JSON fields
+      const customFields = {};
+      const jsonFields = [
+        "cpu",
+        "display",
+        "memory",
+        "storage",
+        "battery",
+        "connectivity",
+        "physical",
+        "software",
+        "warranty",
+      ];
+      jsonFields.forEach((field) => {
+        if (data.laptop?.[field]) {
+          const defaultFields = getDefaultFields(field);
+          const existingKeys = Object.keys(data.laptop[field] || {});
+          const customKeys = existingKeys.filter(
+            (key) => !defaultFields.includes(key),
+          );
+          if (customKeys.length > 0) {
+            customFields[field] = customKeys;
+          }
+        }
+      });
+      setCustomJsonFields(customFields);
+    } catch (error) {
+      console.error("Error fetching laptop:", error);
+      showToast("Error", "Failed to load laptop data", "error");
+    } finally {
+      setIsFetching(false);
+    }
+  }, [id]);
+
   // Fetch brands
   useEffect(() => {
     const fetchBrands = async () => {
@@ -162,7 +276,17 @@ const CreateLaptop = () => {
         if (!res.ok) return;
         const data = await res.json();
         const brandsArray = data.brands || data || [];
-        setBrandsList(brandsArray);
+        // normalize brands into { id, name }
+        const normalized = (brandsArray || [])
+          .map((b, idx) => {
+            if (!b) return null;
+            if (typeof b === "string") return { id: String(b), name: b };
+            const id = b.id ?? b._id ?? b.value ?? b.name ?? String(idx);
+            const name = b.name ?? b.label ?? b.value ?? String(id);
+            return { id: String(id), name };
+          })
+          .filter(Boolean);
+        setBrandsList(normalized);
       } catch (err) {
         console.error("Failed to fetch brands:", err);
       }
@@ -220,7 +344,7 @@ const CreateLaptop = () => {
     fetchAuxiliary();
   }, []);
 
-  // Fetch categories and map laptop categories
+  // Fetch categories
   useEffect(() => {
     const fetchCategories = async () => {
       try {
@@ -230,23 +354,17 @@ const CreateLaptop = () => {
         });
         if (!res.ok) return;
         const data = await res.json();
+
         let rows = [];
         if (Array.isArray(data)) rows = data;
         else if (data && Array.isArray(data.categories)) rows = data.categories;
         else if (data && Array.isArray(data.data)) rows = data.data;
         else rows = data || [];
 
-        rows = rows.map((r) => ({
-          ...r,
-          type: r.product_type || r.type || "",
-          name: r.name || r.title || "",
-        }));
-
         const laptopCats = rows
-          .filter((r) => r.type || "")
           .map((r) => ({
-            value: r.name || r.value || `cat_${r.id}`,
-            label: r.name || r.title || r.value || `Category ${r.id}`,
+            value: r.name || r.title || `cat_${r.id}`,
+            label: r.name || r.title || `Category ${r.id}`,
           }))
           .filter((c) => c.label);
 
@@ -259,17 +377,45 @@ const CreateLaptop = () => {
     fetchCategories();
   }, []);
 
-  // Initialize date from form data
+  // Fetch laptop data on mount
   useEffect(() => {
-    if (formData.laptop.launch_date) {
-      const date = new Date(formData.laptop.launch_date);
-      setSelectedDate({
-        year: date.getFullYear(),
-        month: date.getMonth(),
-        day: date.getDate(),
-      });
+    if (id) {
+      fetchLaptopData();
     }
-  }, [formData.laptop.launch_date]);
+  }, [id, fetchLaptopData]);
+
+  // Check for changes
+  useEffect(() => {
+    if (originalData) {
+      const originalComparable = {
+        product: {
+          name: originalData.product?.name || "",
+          brand_id: originalData.product?.brand_id || "",
+        },
+        laptop: {
+          category: originalData.laptop?.category || "",
+          brand: originalData.laptop?.brand || "",
+          model: originalData.laptop?.model || "",
+          launch_date: originalData.laptop?.launch_date || "",
+          colors: originalData.laptop?.colors || [],
+          cpu: originalData.laptop?.cpu || {},
+          display: originalData.laptop?.display || {},
+          memory: originalData.laptop?.memory || {},
+          storage: originalData.laptop?.storage || {},
+          battery: originalData.laptop?.battery || {},
+          connectivity: originalData.laptop?.connectivity || {},
+          physical: originalData.laptop?.physical || {},
+          software: originalData.laptop?.software || {},
+          features: originalData.laptop?.features || [],
+          warranty: originalData.laptop?.warranty || {},
+        },
+        images: originalData.images || [],
+        variants: originalData.variants || [],
+      };
+
+      setHasChanges(!deepEqual(formData, originalComparable));
+    }
+  }, [formData, originalData]);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -295,15 +441,41 @@ const CreateLaptop = () => {
     };
 
     document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Filter brands based on search
-  const filteredBrands = brandsList.filter((brand) =>
-    brand.name.toLowerCase().includes(brandSearch.toLowerCase()),
-  );
+  // Filter brands based on search (safe for strings or objects)
+  const filteredBrands = (brandsList || []).filter((brand) => {
+    const name =
+      typeof brand === "string"
+        ? brand
+        : brand?.name || brand?.label || brand?.value || "";
+    return name.toLowerCase().includes((brandSearch || "").toLowerCase());
+  });
+
+  // Deep equality for change detection
+  const deepEqual = (a, b) => {
+    if (a === b) return true;
+    if (typeof a !== typeof b) return false;
+    if (a && b && typeof a === "object") {
+      if (Array.isArray(a) !== Array.isArray(b)) return false;
+      if (Array.isArray(a)) {
+        if (a.length !== b.length) return false;
+        for (let i = 0; i < a.length; i++)
+          if (!deepEqual(a[i], b[i])) return false;
+        return true;
+      }
+      const aKeys = Object.keys(a).sort();
+      const bKeys = Object.keys(b).sort();
+      if (aKeys.length !== bKeys.length) return false;
+      for (let k of aKeys) {
+        if (!bKeys.includes(k)) return false;
+        if (!deepEqual(a[k], b[k])) return false;
+      }
+      return true;
+    }
+    return false;
+  };
 
   // Toast system
   const showToast = (title, message, type = "success") => {
@@ -351,17 +523,21 @@ const CreateLaptop = () => {
     }));
   };
 
-  // Handle brand selection
+  // Handle brand selection (support multiple brand shapes)
   const handleBrandSelect = (brand) => {
+    const id =
+      brand && (brand.id ?? brand._id ?? brand.value ?? brand.name ?? brand);
+    const name =
+      brand && (brand.name ?? brand.label ?? brand.value ?? String(brand));
     setFormData((prev) => ({
       ...prev,
       product: {
         ...prev.product,
-        brand_id: brand.id,
+        brand_id: id !== undefined && id !== null ? String(id) : "",
       },
       laptop: {
         ...prev.laptop,
-        brand: brand.name,
+        brand: name || "",
       },
     }));
     setShowBrandDropdown(false);
@@ -370,7 +546,7 @@ const CreateLaptop = () => {
 
   // Handle category selection
   const handleCategorySelect = (category) => {
-    const value = category && category.value ? category.value : category;
+    const value = category?.value ? category.value : category;
     setFormData((prev) => ({
       ...prev,
       laptop: {
@@ -399,16 +575,19 @@ const CreateLaptop = () => {
 
   // Handle JSONB object changes
   const handleJsonbChange = (field, key, value) => {
-    setFormData((prev) => ({
-      ...prev,
-      laptop: {
-        ...prev.laptop,
-        [field]: {
-          ...prev.laptop[field],
-          [key]: value,
+    setFormData((prev) => {
+      const prevField = prev.laptop?.[field] || {};
+      return {
+        ...prev,
+        laptop: {
+          ...prev.laptop,
+          [field]: {
+            ...prevField,
+            [key]: value,
+          },
         },
-      },
-    }));
+      };
+    });
   };
 
   // Add color with name and code
@@ -435,7 +614,7 @@ const CreateLaptop = () => {
     showToast("Feature Added", "New feature added", "success");
   };
 
-  // Add variant with updated store fields
+  // Add variant
   const addVariant = () => {
     setFormData((prev) => ({
       ...prev,
@@ -452,30 +631,35 @@ const CreateLaptop = () => {
     showToast("Variant Added", "New variant added", "success");
   };
 
-  // Add store to variant with offers and discount
+  // Add store to variant
   const addStoreToVariant = (variantIndex) => {
     setFormData((prev) => {
-      const updatedVariants = [...prev.variants];
-      updatedVariants[variantIndex] = {
-        ...updatedVariants[variantIndex],
-        stores: [
-          ...(updatedVariants[variantIndex].stores || []),
-          {
-            store_name: "",
-            price: "",
-            url: "",
-            offer_text: "",
-            discount: "",
-            offers: "",
-          },
-        ],
-      };
+      const updatedVariants = (prev.variants || []).map((v, i) =>
+        i === variantIndex
+          ? {
+              ...v,
+              stores: [
+                ...(v?.stores || []),
+                {
+                  store_name: "",
+                  price: "",
+                  url: "",
+                  offer_text: "",
+                  discount: "",
+                  offers: "",
+                },
+              ],
+            }
+          : v,
+      );
       return { ...prev, variants: updatedVariants };
     });
     showToast("Store Added", "New store added to variant", "success");
   };
 
-  // Handle image upload
+  // Old inline upload handler removed; using centralized uploadToCloudinary below
+
+  // Handle image upload (use shared utility)
   const handleImageUpload = async (files) => {
     if (!files || files.length === 0) return;
     const fileList = Array.from(files);
@@ -492,49 +676,24 @@ const CreateLaptop = () => {
         ...prev,
         images: [...prev.images, ...uploadedImages],
       }));
-
-      showToast(
-        "Upload Successful",
-        `${uploadedImages.length} image(s) uploaded`,
-        "success",
-      );
     } catch (error) {
       console.error("Image upload error:", error);
-      showToast("Upload Failed", "Error uploading images", "error");
+      showToast(
+        "Upload Failed",
+        error.message || "Error uploading images",
+        "error",
+      );
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Remove image
-  const removeImage = (index) => {
-    setFormData((prev) => ({
-      ...prev,
-      images: prev.images.filter((_, i) => i !== index),
-    }));
-    showToast("Image Removed", "Image removed successfully", "info");
-  };
-
-  // Get selected brand name
   const getSelectedBrandName = () => {
     const selectedBrand = brandsList.find(
       (brand) => brand.id === Number(formData.product.brand_id),
     );
-    return selectedBrand ? selectedBrand.name : "";
+    return selectedBrand ? selectedBrand.name : "Select Brand";
   };
-
-  // Laptop specification tabs
-  const specTabs = [
-    { id: "cpu", label: "Processor", icon: FaMicrochip },
-    { id: "display", label: "Display", icon: FaDesktop },
-    { id: "memory", label: "Memory", icon: FaMemory },
-    { id: "storage", label: "Storage", icon: FaHdd },
-    { id: "battery", label: "Battery", icon: FaBatteryFull },
-    { id: "connectivity", label: "Connectivity", icon: FaWifi },
-    { id: "physical", label: "Physical", icon: FaWeightHanging },
-    { id: "software", label: "Software", icon: FaCode },
-    { id: "warranty", label: "Warranty", icon: FaShieldAlt },
-  ];
 
   // Get default fields for each specification category
   const getDefaultFields = (category) => {
@@ -668,75 +827,211 @@ const CreateLaptop = () => {
     showToast("Field Removed", `Custom field "${fieldName}" removed`, "info");
   };
 
+  // Save as draft
+  const saveAsDraft = async () => {
+    if (!hasChanges) {
+      showToast("No Changes", "No changes to save", "info");
+      return;
+    }
+    setIsSavingDraft(true);
+    try {
+      await handleSubmit(false);
+      showToast("Draft Saved", "Changes saved as draft", "success");
+    } catch (error) {
+      showToast("Save Failed", "Failed to save draft", "error");
+    } finally {
+      setIsSavingDraft(false);
+    }
+  };
+
+  // Reset to original data
+  const resetForm = () => {
+    if (
+      originalData &&
+      window.confirm("Are you sure you want to discard all changes?")
+    ) {
+      // UI-only: reset to the stored originalData (if any) or clear
+      if (originalData) {
+        const transformed = {
+          product: {
+            name: originalData.product?.name || "",
+            brand_id: originalData.product?.brand_id || "",
+          },
+          laptop: {
+            category: originalData.laptop?.category || "",
+            brand: originalData.laptop?.brand || "",
+            model: originalData.laptop?.model || "",
+            launch_date: originalData.laptop?.launch_date || "",
+            colors: originalData.laptop?.colors || [],
+            cpu: originalData.laptop?.cpu || {},
+            display: originalData.laptop?.display || {},
+            memory: originalData.laptop?.memory || {},
+            storage: originalData.laptop?.storage || {},
+            battery: originalData.laptop?.battery || {},
+            connectivity: originalData.laptop?.connectivity || {},
+            physical: originalData.laptop?.physical || {},
+            software: originalData.laptop?.software || {},
+            features: originalData.laptop?.features || [],
+            warranty: originalData.laptop?.warranty || {},
+          },
+          images: originalData.images || [],
+          variants: originalData.variants || [],
+        };
+        setFormData(transformed);
+      } else {
+        setFormData({
+          product: { name: "", brand_id: "" },
+          laptop: {
+            category: "",
+            brand: "",
+            model: "",
+            launch_date: "",
+            colors: [],
+            cpu: {},
+            display: {},
+            memory: {},
+            storage: {},
+            battery: {},
+            connectivity: {},
+            physical: {},
+            software: {},
+            features: [],
+            warranty: {},
+          },
+          images: [],
+          variants: [],
+        });
+      }
+      setHasChanges(false);
+      showToast("Form Reset", "All changes discarded", "info");
+    }
+  };
+
   // Form submit handler
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (publish = publishEnabled) => {
     setIsLoading(true);
 
-    // Basic validation
-    if (!formData.product.name.trim()) {
+    // Read live DOM fallback via ref for fields that may be edited but not flushed to state yet
+    const domModel = modelRef.current?.value;
+    const modelValue =
+      (domModel !== undefined && domModel !== null
+        ? domModel
+        : formData.laptop.model) || "";
+    console.debug(
+      "Model values -> domModel:",
+      domModel,
+      "stateModel:",
+      formData.laptop.model,
+    );
+    const productName = (formData.product.name || "").trim();
+    const brandId = formData.product.brand_id;
+    console.debug(
+      "brandId (before validation):",
+      brandId,
+      "formData.product.brand_id:",
+      formData.product.brand_id,
+    );
+
+    // Basic validation (use DOM fallback for model)
+    if (!productName) {
+      console.debug(
+        "Validation failed: product.name empty",
+        formData.product.name,
+      );
       showToast("Validation Error", "Laptop name is required", "error");
       setIsLoading(false);
       return;
     }
 
-    if (!formData.product.brand_id) {
+    if (!brandId) {
+      console.debug(
+        "Validation failed: brand_id empty",
+        formData.product.brand_id,
+      );
       showToast("Validation Error", "Brand is required", "error");
       setIsLoading(false);
       return;
     }
 
-    if (!formData.laptop.model.trim()) {
-      showToast("Validation Error", "Model is required", "error");
+    if (!modelValue.trim()) {
+      console.debug("Validation failed: model empty", modelValue);
+      showToast("Validation Error", "Input model is required", "error");
+      // Focus and highlight the model input so user sees the failure immediately
+      if (modelRef && modelRef.current) {
+        try {
+          modelRef.current.focus();
+          modelRef.current.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+          });
+          modelRef.current.classList.add("ring-2", "ring-red-500");
+          setTimeout(() => {
+            modelRef.current &&
+              modelRef.current.classList.remove("ring-2", "ring-red-500");
+          }, 1600);
+        } catch (err) {
+          console.debug("Focus highlight failed:", err);
+        }
+      } else {
+        console.debug("modelRef not available at validation time", modelRef);
+      }
       setIsLoading(false);
       return;
     }
 
     try {
+      // Build a submit copy using live model value (to avoid stale state race)
+      const effectiveForm = {
+        ...formData,
+        laptop: { ...formData.laptop, model: modelValue },
+      };
+      console.debug("Submitting effectiveForm:", effectiveForm);
       const token = Cookies.get("authToken");
       const submitData = {
         product: {
-          name: formData.product.name,
-          brand_id: Number(formData.product.brand_id),
+          name: effectiveForm.product.name,
+          brand_id: Number(effectiveForm.product.brand_id),
         },
         laptop: {
-          category: formData.laptop.category,
-          brand: formData.laptop.brand,
-          model: formData.laptop.model,
-          launch_date: formData.laptop.launch_date || null,
-          colors: formData.laptop.colors.filter(
-            (color) => color.name && color.code,
+          category: effectiveForm.laptop.category,
+          brand: effectiveForm.laptop.brand,
+          model: effectiveForm.laptop.model,
+          launch_date: effectiveForm.laptop.launch_date || null,
+          colors: (effectiveForm.laptop.colors || []).filter(
+            (color) => color?.name && color?.code,
           ),
-          cpu: formData.laptop.cpu,
-          display: formData.laptop.display,
-          memory: formData.laptop.memory,
-          storage: formData.laptop.storage,
-          battery: formData.laptop.battery,
-          connectivity: formData.laptop.connectivity,
-          physical: formData.laptop.physical,
-          software: formData.laptop.software,
-          features: formData.laptop.features.filter(Boolean),
-          warranty: formData.laptop.warranty,
+          cpu: effectiveForm.laptop.cpu,
+          display: effectiveForm.laptop.display,
+          memory: effectiveForm.laptop.memory,
+          storage: effectiveForm.laptop.storage,
+          battery: effectiveForm.laptop.battery,
+          connectivity: effectiveForm.laptop.connectivity,
+          physical: effectiveForm.laptop.physical,
+          software: effectiveForm.laptop.software,
+          features: (effectiveForm.laptop.features || []).filter(Boolean),
+          warranty: effectiveForm.laptop.warranty,
         },
         images: formData.images,
-        variants: formData.variants.map((v) => ({
+        variants: (formData.variants || []).map((v) => ({
           ram: v.ram || null,
           storage: v.storage || null,
           base_price: v.base_price ? Number(v.base_price) : null,
-          stores: v.stores.map((s) => ({
+          stores: (v.stores || []).map((s) => ({
             store_name: s.store_name || null,
             price: s.price ? Number(s.price) : null,
             url: s.url || null,
             offer_text: s.offer_text || null,
+            // map frontend 'offers' / 'discount' into delivery_info so DB persists
+            delivery_info: s.offers || s.delivery_info || null,
+            // keep discount as-is in payload (DB doesn't have discount column for variant_store_prices)
             discount: s.discount || null,
-            offers: s.offers || null,
           })),
         })),
-        published: publishEnabled,
+        published: publish,
       };
 
-      const res = await fetch("http://localhost:5000/api/laptops", {
-        method: "POST",
+      const res = await fetch(`http://localhost:5000/api/laptops/${id}`, {
+        method: "PUT",
         headers: {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -746,53 +1041,43 @@ const CreateLaptop = () => {
 
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.message || "Failed to create laptop");
+        throw new Error(errorData.message || "Failed to update laptop");
       }
-
+      await res.json();
+      // After successful update, re-fetch the persisted laptop to sync state
+      await fetchLaptopData();
+      setHasChanges(false);
       showToast(
         "Success",
-        `Laptop "${formData.product.name}" created ${
-          publishEnabled ? "and published" : "as draft"
-        } successfully!`,
+        `Laptop "${formData.product.name}" updated ${
+          publish ? "and published" : "successfully"
+        }!`,
         "success",
       );
-
-      // Reset form
-      setFormData({
-        product: { name: "", brand_id: "" },
-        laptop: {
-          category: "",
-          brand: "",
-          model: "",
-          launch_date: "",
-          colors: [],
-          cpu: {},
-          display: {},
-          memory: {},
-          storage: {},
-          battery: {},
-          connectivity: {},
-          physical: {},
-          software: {},
-          features: [],
-          warranty: {},
-        },
-        images: [],
-        variants: [],
-      });
-      setCustomJsonFields({});
-      setPublishEnabled(false);
     } catch (error) {
-      console.error("Create laptop error:", error);
+      console.error("Update laptop error:", error);
       showToast(
-        "Creation Failed",
-        `Error creating laptop: ${error.message}`,
+        "Update Failed",
+        `Error updating laptop: ${error.message}`,
         "error",
       );
     } finally {
       setIsLoading(false);
     }
   };
+
+  // Laptop specification tabs
+  const specTabs = [
+    { id: "cpu", label: "Processor", icon: FaMicrochip },
+    { id: "display", label: "Display", icon: FaDesktop },
+    { id: "memory", label: "Memory", icon: FaMemory },
+    { id: "storage", label: "Storage", icon: FaHdd },
+    { id: "battery", label: "Battery", icon: FaBatteryFull },
+    { id: "connectivity", label: "Connectivity", icon: FaWifi },
+    { id: "physical", label: "Physical", icon: FaWeightHanging },
+    { id: "software", label: "Software", icon: FaCode },
+    { id: "warranty", label: "Warranty", icon: FaShieldAlt },
+  ];
 
   // Toast Component
   const Toast = ({ toast }) => {
@@ -853,37 +1138,32 @@ const CreateLaptop = () => {
             setIsOpen(!isOpen);
             setSearchValue("");
           }}
-          className={`w-full px-4 py-2.5 border-2 transition-all rounded-lg bg-white text-left flex items-center justify-between ${
-            value
-              ? "border-blue-400 shadow-sm hover:shadow-md"
-              : "border-gray-300 hover:border-gray-400 hover:shadow-sm"
-          }`}
+          className={`w-full px-3 py-2 border ${
+            value ? "border-blue-300" : "border-gray-300"
+          } rounded-md bg-white text-left flex items-center justify-between hover:border-blue-400 transition-colors`}
         >
           <span
-            className={`${
-              value ? "text-gray-900 font-medium" : "text-gray-500"
-            } truncate text-sm`}
+            className={`${value ? "text-gray-900" : "text-gray-500"} truncate`}
           >
             {selectedLabel || placeholder}
           </span>
           <FaChevronDown
-            className={`text-gray-400 text-sm flex-shrink-0 ml-2 ${
+            className={`text-gray-400 ${
               isOpen ? "transform rotate-180" : ""
-            } transition-transform duration-200`}
+            } transition-transform`}
           />
         </button>
 
         {isOpen && (
-          <div className="absolute z-50 mt-2 w-full bg-white border-2 border-blue-200 rounded-lg shadow-xl overflow-hidden">
-            {/* Search input */}
-            <div className="sticky top-0 bg-gradient-to-r from-blue-50 to-white p-3 border-b-2 border-blue-100">
+          <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
+            <div className="sticky top-0 bg-white p-2 border-b">
               <div className="relative">
-                <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-blue-400 text-sm" />
+                <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                 <input
                   type="text"
                   value={searchValue}
                   onChange={(e) => setSearchValue(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2.5 border-2 border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                  className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                   placeholder={`Search ${
                     type === "brand" ? "brands" : "categories"
                   }...`}
@@ -892,48 +1172,36 @@ const CreateLaptop = () => {
               </div>
             </div>
 
-            {/* Options list */}
-            <div className="max-h-64 overflow-y-auto">
+            <div className="py-1">
               {filteredOptions.length > 0 ? (
-                filteredOptions.map((option, idx) => (
-                  <button
-                    key={type === "brand" ? option.id : option.value}
-                    type="button"
-                    onClick={() => onSelect(option)}
-                    className={`w-full text-left px-4 py-3 transition-colors flex items-center space-x-3 ${
-                      (
-                        type === "brand"
-                          ? option.id === value
-                          : option.value === value
-                      )
-                        ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white font-medium shadow-md"
-                        : idx % 2 === 0
-                          ? "hover:bg-blue-50 text-gray-700"
-                          : "hover:bg-blue-100 text-gray-700"
-                    } ${idx !== filteredOptions.length - 1 ? "border-b border-gray-100" : ""}`}
-                  >
-                    <span className="flex-1 truncate text-sm">
-                      {type === "brand" ? option.name : option.label}
-                    </span>
-                    {(type === "brand"
-                      ? option.id === value
-                      : option.value === value) && (
-                      <span className="flex-shrink-0">
-                        <FaCheckCircle className="text-lg" />
-                      </span>
-                    )}
-                  </button>
-                ))
+                filteredOptions.map((option, idx) => {
+                  const optId = option?.id ?? option?.value ?? String(idx);
+                  const optLabel =
+                    option?.name ??
+                    option?.label ??
+                    option?.value ??
+                    String(option);
+                  const isSelected =
+                    String(optId) === String(value) ||
+                    String(optLabel) === String(value);
+                  return (
+                    <button
+                      key={optId}
+                      type="button"
+                      onClick={() => onSelect(option)}
+                      className={`w-full text-left px-3 py-2 hover:bg-blue-50 ${
+                        isSelected
+                          ? "bg-blue-50 text-blue-600 font-medium"
+                          : "text-gray-700"
+                      }`}
+                    >
+                      {optLabel}
+                    </button>
+                  );
+                })
               ) : (
-                <div className="px-4 py-8 text-center text-gray-500 text-sm">
-                  <p>
-                    {type === "brand"
-                      ? "No brands found"
-                      : "No categories found"}
-                  </p>
-                  <p className="text-xs text-gray-400 mt-1">
-                    Try different search term
-                  </p>
+                <div className="px-3 py-4 text-center text-gray-500 text-sm">
+                  {type === "brand" ? "No brands found" : "No categories found"}
                 </div>
               )}
             </div>
@@ -943,241 +1211,151 @@ const CreateLaptop = () => {
     );
   };
 
-  // Custom Date Picker Component with Calendar Grid
+  // Custom Date Picker Component
   const DatePicker = () => {
     const daysInMonth = getDaysInMonth(selectedDate.year, selectedDate.month);
-    const firstDay = new Date(
-      selectedDate.year,
-      selectedDate.month,
-      1,
-    ).getDay();
-    const today = new Date();
-    const isToday = (day) =>
-      day === today.getDate() &&
-      selectedDate.month === today.getMonth() &&
-      selectedDate.year === today.getFullYear();
-
-    // Generate calendar days
-    const calendarDays = [];
-    // Add empty cells for days before month starts
-    for (let i = 0; i < firstDay; i++) {
-      calendarDays.push(null);
-    }
-    // Add days of current month
-    for (let day = 1; day <= daysInMonth; day++) {
-      calendarDays.push(day);
-    }
-
-    const handlePrevMonth = () => {
-      setSelectedDate((prev) => {
-        if (prev.month === 0) {
-          return { ...prev, month: 11, year: prev.year - 1 };
-        }
-        return { ...prev, month: prev.month - 1 };
-      });
-    };
-
-    const handleNextMonth = () => {
-      setSelectedDate((prev) => {
-        if (prev.month === 11) {
-          return { ...prev, month: 0, year: prev.year + 1 };
-        }
-        return { ...prev, month: prev.month + 1 };
-      });
-    };
-
-    const handleDaySelect = (day) => {
-      if (day) {
-        setSelectedDate((prev) => ({ ...prev, day }));
-      }
-    };
-
-    const handleToday = () => {
-      setSelectedDate({
-        year: today.getFullYear(),
-        month: today.getMonth(),
-        day: today.getDate(),
-      });
-    };
+    const daysArray = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+    const yearsArray = generateYears();
 
     return (
       <div className="relative" ref={datePickerRef}>
         <button
           type="button"
           onClick={() => setShowDatePicker(!showDatePicker)}
-          className={`w-full px-4 py-2.5 border-2 transition-all rounded-lg bg-white text-left flex items-center justify-between ${
-            formData.laptop.launch_date
-              ? "border-blue-400 shadow-sm"
-              : "border-gray-300 hover:border-gray-400"
-          } hover:shadow-md`}
+          className={`w-full px-3 py-2 border ${
+            formData.laptop.launch_date ? "border-blue-300" : "border-gray-300"
+          } rounded-md bg-white text-left flex items-center justify-between hover:border-blue-400 transition-colors`}
         >
-          <div className="flex items-center space-x-3">
-            <FaCalendar
-              className={`text-lg ${formData.laptop.launch_date ? "text-blue-500" : "text-gray-400"}`}
-            />
-            <div>
-              <span
-                className={`block font-medium ${
-                  formData.laptop.launch_date
-                    ? "text-gray-900"
-                    : "text-gray-500"
-                }`}
-              >
-                {formData.laptop.launch_date
-                  ? new Date(formData.laptop.launch_date).toLocaleDateString(
-                      "en-US",
-                      {
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                      },
-                    )
-                  : "Select Launch Date"}
-              </span>
-              {formData.laptop.launch_date && (
-                <span className="text-xs text-gray-500">
-                  {new Date(formData.laptop.launch_date).toLocaleDateString(
+          <div className="flex items-center space-x-2">
+            <FaCalendar className="text-gray-400" />
+            <span
+              className={`${
+                formData.laptop.launch_date ? "text-gray-900" : "text-gray-500"
+              }`}
+            >
+              {formData.laptop.launch_date
+                ? new Date(formData.laptop.launch_date).toLocaleDateString(
                     "en-US",
                     {
-                      weekday: "short",
+                      year: "numeric",
+                      month: "short",
+                      day: "numeric",
                     },
-                  )}
-                </span>
-              )}
-            </div>
+                  )
+                : "Select Launch Date"}
+            </span>
           </div>
           <FaChevronDown
-            className={`text-gray-400 text-lg ${
+            className={`text-gray-400 ${
               showDatePicker ? "transform rotate-180" : ""
-            } transition-transform duration-300`}
+            } transition-transform`}
           />
         </button>
 
         {showDatePicker && (
-          <div className="absolute z-50 mt-2 w-96 bg-white border-2 border-blue-200 rounded-xl shadow-2xl p-5 backdrop-blur-sm bg-opacity-95">
-            {/* Header */}
-            <div className="bg-gradient-to-r from-blue-600 to-blue-500 rounded-lg p-4 mb-4 text-white">
-              <h3 className="text-lg font-bold text-center">
-                {months[selectedDate.month]} {selectedDate.year}
-              </h3>
-              <p className="text-center text-blue-100 text-sm mt-1">
-                {selectedDate.day
-                  ? `${selectedDate.day} ${months[selectedDate.month]} ${selectedDate.year}`
-                  : "Pick a date"}
-              </p>
-            </div>
-
-            {/* Month/Year Navigation */}
-            <div className="flex items-center justify-between mb-5 pb-4 border-b border-gray-200">
+          <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg p-4">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-sm font-medium text-gray-700">Select Date</h3>
               <button
                 type="button"
-                onClick={handlePrevMonth}
-                className="p-2 hover:bg-blue-100 rounded-lg transition-colors text-gray-700 font-bold"
+                onClick={() => setShowDatePicker(false)}
+                className="text-gray-400 hover:text-gray-600"
               >
-                <FaChevronDown className="transform rotate-90 text-lg" />
+                <FaTimes />
               </button>
+            </div>
 
-              <div className="flex gap-3">
-                <select
-                  value={selectedDate.month}
-                  onChange={(e) =>
-                    setSelectedDate((prev) => ({
-                      ...prev,
-                      month: parseInt(e.target.value),
-                    }))
-                  }
-                  className="px-3 py-1.5 border-2 border-gray-300 rounded-lg text-sm font-semibold focus:outline-none focus:border-blue-500 bg-white hover:border-blue-400 transition-colors"
-                >
-                  {months.map((month, idx) => (
-                    <option key={month} value={idx}>
-                      {month}
-                    </option>
-                  ))}
-                </select>
-
-                <select
-                  value={selectedDate.year}
-                  onChange={(e) =>
-                    setSelectedDate((prev) => ({
-                      ...prev,
-                      year: parseInt(e.target.value),
-                    }))
-                  }
-                  className="px-3 py-1.5 border-2 border-gray-300 rounded-lg text-sm font-semibold focus:outline-none focus:border-blue-500 bg-white hover:border-blue-400 transition-colors"
-                >
-                  {generateYears().map((year) => (
-                    <option key={year} value={year}>
+            <div className="grid grid-cols-3 gap-3 mb-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  Year
+                </label>
+                <div className="max-h-40 overflow-y-auto border rounded">
+                  {yearsArray.map((year) => (
+                    <button
+                      key={year}
+                      type="button"
+                      onClick={() =>
+                        setSelectedDate((prev) => ({ ...prev, year }))
+                      }
+                      className={`w-full text-center py-1 text-sm ${
+                        year === selectedDate.year
+                          ? "bg-blue-500 text-white"
+                          : "hover:bg-gray-100"
+                      }`}
+                    >
                       {year}
-                    </option>
+                    </button>
                   ))}
-                </select>
+                </div>
               </div>
 
-              <button
-                type="button"
-                onClick={handleNextMonth}
-                className="p-2 hover:bg-blue-100 rounded-lg transition-colors text-gray-700 font-bold"
-              >
-                <FaChevronDown className="transform -rotate-90 text-lg" />
-              </button>
-            </div>
-
-            {/* Weekday Headers */}
-            <div className="grid grid-cols-7 gap-2 mb-3">
-              {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
-                <div
-                  key={day}
-                  className="text-center text-xs font-bold text-gray-600 py-2 bg-gray-50 rounded-md"
-                >
-                  {day}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  Month
+                </label>
+                <div className="max-h-40 overflow-y-auto border rounded">
+                  {months.map((month, index) => (
+                    <button
+                      key={month}
+                      type="button"
+                      onClick={() =>
+                        setSelectedDate((prev) => ({ ...prev, month: index }))
+                      }
+                      className={`w-full text-center py-1 text-sm ${
+                        index === selectedDate.month
+                          ? "bg-blue-500 text-white"
+                          : "hover:bg-gray-100"
+                      }`}
+                    >
+                      {month.substring(0, 3)}
+                    </button>
+                  ))}
                 </div>
-              ))}
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  Day
+                </label>
+                <div className="max-h-40 overflow-y-auto border rounded">
+                  {daysArray.map((day) => (
+                    <button
+                      key={day}
+                      type="button"
+                      onClick={() =>
+                        setSelectedDate((prev) => ({ ...prev, day }))
+                      }
+                      className={`w-full text-center py-1 text-sm ${
+                        day === selectedDate.day
+                          ? "bg-blue-500 text-white"
+                          : "hover:bg-gray-100"
+                      }`}
+                    >
+                      {day}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
 
-            {/* Calendar Grid */}
-            <div className="grid grid-cols-7 gap-2 mb-5">
-              {calendarDays.map((day, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => handleDaySelect(day)}
-                  disabled={!day}
-                  className={`w-full aspect-square rounded-lg text-sm font-semibold transition-all transform ${
-                    !day
-                      ? "text-transparent cursor-default"
-                      : isToday(day)
-                        ? "bg-amber-100 text-amber-900 border-2 border-amber-400 shadow-md"
-                        : day === selectedDate.day
-                          ? "bg-blue-600 text-white shadow-lg scale-105"
-                          : "text-gray-700 bg-gray-50 hover:bg-blue-50 hover:border-2 hover:border-blue-300 hover:scale-105"
-                  } disabled:cursor-default`}
-                >
-                  {day}
-                </button>
-              ))}
-            </div>
-
-            {/* Today & Action Buttons */}
-            <div className="flex justify-between items-center pt-3 border-t border-gray-200">
-              <button
-                type="button"
-                onClick={handleToday}
-                className="px-3 py-1.5 text-xs font-semibold text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors border border-blue-300"
-              >
-                Today
-              </button>
+            <div className="flex justify-between items-center">
+              <div className="text-sm text-gray-600">
+                Selected: {selectedDate.day} {months[selectedDate.month]}{" "}
+                {selectedDate.year}
+              </div>
               <div className="flex space-x-2">
                 <button
                   type="button"
                   onClick={() => setShowDatePicker(false)}
-                  className="px-4 py-1.5 text-sm font-semibold border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
                   onClick={handleDateSelect}
-                  className="px-4 py-1.5 text-sm font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-md"
+                  className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
                 >
                   Apply
                 </button>
@@ -1188,6 +1366,18 @@ const CreateLaptop = () => {
       </div>
     );
   };
+
+  // Show loading state while fetching
+  if (isFetching) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <FaSpinner className="animate-spin text-4xl text-blue-600 mx-auto mb-4" />
+          <p className="text-gray-600">Loading laptop data...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 p-3 sm:p-4 md:p-6 lg:p-8">
@@ -1202,29 +1392,98 @@ const CreateLaptop = () => {
       <div className="mb-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
-              Create New Laptop
-            </h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
+                Edit Laptop
+              </h1>
+              {hasChanges && (
+                <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs font-medium rounded-full">
+                  Unsaved Changes
+                </span>
+              )}
+            </div>
             <p className="text-gray-600 mt-1">
-              Add a new laptop to your inventory
+              Editing: {originalData?.product?.name || "Laptop"}
             </p>
           </div>
 
-          <div className="flex items-center space-x-3">
+          <div className="flex flex-wrap items-center gap-2">
+            {hasChanges && (
+              <>
+                <button
+                  onClick={resetForm}
+                  className="px-3 py-2 border border-gray-300 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-50 flex items-center gap-2"
+                >
+                  <FaHistory />
+                  Discard Changes
+                </button>
+                <button
+                  onClick={saveAsDraft}
+                  disabled={isSavingDraft}
+                  className="px-3 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-md text-sm font-medium disabled:opacity-50 flex items-center gap-2"
+                >
+                  {isSavingDraft ? (
+                    <FaSpinner className="animate-spin" />
+                  ) : (
+                    <FaSave />
+                  )}
+                  {isSavingDraft ? "Saving..." : "Save Draft"}
+                </button>
+              </>
+            )}
             <button
-              onClick={() => window.history.back()}
-              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md font-medium hover:bg-gray-50"
+              onClick={() => navigate(`/laptops/${id}`)}
+              className="px-3 py-2 border border-blue-300 text-blue-700 rounded-md text-sm font-medium hover:bg-blue-50 flex items-center gap-2"
+            >
+              <FaEye />
+              View
+            </button>
+            <button
+              onClick={() => navigate("/laptops")}
+              className="px-3 py-2 border border-gray-300 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-50"
             >
               Cancel
             </button>
             <button
-              onClick={handleSubmit}
-              disabled={isLoading}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              onClick={() => handleSubmit()}
+              disabled={isLoading || !hasChanges}
+              className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               {isLoading ? <FaSpinner className="animate-spin" /> : <FaSave />}
-              {isLoading ? "Creating..." : "Create Laptop"}
+              {isLoading ? "Updating..." : "Update Laptop"}
             </button>
+          </div>
+        </div>
+
+        {/* Quick Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+          <div className="bg-white p-3 rounded-lg border border-gray-200">
+            <div className="text-xs text-gray-500">Images</div>
+            <div className="text-lg font-semibold text-gray-800">
+              {formData.images.length}
+            </div>
+          </div>
+          <div className="bg-white p-3 rounded-lg border border-gray-200">
+            <div className="text-xs text-gray-500">Variants</div>
+            <div className="text-lg font-semibold text-gray-800">
+              {formData.variants.length}
+            </div>
+          </div>
+          <div className="bg-white p-3 rounded-lg border border-gray-200">
+            <div className="text-xs text-gray-500">Colors</div>
+            <div className="text-lg font-semibold text-gray-800">
+              {formData.laptop.colors.length}
+            </div>
+          </div>
+          <div className="bg-white p-3 rounded-lg border border-gray-200">
+            <div className="text-xs text-gray-500">Status</div>
+            <div
+              className={`text-lg font-semibold ${
+                publishEnabled ? "text-green-600" : "text-gray-600"
+              }`}
+            >
+              {publishEnabled ? "Published" : "Draft"}
+            </div>
           </div>
         </div>
       </div>
@@ -1295,9 +1554,17 @@ const CreateLaptop = () => {
                   </label>
                   <input
                     type="text"
+                    id="laptop-model-input"
                     name="model"
+                    ref={modelRef}
                     value={formData.laptop.model}
-                    onChange={handleLaptopChange}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setFormData((prev) => ({
+                        ...prev,
+                        laptop: { ...prev.laptop, model: v },
+                      }));
+                    }}
                     required
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="e.g., 14-dv2056TU"
@@ -1318,8 +1585,8 @@ const CreateLaptop = () => {
                     filteredOptions={filteredCategories}
                     onSelect={handleCategorySelect}
                     selectedLabel={(() => {
-                      const sel = (categoriesList || []).find(
-                        (c) => (c.value || c) === formData.laptop.category,
+                      const sel = categoriesList.find(
+                        (c) => c.value === formData.laptop.category,
                       );
                       return sel ? sel.label : formData.laptop.category;
                     })()}
@@ -1410,7 +1677,7 @@ const CreateLaptop = () => {
           )}
         </div>
 
-        {/* Colors Section with name and color picker */}
+        {/* Colors Section */}
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
           <button
             onClick={() => toggleSection("colors")}
@@ -1451,13 +1718,15 @@ const CreateLaptop = () => {
                     </h4>
                     <button
                       onClick={() => {
-                        const newColors = formData.laptop.colors.filter(
-                          (_, i) => i !== index,
-                        );
-                        setFormData((prev) => ({
-                          ...prev,
-                          laptop: { ...prev.laptop, colors: newColors },
-                        }));
+                        setFormData((prev) => {
+                          const newColors = (prev.laptop.colors || []).filter(
+                            (_, i) => i !== index,
+                          );
+                          return {
+                            ...prev,
+                            laptop: { ...prev.laptop, colors: newColors },
+                          };
+                        });
                       }}
                       className="text-red-500 hover:text-red-700 text-sm"
                     >
@@ -1474,15 +1743,16 @@ const CreateLaptop = () => {
                         type="text"
                         value={color.name}
                         onChange={(e) => {
-                          const newColors = [...formData.laptop.colors];
-                          newColors[index] = {
-                            ...newColors[index],
-                            name: e.target.value,
-                          };
-                          setFormData((prev) => ({
-                            ...prev,
-                            laptop: { ...prev.laptop, colors: newColors },
-                          }));
+                          const v = e.target.value;
+                          setFormData((prev) => {
+                            const newColors = (prev.laptop.colors || []).map(
+                              (c, i) => (i === index ? { ...c, name: v } : c),
+                            );
+                            return {
+                              ...prev,
+                              laptop: { ...prev.laptop, colors: newColors },
+                            };
+                          });
                         }}
                         placeholder="e.g., Natural Silver, Space Gray"
                         className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
@@ -1501,15 +1771,16 @@ const CreateLaptop = () => {
                           type="color"
                           value={color.code}
                           onChange={(e) => {
-                            const newColors = [...formData.laptop.colors];
-                            newColors[index] = {
-                              ...newColors[index],
-                              code: e.target.value,
-                            };
-                            setFormData((prev) => ({
-                              ...prev,
-                              laptop: { ...prev.laptop, colors: newColors },
-                            }));
+                            const v = e.target.value;
+                            setFormData((prev) => {
+                              const newColors = (prev.laptop.colors || []).map(
+                                (c, i) => (i === index ? { ...c, code: v } : c),
+                              );
+                              return {
+                                ...prev,
+                                laptop: { ...prev.laptop, colors: newColors },
+                              };
+                            });
                           }}
                           className="flex-1 h-10 cursor-pointer"
                         />
@@ -1561,25 +1832,31 @@ const CreateLaptop = () => {
                     type="text"
                     value={feature}
                     onChange={(e) => {
-                      const newFeatures = [...formData.laptop.features];
-                      newFeatures[index] = e.target.value;
-                      setFormData((prev) => ({
-                        ...prev,
-                        laptop: { ...prev.laptop, features: newFeatures },
-                      }));
+                      const v = e.target.value;
+                      setFormData((prev) => {
+                        const newFeatures = (prev.laptop.features || []).map(
+                          (f, i) => (i === index ? v : f),
+                        );
+                        return {
+                          ...prev,
+                          laptop: { ...prev.laptop, features: newFeatures },
+                        };
+                      });
                     }}
                     placeholder="e.g., Backlit Keyboard"
                     className="flex-1 px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
                   <button
                     onClick={() => {
-                      const newFeatures = formData.laptop.features.filter(
-                        (_, i) => i !== index,
-                      );
-                      setFormData((prev) => ({
-                        ...prev,
-                        laptop: { ...prev.laptop, features: newFeatures },
-                      }));
+                      setFormData((prev) => {
+                        const newFeatures = (prev.laptop.features || []).filter(
+                          (_, i) => i !== index,
+                        );
+                        return {
+                          ...prev,
+                          laptop: { ...prev.laptop, features: newFeatures },
+                        };
+                      });
                     }}
                     className="ml-3 text-red-500 hover:text-red-700"
                   >
@@ -1587,15 +1864,11 @@ const CreateLaptop = () => {
                   </button>
                 </div>
               ))}
-              <p className="text-xs text-gray-500">
-                Tip: Add features like "Fingerprint Sensor", "Backlit Keyboard",
-                "Webcam", "Numeric Keypad", "HDMI Port", "USB-C", etc.
-              </p>
             </div>
           )}
         </div>
 
-        {/* Variants Section with updated store fields */}
+        {/* Variants & Stores Section */}
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
           <button
             onClick={() => toggleSection("variants")}
@@ -1638,13 +1911,12 @@ const CreateLaptop = () => {
                     </h3>
                     <button
                       onClick={() => {
-                        const newVariants = formData.variants.filter(
-                          (_, i) => i !== index,
-                        );
-                        setFormData((prev) => ({
-                          ...prev,
-                          variants: newVariants,
-                        }));
+                        setFormData((prev) => {
+                          const newVariants = (prev.variants || []).filter(
+                            (_, i) => i !== index,
+                          );
+                          return { ...prev, variants: newVariants };
+                        });
                       }}
                       className="text-red-500 hover:text-red-700"
                     >
@@ -1669,10 +1941,7 @@ const CreateLaptop = () => {
                         }
                         searchValue={ramSearch[index] || ""}
                         setSearchValue={(val) =>
-                          setRamSearch((prev) => ({
-                            ...prev,
-                            [index]: val,
-                          }))
+                          setRamSearch((prev) => ({ ...prev, [index]: val }))
                         }
                         filteredOptions={(memoryOptions.rams || []).filter(
                           (opt) =>
@@ -1681,15 +1950,13 @@ const CreateLaptop = () => {
                               .includes((ramSearch[index] || "").toLowerCase()),
                         )}
                         onSelect={(opt) => {
-                          const newVariants = [...formData.variants];
-                          newVariants[index] = {
-                            ...newVariants[index],
-                            ram: opt.name,
-                          };
-                          setFormData((prev) => ({
-                            ...prev,
-                            variants: newVariants,
-                          }));
+                          const v = opt.name;
+                          setFormData((prev) => {
+                            const newVariants = (prev.variants || []).map(
+                              (vt, i) => (i === index ? { ...vt, ram: v } : vt),
+                            );
+                            return { ...prev, variants: newVariants };
+                          });
                           setShowRamDropdown((prev) => ({
                             ...prev,
                             [index]: false,
@@ -1738,15 +2005,14 @@ const CreateLaptop = () => {
                               ),
                         )}
                         onSelect={(opt) => {
-                          const newVariants = [...formData.variants];
-                          newVariants[index] = {
-                            ...newVariants[index],
-                            storage: opt.name,
-                          };
-                          setFormData((prev) => ({
-                            ...prev,
-                            variants: newVariants,
-                          }));
+                          const v = opt.name;
+                          setFormData((prev) => {
+                            const newVariants = (prev.variants || []).map(
+                              (vt, i) =>
+                                i === index ? { ...vt, storage: v } : vt,
+                            );
+                            return { ...prev, variants: newVariants };
+                          });
                           setShowStorageDropdown((prev) => ({
                             ...prev,
                             [index]: false,
@@ -1773,15 +2039,14 @@ const CreateLaptop = () => {
                         type="number"
                         value={variant.base_price}
                         onChange={(e) => {
-                          const newVariants = [...formData.variants];
-                          newVariants[index] = {
-                            ...newVariants[index],
-                            base_price: e.target.value,
-                          };
-                          setFormData((prev) => ({
-                            ...prev,
-                            variants: newVariants,
-                          }));
+                          const v = e.target.value;
+                          setFormData((prev) => {
+                            const newVariants = (prev.variants || []).map(
+                              (vt, i) =>
+                                i === index ? { ...vt, base_price: v } : vt,
+                            );
+                            return { ...prev, variants: newVariants };
+                          });
                         }}
                         placeholder="e.g., 65999"
                         className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -1847,15 +2112,24 @@ const CreateLaptop = () => {
                                     ),
                               )}
                               onSelect={(opt) => {
-                                const newVariants = [...formData.variants];
-                                newVariants[index].stores[storeIndex] = {
-                                  ...newVariants[index].stores[storeIndex],
-                                  store_name: opt.name,
-                                };
-                                setFormData((prev) => ({
-                                  ...prev,
-                                  variants: newVariants,
-                                }));
+                                const v = opt.name;
+                                setFormData((prev) => {
+                                  const newVariants = (prev.variants || []).map(
+                                    (vt, vi) =>
+                                      vi === index
+                                        ? {
+                                            ...vt,
+                                            stores: (vt.stores || []).map(
+                                              (st, si) =>
+                                                si === storeIndex
+                                                  ? { ...st, store_name: v }
+                                                  : st,
+                                            ),
+                                          }
+                                        : vt,
+                                  );
+                                  return { ...prev, variants: newVariants };
+                                });
                                 setShowStoreDropdown((prev) => ({
                                   ...prev,
                                   [`${index}-${storeIndex}`]: false,
@@ -1886,15 +2160,24 @@ const CreateLaptop = () => {
                               type="number"
                               value={store.price}
                               onChange={(e) => {
-                                const newVariants = [...formData.variants];
-                                newVariants[index].stores[storeIndex] = {
-                                  ...newVariants[index].stores[storeIndex],
-                                  price: e.target.value,
-                                };
-                                setFormData((prev) => ({
-                                  ...prev,
-                                  variants: newVariants,
-                                }));
+                                const v = e.target.value;
+                                setFormData((prev) => {
+                                  const newVariants = (prev.variants || []).map(
+                                    (vt, vi) =>
+                                      vi === index
+                                        ? {
+                                            ...vt,
+                                            stores: (vt.stores || []).map(
+                                              (st, si) =>
+                                                si === storeIndex
+                                                  ? { ...st, price: v }
+                                                  : st,
+                                            ),
+                                          }
+                                        : vt,
+                                  );
+                                  return { ...prev, variants: newVariants };
+                                });
                               }}
                               placeholder="Actual price"
                               className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
@@ -1914,15 +2197,24 @@ const CreateLaptop = () => {
                               max="100"
                               value={store.discount}
                               onChange={(e) => {
-                                const newVariants = [...formData.variants];
-                                newVariants[index].stores[storeIndex] = {
-                                  ...newVariants[index].stores[storeIndex],
-                                  discount: e.target.value,
-                                };
-                                setFormData((prev) => ({
-                                  ...prev,
-                                  variants: newVariants,
-                                }));
+                                const v = e.target.value;
+                                setFormData((prev) => {
+                                  const newVariants = (prev.variants || []).map(
+                                    (vt, vi) =>
+                                      vi === index
+                                        ? {
+                                            ...vt,
+                                            stores: (vt.stores || []).map(
+                                              (st, si) =>
+                                                si === storeIndex
+                                                  ? { ...st, discount: v }
+                                                  : st,
+                                            ),
+                                          }
+                                        : vt,
+                                  );
+                                  return { ...prev, variants: newVariants };
+                                });
                               }}
                               placeholder="e.g., 15"
                               className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
@@ -1937,15 +2229,24 @@ const CreateLaptop = () => {
                               type="text"
                               value={store.offers}
                               onChange={(e) => {
-                                const newVariants = [...formData.variants];
-                                newVariants[index].stores[storeIndex] = {
-                                  ...newVariants[index].stores[storeIndex],
-                                  offers: e.target.value,
-                                };
-                                setFormData((prev) => ({
-                                  ...prev,
-                                  variants: newVariants,
-                                }));
+                                const v = e.target.value;
+                                setFormData((prev) => {
+                                  const newVariants = (prev.variants || []).map(
+                                    (vt, vi) =>
+                                      vi === index
+                                        ? {
+                                            ...vt,
+                                            stores: (vt.stores || []).map(
+                                              (st, si) =>
+                                                si === storeIndex
+                                                  ? { ...st, offers: v }
+                                                  : st,
+                                            ),
+                                          }
+                                        : vt,
+                                  );
+                                  return { ...prev, variants: newVariants };
+                                });
                               }}
                               placeholder="e.g., Bank Offer, Exchange Bonus"
                               className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
@@ -1962,15 +2263,24 @@ const CreateLaptop = () => {
                               type="url"
                               value={store.url}
                               onChange={(e) => {
-                                const newVariants = [...formData.variants];
-                                newVariants[index].stores[storeIndex] = {
-                                  ...newVariants[index].stores[storeIndex],
-                                  url: e.target.value,
-                                };
-                                setFormData((prev) => ({
-                                  ...prev,
-                                  variants: newVariants,
-                                }));
+                                const v = e.target.value;
+                                setFormData((prev) => {
+                                  const newVariants = (prev.variants || []).map(
+                                    (vt, vi) =>
+                                      vi === index
+                                        ? {
+                                            ...vt,
+                                            stores: (vt.stores || []).map(
+                                              (st, si) =>
+                                                si === storeIndex
+                                                  ? { ...st, url: v }
+                                                  : st,
+                                            ),
+                                          }
+                                        : vt,
+                                  );
+                                  return { ...prev, variants: newVariants };
+                                });
                               }}
                               placeholder="https://store.com/product"
                               className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
@@ -1984,15 +2294,24 @@ const CreateLaptop = () => {
                               type="text"
                               value={store.offer_text}
                               onChange={(e) => {
-                                const newVariants = [...formData.variants];
-                                newVariants[index].stores[storeIndex] = {
-                                  ...newVariants[index].stores[storeIndex],
-                                  offer_text: e.target.value,
-                                };
-                                setFormData((prev) => ({
-                                  ...prev,
-                                  variants: newVariants,
-                                }));
+                                const v = e.target.value;
+                                setFormData((prev) => {
+                                  const newVariants = (prev.variants || []).map(
+                                    (vt, vi) =>
+                                      vi === index
+                                        ? {
+                                            ...vt,
+                                            stores: (vt.stores || []).map(
+                                              (st, si) =>
+                                                si === storeIndex
+                                                  ? { ...st, offer_text: v }
+                                                  : st,
+                                            ),
+                                          }
+                                        : vt,
+                                  );
+                                  return { ...prev, variants: newVariants };
+                                });
                               }}
                               placeholder="e.g., Limited time offer"
                               className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
@@ -2032,7 +2351,6 @@ const CreateLaptop = () => {
 
           {expandedSections.specs && (
             <div className="p-4">
-              {/* Specification Tabs */}
               <div className="mb-4">
                 <div className="flex overflow-x-auto pb-2 scrollbar-hide">
                   {specTabs.map((tab) => {
@@ -2055,7 +2373,6 @@ const CreateLaptop = () => {
                 </div>
               </div>
 
-              {/* Specification Fields */}
               <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                   {getDefaultFields(activeSpecTab).map((field) => (
@@ -2128,7 +2445,7 @@ const CreateLaptop = () => {
           )}
         </div>
 
-        {/* Warranty Section (expanded for easy access) */}
+        {/* Warranty Section */}
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
           <button
             onClick={() => toggleSection("warranty")}
@@ -2248,10 +2565,10 @@ const CreateLaptop = () => {
           )}
         </div>
 
-        {/* Publish Toggle */}
+        {/* Publish & Actions Section */}
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
           <div className="p-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="flex items-center space-x-3">
                 <div
                   className={`w-8 h-8 rounded-lg flex items-center justify-center ${
@@ -2270,48 +2587,62 @@ const CreateLaptop = () => {
                   </div>
                   <div className="text-sm text-gray-600">
                     {publishEnabled
-                      ? "Laptop will be published immediately"
-                      : "Save as draft"}
+                      ? "Laptop is published and visible to users"
+                      : "Laptop is saved as draft"}
                   </div>
                 </div>
               </div>
 
-              <button
-                onClick={() => setPublishEnabled(!publishEnabled)}
-                className={`px-4 py-2 rounded-md font-medium ${
-                  publishEnabled
-                    ? "bg-green-600 hover:bg-green-700 text-white"
-                    : "bg-gray-200 hover:bg-gray-300 text-gray-800"
-                }`}
-              >
-                {publishEnabled ? "Published" : "Draft"}
-              </button>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => setPublishEnabled(!publishEnabled)}
+                  className={`px-4 py-2 rounded-md font-medium ${
+                    publishEnabled
+                      ? "bg-green-600 hover:bg-green-700 text-white"
+                      : "bg-gray-200 hover:bg-gray-300 text-gray-800"
+                  }`}
+                >
+                  {publishEnabled ? "Published" : "Draft"}
+                </button>
+
+                <button
+                  onClick={() => {
+                    if (window.confirm("Duplicate this laptop?")) {
+                      navigate(`/laptops/create?duplicate=${id}`);
+                    }
+                  }}
+                  className="px-4 py-2 border border-blue-300 text-blue-700 rounded-md font-medium hover:bg-blue-50 flex items-center gap-2"
+                >
+                  <FaCopy />
+                  Duplicate
+                </button>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Form Actions */}
+        {/* Final Actions */}
         <div className="flex flex-col sm:flex-row gap-3 pt-4">
           <button
-            onClick={handleSubmit}
-            disabled={isLoading}
+            onClick={() => handleSubmit()}
+            disabled={isLoading || !hasChanges}
             className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-md font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {isLoading ? (
               <>
                 <FaSpinner className="animate-spin" />
-                <span>Creating...</span>
+                <span>Updating...</span>
               </>
             ) : (
               <>
                 <FaSave />
-                <span>Create Laptop</span>
+                <span>Update Laptop</span>
               </>
             )}
           </button>
 
           <button
-            onClick={() => window.history.back()}
+            onClick={() => navigate("/laptops")}
             className="px-6 py-3 border border-gray-300 text-gray-700 rounded-md font-medium hover:bg-gray-50"
           >
             Cancel
@@ -2322,4 +2653,4 @@ const CreateLaptop = () => {
   );
 };
 
-export default CreateLaptop;
+export default EditLaptop;
