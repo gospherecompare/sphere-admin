@@ -169,7 +169,7 @@ const CreateHomeAppliance = () => {
   useEffect(() => {
     const fetchBrands = async () => {
       try {
-        const res = await fetch("http://localhost:5000/api/brands");
+        const res = await fetch("http://apishpere.duckdns.org/api/brands");
         if (!res.ok) return;
         const data = await res.json();
         const brandsArray = data.brands || data || [];
@@ -187,8 +187,8 @@ const CreateHomeAppliance = () => {
       try {
         const token = Cookies.get("authToken");
         const storesEndpoint = token
-          ? "http://localhost:5000/api/online-stores"
-          : "http://localhost:5000/api/public/online-stores";
+          ? "http://apishpere.duckdns.org/api/online-stores"
+          : "http://apishpere.duckdns.org/api/public/online-stores";
         const storesRes = await fetch(storesEndpoint, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
@@ -200,7 +200,7 @@ const CreateHomeAppliance = () => {
         }
 
         const ramRes = await fetch(
-          "http://localhost:5000/api/ram-storage-config",
+          "http://apishpere.duckdns.org/api/ram-storage-config",
           {
             headers: token ? { Authorization: `Bearer ${token}` } : {},
           },
@@ -295,7 +295,7 @@ const CreateHomeAppliance = () => {
     const fetchApplianceCategories = async () => {
       try {
         const token = Cookies.get("authToken");
-        const res = await fetch("http://localhost:5000/api/categories", {
+        const res = await fetch("http://apishpere.duckdns.org/api/categories", {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
         if (!res.ok) return;
@@ -786,7 +786,7 @@ const CreateHomeAppliance = () => {
         published: publishEnabled,
       };
 
-      const res = await fetch("http://localhost:5000/api/home-appliances", {
+      const res = await fetch("http://apishpere.duckdns.org/api/home-appliances", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
