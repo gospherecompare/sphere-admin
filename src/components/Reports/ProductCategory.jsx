@@ -40,7 +40,7 @@ const ProductCategoryReport = () => {
     try {
       const token = Cookies.get("authToken");
       const res = await fetch(
-        "http://localhost:5000/api/reports/products-by-category",
+        "http://apishpere.duckdns.org/api/reports/products-by-category",
         {
           method: "GET",
           headers: {
