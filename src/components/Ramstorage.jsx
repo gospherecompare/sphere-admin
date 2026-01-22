@@ -41,7 +41,7 @@ const RamStorageConfig = () => {
     setError(null);
     try {
       const token = Cookies.get("authToken");
-      const res = await fetch("http://localhost:5000/api/ram-storage-config", {
+      const res = await fetch("http://apishpere.duckdns.org/api/ram-storage-config", {
         method: "GET",
         headers: {
           Authorization: token ? `Bearer ${token}` : "",
@@ -124,8 +124,8 @@ const RamStorageConfig = () => {
       const token = Cookies.get("authToken");
       const method = editingId ? "PUT" : "POST";
       const url = editingId
-        ? `http://localhost:5000/api/ram-storage-config/${editingId}`
-        : "http://localhost:5000/api/ram-storage-config";
+        ? `http://apishpere.duckdns.org/api/ram-storage-config/${editingId}`
+        : "http://apishpere.duckdns.org/api/ram-storage-config";
 
       const res = await fetch(url, {
         method,
@@ -171,7 +171,7 @@ const RamStorageConfig = () => {
     try {
       const token = Cookies.get("authToken");
       const res = await fetch(
-        `http://localhost:5000/api/ram-storage-config/${id}`,
+        `http://apishpere.duckdns.org/api/ram-storage-config/${id}`,
         {
           method: "DELETE",
           headers: {
