@@ -48,7 +48,7 @@ const ViewLaptops = () => {
       setError(null);
       try {
         const token = Cookies.get("authToken");
-        const res = await fetch("http://localhost:5000/api/laptop", {
+        const res = await fetch("http://apishpere.duckdns.org/api/laptop", {
           method: "GET",
           headers: {
             Authorization: token ? `Bearer ${token}` : undefined,
@@ -221,7 +221,7 @@ const ViewLaptops = () => {
 
     try {
       const token = Cookies.get("authToken");
-      const res = await fetch(`http://localhost:5000/api/laptop/${id}`, {
+      const res = await fetch(`http://apishpere.duckdns.org/api/laptop/${id}`, {
         method: "DELETE",
         headers: {
           Authorization: token ? `Bearer ${token}` : "",
@@ -286,7 +286,7 @@ const ViewLaptops = () => {
       };
 
       const res = await fetch(
-        `http://localhost:5000/api/products/${resolvedId}/publish`,
+        `http://apishpere.duckdns.org/api/products/${resolvedId}/publish`,
         {
           method: "PATCH",
           headers: {
@@ -345,7 +345,7 @@ const ViewLaptops = () => {
   const handleExport = async (publishedOnly = false) => {
     try {
       const token = Cookies.get("authToken");
-      const res = await fetch("http://localhost:5000/api/laptops/export", {
+      const res = await fetch("http://apishpere.duckdns.org/api/laptops/export", {
         method: "GET",
         headers: {
           Authorization: token ? `Bearer ${token}` : "",
@@ -393,7 +393,7 @@ const ViewLaptops = () => {
       const formData = new FormData();
       formData.append("file", file);
 
-      const res = await fetch("http://localhost:5000/api/laptops/import", {
+      const res = await fetch("http://apishpere.duckdns.org/api/laptops/import", {
         method: "POST",
         headers: {
           Authorization: token ? `Bearer ${token}` : "",
