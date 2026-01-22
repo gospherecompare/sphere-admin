@@ -74,7 +74,7 @@ const SpecificationsManager = () => {
   const fetchSpecs = async () => {
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:5000/api/specs", {
+      const response = await fetch("http://apishpere.duckdns.org/api/specs", {
         headers: {
           Authorization: `Bearer ${Cookies.get("authToken") || "demo-token"}`,
           "Content-Type": "application/json",
@@ -111,7 +111,7 @@ const SpecificationsManager = () => {
     };
 
     try {
-      const response = await fetch("http://localhost:5000/api/specs", {
+      const response = await fetch("http://apishpere.duckdns.org/api/specs", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${Cookies.get("authToken") || "demo-token"}`,
@@ -138,7 +138,7 @@ const SpecificationsManager = () => {
 
     try {
       const response = await fetch(
-        `http://localhost:5000/api/specs/${deleteId}`,
+        `http://apishpere.duckdns.org/api/specs/${deleteId}`,
         {
           method: "DELETE",
           headers: {
