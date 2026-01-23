@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef, createRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Cookies from "js-cookie";
+import { buildUrl } from "../api";
 import { uploadToCloudinary } from "../config/cloudinary";
 import {
   FaSave,
@@ -141,12 +142,9 @@ const EditHomeAppliance = () => {
       try {
         setIsFetching(true);
         const token = Cookies.get("authToken");
-        const res = await fetch(
-          `http://localhost:5000/api/home-appliances/${id}`,
-          {
-            headers: token ? { Authorization: `Bearer ${token}` } : {},
-          },
-        );
+        const res = await fetch(buildUrl(`/api/home-appliances/${id}`), {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
 
         if (!res.ok) {
           if (res.status === 404) {
@@ -225,8 +223,8 @@ const EditHomeAppliance = () => {
       try {
         const token = Cookies.get("authToken");
         const storesEndpoint = token
-          ? "http://localhost:5000/api/online-stores"
-          : "http://localhost:5000/api/public/online-stores";
+          ? buildUrl("/api/online-stores")
+          : buildUrl("/api/public/online-stores");
         const storesRes = await fetch(storesEndpoint, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
@@ -236,12 +234,9 @@ const EditHomeAppliance = () => {
           setStoresList((rows || []).map((r) => ({ id: r.id, name: r.name })));
         }
 
-        const ramRes = await fetch(
-          "http://localhost:5000/api/ram-storage-config",
-          {
-            headers: token ? { Authorization: `Bearer ${token}` } : {},
-          },
-        );
+        const ramRes = await fetch(buildUrl("/api/ram-storage-config"), {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
         if (ramRes.ok) {
           const d = await ramRes.json();
           const rows = (d && (d.data || d.rows || d)) || [];
@@ -272,7 +267,7 @@ const EditHomeAppliance = () => {
   useEffect(() => {
     const fetchBrands = async () => {
       try {
-        const res = await fetch("http://localhost:5000/api/brands");
+        const res = await fetch(buildUrl("/api/brands"));
         if (!res.ok) return;
         const data = await res.json();
         const brandsArray = data.brands || data || [];
@@ -298,7 +293,7 @@ const EditHomeAppliance = () => {
     const fetchApplianceCategories = async () => {
       try {
         const token = Cookies.get("authToken");
-        const res = await fetch("http://localhost:5000/api/categories", {
+        const res = await fetch(buildUrl("/api/categories"), {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
         if (!res.ok) return;
@@ -829,17 +824,14 @@ const EditHomeAppliance = () => {
         published: formData.published,
       };
 
-      const res = await fetch(
-        `http://localhost:5000/api/home-appliances/${id}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-          body: JSON.stringify(submitData),
+      const res = await fetch(buildUrl(`/api/home-appliances/${id}`), {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-      );
+        body: JSON.stringify(submitData),
+      });
 
       if (!res.ok) {
         const errorData = await res.json();

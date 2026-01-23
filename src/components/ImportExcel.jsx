@@ -1,9 +1,10 @@
 import React, { useRef, useState } from "react";
 import Cookies from "js-cookie";
+import { buildUrl } from "../api";
 import { FaUpload, FaSpinner } from "react-icons/fa";
 
 const ImportExcel = ({
-  uploadUrl = "http://localhost:5000/api/categories/import",
+  uploadUrl = buildUrl("/api/categories/import"),
   onImported,
   buttonLabel = "Import",
 }) => {

@@ -14,6 +14,7 @@ import {
   FaRulerCombined,
 } from "react-icons/fa";
 import Cookies from "js-cookie";
+import { buildUrl } from "../api";
 
 const SpecificationsManager = () => {
   // State management
@@ -48,7 +49,7 @@ const SpecificationsManager = () => {
           (spec.ram && spec.ram.toString().includes(searchTerm)) ||
           (spec.storage && spec.storage.toString().includes(searchTerm)) ||
           (spec.long && spec.long.toString().includes(searchTerm)) ||
-          spec.id.toString().includes(searchTerm)
+          spec.id.toString().includes(searchTerm),
       );
       setFilteredSpecs(filtered);
       setCurrentPage(1);
@@ -74,7 +75,7 @@ const SpecificationsManager = () => {
   const fetchSpecs = async () => {
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:5000/api/specs", {
+      const response = await fetch(buildUrl("/api/specs"), {
         headers: {
           Authorization: `Bearer ${Cookies.get("authToken") || "demo-token"}`,
           "Content-Type": "application/json",
@@ -111,7 +112,7 @@ const SpecificationsManager = () => {
     };
 
     try {
-      const response = await fetch("http://localhost:5000/api/specs", {
+      const response = await fetch(buildUrl("/api/specs"), {
         method: "POST",
         headers: {
           Authorization: `Bearer ${Cookies.get("authToken") || "demo-token"}`,
@@ -137,16 +138,13 @@ const SpecificationsManager = () => {
     if (!deleteId) return;
 
     try {
-      const response = await fetch(
-        `http://localhost:5000/api/specs/${deleteId}`,
-        {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${Cookies.get("authToken") || "demo-token"}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      const response = await fetch(buildUrl(`/api/specs/${deleteId}`), {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${Cookies.get("authToken") || "demo-token"}`,
+          "Content-Type": "application/json",
+        },
+      });
 
       if (!response.ok)
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -261,10 +259,10 @@ const SpecificationsManager = () => {
             toast.type === "success"
               ? "bg-green-500"
               : toast.type === "error"
-              ? "bg-red-500"
-              : toast.type === "warning"
-              ? "bg-yellow-500"
-              : "bg-blue-500"
+                ? "bg-red-500"
+                : toast.type === "warning"
+                  ? "bg-yellow-500"
+                  : "bg-blue-500"
           }`}
         />
       </div>

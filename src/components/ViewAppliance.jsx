@@ -29,6 +29,7 @@ import {
   FaFlag,
 } from "react-icons/fa";
 import Cookies from "js-cookie";
+import { buildUrl } from "../api";
 
 const ViewHomeAppliances = () => {
   const [appliances, setAppliances] = useState([]);
@@ -51,7 +52,7 @@ const ViewHomeAppliances = () => {
       setError(null);
       try {
         const token = Cookies.get("authToken");
-        const res = await fetch("http://localhost:5000/api/homeappliance", {
+        const res = await fetch(buildUrl("/api/homeappliance"), {
           method: "GET",
           headers: {
             Authorization: token ? `Bearer ${token}` : undefined,
@@ -239,15 +240,12 @@ const ViewHomeAppliances = () => {
 
     try {
       const token = Cookies.get("authToken");
-      const res = await fetch(
-        `http://localhost:5000/api/home-appliance/${id}`,
-        {
-          method: "DELETE",
-          headers: {
-            Authorization: token ? `Bearer ${token}` : "",
-          },
+      const res = await fetch(buildUrl(`/api/home-appliance/${id}`), {
+        method: "DELETE",
+        headers: {
+          Authorization: token ? `Bearer ${token}` : "",
         },
-      );
+      });
 
       if (!res.ok) throw new Error("Delete failed");
 
@@ -306,17 +304,14 @@ const ViewHomeAppliances = () => {
         published_by: userId,
       };
 
-      const res = await fetch(
-        `http://localhost:5000/api/products/${resolvedId}/publish`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: token ? `Bearer ${token}` : "",
-          },
-          body: JSON.stringify(body),
+      const res = await fetch(buildUrl(`/api/products/${resolvedId}/publish`), {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: token ? `Bearer ${token}` : "",
         },
-      );
+        body: JSON.stringify(body),
+      });
 
       if (!res.ok) {
         const errText = await res.text().catch(() => "");
@@ -366,15 +361,12 @@ const ViewHomeAppliances = () => {
   const handleExport = async (publishedOnly = false) => {
     try {
       const token = Cookies.get("authToken");
-      const res = await fetch(
-        "http://localhost:5000/api/home-appliances/export",
-        {
-          method: "GET",
-          headers: {
-            Authorization: token ? `Bearer ${token}` : "",
-          },
+      const res = await fetch(buildUrl("/api/home-appliances/export"), {
+        method: "GET",
+        headers: {
+          Authorization: token ? `Bearer ${token}` : "",
         },
-      );
+      });
 
       if (!res.ok) throw new Error("Export failed");
 
@@ -417,16 +409,13 @@ const ViewHomeAppliances = () => {
       const formData = new FormData();
       formData.append("file", file);
 
-      const res = await fetch(
-        "http://localhost:5000/api/home-appliances/import",
-        {
-          method: "POST",
-          headers: {
-            Authorization: token ? `Bearer ${token}` : "",
-          },
-          body: formData,
+      const res = await fetch(buildUrl("/api/home-appliances/import"), {
+        method: "POST",
+        headers: {
+          Authorization: token ? `Bearer ${token}` : "",
         },
-      );
+        body: formData,
+      });
 
       if (!res.ok) throw new Error("Import failed");
 

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Cookies from "js-cookie";
 import axios from "axios";
+import { buildUrl } from "../api";
 import {
   FaUser,
   FaEnvelope,
@@ -71,12 +72,9 @@ const AccountManagement = () => {
         return;
       }
 
-      const response = await axios.get(
-        "http://localhost:5000/api/auth/profile",
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        },
-      );
+      const response = await axios.get(buildUrl("/api/auth/profile"), {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
       if (response.data.success) {
         const user = response.data.user;
@@ -232,7 +230,7 @@ const AccountManagement = () => {
       const token = Cookies.get("authToken");
 
       const response = await axios.put(
-        "http://localhost:5000/api/auth/profile",
+        buildUrl("/api/auth/profile"),
         {
           email: profileForm.email,
           phone: profileForm.phone,
@@ -275,7 +273,7 @@ const AccountManagement = () => {
       const token = Cookies.get("authToken");
 
       const response = await axios.post(
-        "http://localhost:5000/api/auth/change-password",
+        buildUrl("/api/auth/change-password"),
         {
           currentPassword: passwordForm.currentPassword,
           newPassword: passwordForm.newPassword,

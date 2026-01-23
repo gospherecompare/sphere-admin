@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import Cookies from "js-cookie";
+import { buildUrl } from "../api";
 import {
   FaStar,
   FaEdit,
@@ -79,7 +80,7 @@ const AdminRatingManagement = () => {
     setLoading(true);
     try {
       const token = Cookies.get("authToken");
-      const res = await fetch("http://localhost:5000/api/smartphones", {
+      const res = await fetch(buildUrl("/api/smartphones"), {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
@@ -93,8 +94,8 @@ const AdminRatingManagement = () => {
         const phones = Array.isArray(data)
           ? data
           : Array.isArray(data?.smartphones)
-          ? data.smartphones
-          : [];
+            ? data.smartphones
+            : [];
         setSmartphones(phones);
       } else {
         throw new Error("Failed to fetch smartphones");
@@ -111,7 +112,7 @@ const AdminRatingManagement = () => {
     setLoading(true);
     try {
       const res = await fetch(
-        `http://localhost:5000/api/public/smartphone/${smartphoneId}/rating`
+        buildUrl(`/api/public/smartphone/${smartphoneId}/rating`),
       );
 
       if (res.ok) {
@@ -131,7 +132,7 @@ const AdminRatingManagement = () => {
   const fetchAverageRating = async (smartphoneId) => {
     try {
       const res = await fetch(
-        `http://localhost:5000/api/public/smartphone/${smartphoneId}/rating`
+        buildUrl(`/api/public/smartphone/${smartphoneId}/rating`),
       );
 
       if (res.ok) {
@@ -150,7 +151,7 @@ const AdminRatingManagement = () => {
     try {
       const token = Cookies.get("authToken");
       const res = await fetch(
-        `http://localhost:5000/api/private/smartphone/${selectedSmartphone.id}/rating`,
+        buildUrl(`/api/private/smartphone/${selectedSmartphone.id}/rating`),
         {
           method: "PUT",
           headers: {
@@ -158,7 +159,7 @@ const AdminRatingManagement = () => {
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify(editForm),
-        }
+        },
       );
 
       if (res.ok) {
@@ -184,13 +185,13 @@ const AdminRatingManagement = () => {
     try {
       const token = Cookies.get("authToken");
       const res = await fetch(
-        `http://localhost:5000/api/private/smartphone/${selectedSmartphone.id}/rating`,
+        buildUrl(`/api/private/smartphone/${selectedSmartphone.id}/rating`),
         {
           method: "DELETE",
           headers: {
             Authorization: `Bearer ${token}`,
           },
-        }
+        },
       );
 
       if (res.ok) {
@@ -222,7 +223,7 @@ const AdminRatingManagement = () => {
             "Content-Type": "application/json",
           },
           body: JSON.stringify(editForm),
-        }
+        },
       );
 
       if (res.ok) {
@@ -257,7 +258,7 @@ const AdminRatingManagement = () => {
     (phone) =>
       (phone?.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
       (phone?.brand || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (phone?.model || "").toLowerCase().includes(searchTerm.toLowerCase())
+      (phone?.model || "").toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   const sortedSmartphones = [...filteredSmartphones].sort((a, b) => {
@@ -759,7 +760,7 @@ const AdminRatingManagement = () => {
                               </p>
                               <p className="text-sm text-gray-500">
                                 {new Date(
-                                  rating.created_at
+                                  rating.created_at,
                                 ).toLocaleDateString()}
                               </p>
                             </div>

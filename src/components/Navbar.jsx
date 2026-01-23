@@ -8,6 +8,7 @@ import React, {
 } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Cookies from "js-cookie";
+import { buildUrl } from "../api";
 import {
   FaSearch,
   FaBell,
@@ -28,7 +29,6 @@ import {
 } from "react-icons/fa";
 
 // Constants and utilities
-const API_BASE_URL = "http://localhost:5000";
 
 const SearchSuggestions = ({
   suggestions,
@@ -312,9 +312,7 @@ const Navbar = ({ onToggleSidebar, sidebarCollapsed, onLogout }) => {
     searchTimer.current = setTimeout(async () => {
       try {
         const res = await fetch(
-          `${API_BASE_URL}/api/search?q=${encodeURIComponent(
-            searchQuery.trim(),
-          )}`,
+          buildUrl(`/api/search?q=${encodeURIComponent(searchQuery.trim())}`),
         );
 
         if (!res.ok)

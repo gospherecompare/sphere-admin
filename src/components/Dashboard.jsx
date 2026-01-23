@@ -34,6 +34,7 @@ import {
   FaExclamationCircle, // Already imported but confirming
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
+import { buildUrl } from "../api";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -326,12 +327,12 @@ const Dashboard = () => {
           appliancesRes,
           networkingRes,
         ] = await Promise.all([
-          fetch("http://localhost:5000/api/categories", { headers }),
-          fetch("http://localhost:5000/api/brands", { headers }),
-          fetch("http://localhost:5000/api/smartphone", { headers }),
-          fetch("http://localhost:5000/api/laptop", { headers }),
-          fetch("http://localhost:5000/api/homeappliance", { headers }),
-          fetch("http://localhost:5000/api/networking", { headers }),
+          fetch(buildUrl("/api/categories"), { headers }),
+          fetch(buildUrl("/api/brands"), { headers }),
+          fetch(buildUrl("/api/smartphone"), { headers }),
+          fetch(buildUrl("/api/laptop"), { headers }),
+          fetch(buildUrl("/api/homeappliance"), { headers }),
+          fetch(buildUrl("/api/networking"), { headers }),
         ]);
 
         const [

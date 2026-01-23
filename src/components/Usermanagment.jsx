@@ -1,6 +1,7 @@
 // UserManagement.jsx
 import React, { useState, useEffect } from "react";
 import axios from "axios";
+import { buildUrl } from "../api";
 import Cookies from "js-cookie";
 import {
   Box,
@@ -98,9 +99,9 @@ const UserManagement = () => {
     try {
       setLoading(true);
       const [usersRes, rolesRes, permissionsRes] = await Promise.all([
-        axios.get("http://localhost:5000/api/users"), // You need to create this endpoint
-        axios.get("http://localhost:5000/api/rbac/roles"),
-        axios.get("http://localhost:5000/api/rbac/permissions"),
+        axios.get(buildUrl("/api/users")), // You need to create this endpoint
+        axios.get(buildUrl("/api/rbac/roles")),
+        axios.get(buildUrl("/api/rbac/permissions")),
       ]);
       setUsers(usersRes.data);
       setRoles(rolesRes.data);
@@ -166,14 +167,11 @@ const UserManagement = () => {
     try {
       if (userForm.id) {
         // Update existing user
-        await axios.put(
-          `/http://localhost:5000/api/users/${userForm.id}`,
-          userForm
-        );
+        await axios.put(buildUrl(`/api/users/${userForm.id}`), userForm);
         setSuccess("User updated successfully!");
       } else {
         // Create new user
-        await axios.post("http://localhost:5000/api/auth/register", userForm);
+        await axios.post(buildUrl("/api/auth/register"), userForm);
         setSuccess("User created successfully!");
       }
       setUserDialogOpen(false);
@@ -191,7 +189,7 @@ const UserManagement = () => {
     }
 
     try {
-      await axios.delete(`http://localhost:5000/api/users/${id}`);
+      await axios.delete(buildUrl(`/api/users/${id}`));
       setUsers((prev) => prev.filter((user) => user.id !== id));
       setSuccess("User deleted successfully!");
     } catch (err) {
@@ -209,12 +207,9 @@ const UserManagement = () => {
   // Handle role assignment
   const handleAssignRole = async (roleId) => {
     try {
-      await axios.post(
-        `http://localhost:5000/api/rbac/users/${selectedUser.id}/roles`,
-        {
-          role_id: roleId,
-        }
-      );
+      await axios.post(buildUrl(`/api/rbac/users/${selectedUser.id}/roles`), {
+        role_id: roleId,
+      });
       setSuccess("Role assigned successfully!");
       setRoleAssignmentDialog(false);
       fetchData();
@@ -258,8 +253,8 @@ const UserManagement = () => {
             user.role === "admin"
               ? "error"
               : user.role === "editor"
-              ? "warning"
-              : "default"
+                ? "warning"
+                : "default"
           }
           size="small"
           icon={

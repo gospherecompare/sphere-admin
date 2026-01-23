@@ -22,6 +22,7 @@ import {
   FaEyeSlash,
 } from "react-icons/fa";
 import Cookies from "js-cookie";
+import { buildUrl } from "../api";
 
 const ViewMobiles = () => {
   const [mobiles, setMobiles] = useState([]);
@@ -43,7 +44,7 @@ const ViewMobiles = () => {
       setError(null);
       try {
         const token = Cookies.get("authToken");
-        const res = await fetch("http://localhost:5000/api/smartphone", {
+        const res = await fetch(buildUrl("/api/smartphone"), {
           method: "GET",
           headers: {
             Authorization: token ? `Bearer ${token}` : undefined,
@@ -240,9 +241,7 @@ const ViewMobiles = () => {
       }
 
       const res = await fetch(
-        `http://localhost:5000/api/smartphone/${encodeURIComponent(
-          resolvedId,
-        )}`,
+        buildUrl(`/api/smartphone/${encodeURIComponent(resolvedId)}`),
         {
           method: "DELETE",
           headers: {
@@ -331,17 +330,14 @@ const ViewMobiles = () => {
         published_by: userId,
       };
 
-      const res = await fetch(
-        `http://localhost:5000/api/products/${resolvedId}/publish`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: token ? `Bearer ${token}` : "",
-          },
-          body: JSON.stringify(body),
+      const res = await fetch(buildUrl(`/api/products/${resolvedId}/publish`), {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: token ? `Bearer ${token}` : "",
         },
-      );
+        body: JSON.stringify(body),
+      });
 
       if (!res.ok) {
         const errText = await res.text().catch(() => "");
@@ -409,7 +405,7 @@ const ViewMobiles = () => {
   const handleExport = async (publishedOnly = false) => {
     try {
       const token = Cookies.get("authToken");
-      const res = await fetch("http://localhost:5000/api/smartphones/export", {
+      const res = await fetch(buildUrl("/api/smartphones/export"), {
         method: "GET",
         headers: {
           Authorization: token ? `Bearer ${token}` : "",
@@ -457,7 +453,7 @@ const ViewMobiles = () => {
       const formData = new FormData();
       formData.append("file", file);
 
-      const res = await fetch("http://localhost:5000/api/smartphones/import", {
+      const res = await fetch(buildUrl("/api/smartphones/import"), {
         method: "POST",
         headers: {
           Authorization: token ? `Bearer ${token}` : "",

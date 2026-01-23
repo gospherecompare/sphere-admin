@@ -1,6 +1,7 @@
 // PermissionManagement.jsx
 import React, { useState, useEffect } from "react";
 import axios from "axios";
+import { buildUrl } from "../api";
 import Cookies from "js-cookie";
 import {
   Box,
@@ -67,9 +68,7 @@ const PermissionManagement = () => {
   const fetchPermissions = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(
-        "http://localhost:5000/api/rbac/permissions"
-      );
+      const response = await axios.get(buildUrl("/api/rbac/permissions"));
       setPermissions(response.data);
       setError("");
     } catch (err) {
@@ -119,13 +118,10 @@ const PermissionManagement = () => {
   const handleSubmit = async () => {
     try {
       if (dialogMode === "create") {
-        const response = await axios.post(
-          "http://localhost:5000/api/rbac/permissions",
-          {
-            name: currentPermission.name,
-            description: currentPermission.description,
-          }
-        );
+        const response = await axios.post(buildUrl("/api/rbac/permissions"), {
+          name: currentPermission.name,
+          description: currentPermission.description,
+        });
         setPermissions((prev) => [...prev, response.data]);
         setSuccess("Permission created successfully!");
         setOpenDialog(false);
@@ -147,7 +143,7 @@ const PermissionManagement = () => {
     }
 
     try {
-      await axios.delete(`http://localhost:5000/api/rbac/permissions/${id}`);
+      await axios.delete(buildUrl(`/api/rbac/permissions/${id}`));
       setPermissions((prev) => prev.filter((p) => p.id !== id));
       setSuccess("Permission deleted successfully!");
     } catch (err) {

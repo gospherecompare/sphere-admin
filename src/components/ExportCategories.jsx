@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import Cookies from "js-cookie";
+import { buildUrl } from "../api";
 import { FaFileExport, FaSpinner } from "react-icons/fa";
 
 const ExportCategories = ({ filename = "brand_data.xlsx", className = "" }) => {
@@ -11,7 +12,7 @@ const ExportCategories = ({ filename = "brand_data.xlsx", className = "" }) => {
     setError(null);
     try {
       const token = Cookies.get("authToken");
-      const resp = await fetch("http://localhost:5000/api/categories/export", {
+      const resp = await fetch(buildUrl("/api/categories/export"), {
         method: "GET",
         headers: {
           Authorization: token ? `Bearer ${token}` : undefined,

@@ -15,6 +15,7 @@ import {
   FaListAlt,
 } from "react-icons/fa";
 import Cookies from "js-cookie";
+import { buildUrl } from "../api";
 
 const RamStorageConfig = () => {
   const [configs, setConfigs] = useState([]);
@@ -41,7 +42,7 @@ const RamStorageConfig = () => {
     setError(null);
     try {
       const token = Cookies.get("authToken");
-      const res = await fetch("http://localhost:5000/api/ram-storage-config", {
+      const res = await fetch(buildUrl("/api/ram-storage-config"), {
         method: "GET",
         headers: {
           Authorization: token ? `Bearer ${token}` : "",
@@ -124,8 +125,8 @@ const RamStorageConfig = () => {
       const token = Cookies.get("authToken");
       const method = editingId ? "PUT" : "POST";
       const url = editingId
-        ? `http://localhost:5000/api/ram-storage-config/${editingId}`
-        : "http://localhost:5000/api/ram-storage-config";
+        ? buildUrl(`/api/ram-storage-config/${editingId}`)
+        : buildUrl("/api/ram-storage-config");
 
       const res = await fetch(url, {
         method,
@@ -170,15 +171,12 @@ const RamStorageConfig = () => {
 
     try {
       const token = Cookies.get("authToken");
-      const res = await fetch(
-        `http://localhost:5000/api/ram-storage-config/${id}`,
-        {
-          method: "DELETE",
-          headers: {
-            Authorization: token ? `Bearer ${token}` : "",
-          },
+      const res = await fetch(buildUrl(`/api/ram-storage-config/${id}`), {
+        method: "DELETE",
+        headers: {
+          Authorization: token ? `Bearer ${token}` : "",
         },
-      );
+      });
 
       if (!res.ok) throw new Error("Delete failed");
 

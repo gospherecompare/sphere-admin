@@ -1,10 +1,11 @@
 // === React Component: ImportSmartphones.jsx ===
 import React, { useRef, useState } from "react";
 import Cookies from "js-cookie";
+import { buildUrl } from "../api";
 import { FaUpload, FaSpinner } from "react-icons/fa";
 
 const ImportSmartphones = ({
-  uploadUrl = "http://localhost:5000/api/smartphones/import",
+  uploadUrl = buildUrl("/api/smartphones/import"),
   onImported,
   buttonLabel = "Import Smartphones",
 }) => {

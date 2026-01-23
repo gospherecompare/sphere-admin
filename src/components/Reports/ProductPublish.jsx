@@ -20,6 +20,7 @@ import {
   FaQuestionCircle,
 } from "react-icons/fa";
 import Cookies from "js-cookie";
+import { buildUrl } from "../../api";
 
 const ProductPublishStatusReport = () => {
   const [reportData, setReportData] = useState([]);
@@ -38,16 +39,13 @@ const ProductPublishStatusReport = () => {
     setError(null);
     try {
       const token = Cookies.get("authToken");
-      const res = await fetch(
-        "http://localhost:5000/api/reports/publish-status",
-        {
-          method: "GET",
-          headers: {
-            Authorization: token ? `Bearer ${token}` : "",
-            "Content-Type": "application/json",
-          },
+      const res = await fetch(buildUrl("/api/reports/publish-status"), {
+        method: "GET",
+        headers: {
+          Authorization: token ? `Bearer ${token}` : "",
+          "Content-Type": "application/json",
         },
-      );
+      });
 
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();

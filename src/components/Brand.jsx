@@ -1,6 +1,7 @@
 // components/Brand.js
 import React, { useState, useEffect } from "react";
 import Cookies from "js-cookie";
+import { buildUrl } from "../api";
 import { uploadToCloudinary } from "../config/cloudinary";
 import CountUp from "react-countup";
 import ExportCategories from "./ExportCategories";
@@ -59,7 +60,7 @@ const Brand = () => {
   const fetchBrands = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch("http://localhost:5000/api/brand", {
+      const response = await fetch(buildUrl("/api/brand"), {
         headers: token
           ? {
               Authorization: `Bearer ${token}`,
@@ -158,8 +159,8 @@ const Brand = () => {
 
     try {
       const apiUrl = isEditing
-        ? `http://localhost:5000/api/brands/${editingId}`
-        : "http://localhost:5000/api/brands";
+        ? buildUrl(`/api/brands/${editingId}`)
+        : buildUrl("/api/brands");
 
       const method = isEditing ? "PUT" : "POST";
 
@@ -251,7 +252,7 @@ const Brand = () => {
     }
 
     try {
-      const response = await fetch(`http://localhost:5000/api/brands/${id}`, {
+      const response = await fetch(buildUrl(`/api/brands/${id}`), {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
@@ -281,22 +282,19 @@ const Brand = () => {
       setStatusUpdatingId(brand.id);
       const newStatus = brand.status === "active" ? "inactive" : "active";
 
-      const response = await fetch(
-        `http://localhost:5000/api/brands/${brand.id}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-          body: JSON.stringify({
-            name: brand.name,
-            logo: brand.logo,
-            category: brand.category || "",
-            status: newStatus,
-          }),
+      const response = await fetch(buildUrl(`/api/brands/${brand.id}`), {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-      );
+        body: JSON.stringify({
+          name: brand.name,
+          logo: brand.logo,
+          category: brand.category || "",
+          status: newStatus,
+        }),
+      });
 
       if (response.ok) {
         // Update local state

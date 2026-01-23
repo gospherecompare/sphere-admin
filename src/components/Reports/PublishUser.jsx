@@ -23,6 +23,7 @@ import {
   FaPercentage,
 } from "react-icons/fa";
 import Cookies from "js-cookie";
+import { buildUrl } from "../../api";
 
 const PublishedByUserReport = () => {
   const [reportData, setReportData] = useState([]);
@@ -45,16 +46,13 @@ const PublishedByUserReport = () => {
     setError(null);
     try {
       const token = Cookies.get("authToken");
-      const res = await fetch(
-        "http://localhost:5000/api/reports/published-by-user",
-        {
-          method: "GET",
-          headers: {
-            Authorization: token ? `Bearer ${token}` : "",
-            "Content-Type": "application/json",
-          },
+      const res = await fetch(buildUrl("/api/reports/published-by-user"), {
+        method: "GET",
+        headers: {
+          Authorization: token ? `Bearer ${token}` : "",
+          "Content-Type": "application/json",
         },
-      );
+      });
 
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();

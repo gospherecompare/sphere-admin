@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef, createRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Cookies from "js-cookie";
+import { buildUrl } from "../api";
 import { uploadToCloudinary } from "../config/cloudinary";
 import {
   FaMobile,
@@ -233,7 +234,7 @@ const EditMobile = () => {
     const fetchCategories = async () => {
       try {
         const token = Cookies.get("authToken");
-        const res = await fetch("http://localhost:5000/api/categories", {
+        const res = await fetch(buildUrl("/api/categories"), {
           headers: {
             Authorization: token ? `Bearer ${token}` : "",
             "Content-Type": "application/json",
@@ -262,7 +263,7 @@ const EditMobile = () => {
   useEffect(() => {
     const fetchBrands = async () => {
       try {
-        const res = await fetch("http://localhost:5000/api/brands");
+        const res = await fetch(buildUrl("/api/brands"));
         if (!res.ok) return;
         const data = await res.json();
         const brandsArray = data.brands || data || [];
@@ -336,15 +337,12 @@ const EditMobile = () => {
       try {
         const token = Cookies.get("authToken");
 
-        const response = await fetch(
-          `http://localhost:5000/api/smartphone/${id}`,
-          {
-            headers: {
-              Authorization: token ? `Bearer ${token}` : "",
-              "Content-Type": "application/json",
-            },
+        const response = await fetch(buildUrl(`/api/smartphone/${id}`), {
+          headers: {
+            Authorization: token ? `Bearer ${token}` : "",
+            "Content-Type": "application/json",
           },
-        );
+        });
 
         if (!response.ok) {
           const errorText = await response.text();
@@ -537,8 +535,8 @@ const EditMobile = () => {
       try {
         const token = Cookies.get("authToken");
         const storesEndpoint = token
-          ? "http://localhost:5000/api/online-stores"
-          : "http://localhost:5000/api/public/online-stores";
+          ? buildUrl("/api/online-stores")
+          : buildUrl("/api/public/online-stores");
         const storesRes = await fetch(storesEndpoint, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
@@ -549,12 +547,9 @@ const EditMobile = () => {
           setStoresList(opts);
         }
 
-        const ramRes = await fetch(
-          "http://localhost:5000/api/ram-storage-config",
-          {
-            headers: token ? { Authorization: `Bearer ${token}` } : {},
-          },
-        );
+        const ramRes = await fetch(buildUrl("/api/ram-storage-config"), {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
         if (ramRes.ok) {
           const d = await ramRes.json();
           const rows = (d && (d.data || d.rows || d)) || [];
@@ -764,7 +759,7 @@ const EditMobile = () => {
     try {
       const token = Cookies.get("authToken");
       const res = await fetch(
-        `http://localhost:5000/api/smartphone/${id}/color/${index}`,
+        buildUrl(`/api/smartphone/${id}/color/${index}`),
         {
           method: "DELETE",
           headers: {
@@ -796,13 +791,10 @@ const EditMobile = () => {
     if (variant.id) {
       try {
         const token = Cookies.get("authToken");
-        const res = await fetch(
-          `http://localhost:5000/api/variant/${variant.id}`,
-          {
-            method: "DELETE",
-            headers: { Authorization: token ? `Bearer ${token}` : "" },
-          },
-        );
+        const res = await fetch(buildUrl(`/api/variant/${variant.id}`), {
+          method: "DELETE",
+          headers: { Authorization: token ? `Bearer ${token}` : "" },
+        });
         if (!res.ok) {
           const txt = await res.text().catch(() => "");
           throw new Error(txt || `Server responded ${res.status}`);
@@ -908,13 +900,10 @@ const EditMobile = () => {
     if (sp.id) {
       try {
         const token = Cookies.get("authToken");
-        const res = await fetch(
-          `http://localhost:5000/api/storeprice/${sp.id}`,
-          {
-            method: "DELETE",
-            headers: { Authorization: token ? `Bearer ${token}` : "" },
-          },
-        );
+        const res = await fetch(buildUrl(`/api/storeprice/${sp.id}`), {
+          method: "DELETE",
+          headers: { Authorization: token ? `Bearer ${token}` : "" },
+        });
         if (!res.ok) {
           const txt = await res.text().catch(() => "");
           throw new Error(txt || `Server responded ${res.status}`);
@@ -1435,7 +1424,7 @@ const EditMobile = () => {
       };
 
       const token = Cookies.get("authToken");
-      const res = await fetch(`http://localhost:5000/api/smartphone/${id}`, {
+      const res = await fetch(buildUrl(`/api/smartphone/${id}`), {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",

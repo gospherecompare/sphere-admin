@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { FaEllipsisV, FaToggleOn, FaToggleOff } from "react-icons/fa";
 import Cookies from "js-cookie";
+import { buildUrl } from "../api";
 
 export default function PublishAction({
   id,
@@ -62,17 +63,14 @@ export default function PublishAction({
         published_by: userId,
       };
 
-      const res = await fetch(
-        `http://localhost:5000/api/products/${id}/publish`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: token ? `Bearer ${token}` : "",
-          },
-          body: JSON.stringify(body),
+      const res = await fetch(buildUrl(`/api/products/${id}/publish`), {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: token ? `Bearer ${token}` : "",
         },
-      );
+        body: JSON.stringify(body),
+      });
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));

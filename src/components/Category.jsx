@@ -19,6 +19,7 @@ import {
   FaList,
 } from "react-icons/fa";
 import Cookies from "js-cookie";
+import { buildUrl } from "../api";
 import CountUp from "react-countup";
 
 const CategoryManagement = () => {
@@ -56,7 +57,7 @@ const CategoryManagement = () => {
     setError(null);
     try {
       const token = Cookies.get("authToken");
-      const res = await fetch("http://localhost:5000/api/categories", {
+      const res = await fetch(buildUrl("/api/categories"), {
         method: "GET",
         headers: {
           Authorization: token ? `Bearer ${token}` : "",
@@ -146,8 +147,8 @@ const CategoryManagement = () => {
       const token = Cookies.get("authToken");
       const method = editingId ? "PUT" : "POST";
       const url = editingId
-        ? `http://localhost:5000/api/categories/${editingId}`
-        : "http://localhost:5000/api/categories";
+        ? buildUrl(`/api/categories/${editingId}`)
+        : buildUrl("/api/categories");
 
       const res = await fetch(url, {
         method,
@@ -195,7 +196,7 @@ const CategoryManagement = () => {
 
     try {
       const token = Cookies.get("authToken");
-      const res = await fetch(`http://localhost:5000/api/categories/${id}`, {
+      const res = await fetch(buildUrl(`/api/categories/${id}`), {
         method: "DELETE",
         headers: {
           Authorization: token ? `Bearer ${token}` : "",

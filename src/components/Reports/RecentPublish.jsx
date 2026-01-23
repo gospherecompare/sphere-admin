@@ -22,6 +22,7 @@ import {
   FaSyncAlt,
 } from "react-icons/fa";
 import Cookies from "js-cookie";
+import { buildUrl } from "../../api";
 
 const RecentPublishActivity = () => {
   const [activities, setActivities] = useState([]);
@@ -50,7 +51,7 @@ const RecentPublishActivity = () => {
     try {
       const token = Cookies.get("authToken");
       const res = await fetch(
-        "http://localhost:5000/api/reports/recent-publish-activity",
+        buildUrl("/api/reports/recent-publish-activity"),
         {
           method: "GET",
           headers: {
