@@ -25,7 +25,7 @@ const RamStorageConfig = () => {
   const [formData, setFormData] = useState({
     ram: "",
     storage: "",
-    long: "",
+    product_type: "",
   });
   const [searchTerm, setSearchTerm] = useState("");
   const [toasts, setToasts] = useState([]);
@@ -98,7 +98,7 @@ const RamStorageConfig = () => {
     setFormData({
       ram: "",
       storage: "",
-      long: "",
+      product_type: "",
     });
     setEditingId(null);
   };
@@ -108,7 +108,7 @@ const RamStorageConfig = () => {
     setFormData({
       ram: config.ram || "",
       storage: config.storage || "",
-      long: config.long || "",
+      product_type: config.product_type || config.long || "",
     });
     setEditingId(config.id);
   };
@@ -128,13 +128,16 @@ const RamStorageConfig = () => {
         ? buildUrl(`/api/ram-storage-config/${editingId}`)
         : buildUrl("/api/ram-storage-config");
 
+      // Support legacy `long` field on the API by sending it as well
+      const payload = { ...formData, long: formData.product_type };
+
       const res = await fetch(url, {
         method,
         headers: {
           "Content-Type": "application/json",
           Authorization: token ? `Bearer ${token}` : "",
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) throw new Error("Save failed");
@@ -189,11 +192,17 @@ const RamStorageConfig = () => {
   };
 
   // Filter configurations
-  const filteredConfigs = configs.filter(
+  // Ensure compatibility with legacy `long` field by mapping to `product_type`
+  const normalizedConfigs = configs.map((c) => ({
+    ...c,
+    product_type: c.product_type || c.long || "",
+  }));
+
+  const filteredConfigs = normalizedConfigs.filter(
     (config) =>
       config.ram.toLowerCase().includes(searchTerm.toLowerCase()) ||
       config.storage.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      config.long.toLowerCase().includes(searchTerm.toLowerCase()),
+      config.product_type.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   // Pagination
@@ -244,10 +253,10 @@ const RamStorageConfig = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
-              RAM & Storage Configuration
+              RAM & Storage
             </h1>
             <p className="text-gray-600 mt-1">
-              Manage RAM and storage combinations with descriptions
+              Manage RAM and storage combinations and assign a product type
             </p>
           </div>
 
@@ -354,16 +363,19 @@ const RamStorageConfig = () => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Description
+                Product Type
               </label>
-              <input
-                type="text"
-                name="long"
-                value={formData.long}
+              <select
+                name="product_type"
+                value={formData.product_type}
                 onChange={handleInputChange}
-                placeholder="e.g., High performance configuration"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
+              >
+                <option value="">Select product type</option>
+                <option value="smartphone">Smartphone</option>
+                <option value="tablet">Tablet</option>
+                <option value="desktop/laptop">Desktop / Laptop</option>
+              </select>
             </div>
           </div>
 
@@ -442,7 +454,7 @@ const RamStorageConfig = () => {
                   scope="col"
                   className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                 >
-                  Description
+                  Product Type
                 </th>
                 <th
                   scope="col"
@@ -497,7 +509,7 @@ const RamStorageConfig = () => {
                     </td>
                     <td className="px-4 py-3">
                       <span className="text-sm text-gray-600">
-                        {config.long || "No description"}
+                        {config.product_type || "N/A"}
                       </span>
                     </td>
                     <td className="px-4 py-3">
@@ -622,9 +634,9 @@ const RamStorageConfig = () => {
       <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
         <p className="text-sm text-blue-700">
           <strong>Note:</strong> Use this configuration to define RAM and
-          storage combinations that can be used across mobile phones and
-          laptops. The description field helps identify the use case or target
-          market for each configuration.
+          storage combinations that can be used across smartphones, tablets, and
+          desktops/laptops. The product type helps identify the target device
+          for each configuration.
         </p>
       </div>
     </div>
