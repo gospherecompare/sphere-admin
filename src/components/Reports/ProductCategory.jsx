@@ -40,11 +40,22 @@ const ProductCategoryReport = () => {
     setError(null);
     try {
       const token = Cookies.get("authToken");
+<<<<<<< HEAD
       const res = await fetch(buildUrl("/api/reports/products-by-category"), {
         method: "GET",
         headers: {
           Authorization: token ? `Bearer ${token}` : "",
           "Content-Type": "application/json",
+=======
+      const res = await fetch(
+        "http://apishpere.duckdns.org/api/reports/products-by-category",
+        {
+          method: "GET",
+          headers: {
+            Authorization: token ? `Bearer ${token}` : "",
+            "Content-Type": "application/json",
+          },
+>>>>>>> 19bfb6e009d7a2384778614e395e6e80be567897
         },
       });
 

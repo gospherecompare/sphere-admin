@@ -60,7 +60,11 @@ const Brand = () => {
   const fetchBrands = async () => {
     try {
       setIsLoading(true);
+<<<<<<< HEAD
       const response = await fetch(buildUrl("/api/brand"), {
+=======
+      const response = await fetch("http://apishpere.duckdns.org/api/brand", {
+>>>>>>> 19bfb6e009d7a2384778614e395e6e80be567897
         headers: token
           ? {
               Authorization: `Bearer ${token}`,
@@ -159,8 +163,13 @@ const Brand = () => {
 
     try {
       const apiUrl = isEditing
+<<<<<<< HEAD
         ? buildUrl(`/api/brands/${editingId}`)
         : buildUrl("/api/brands");
+=======
+        ? `http://apishpere.duckdns.org/api/brands/${editingId}`
+        : "http://apishpere.duckdns.org/api/brands";
+>>>>>>> 19bfb6e009d7a2384778614e395e6e80be567897
 
       const method = isEditing ? "PUT" : "POST";
 
@@ -252,7 +261,11 @@ const Brand = () => {
     }
 
     try {
+<<<<<<< HEAD
       const response = await fetch(buildUrl(`/api/brands/${id}`), {
+=======
+      const response = await fetch(`http://apishpere.duckdns.org/api/brands/${id}`, {
+>>>>>>> 19bfb6e009d7a2384778614e395e6e80be567897
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
@@ -282,11 +295,28 @@ const Brand = () => {
       setStatusUpdatingId(brand.id);
       const newStatus = brand.status === "active" ? "inactive" : "active";
 
+<<<<<<< HEAD
       const response = await fetch(buildUrl(`/api/brands/${brand.id}`), {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
+=======
+      const response = await fetch(
+        `http://apishpere.duckdns.org/api/brands/${brand.id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({
+            name: brand.name,
+            logo: brand.logo,
+            category: brand.category || "",
+            status: newStatus,
+          }),
+>>>>>>> 19bfb6e009d7a2384778614e395e6e80be567897
         },
         body: JSON.stringify({
           name: brand.name,

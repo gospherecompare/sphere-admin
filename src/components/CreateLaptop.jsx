@@ -159,7 +159,11 @@ const CreateLaptop = () => {
   useEffect(() => {
     const fetchBrands = async () => {
       try {
+<<<<<<< HEAD
         const res = await fetch(buildUrl("/api/brands"));
+=======
+        const res = await fetch("http://apishpere.duckdns.org/api/brands");
+>>>>>>> 19bfb6e009d7a2384778614e395e6e80be567897
         if (!res.ok) return;
         const data = await res.json();
         const brandsArray = data.brands || data || [];
@@ -177,8 +181,13 @@ const CreateLaptop = () => {
       try {
         const token = Cookies.get("authToken");
         const storesEndpoint = token
+<<<<<<< HEAD
           ? buildUrl("/api/online-stores")
           : buildUrl("/api/public/online-stores");
+=======
+          ? "http://apishpere.duckdns.org/api/online-stores"
+          : "http://apishpere.duckdns.org/api/public/online-stores";
+>>>>>>> 19bfb6e009d7a2384778614e395e6e80be567897
         const storesRes = await fetch(storesEndpoint, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
@@ -189,9 +198,18 @@ const CreateLaptop = () => {
           setStoresList(opts);
         }
 
+<<<<<<< HEAD
         const ramRes = await fetch(buildUrl("/api/ram-storage-config"), {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
+=======
+        const ramRes = await fetch(
+          "http://apishpere.duckdns.org/api/ram-storage-config",
+          {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+          },
+        );
+>>>>>>> 19bfb6e009d7a2384778614e395e6e80be567897
         if (ramRes.ok) {
           const d = await ramRes.json();
           const rows = (d && (d.data || d.rows || d)) || [];
@@ -223,7 +241,11 @@ const CreateLaptop = () => {
     const fetchCategories = async () => {
       try {
         const token = Cookies.get("authToken");
+<<<<<<< HEAD
         const res = await fetch(buildUrl("/api/categories"), {
+=======
+        const res = await fetch("http://apishpere.duckdns.org/api/categories", {
+>>>>>>> 19bfb6e009d7a2384778614e395e6e80be567897
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
         if (!res.ok) return;
@@ -733,7 +755,11 @@ const CreateLaptop = () => {
         published: publishEnabled,
       };
 
+<<<<<<< HEAD
       const res = await fetch(buildUrl("/api/laptops"), {
+=======
+      const res = await fetch("http://apishpere.duckdns.org/api/laptops", {
+>>>>>>> 19bfb6e009d7a2384778614e395e6e80be567897
         method: "POST",
         headers: {
           "Content-Type": "application/json",

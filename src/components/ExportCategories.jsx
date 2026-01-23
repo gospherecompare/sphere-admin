@@ -12,7 +12,11 @@ const ExportCategories = ({ filename = "brand_data.xlsx", className = "" }) => {
     setError(null);
     try {
       const token = Cookies.get("authToken");
+<<<<<<< HEAD
       const resp = await fetch(buildUrl("/api/categories/export"), {
+=======
+      const resp = await fetch("http://apishpere.duckdns.org/api/categories/export", {
+>>>>>>> 19bfb6e009d7a2384778614e395e6e80be567897
         method: "GET",
         headers: {
           Authorization: token ? `Bearer ${token}` : undefined,

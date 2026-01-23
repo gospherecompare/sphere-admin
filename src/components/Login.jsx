@@ -44,6 +44,7 @@ const Login = ({ onLogin }) => {
     setError("");
 
     try {
+<<<<<<< HEAD
       const response = await fetch(
         "http://apishpere.duckdns.org/api/auth/login",
         {
@@ -55,6 +56,12 @@ const Login = ({ onLogin }) => {
             email: formData.email,
             password: formData.password,
           }),
+=======
+      const response = await fetch("https://api.apisphere.in/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+>>>>>>> 19bfb6e009d7a2384778614e395e6e80be567897
         },
       );
 

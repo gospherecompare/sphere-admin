@@ -44,7 +44,7 @@ const ViewCustomers = () => {
     setError(null);
     try {
       const token = Cookies.get("authToken");
-      const res = await fetch("http://localhost:5000/api/admin/customers", {
+      const res = await fetch("http://apishpere.duckdns.org/api/admin/customers", {
         method: "GET",
         headers: {
           Authorization: token ? `Bearer ${token}` : undefined,
@@ -129,7 +129,7 @@ const ViewCustomers = () => {
       const token = Cookies.get("authToken");
 
       const res = await fetch(
-        `http://localhost:5000/api/admin/customers/${customerId}`,
+        `http://apishpere.duckdns.org/api/admin/customers/${customerId}`,
         {
           method: "DELETE",
           headers: {
@@ -190,7 +190,7 @@ const ViewCustomers = () => {
       const token = Cookies.get("authToken");
 
       const res = await fetch(
-        `http://localhost:5000/api/admin/customers/${editingId}`,
+        `http://apishpere.duckdns.org/api/admin/customers/${editingId}`,
         {
           method: "PUT",
           headers: {

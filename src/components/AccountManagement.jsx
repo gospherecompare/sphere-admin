@@ -72,9 +72,18 @@ const AccountManagement = () => {
         return;
       }
 
+<<<<<<< HEAD
       const response = await axios.get(buildUrl("/api/auth/profile"), {
         headers: { Authorization: `Bearer ${token}` },
       });
+=======
+      const response = await axios.get(
+        "http://apishpere.duckdns.org/api/auth/profile",
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+>>>>>>> 19bfb6e009d7a2384778614e395e6e80be567897
 
       if (response.data.success) {
         const user = response.data.user;
@@ -230,7 +239,11 @@ const AccountManagement = () => {
       const token = Cookies.get("authToken");
 
       const response = await axios.put(
+<<<<<<< HEAD
         buildUrl("/api/auth/profile"),
+=======
+        "http://apishpere.duckdns.org/api/auth/profile",
+>>>>>>> 19bfb6e009d7a2384778614e395e6e80be567897
         {
           email: profileForm.email,
           phone: profileForm.phone,
@@ -273,7 +286,11 @@ const AccountManagement = () => {
       const token = Cookies.get("authToken");
 
       const response = await axios.post(
+<<<<<<< HEAD
         buildUrl("/api/auth/change-password"),
+=======
+        "http://apishpere.duckdns.org/api/auth/change-password",
+>>>>>>> 19bfb6e009d7a2384778614e395e6e80be567897
         {
           currentPassword: passwordForm.currentPassword,
           newPassword: passwordForm.newPassword,
