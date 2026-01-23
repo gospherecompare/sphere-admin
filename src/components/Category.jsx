@@ -638,11 +638,6 @@ const CategoryManagement = () => {
                           <span className="font-medium text-gray-900 block">
                             {category.name}
                           </span>
-                          {category.description && (
-                            <span className="text-xs text-gray-500 mt-1 block">
-                              ID: {category.id}
-                            </span>
-                          )}
                         </div>
                       </div>
                     </td>
