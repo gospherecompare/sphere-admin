@@ -99,15 +99,9 @@ const UserManagement = () => {
     try {
       setLoading(true);
       const [usersRes, rolesRes, permissionsRes] = await Promise.all([
-<<<<<<< HEAD
         axios.get(buildUrl("/api/users")), // You need to create this endpoint
         axios.get(buildUrl("/api/rbac/roles")),
         axios.get(buildUrl("/api/rbac/permissions")),
-=======
-        axios.get("http://apishpere.duckdns.org/api/users"), // You need to create this endpoint
-        axios.get("http://apishpere.duckdns.org/api/rbac/roles"),
-        axios.get("http://apishpere.duckdns.org/api/rbac/permissions"),
->>>>>>> 19bfb6e009d7a2384778614e395e6e80be567897
       ]);
       setUsers(usersRes.data);
       setRoles(rolesRes.data);
@@ -173,22 +167,11 @@ const UserManagement = () => {
     try {
       if (userForm.id) {
         // Update existing user
-<<<<<<< HEAD
         await axios.put(buildUrl(`/api/users/${userForm.id}`), userForm);
         setSuccess("User updated successfully!");
       } else {
         // Create new user
         await axios.post(buildUrl("/api/auth/register"), userForm);
-=======
-        await axios.put(
-          `/http://apishpere.duckdns.org/api/users/${userForm.id}`,
-          userForm
-        );
-        setSuccess("User updated successfully!");
-      } else {
-        // Create new user
-        await axios.post("http://apishpere.duckdns.org/api/auth/register", userForm);
->>>>>>> 19bfb6e009d7a2384778614e395e6e80be567897
         setSuccess("User created successfully!");
       }
       setUserDialogOpen(false);
@@ -206,11 +189,7 @@ const UserManagement = () => {
     }
 
     try {
-<<<<<<< HEAD
       await axios.delete(buildUrl(`/api/users/${id}`));
-=======
-      await axios.delete(`http://apishpere.duckdns.org/api/users/${id}`);
->>>>>>> 19bfb6e009d7a2384778614e395e6e80be567897
       setUsers((prev) => prev.filter((user) => user.id !== id));
       setSuccess("User deleted successfully!");
     } catch (err) {
@@ -228,18 +207,9 @@ const UserManagement = () => {
   // Handle role assignment
   const handleAssignRole = async (roleId) => {
     try {
-<<<<<<< HEAD
       await axios.post(buildUrl(`/api/rbac/users/${selectedUser.id}/roles`), {
         role_id: roleId,
       });
-=======
-      await axios.post(
-        `http://apishpere.duckdns.org/api/rbac/users/${selectedUser.id}/roles`,
-        {
-          role_id: roleId,
-        }
-      );
->>>>>>> 19bfb6e009d7a2384778614e395e6e80be567897
       setSuccess("Role assigned successfully!");
       setRoleAssignmentDialog(false);
       fetchData();

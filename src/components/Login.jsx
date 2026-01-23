@@ -1,7 +1,8 @@
 // components/Login.js
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Cookies from "js-cookie";
+import { buildUrl } from "../api";
 import {
   FaUser,
   FaLock,
@@ -30,6 +31,18 @@ const Login = ({ onLogin }) => {
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
+  useEffect(() => {
+    try {
+      const savedEmail = localStorage.getItem("savedEmail");
+      if (savedEmail) {
+        setFormData((f) => ({ ...f, email: savedEmail }));
+        setRememberMe(true);
+      }
+    } catch (e) {
+      /* ignore localStorage errors */
+    }
+  }, []);
+
   const handleChange = (e) => {
     setFormData({
       ...formData,
@@ -44,26 +57,16 @@ const Login = ({ onLogin }) => {
     setError("");
 
     try {
-<<<<<<< HEAD
-      const response = await fetch(
-        "http://apishpere.duckdns.org/api/auth/login",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            email: formData.email,
-            password: formData.password,
-          }),
-=======
-      const response = await fetch("https://api.apisphere.in/api/auth/login", {
+      const response = await fetch(buildUrl("/api/auth/login"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
->>>>>>> 19bfb6e009d7a2384778614e395e6e80be567897
         },
-      );
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+        }),
+      });
 
       const data = await response.json();
 
@@ -104,6 +107,16 @@ const Login = ({ onLogin }) => {
 
         if (onLogin) {
           onLogin(data);
+        }
+        // Persist email when 'Remember me' is checked
+        try {
+          if (rememberMe) {
+            localStorage.setItem("savedEmail", formData.email || "");
+          } else {
+            localStorage.removeItem("savedEmail");
+          }
+        } catch (e) {
+          /* ignore localStorage errors */
         }
 
         navigate("/dashboard");

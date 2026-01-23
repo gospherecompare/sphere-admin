@@ -63,23 +63,11 @@ export default function PublishAction({
         published_by: userId,
       };
 
-<<<<<<< HEAD
       const res = await fetch(buildUrl(`/api/products/${id}/publish`), {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
           Authorization: token ? `Bearer ${token}` : "",
-=======
-      const res = await fetch(
-        `http://apishpere.duckdns.org/api/products/${id}/publish`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: token ? `Bearer ${token}` : "",
-          },
-          body: JSON.stringify(body),
->>>>>>> 19bfb6e009d7a2384778614e395e6e80be567897
         },
         body: JSON.stringify(body),
       });

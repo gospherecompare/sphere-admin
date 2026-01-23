@@ -80,11 +80,7 @@ const AdminRatingManagement = () => {
     setLoading(true);
     try {
       const token = Cookies.get("authToken");
-<<<<<<< HEAD
       const res = await fetch(buildUrl("/api/smartphones"), {
-=======
-      const res = await fetch("http://apishpere.duckdns.org/api/smartphones", {
->>>>>>> 19bfb6e009d7a2384778614e395e6e80be567897
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
@@ -116,11 +112,7 @@ const AdminRatingManagement = () => {
     setLoading(true);
     try {
       const res = await fetch(
-<<<<<<< HEAD
         buildUrl(`/api/public/smartphone/${smartphoneId}/rating`),
-=======
-        `http://apishpere.duckdns.org/api/public/smartphone/${smartphoneId}/rating`
->>>>>>> 19bfb6e009d7a2384778614e395e6e80be567897
       );
 
       if (res.ok) {
@@ -140,11 +132,7 @@ const AdminRatingManagement = () => {
   const fetchAverageRating = async (smartphoneId) => {
     try {
       const res = await fetch(
-<<<<<<< HEAD
         buildUrl(`/api/public/smartphone/${smartphoneId}/rating`),
-=======
-        `http://apishpere.duckdns.org/api/public/smartphone/${smartphoneId}/rating`
->>>>>>> 19bfb6e009d7a2384778614e395e6e80be567897
       );
 
       if (res.ok) {
@@ -163,11 +151,7 @@ const AdminRatingManagement = () => {
     try {
       const token = Cookies.get("authToken");
       const res = await fetch(
-<<<<<<< HEAD
         buildUrl(`/api/private/smartphone/${selectedSmartphone.id}/rating`),
-=======
-        `http://apishpere.duckdns.org/api/private/smartphone/${selectedSmartphone.id}/rating`,
->>>>>>> 19bfb6e009d7a2384778614e395e6e80be567897
         {
           method: "PUT",
           headers: {
@@ -201,11 +185,7 @@ const AdminRatingManagement = () => {
     try {
       const token = Cookies.get("authToken");
       const res = await fetch(
-<<<<<<< HEAD
         buildUrl(`/api/private/smartphone/${selectedSmartphone.id}/rating`),
-=======
-        `http://apishpere.duckdns.org/api/private/smartphone/${selectedSmartphone.id}/rating`,
->>>>>>> 19bfb6e009d7a2384778614e395e6e80be567897
         {
           method: "DELETE",
           headers: {
@@ -236,7 +216,7 @@ const AdminRatingManagement = () => {
 
     try {
       const res = await fetch(
-        `http://apishpere.duckdns.org/api/public/smartphone/${selectedSmartphone.id}/rating`,
+        buildUrl(`/api/public/smartphone/${selectedSmartphone.id}/rating`),
         {
           method: "POST",
           headers: {

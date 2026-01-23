@@ -57,11 +57,7 @@ const CategoryManagement = () => {
     setError(null);
     try {
       const token = Cookies.get("authToken");
-<<<<<<< HEAD
       const res = await fetch(buildUrl("/api/categories"), {
-=======
-      const res = await fetch("http://apishpere.duckdns.org/api/categories", {
->>>>>>> 19bfb6e009d7a2384778614e395e6e80be567897
         method: "GET",
         headers: {
           Authorization: token ? `Bearer ${token}` : "",
@@ -151,13 +147,8 @@ const CategoryManagement = () => {
       const token = Cookies.get("authToken");
       const method = editingId ? "PUT" : "POST";
       const url = editingId
-<<<<<<< HEAD
         ? buildUrl(`/api/categories/${editingId}`)
         : buildUrl("/api/categories");
-=======
-        ? `http://apishpere.duckdns.org/api/categories/${editingId}`
-        : "http://apishpere.duckdns.org/api/categories";
->>>>>>> 19bfb6e009d7a2384778614e395e6e80be567897
 
       const res = await fetch(url, {
         method,
@@ -205,11 +196,7 @@ const CategoryManagement = () => {
 
     try {
       const token = Cookies.get("authToken");
-<<<<<<< HEAD
       const res = await fetch(buildUrl(`/api/categories/${id}`), {
-=======
-      const res = await fetch(`http://apishpere.duckdns.org/api/categories/${id}`, {
->>>>>>> 19bfb6e009d7a2384778614e395e6e80be567897
         method: "DELETE",
         headers: {
           Authorization: token ? `Bearer ${token}` : "",

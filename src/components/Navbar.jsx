@@ -29,10 +29,6 @@ import {
 } from "react-icons/fa";
 
 // Constants and utilities
-<<<<<<< HEAD
-=======
-const API_BASE_URL = "http://apishpere.duckdns.org";
->>>>>>> 19bfb6e009d7a2384778614e395e6e80be567897
 
 const SearchSuggestions = ({
   suggestions,

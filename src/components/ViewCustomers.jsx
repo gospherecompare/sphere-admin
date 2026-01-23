@@ -19,6 +19,7 @@ import {
   FaUser,
 } from "react-icons/fa";
 import Cookies from "js-cookie";
+import { buildUrl } from "../api";
 
 const ViewCustomers = () => {
   const [customers, setCustomers] = useState([]);
@@ -44,7 +45,7 @@ const ViewCustomers = () => {
     setError(null);
     try {
       const token = Cookies.get("authToken");
-      const res = await fetch("http://apishpere.duckdns.org/api/admin/customers", {
+      const res = await fetch(buildUrl("/api/admin/customers"), {
         method: "GET",
         headers: {
           Authorization: token ? `Bearer ${token}` : undefined,
@@ -90,7 +91,7 @@ const ViewCustomers = () => {
         customer.f_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         customer.l_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         customer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (customer.phone && customer.phone.includes(searchTerm))
+        (customer.phone && customer.phone.includes(searchTerm)),
     )
     .sort((a, b) => {
       if (sortBy === "newest") {
@@ -101,7 +102,7 @@ const ViewCustomers = () => {
       }
       if (sortBy === "name") {
         return `${a.f_name} ${a.l_name}`.localeCompare(
-          `${b.f_name} ${b.l_name}`
+          `${b.f_name} ${b.l_name}`,
         );
       }
       if (sortBy === "email") {
@@ -112,12 +113,12 @@ const ViewCustomers = () => {
 
   // Pagination
   const totalPages = Math.ceil(
-    filteredAndSortedCustomers.length / itemsPerPage
+    filteredAndSortedCustomers.length / itemsPerPage,
   );
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedCustomers = filteredAndSortedCustomers.slice(
     startIndex,
-    startIndex + itemsPerPage
+    startIndex + itemsPerPage,
   );
 
   // Handle delete
@@ -128,22 +129,19 @@ const ViewCustomers = () => {
     try {
       const token = Cookies.get("authToken");
 
-      const res = await fetch(
-        `http://apishpere.duckdns.org/api/admin/customers/${customerId}`,
-        {
-          method: "DELETE",
-          headers: {
-            Authorization: token ? `Bearer ${token}` : "",
-          },
-        }
-      );
+      const res = await fetch(buildUrl(`/api/admin/customers/${customerId}`), {
+        method: "DELETE",
+        headers: {
+          Authorization: token ? `Bearer ${token}` : "",
+        },
+      });
 
       if (!res.ok) {
         throw new Error(`Delete failed: HTTP ${res.status}`);
       }
 
       setCustomers((prev) =>
-        prev.filter((customer) => customer.id !== customerId)
+        prev.filter((customer) => customer.id !== customerId),
       );
 
       showToast("Success", `"${customerName}" deleted successfully`, "success");
@@ -152,7 +150,7 @@ const ViewCustomers = () => {
       showToast(
         "Error",
         `Failed to delete "${customerName}": ${err.message}`,
-        "error"
+        "error",
       );
     }
   };
@@ -180,7 +178,7 @@ const ViewCustomers = () => {
       showToast(
         "Error",
         "First name, last name, and email are required",
-        "error"
+        "error",
       );
       return;
     }
@@ -189,17 +187,14 @@ const ViewCustomers = () => {
       setLoading(true);
       const token = Cookies.get("authToken");
 
-      const res = await fetch(
-        `http://apishpere.duckdns.org/api/admin/customers/${editingId}`,
-        {
-          method: "PUT",
-          headers: {
-            Authorization: token ? `Bearer ${token}` : "",
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(editForm),
-        }
-      );
+      const res = await fetch(buildUrl(`/api/admin/customers/${editingId}`), {
+        method: "PUT",
+        headers: {
+          Authorization: token ? `Bearer ${token}` : "",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(editForm),
+      });
 
       if (!res.ok) {
         const errorData = await res.json();
@@ -210,8 +205,8 @@ const ViewCustomers = () => {
 
       setCustomers((prev) =>
         prev.map((customer) =>
-          customer.id === editingId ? data.customer : customer
-        )
+          customer.id === editingId ? data.customer : customer,
+        ),
       );
 
       showToast("Success", "Customer updated successfully", "success");
@@ -272,7 +267,7 @@ const ViewCustomers = () => {
                   customers.filter(
                     (c) =>
                       new Date(c.created_at).getMonth() ===
-                      new Date().getMonth()
+                      new Date().getMonth(),
                   ).length
                 }
               </p>
@@ -439,7 +434,7 @@ const ViewCustomers = () => {
                               setActiveDropdown(
                                 activeDropdown === customer.id
                                   ? null
-                                  : customer.id
+                                  : customer.id,
                               )
                             }
                             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -460,7 +455,7 @@ const ViewCustomers = () => {
                                 onClick={() =>
                                   handleDelete(
                                     customer.id,
-                                    `${customer.f_name} ${customer.l_name}`
+                                    `${customer.f_name} ${customer.l_name}`,
                                   )
                                 }
                                 className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center space-x-2"
@@ -484,7 +479,7 @@ const ViewCustomers = () => {
                 Showing {startIndex + 1} to{" "}
                 {Math.min(
                   startIndex + itemsPerPage,
-                  filteredAndSortedCustomers.length
+                  filteredAndSortedCustomers.length,
                 )}{" "}
                 of {filteredAndSortedCustomers.length}
               </p>
@@ -511,7 +506,7 @@ const ViewCustomers = () => {
                     >
                       {page}
                     </button>
-                  )
+                  ),
                 )}
 
                 <button

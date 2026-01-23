@@ -57,11 +57,7 @@ const OnlineStoreManagement = () => {
     setError(null);
     try {
       const token = Cookies.get("authToken");
-<<<<<<< HEAD
       const res = await fetch(buildUrl("/api/online-stores"), {
-=======
-      const res = await fetch("http://apishpere.duckdns.org/api/online-stores", {
->>>>>>> 19bfb6e009d7a2384778614e395e6e80be567897
         method: "GET",
         headers: {
           Authorization: token ? `Bearer ${token}` : "",
@@ -210,13 +206,8 @@ const OnlineStoreManagement = () => {
       const token = Cookies.get("authToken");
       const method = editingId ? "PUT" : "POST";
       const url = editingId
-<<<<<<< HEAD
         ? buildUrl(`/api/online-stores/${editingId}`)
         : buildUrl("/api/online-stores");
-=======
-        ? `http://apishpere.duckdns.org/api/online-stores/${editingId}`
-        : "http://apishpere.duckdns.org/api/online-stores";
->>>>>>> 19bfb6e009d7a2384778614e395e6e80be567897
 
       const res = await fetch(url, {
         method,
@@ -260,11 +251,7 @@ const OnlineStoreManagement = () => {
 
     try {
       const token = Cookies.get("authToken");
-<<<<<<< HEAD
       const res = await fetch(buildUrl(`/api/online-stores/${id}`), {
-=======
-      const res = await fetch(`http://apishpere.duckdns.org/api/online-stores/${id}`, {
->>>>>>> 19bfb6e009d7a2384778614e395e6e80be567897
         method: "DELETE",
         headers: {
           Authorization: token ? `Bearer ${token}` : "",
@@ -288,11 +275,7 @@ const OnlineStoreManagement = () => {
       const newStatus = store.status === "active" ? "inactive" : "active";
 
       const res = await fetch(
-<<<<<<< HEAD
         buildUrl(`/api/online-stores/${store.id}/status`),
-=======
-        `http://apishpere.duckdns.org/api/online-stores/${store.id}/status`,
->>>>>>> 19bfb6e009d7a2384778614e395e6e80be567897
         {
           method: "PATCH",
           headers: {

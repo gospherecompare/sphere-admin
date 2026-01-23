@@ -44,11 +44,7 @@ const ViewMobiles = () => {
       setError(null);
       try {
         const token = Cookies.get("authToken");
-<<<<<<< HEAD
         const res = await fetch(buildUrl("/api/smartphone"), {
-=======
-        const res = await fetch("http://apishpere.duckdns.org/api/smartphone", {
->>>>>>> 19bfb6e009d7a2384778614e395e6e80be567897
           method: "GET",
           headers: {
             Authorization: token ? `Bearer ${token}` : undefined,
@@ -245,13 +241,7 @@ const ViewMobiles = () => {
       }
 
       const res = await fetch(
-<<<<<<< HEAD
         buildUrl(`/api/smartphone/${encodeURIComponent(resolvedId)}`),
-=======
-        `http://apishpere.duckdns.org/api/smartphone/${encodeURIComponent(
-          resolvedId,
-        )}`,
->>>>>>> 19bfb6e009d7a2384778614e395e6e80be567897
         {
           method: "DELETE",
           headers: {
@@ -340,23 +330,11 @@ const ViewMobiles = () => {
         published_by: userId,
       };
 
-<<<<<<< HEAD
       const res = await fetch(buildUrl(`/api/products/${resolvedId}/publish`), {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
           Authorization: token ? `Bearer ${token}` : "",
-=======
-      const res = await fetch(
-        `http://apishpere.duckdns.org/api/products/${resolvedId}/publish`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: token ? `Bearer ${token}` : "",
-          },
-          body: JSON.stringify(body),
->>>>>>> 19bfb6e009d7a2384778614e395e6e80be567897
         },
         body: JSON.stringify(body),
       });
@@ -427,11 +405,7 @@ const ViewMobiles = () => {
   const handleExport = async (publishedOnly = false) => {
     try {
       const token = Cookies.get("authToken");
-<<<<<<< HEAD
       const res = await fetch(buildUrl("/api/smartphones/export"), {
-=======
-      const res = await fetch("http://apishpere.duckdns.org/api/smartphones/export", {
->>>>>>> 19bfb6e009d7a2384778614e395e6e80be567897
         method: "GET",
         headers: {
           Authorization: token ? `Bearer ${token}` : "",
@@ -479,11 +453,7 @@ const ViewMobiles = () => {
       const formData = new FormData();
       formData.append("file", file);
 
-<<<<<<< HEAD
       const res = await fetch(buildUrl("/api/smartphones/import"), {
-=======
-      const res = await fetch("http://apishpere.duckdns.org/api/smartphones/import", {
->>>>>>> 19bfb6e009d7a2384778614e395e6e80be567897
         method: "POST",
         headers: {
           Authorization: token ? `Bearer ${token}` : "",

@@ -49,11 +49,7 @@ const ViewLaptops = () => {
       setError(null);
       try {
         const token = Cookies.get("authToken");
-<<<<<<< HEAD
         const res = await fetch(buildUrl("/api/laptop"), {
-=======
-        const res = await fetch("http://apishpere.duckdns.org/api/laptop", {
->>>>>>> 19bfb6e009d7a2384778614e395e6e80be567897
           method: "GET",
           headers: {
             Authorization: token ? `Bearer ${token}` : undefined,
@@ -226,11 +222,7 @@ const ViewLaptops = () => {
 
     try {
       const token = Cookies.get("authToken");
-<<<<<<< HEAD
       const res = await fetch(buildUrl(`/api/laptop/${id}`), {
-=======
-      const res = await fetch(`http://apishpere.duckdns.org/api/laptop/${id}`, {
->>>>>>> 19bfb6e009d7a2384778614e395e6e80be567897
         method: "DELETE",
         headers: {
           Authorization: token ? `Bearer ${token}` : "",
@@ -294,23 +286,11 @@ const ViewLaptops = () => {
         published_by: userId,
       };
 
-<<<<<<< HEAD
       const res = await fetch(buildUrl(`/api/products/${resolvedId}/publish`), {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
           Authorization: token ? `Bearer ${token}` : "",
-=======
-      const res = await fetch(
-        `http://apishpere.duckdns.org/api/products/${resolvedId}/publish`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: token ? `Bearer ${token}` : "",
-          },
-          body: JSON.stringify(body),
->>>>>>> 19bfb6e009d7a2384778614e395e6e80be567897
         },
         body: JSON.stringify(body),
       });
@@ -363,11 +343,7 @@ const ViewLaptops = () => {
   const handleExport = async (publishedOnly = false) => {
     try {
       const token = Cookies.get("authToken");
-<<<<<<< HEAD
       const res = await fetch(buildUrl("/api/laptops/export"), {
-=======
-      const res = await fetch("http://apishpere.duckdns.org/api/laptops/export", {
->>>>>>> 19bfb6e009d7a2384778614e395e6e80be567897
         method: "GET",
         headers: {
           Authorization: token ? `Bearer ${token}` : "",
@@ -415,11 +391,7 @@ const ViewLaptops = () => {
       const formData = new FormData();
       formData.append("file", file);
 
-<<<<<<< HEAD
       const res = await fetch(buildUrl("/api/laptops/import"), {
-=======
-      const res = await fetch("http://apishpere.duckdns.org/api/laptops/import", {
->>>>>>> 19bfb6e009d7a2384778614e395e6e80be567897
         method: "POST",
         headers: {
           Authorization: token ? `Bearer ${token}` : "",

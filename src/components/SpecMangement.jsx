@@ -75,11 +75,7 @@ const SpecificationsManager = () => {
   const fetchSpecs = async () => {
     setLoading(true);
     try {
-<<<<<<< HEAD
       const response = await fetch(buildUrl("/api/specs"), {
-=======
-      const response = await fetch("http://apishpere.duckdns.org/api/specs", {
->>>>>>> 19bfb6e009d7a2384778614e395e6e80be567897
         headers: {
           Authorization: `Bearer ${Cookies.get("authToken") || "demo-token"}`,
           "Content-Type": "application/json",
@@ -116,11 +112,7 @@ const SpecificationsManager = () => {
     };
 
     try {
-<<<<<<< HEAD
       const response = await fetch(buildUrl("/api/specs"), {
-=======
-      const response = await fetch("http://apishpere.duckdns.org/api/specs", {
->>>>>>> 19bfb6e009d7a2384778614e395e6e80be567897
         method: "POST",
         headers: {
           Authorization: `Bearer ${Cookies.get("authToken") || "demo-token"}`,
@@ -146,7 +138,6 @@ const SpecificationsManager = () => {
     if (!deleteId) return;
 
     try {
-<<<<<<< HEAD
       const response = await fetch(buildUrl(`/api/specs/${deleteId}`), {
         method: "DELETE",
         headers: {
@@ -154,18 +145,6 @@ const SpecificationsManager = () => {
           "Content-Type": "application/json",
         },
       });
-=======
-      const response = await fetch(
-        `http://apishpere.duckdns.org/api/specs/${deleteId}`,
-        {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${Cookies.get("authToken") || "demo-token"}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
->>>>>>> 19bfb6e009d7a2384778614e395e6e80be567897
 
       if (!response.ok)
         throw new Error(`HTTP error! status: ${response.status}`);

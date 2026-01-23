@@ -13,11 +13,7 @@ import Cookies from "js-cookie";
  * - label: button label (default: "Export")
  */
 const ExportButton = ({
-<<<<<<< HEAD
   endpoint = buildUrl("/api/smartphones/export"),
-=======
-  endpoint = "http://apishpere.duckdns.org/api/smartphones/export",
->>>>>>> 19bfb6e009d7a2384778614e395e6e80be567897
   published = false,
   filenamePrefix = "smartphones_data",
   className = "flex items-center space-x-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold disabled:opacity-60",

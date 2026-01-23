@@ -234,11 +234,7 @@ const EditMobile = () => {
     const fetchCategories = async () => {
       try {
         const token = Cookies.get("authToken");
-<<<<<<< HEAD
         const res = await fetch(buildUrl("/api/categories"), {
-=======
-        const res = await fetch("http://apishpere.duckdns.org/api/categories", {
->>>>>>> 19bfb6e009d7a2384778614e395e6e80be567897
           headers: {
             Authorization: token ? `Bearer ${token}` : "",
             "Content-Type": "application/json",
@@ -267,11 +263,7 @@ const EditMobile = () => {
   useEffect(() => {
     const fetchBrands = async () => {
       try {
-<<<<<<< HEAD
         const res = await fetch(buildUrl("/api/brands"));
-=======
-        const res = await fetch("http://apishpere.duckdns.org/api/brands");
->>>>>>> 19bfb6e009d7a2384778614e395e6e80be567897
         if (!res.ok) return;
         const data = await res.json();
         const brandsArray = data.brands || data || [];
@@ -345,20 +337,10 @@ const EditMobile = () => {
       try {
         const token = Cookies.get("authToken");
 
-<<<<<<< HEAD
         const response = await fetch(buildUrl(`/api/smartphone/${id}`), {
           headers: {
             Authorization: token ? `Bearer ${token}` : "",
             "Content-Type": "application/json",
-=======
-        const response = await fetch(
-          `http://apishpere.duckdns.org/api/smartphone/${id}`,
-          {
-            headers: {
-              Authorization: token ? `Bearer ${token}` : "",
-              "Content-Type": "application/json",
-            },
->>>>>>> 19bfb6e009d7a2384778614e395e6e80be567897
           },
         });
 
@@ -553,13 +535,8 @@ const EditMobile = () => {
       try {
         const token = Cookies.get("authToken");
         const storesEndpoint = token
-<<<<<<< HEAD
           ? buildUrl("/api/online-stores")
           : buildUrl("/api/public/online-stores");
-=======
-          ? "http://apishpere.duckdns.org/api/online-stores"
-          : "http://apishpere.duckdns.org/api/public/online-stores";
->>>>>>> 19bfb6e009d7a2384778614e395e6e80be567897
         const storesRes = await fetch(storesEndpoint, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
@@ -570,18 +547,9 @@ const EditMobile = () => {
           setStoresList(opts);
         }
 
-<<<<<<< HEAD
         const ramRes = await fetch(buildUrl("/api/ram-storage-config"), {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
-=======
-        const ramRes = await fetch(
-          "http://apishpere.duckdns.org/api/ram-storage-config",
-          {
-            headers: token ? { Authorization: `Bearer ${token}` } : {},
-          },
-        );
->>>>>>> 19bfb6e009d7a2384778614e395e6e80be567897
         if (ramRes.ok) {
           const d = await ramRes.json();
           const rows = (d && (d.data || d.rows || d)) || [];
@@ -791,11 +759,7 @@ const EditMobile = () => {
     try {
       const token = Cookies.get("authToken");
       const res = await fetch(
-<<<<<<< HEAD
         buildUrl(`/api/smartphone/${id}/color/${index}`),
-=======
-        `http://apishpere.duckdns.org/api/smartphone/${id}/color/${index}`,
->>>>>>> 19bfb6e009d7a2384778614e395e6e80be567897
         {
           method: "DELETE",
           headers: {
@@ -827,20 +791,10 @@ const EditMobile = () => {
     if (variant.id) {
       try {
         const token = Cookies.get("authToken");
-<<<<<<< HEAD
         const res = await fetch(buildUrl(`/api/variant/${variant.id}`), {
           method: "DELETE",
           headers: { Authorization: token ? `Bearer ${token}` : "" },
         });
-=======
-        const res = await fetch(
-          `http://apishpere.duckdns.org/api/variant/${variant.id}`,
-          {
-            method: "DELETE",
-            headers: { Authorization: token ? `Bearer ${token}` : "" },
-          },
-        );
->>>>>>> 19bfb6e009d7a2384778614e395e6e80be567897
         if (!res.ok) {
           const txt = await res.text().catch(() => "");
           throw new Error(txt || `Server responded ${res.status}`);
@@ -946,20 +900,10 @@ const EditMobile = () => {
     if (sp.id) {
       try {
         const token = Cookies.get("authToken");
-<<<<<<< HEAD
         const res = await fetch(buildUrl(`/api/storeprice/${sp.id}`), {
           method: "DELETE",
           headers: { Authorization: token ? `Bearer ${token}` : "" },
         });
-=======
-        const res = await fetch(
-          `http://apishpere.duckdns.org/api/storeprice/${sp.id}`,
-          {
-            method: "DELETE",
-            headers: { Authorization: token ? `Bearer ${token}` : "" },
-          },
-        );
->>>>>>> 19bfb6e009d7a2384778614e395e6e80be567897
         if (!res.ok) {
           const txt = await res.text().catch(() => "");
           throw new Error(txt || `Server responded ${res.status}`);
@@ -1480,11 +1424,7 @@ const EditMobile = () => {
       };
 
       const token = Cookies.get("authToken");
-<<<<<<< HEAD
       const res = await fetch(buildUrl(`/api/smartphone/${id}`), {
-=======
-      const res = await fetch(`http://apishpere.duckdns.org/api/smartphone/${id}`, {
->>>>>>> 19bfb6e009d7a2384778614e395e6e80be567897
         method: "PUT",
         headers: {
           "Content-Type": "application/json",

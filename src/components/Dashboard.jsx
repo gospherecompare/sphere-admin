@@ -327,21 +327,12 @@ const Dashboard = () => {
           appliancesRes,
           networkingRes,
         ] = await Promise.all([
-<<<<<<< HEAD
           fetch(buildUrl("/api/categories"), { headers }),
           fetch(buildUrl("/api/brands"), { headers }),
           fetch(buildUrl("/api/smartphone"), { headers }),
           fetch(buildUrl("/api/laptop"), { headers }),
           fetch(buildUrl("/api/homeappliance"), { headers }),
           fetch(buildUrl("/api/networking"), { headers }),
-=======
-          fetch("http://apishpere.duckdns.org/api/categories", { headers }),
-          fetch("http://apishpere.duckdns.org/api/brands", { headers }),
-          fetch("http://apishpere.duckdns.org/api/smartphone", { headers }),
-          fetch("http://apishpere.duckdns.org/api/laptop", { headers }),
-          fetch("http://apishpere.duckdns.org/api/homeappliance", { headers }),
-          fetch("http://apishpere.duckdns.org/api/networking", { headers }),
->>>>>>> 19bfb6e009d7a2384778614e395e6e80be567897
         ]);
 
         const [
