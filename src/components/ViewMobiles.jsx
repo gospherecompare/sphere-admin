@@ -682,7 +682,7 @@ const ViewMobiles = () => {
                   />
                   <button className="flex items-center gap-1 sm:gap-2 bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-md text-xs sm:text-sm whitespace-nowrap">
                     <FaUpload className="text-xs sm:text-sm" />
-                    <span className="hidden sm:inline">Import</span>
+                    <span className="">Import</span>
                   </button>
                 </div>
               </div>
