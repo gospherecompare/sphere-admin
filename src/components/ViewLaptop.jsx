@@ -391,7 +391,7 @@ const ViewLaptops = () => {
       const formData = new FormData();
       formData.append("file", file);
 
-      const res = await fetch(buildUrl("/api/laptops/import"), {
+      const res = await fetch(buildUrl("/api/import/laptops"), {
         method: "POST",
         headers: {
           Authorization: token ? `Bearer ${token}` : "",
@@ -399,22 +399,38 @@ const ViewLaptops = () => {
         body: formData,
       });
 
-      if (!res.ok) throw new Error("Import failed");
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data?.message || "Import failed");
+      }
+
+      const { summary, rows } = data;
 
       showToast(
-        "Import Successful",
-        "Laptops imported successfully",
-        "success",
+        "Import Finished",
+        `Inserted: ${summary.inserted}, Skipped: ${summary.skipped}, Failed: ${summary.failed}`,
+        summary.failed > 0 ? "warning" : "success",
       );
 
-      // Reload the data
-      window.location.reload();
-    } catch (error) {
-      console.error("Import error:", error);
-      showToast("Import Failed", "Failed to import laptops", "error");
+      // Show row-level errors
+      rows
+        .filter((r) => r.status === "FAILED")
+        .slice(0, 5)
+        .forEach((r) => {
+          showToast(`Row ${r.row} Failed`, r.error || "Unknown error", "error");
+        });
+
+      // Refresh list
+      setTimeout(() => {
+        window.location.reload();
+        // or refetchLaptops();
+      }, 1200);
+    } catch (err) {
+      console.error("Import error:", err);
+      showToast("Import Failed", err.message, "error");
     }
   };
-
   // Stats
   const totalLaptops = laptops.length;
   const publishedLaptops = laptops.filter((l) => l.published).length;

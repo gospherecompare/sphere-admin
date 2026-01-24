@@ -509,6 +509,87 @@ const EditMobile = () => {
         console.debug("API data (raw):", apiData);
         console.debug("Transformed data (to setFormData):", transformedData);
 
+        // Detect dynamic/custom keys in JSONB specification objects and merge with defaults
+        const jsonbFields = [
+          "build_design",
+          "display",
+          "performance",
+          "camera",
+          "battery",
+          "connectivity_network",
+          "ports",
+          "audio",
+          "multimedia",
+        ];
+
+        const computedCustom = {};
+        const normalizeKey = (k) =>
+          String(k || "")
+            .toLowerCase()
+            .trim()
+            .replace(/[_\s]+/g, "");
+
+        jsonbFields.forEach((field) => {
+          const serverObj = safeParse(apiData?.[field], {});
+          const defaults = getDefaultFields(field) || {};
+          const defaultKeys = Object.keys(defaults || {});
+
+          // build map of normalized default keys -> canonical default key
+          const defMap = {};
+          defaultKeys.forEach((dk) => {
+            defMap[normalizeKey(dk)] = dk;
+          });
+
+          const merged = { ...(defaults || {}) };
+          const customKeys = [];
+
+          if (serverObj && typeof serverObj === "object") {
+            for (const sk of Object.keys(serverObj)) {
+              const sval = serverObj[sk];
+              const n = normalizeKey(sk);
+
+              // If server provided nested fold/flip object, map inner keys too
+              if (
+                (sk === "fold" || sk === "flip") &&
+                typeof sval === "object"
+              ) {
+                merged[sk] = { ...(defaults[sk] || {}) };
+                const innerDef = defaults[sk] || {};
+                const innerDefMap = {};
+                Object.keys(innerDef).forEach((ik) => {
+                  innerDefMap[normalizeKey(ik)] = ik;
+                });
+                for (const isk of Object.keys(sval)) {
+                  const inv = sval[isk];
+                  const inn = normalizeKey(isk);
+                  if (innerDefMap[inn]) {
+                    merged[sk][innerDefMap[inn]] = inv;
+                  } else {
+                    // keep original key name for custom inner fields
+                    merged[sk][isk] = inv;
+                    if (!customKeys.includes(isk)) customKeys.push(isk);
+                  }
+                }
+                continue;
+              }
+
+              if (defMap[n]) {
+                merged[defMap[n]] = sval;
+              } else {
+                // not a default — treat as custom and set using original server key
+                merged[sk] = sval;
+                if (!customKeys.includes(sk)) customKeys.push(sk);
+              }
+            }
+          }
+
+          computedCustom[field] = customKeys;
+          transformedData[field] = merged;
+        });
+
+        // Preserve any existing custom fields state by replacing it with detected keys from server
+        setCustomJsonFields((prev) => ({ ...prev, ...computedCustom }));
+
         // Set form data
         setFormData(transformedData);
 
@@ -1710,6 +1791,11 @@ const EditMobile = () => {
     const defaultFields = getDefaultFields(activeSpecTab);
     const currentData = formData[activeSpecTab] || {};
     const customFields = customJsonFields[activeSpecTab] || [];
+    const defaultKeys = Object.keys(defaultFields || {});
+    const combinedKeys = [
+      ...defaultKeys,
+      ...customFields.filter((k) => !defaultKeys.includes(k)),
+    ];
 
     // Get tab info for styling
     const tabInfo = specTabs.find((tab) => tab.id === activeSpecTab);
@@ -1841,129 +1927,118 @@ const EditMobile = () => {
               <>
                 <div className="lg:col-span-1">
                   <h4 className="text-sm font-semibold mb-2">Fold</h4>
-                  {Object.keys(defaultFields).map((key) => (
+                  {combinedKeys.map((key) => (
                     <div key={"fold-" + key} className="space-y-2 mb-2">
                       <label className="block text-sm font-medium text-gray-700 capitalize">
                         {key.replace(/_/g, " ")}
                       </label>
-                      <input
-                        type="text"
-                        value={currentData?.fold?.[key] || ""}
-                        onChange={(e) =>
-                          handleJsonbChange(
-                            activeSpecTab,
-                            key,
-                            e.target.value,
-                            "fold",
-                          )
-                        }
-                        className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:${colors.focus} bg-white transition-colors`}
-                        placeholder={`Enter ${key.replace(/_/g, " ")}`}
-                      />
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={currentData?.fold?.[key] || ""}
+                          onChange={(e) =>
+                            handleJsonbChange(
+                              activeSpecTab,
+                              key,
+                              e.target.value,
+                              "fold",
+                            )
+                          }
+                          className={`flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:${colors.focus} bg-white transition-colors`}
+                          placeholder={`Enter ${key.replace(/_/g, " ")}`}
+                        />
+                        {customFields.includes(key) && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              removeCustomJsonField(activeSpecTab, key)
+                            }
+                            className="px-3 py-2 bg-red-100 text-red-600 hover:bg-red-200 rounded-lg transition-colors"
+                            title="Remove field"
+                          >
+                            <FaTrash className="text-sm" />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
 
                 <div className="lg:col-span-1">
                   <h4 className="text-sm font-semibold mb-2">Flip</h4>
-                  {Object.keys(defaultFields).map((key) => (
+                  {combinedKeys.map((key) => (
                     <div key={"flip-" + key} className="space-y-2 mb-2">
                       <label className="block text-sm font-medium text-gray-700 capitalize">
                         {key.replace(/_/g, " ")}
                       </label>
-                      <input
-                        type="text"
-                        value={currentData?.flip?.[key] || ""}
-                        onChange={(e) =>
-                          handleJsonbChange(
-                            activeSpecTab,
-                            key,
-                            e.target.value,
-                            "flip",
-                          )
-                        }
-                        className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:${colors.focus} bg-white transition-colors`}
-                        placeholder={`Enter ${key.replace(/_/g, " ")}`}
-                      />
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={currentData?.flip?.[key] || ""}
+                          onChange={(e) =>
+                            handleJsonbChange(
+                              activeSpecTab,
+                              key,
+                              e.target.value,
+                              "flip",
+                            )
+                          }
+                          className={`flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:${colors.focus} bg-white transition-colors`}
+                          placeholder={`Enter ${key.replace(/_/g, " ")}`}
+                        />
+                        {customFields.includes(key) && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              removeCustomJsonField(activeSpecTab, key)
+                            }
+                            className="px-3 py-2 bg-red-100 text-red-600 hover:bg-red-200 rounded-lg transition-colors"
+                            title="Remove field"
+                          >
+                            <FaTrash className="text-sm" />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
               </>
             ) : (
-              Object.keys(defaultFields).map((key) => (
+              combinedKeys.map((key) => (
                 <div key={key} className="space-y-2">
                   <label className="block text-sm font-medium text-gray-700 capitalize">
                     {key.replace(/_/g, " ")}
                   </label>
-                  <input
-                    type="text"
-                    value={currentData[key] || ""}
-                    onChange={(e) =>
-                      handleJsonbChange(activeSpecTab, key, e.target.value)
-                    }
-                    className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:${colors.focus} bg-white transition-colors`}
-                    placeholder={`Enter ${key.replace(/_/g, " ")}`}
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={currentData[key] || ""}
+                      onChange={(e) =>
+                        handleJsonbChange(activeSpecTab, key, e.target.value)
+                      }
+                      className={`flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:${colors.focus} bg-white transition-colors`}
+                      placeholder={`Enter ${key.replace(/_/g, " ")}`}
+                    />
+                    {customFields.includes(key) && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          removeCustomJsonField(activeSpecTab, key)
+                        }
+                        className="px-3 py-2 bg-red-100 text-red-600 hover:bg-red-200 rounded-lg transition-colors"
+                        title="Remove field"
+                      >
+                        <FaTrash className="text-sm" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))
             )}
           </div>
         </div>
 
-        {/* Custom Fields */}
-        {customFields.length > 0 && (
-          <div className="bg-gray-50 p-4 md:p-6 rounded-lg border border-gray-200">
-            <h5 className="text-lg font-bold text-gray-800 mb-4">
-              Custom Fields
-            </h5>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-              {customFields.map((customField) => (
-                <div key={customField} className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700 capitalize">
-                    {customField.replace(/_/g, " ")}
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={currentData[customField] || ""}
-                      onChange={(e) =>
-                        handleJsonbChange(
-                          activeSpecTab,
-                          customField,
-                          e.target.value,
-                        )
-                      }
-                      className={`flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:${colors.focus} bg-white`}
-                      placeholder={`Enter ${customField.replace(/_/g, " ")}`}
-                    />
-                    <button
-                      type="button"
-                      onClick={() =>
-                        removeCustomJsonField(activeSpecTab, customField)
-                      }
-                      className="px-4 py-3 bg-red-100 text-red-600 hover:bg-red-200 rounded-lg transition-colors"
-                      title="Remove field"
-                    >
-                      <FaTrash className="text-sm" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Add Custom Field Button */}
-        <div className="flex justify-center">
-          <button
-            type="button"
-            onClick={() => addCustomJsonField(activeSpecTab)}
-            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium rounded-lg transition-all duration-200"
-          >
-            <FaPlus className="text-sm" />
-            <span>Add Custom Field</span>
-          </button>
-        </div>
+        {/* custom fields are rendered inline within each spec section */}
       </div>
     );
   };

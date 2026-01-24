@@ -453,7 +453,7 @@ const ViewMobiles = () => {
       const formData = new FormData();
       formData.append("file", file);
 
-      const res = await fetch(buildUrl("/api/smartphones/import"), {
+      const res = await fetch(buildUrl("/api/import/smartphones"), {
         method: "POST",
         headers: {
           Authorization: token ? `Bearer ${token}` : "",
@@ -461,19 +461,35 @@ const ViewMobiles = () => {
         body: formData,
       });
 
-      if (!res.ok) throw new Error("Import failed");
+      if (!res.ok) {
+        const txt = await res.text().catch(() => "");
+        throw new Error(`Import failed: ${res.status} ${txt}`);
+      }
 
-      showToast(
-        "Import Successful",
-        "Mobiles imported successfully",
-        "success",
-      );
+      const data = await res.json().catch(() => null);
+      if (data && data.summary) {
+        showToast(
+          "Import Completed",
+          `Rows: ${data.summary.total_rows}, Inserted: ${data.summary.inserted}, Skipped: ${data.summary.skipped}, Failed: ${data.summary.failed}`,
+          "success",
+        );
+      } else {
+        showToast(
+          "Import Successful",
+          "Mobiles imported successfully",
+          "success",
+        );
+      }
 
       // Reload the data
       window.location.reload();
     } catch (error) {
       console.error("Import error:", error);
-      showToast("Import Failed", "Failed to import mobiles", "error");
+      showToast(
+        "Import Failed",
+        error.message || "Failed to import mobiles",
+        "error",
+      );
     }
   };
 
