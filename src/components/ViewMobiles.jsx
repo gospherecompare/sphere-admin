@@ -473,6 +473,15 @@ const ViewMobiles = () => {
           `Rows: ${data.summary.total_rows}, Inserted: ${data.summary.inserted}, Skipped: ${data.summary.skipped}, Failed: ${data.summary.failed}`,
           "success",
         );
+
+        // If server returned missing values (brands or fields), show an error toast
+        if (Array.isArray(data.missing) && data.missing.length) {
+          showToast(
+            "Import Error",
+            `Missing: ${data.missing.join(", ")}`,
+            "error",
+          );
+        }
       } else {
         showToast(
           "Import Successful",
@@ -481,8 +490,8 @@ const ViewMobiles = () => {
         );
       }
 
-      // Reload the data
-      window.location.reload();
+      // Delay reload briefly so toasts are visible to the user
+      setTimeout(() => window.location.reload(), 1400);
     } catch (error) {
       console.error("Import error:", error);
       showToast(

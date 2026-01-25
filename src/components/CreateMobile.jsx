@@ -48,7 +48,8 @@ const CreateMobile = () => {
       performance: {},
       camera: {},
       battery: {},
-      connectivity_network: {},
+      connectivity: {},
+      network: {},
       ports: {},
       audio: {},
       multimedia: {},
@@ -514,6 +515,67 @@ const CreateMobile = () => {
     }
   };
 
+  // Handle sphere images upload per spec tab (Cloudinary)
+  const handleSphereImagesUpload = async (spec, files) => {
+    if (!files || files.length === 0) return;
+    const fileList = Array.from(files);
+    setIsLoading(true);
+    try {
+      const uploaded = [];
+      for (const file of fileList) {
+        const data = await uploadToCloudinary(file, "smartphones");
+        if (data && data.secure_url) uploaded.push(data.secure_url);
+      }
+
+      setFormData((prev) => ({
+        ...prev,
+        smartphone: {
+          ...prev.smartphone,
+          [spec]: {
+            ...((prev.smartphone || {})[spec] || {}),
+            sphere_images: [
+              ...(((prev.smartphone || {})[spec] || {}).sphere_images || []),
+              ...uploaded,
+            ],
+          },
+        },
+      }));
+
+      showToast(
+        "Upload Successful",
+        `${uploaded.length} image(s) uploaded`,
+        "success",
+      );
+    } catch (error) {
+      console.error("Sphere image upload error:", error);
+      showToast(
+        "Upload Failed",
+        error.message || "Error uploading images",
+        "error",
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const removeSphereImage = (spec, index) => {
+    setFormData((prev) => ({
+      ...prev,
+      smartphone: {
+        ...prev.smartphone,
+        [spec]: {
+          ...((prev.smartphone || {})[spec] || {}),
+          sphere_images: ((prev.smartphone || {})[spec] || {}).sphere_images
+            ? ((prev.smartphone || {})[spec] || {}).sphere_images.filter(
+                (_, i) => i !== index,
+              )
+            : [],
+        },
+      },
+    }));
+    showToast("Image Removed", "Sphere image removed", "info");
+  };
+
   // Remove image
   const removeImage = (index) => {
     setFormData((prev) => ({
@@ -546,7 +608,8 @@ const CreateMobile = () => {
     { id: "performance", label: "Performance", icon: FaMicrochip },
     { id: "camera", label: "Camera", icon: FaCamera },
     { id: "battery", label: "Battery", icon: FaMicrochip },
-    { id: "connectivity_network", label: "Connectivity", icon: FaSimCard },
+    { id: "connectivity", label: "Connectivity", icon: FaSimCard },
+    { id: "network", label: "Network", icon: FaWifi },
     { id: "ports", label: "Ports", icon: FaCog },
     { id: "audio", label: "Audio", icon: FaCog },
     { id: "multimedia", label: "Multimedia", icon: FaDesktop },
@@ -593,9 +656,7 @@ const CreateMobile = () => {
         "fast_charging",
         "wireless_charging",
       ],
-      connectivity_network: [
-        "network_types",
-        "5g_support",
+      connectivity: [
         "wifi",
         "bluetooth",
         "nfc",
@@ -604,6 +665,7 @@ const CreateMobile = () => {
         "esim_support",
         "dual_standby",
       ],
+      network: ["network_types", "5g_support", "network_bands"],
       ports: ["usb_type", "headphone_jack", "charging_port"],
       audio: ["speakers", "audio_jack", "microphone"],
       multimedia: ["video_formats", "audio_formats", "fm_radio"],
@@ -702,7 +764,8 @@ const CreateMobile = () => {
           performance: formData.smartphone.performance,
           camera: formData.smartphone.camera,
           battery: formData.smartphone.battery,
-          connectivity_network: formData.smartphone.connectivity_network,
+          connectivity: formData.smartphone.connectivity,
+          network: formData.smartphone.network,
           ports: formData.smartphone.ports,
           audio: formData.smartphone.audio,
           multimedia: formData.smartphone.multimedia,
@@ -758,7 +821,8 @@ const CreateMobile = () => {
           performance: {},
           camera: {},
           battery: {},
-          connectivity_network: {},
+          connectivity: {},
+          network: {},
           ports: {},
           audio: {},
           multimedia: {},
@@ -2045,7 +2109,7 @@ const CreateMobile = () => {
                     </span>
                   </label>
                 </div>
-                {activeSpecTab === "connectivity_network" && (
+                {activeSpecTab === "connectivity" && (
                   <div className="mb-3 p-3 bg-blue-50 rounded-md border border-blue-100">
                     <div className="flex items-center space-x-2">
                       <FaSimCard className="text-blue-500" />
@@ -2186,6 +2250,102 @@ const CreateMobile = () => {
                       </div>
                     ),
                   )}
+
+                  {/* Sphere rating inputs for active spec tab */}
+                  <div className="lg:col-span-1 col-span-full">
+                    <h4 className="text-sm font-semibold mb-3">
+                      Sphere Rating
+                    </h4>
+                    <div className="mb-3">
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Score (0-100)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="1"
+                        value={
+                          formData.smartphone[activeSpecTab]?.sphere_score ?? ""
+                        }
+                        onChange={(e) =>
+                          handleJsonbChange(
+                            activeSpecTab,
+                            "sphere_score",
+                            e.target.value === "" ? "" : Number(e.target.value),
+                          )
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
+                      />
+                    </div>
+
+                    <div className="mb-3">
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Description
+                      </label>
+                      <textarea
+                        value={
+                          formData.smartphone[activeSpecTab]
+                            ?.sphere_description || ""
+                        }
+                        onChange={(e) =>
+                          handleJsonbChange(
+                            activeSpecTab,
+                            "sphere_description",
+                            e.target.value,
+                          )
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm h-20"
+                      />
+                    </div>
+
+                    <div className="mb-3">
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Images
+                      </label>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={(e) =>
+                          handleSphereImagesUpload(
+                            activeSpecTab,
+                            e.target.files,
+                          )
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
+                      />
+
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {(
+                          formData.smartphone[activeSpecTab]?.sphere_images ||
+                          []
+                        ).map((url, idx) => (
+                          <div key={idx} className="relative w-20 h-20">
+                            <img
+                              src={url}
+                              alt={`sphere-${idx}`}
+                              className="w-20 h-20 object-cover rounded"
+                              onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.src =
+                                  "https://via.placeholder.com/80?text=Image";
+                              }}
+                            />
+                            <button
+                              type="button"
+                              onClick={() =>
+                                removeSphereImage(activeSpecTab, idx)
+                              }
+                              className="absolute top-0 right-0 bg-white rounded-full p-1 text-red-500 border"
+                            >
+                              <FaTimes className="text-xs" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 <button
