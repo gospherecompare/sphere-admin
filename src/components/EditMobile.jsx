@@ -4,6 +4,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import Cookies from "js-cookie";
 import { buildUrl } from "../api";
 import { uploadToCloudinary } from "../config/cloudinary";
+import DynamicForm from "./DynamicForm";
 import {
   FaMobile,
   FaSave,
@@ -111,7 +112,6 @@ const EditMobile = () => {
     category: "Smart Phone",
     brand: "",
     model: "",
-    rating: "",
     launch_date: "",
     images: [],
     colors: [],
@@ -431,21 +431,40 @@ const EditMobile = () => {
         const rawVariants = Array.isArray(apiData?.variants)
           ? apiData.variants
           : [];
-        const variants = rawVariants.map((v) => ({
-          id: v?.id,
-          ram: v?.ram || "",
-          storage: v?.storage || v?.storage_size || "",
-          base_price:
-            v?.base_price !== undefined && v?.base_price !== null
-              ? String(v.base_price)
-              : "",
-          color_name: v?.color_name || v?.color || "",
-          color_code: v?.color_code || v?.colorCode || "",
-          custom_properties: v?.custom_properties || {},
-          store_prices: Array.isArray(v?.store_prices)
+        const variants = rawVariants.map((v) => {
+          const parsedStorePrices = Array.isArray(v?.store_prices)
             ? v.store_prices
-            : safeParse(v?.store_prices, []),
-        }));
+            : safeParse(v?.store_prices, []);
+
+          const stores = (parsedStorePrices || []).map((sp) => ({
+            id: sp?.id,
+            store_name: sp?.store_name || sp?.store || "",
+            price:
+              sp?.price !== undefined && sp?.price !== null
+                ? String(sp.price)
+                : "",
+            url: sp?.url || "",
+            offer_text: sp?.offer_text || "",
+            discount: sp?.discount || "",
+            offers: sp?.offers || "",
+            custom_properties: sp?.custom_properties || {},
+          }));
+
+          return {
+            id: v?.id,
+            ram: v?.ram || "",
+            storage: v?.storage || v?.storage_size || "",
+            base_price:
+              v?.base_price !== undefined && v?.base_price !== null
+                ? String(v.base_price)
+                : "",
+            color_name: v?.color_name || v?.color || "",
+            color_code: v?.color_code || v?.colorCode || "",
+            custom_properties: v?.custom_properties || {},
+            store_prices: parsedStorePrices,
+            stores,
+          };
+        });
 
         // Build variant_store_prices
         const variant_store_prices = [];
@@ -511,10 +530,7 @@ const EditMobile = () => {
           category: apiData?.category || "Smart Phone",
           brand: apiData?.brand || "",
           model: apiData?.model || "",
-          rating:
-            apiData?.rating !== undefined && apiData.rating !== null
-              ? String(apiData.rating)
-              : "",
+          // rating removed
           launch_date: apiData?.launch_date
             ? new Date(apiData.launch_date).toISOString().split("T")[0]
             : "",
@@ -536,6 +552,7 @@ const EditMobile = () => {
             storage: v.storage || "",
             base_price: v.base_price || "",
             custom_properties: v.custom_properties || {},
+            stores: v.stores || [],
           })),
           variant_store_prices: variant_store_prices,
           build_design: extractSphereRating(apiData?.build_design),
@@ -766,6 +783,45 @@ const EditMobile = () => {
     });
   };
 
+  // Update nested object property (e.g., ports.usb -> { label, value })
+  const handleNestedObjectFieldChange = (field, key, innerKey, prop, value) => {
+    setFormData((prev) => {
+      const section = { ...((prev || {})[field] || {}) };
+      const objForKey =
+        section[key] && typeof section[key] === "object"
+          ? { ...section[key] }
+          : {};
+      const inner =
+        objForKey[innerKey] && typeof objForKey[innerKey] === "object"
+          ? { ...objForKey[innerKey] }
+          : {};
+      inner[prop] = value;
+      objForKey[innerKey] = inner;
+      section[key] = objForKey;
+      return {
+        ...prev,
+        [field]: section,
+      };
+    });
+  };
+
+  // Update nested primitive value (e.g., camera.rear_camera.main = "50 MP")
+  const handlePrimitiveNestedChange = (field, parentKey, innerKey, value) => {
+    setFormData((prev) => {
+      const section = { ...((prev || {})[field] || {}) };
+      const parent =
+        section[parentKey] && typeof section[parentKey] === "object"
+          ? { ...section[parentKey] }
+          : {};
+      parent[innerKey] = value;
+      section[parentKey] = parent;
+      return {
+        ...prev,
+        [field]: section,
+      };
+    });
+  };
+
   // Handle array field changes
   const handleArrayFieldChange = (field, index, key, value) => {
     setFormData((prev) => ({
@@ -793,6 +849,45 @@ const EditMobile = () => {
       const newArr = prev[field].filter((_, i) => i !== index);
       return { ...prev, [field]: newArr };
     });
+  };
+
+  // Clean payload by removing null/empty values and client-only keys
+  const cleanPayload = (input) => {
+    const clean = (val) => {
+      if (val === null || val === undefined) return undefined;
+      if (typeof val === "string") {
+        const s = val.trim();
+        return s === "" ? undefined : s;
+      }
+      if (Array.isArray(val)) {
+        const a = val.map(clean).filter((v) => v !== undefined);
+        return a.length ? a : undefined;
+      }
+      if (typeof val === "object") {
+        const out = {};
+        Object.keys(val).forEach((k) => {
+          const v = clean(val[k]);
+          if (v !== undefined) out[k] = v;
+        });
+        return Object.keys(out).length ? out : undefined;
+      }
+      return val;
+    };
+
+    const cleaned = clean(input) || {};
+
+    // For variant_store_prices, drop variant_index when variant_id present
+    if (Array.isArray(cleaned.variant_store_prices)) {
+      cleaned.variant_store_prices = cleaned.variant_store_prices.map((sp) => {
+        if (sp.variant_id) {
+          const { variant_index, ...rest } = sp;
+          return rest;
+        }
+        return sp;
+      });
+    }
+
+    return cleaned;
   };
 
   // Add color
@@ -887,15 +982,29 @@ const EditMobile = () => {
   // from the server response (i.e. the object's key/value pairs), so the UI
   // renders fields dynamically based on the data shape.
   const getDefaultFields = (category) => {
-    if (!formData || typeof formData !== "object") return [];
+    if (!formData || typeof formData !== "object") return {};
     const value = formData[category];
-    if (!value || typeof value !== "object") return [];
+    if (!value || typeof value !== "object") return {};
     // Exclude any custom fields that are rendered separately to avoid duplicates
     const allKeys = Object.keys(value);
     const customKeys = Array.isArray(customJsonFields[category])
       ? customJsonFields[category]
       : [];
-    return allKeys.filter((k) => !customKeys.includes(k));
+    const res = {};
+    allKeys.forEach((k) => {
+      if (!customKeys.includes(k)) res[k] = value[k];
+    });
+    return res;
+  };
+
+  // Return an array of field descriptors [{ key, label, value }] for UI mapping
+  const getDefaultFieldsArray = (category) => {
+    const obj = getDefaultFields(category) || {};
+    return Object.keys(obj).map((k) => ({
+      key: k,
+      label: String(k).replace(/_/g, " "),
+      value: obj[k],
+    }));
   };
 
   // Add custom field
@@ -907,11 +1016,12 @@ const EditMobile = () => {
         ...prev,
         [field]: [...(prev[field] || []), cleanFieldName],
       }));
+      // initialize custom field as label/value object for consistency
       setFormData((prev) => ({
         ...prev,
         [field]: {
           ...prev[field],
-          [cleanFieldName]: "",
+          [cleanFieldName]: { label: cleanFieldName, value: "" },
         },
       }));
       showToast(
@@ -920,6 +1030,23 @@ const EditMobile = () => {
         "success",
       );
     }
+  };
+
+  // Update a custom field's inner property (label or value)
+  const handleCustomFieldChange = (field, key, prop, value) => {
+    setFormData((prev) => {
+      const section = { ...((prev || {})[field] || {}) };
+      const item =
+        section[key] && typeof section[key] === "object"
+          ? { ...section[key] }
+          : {};
+      item[prop] = value;
+      section[key] = item;
+      return {
+        ...prev,
+        [field]: section,
+      };
+    });
   };
 
   // Remove custom field
@@ -970,7 +1097,6 @@ const EditMobile = () => {
         category: formData.category || "",
         brand: formData.brand || "",
         model: formData.model || "",
-        rating: formData.rating ? parseFloat(formData.rating) : null,
         launch_date: formData.launch_date || null,
         images: formData.images || [],
         colors: formData.colors.filter((color) => color.name && color.code),
@@ -987,16 +1113,46 @@ const EditMobile = () => {
         multimedia: formData.multimedia,
         is_foldable: formData.is_foldable || false,
         published: publishEnabled,
+        // include variants and per-variant store prices so edits persist
+        variants: (formData.variants || []).map((v) => ({
+          id: v.id || null,
+          ram: v.ram || null,
+          storage: v.storage || null,
+          base_price: v.base_price ? Number(v.base_price) : null,
+          custom_properties: v.custom_properties || {},
+        })),
+        variant_store_prices: (function () {
+          const out = [];
+          (formData.variants || []).forEach((v, vi) => {
+            const stores = Array.isArray(v.stores) ? v.stores : [];
+            stores.forEach((s) => {
+              out.push({
+                id: s.id || null,
+                variant_id: v.id || null,
+                variant_index: v.id ? undefined : vi,
+                store_name: s.store_name || null,
+                price: s.price ? Number(s.price) : null,
+                url: s.url || null,
+                offer_text: s.offer_text || null,
+                discount: s.discount || null,
+                offers: s.offers || null,
+                custom_properties: s.custom_properties || {},
+              });
+            });
+          });
+          return out;
+        })(),
       };
 
       const token = Cookies.get("authToken");
+      const cleaned = cleanPayload(submitData);
       const res = await fetch(buildUrl(`/api/smartphone/${id}`), {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
           Authorization: token ? `Bearer ${token}` : "",
         },
-        body: JSON.stringify(submitData),
+        body: JSON.stringify(cleaned),
       });
 
       if (!res.ok) {
@@ -1182,6 +1338,778 @@ const EditMobile = () => {
             </div>
           </div>
         )}
+      </div>
+    );
+  };
+
+  // Add custom fields UI to Camera tab
+  const CameraCustomFields = () => {
+    const list = customJsonFields.camera || [];
+    if (!list.length)
+      return (
+        <div className="mt-3">
+          <button
+            onClick={() => addCustomJsonField("camera")}
+            className="flex items-center gap-2 text-blue-600 hover:text-blue-700 text-sm"
+          >
+            <FaPlus className="text-xs" />
+            <span>Add Custom Camera Field</span>
+          </button>
+        </div>
+      );
+
+    return (
+      <div className="space-y-3 mt-3">
+        {list.map((customField) => {
+          const val = formData.camera?.[customField];
+          const isObj = val && typeof val === "object" && !Array.isArray(val);
+          return (
+            <div
+              key={customField}
+              className="relative p-3 bg-gray-50 rounded-md"
+            >
+              <label className="block text-xs font-medium text-gray-600 mb-1 capitalize">
+                {String(customField).replace(/_/g, " ")}
+              </label>
+              {isObj ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">
+                      Label
+                    </label>
+                    <input
+                      type="text"
+                      value={val.label || ""}
+                      onChange={(e) =>
+                        handleCustomFieldChange(
+                          "camera",
+                          customField,
+                          "label",
+                          e.target.value,
+                        )
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">
+                      Value
+                    </label>
+                    <input
+                      type="text"
+                      value={val.value !== undefined ? String(val.value) : ""}
+                      onChange={(e) =>
+                        handleCustomFieldChange(
+                          "camera",
+                          customField,
+                          "value",
+                          e.target.value,
+                        )
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <input
+                  type="text"
+                  value={val || ""}
+                  onChange={(e) =>
+                    handleJsonbChange("camera", customField, e.target.value)
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                />
+              )}
+              <button
+                onClick={() => removeCustomJsonField("camera", customField)}
+                className="absolute right-2 top-3 text-red-500 hover:text-red-700"
+              >
+                <FaTrash className="text-sm" />
+              </button>
+            </div>
+          );
+        })}
+
+        <div>
+          <button
+            onClick={() => addCustomJsonField("camera")}
+            className="flex items-center gap-2 text-blue-600 hover:text-blue-700 text-sm"
+          >
+            <FaPlus className="text-xs" />
+            <span>Add Custom Camera Field</span>
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  // Camera Specs Input Component
+  const CameraSpecsInput = () => {
+    const cameraData = formData.camera || {};
+
+    const cameraCategories = [
+      { key: "rear_camera", label: "Rear Camera" },
+      { key: "front_camera", label: "Front Camera" },
+    ];
+
+    const cameraProperties = [
+      "main",
+      "ultra_wide",
+      "telephoto",
+      "macro",
+      "depth",
+      "thermal",
+      "periscope",
+    ];
+
+    const handleCameraChange = (category, property, value) => {
+      const categoryData =
+        (cameraData[category] && typeof cameraData[category] === "object"
+          ? { ...cameraData[category] }
+          : {}) || {};
+
+      categoryData[property] = value || null;
+
+      if (!categoryData[property]) {
+        delete categoryData[property];
+      }
+
+      setFormData((prev) => ({
+        ...prev,
+        camera: {
+          ...cameraData,
+          [category]: Object.keys(categoryData).length ? categoryData : null,
+        },
+      }));
+    };
+
+    return (
+      <div className="space-y-4">
+        {cameraCategories.map((category) => (
+          <div
+            key={category.key}
+            className="border border-gray-200 rounded-lg p-4 bg-gradient-to-br from-blue-50 to-white"
+          >
+            <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+              <FaCamera className="text-blue-600" />
+              {category.label}
+            </h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {cameraProperties.map((prop) => (
+                <div key={prop}>
+                  <label className="block text-xs font-medium text-gray-600 mb-2 capitalize">
+                    {prop.replace(/_/g, " ")}
+                  </label>
+                  <input
+                    type="text"
+                    value={
+                      (cameraData[category.key] &&
+                        cameraData[category.key][prop]) ||
+                      ""
+                    }
+                    onChange={(e) =>
+                      handleCameraChange(category.key, prop, e.target.value)
+                    }
+                    placeholder={`e.g., 50 MP, f/1.8`}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  />
+                </div>
+              ))}
+
+              {/* Other camera specs */}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-2">
+                  Video Recording
+                </label>
+                <input
+                  type="text"
+                  value={cameraData[category.key]?.video_recording || ""}
+                  onChange={(e) =>
+                    handleCameraChange(
+                      category.key,
+                      "video_recording",
+                      e.target.value,
+                    )
+                  }
+                  placeholder={`e.g., 8K@30fps, 4K@60fps`}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-2">
+                  Features
+                </label>
+                <input
+                  type="text"
+                  value={cameraData[category.key]?.features || ""}
+                  onChange={(e) =>
+                    handleCameraChange(category.key, "features", e.target.value)
+                  }
+                  placeholder={`e.g., OIS, HDR, Night mode`}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+              </div>
+            </div>
+          </div>
+        ))}
+
+        {/* Other camera properties */}
+        <div className="border border-gray-200 rounded-lg p-4 bg-gradient-to-br from-purple-50 to-white">
+          <h3 className="font-semibold text-gray-800 mb-4">Camera Features</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-2">
+                AI Features
+              </label>
+              <input
+                type="text"
+                value={cameraData.ai_features || ""}
+                onChange={(e) =>
+                  handleJsonbChange("camera", "ai_features", e.target.value)
+                }
+                placeholder={`e.g., Object detection, Scene recognition`}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-2">
+                Slow Motion
+              </label>
+              <input
+                type="text"
+                value={cameraData.slow_motion || ""}
+                onChange={(e) =>
+                  handleJsonbChange("camera", "slow_motion", e.target.value)
+                }
+                placeholder={`e.g., 240fps @ 1080p, 960fps @ 720p`}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Audio Specs Input Component
+  const AudioSpecsInput = () => {
+    const audioData = formData.audio || {};
+
+    const handleAudioChange = (key, value) => {
+      handleJsonbChange("audio", key, value);
+    };
+
+    return (
+      <div className="space-y-4">
+        <div className="border border-gray-200 rounded-lg p-4 bg-gradient-to-br from-green-50 to-white">
+          <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+            <FaMicrochip className="text-green-600" />
+            Speaker Configuration
+          </h3>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-2">
+                Speaker Type
+              </label>
+              <input
+                type="text"
+                value={audioData.speaker_type || ""}
+                onChange={(e) =>
+                  handleAudioChange("speaker_type", e.target.value)
+                }
+                placeholder={`e.g., Stereo, Mono, Quad speakers`}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-2">
+                Speaker Count
+              </label>
+              <input
+                type="text"
+                value={audioData.speaker_count || ""}
+                onChange={(e) =>
+                  handleAudioChange("speaker_count", e.target.value)
+                }
+                placeholder={`e.g., Dual, Quad, Single`}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-2">
+                Max Volume
+              </label>
+              <input
+                type="text"
+                value={audioData.max_volume || ""}
+                onChange={(e) =>
+                  handleAudioChange("max_volume", e.target.value)
+                }
+                placeholder={`e.g., 85 dB`}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-2">
+                Audio Jack
+              </label>
+              <input
+                type="text"
+                value={audioData.audio_jack || ""}
+                onChange={(e) =>
+                  handleAudioChange("audio_jack", e.target.value)
+                }
+                placeholder={`e.g., 3.5mm, None`}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="border border-gray-200 rounded-lg p-4 bg-gradient-to-br from-indigo-50 to-white">
+          <h3 className="font-semibold text-gray-800 mb-4">Audio Features</h3>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-2">
+                Audio Codecs
+              </label>
+              <input
+                type="text"
+                value={audioData.audio_codecs || ""}
+                onChange={(e) =>
+                  handleAudioChange("audio_codecs", e.target.value)
+                }
+                placeholder={`e.g., MP3, AAC, FLAC, Dolby Atmos`}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-2">
+                Microphone Count
+              </label>
+              <input
+                type="text"
+                value={audioData.microphone_count || ""}
+                onChange={(e) =>
+                  handleAudioChange("microphone_count", e.target.value)
+                }
+                placeholder={`e.g., Dual, Quad, Single`}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-2">
+                Microphone Features
+              </label>
+              <input
+                type="text"
+                value={audioData.microphone_features || ""}
+                onChange={(e) =>
+                  handleAudioChange("microphone_features", e.target.value)
+                }
+                placeholder={`e.g., Noise cancellation, Directional`}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-2">
+                Surround Sound
+              </label>
+              <input
+                type="text"
+                value={audioData.surround_sound || ""}
+                onChange={(e) =>
+                  handleAudioChange("surround_sound", e.target.value)
+                }
+                placeholder={`e.g., Dolby Atmos, Spatial Audio`}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Add custom fields UI to Audio tab
+  const AudioCustomFields = () => {
+    const list = customJsonFields.audio || [];
+    if (!list.length)
+      return (
+        <div className="mt-3">
+          <button
+            onClick={() => addCustomJsonField("audio")}
+            className="flex items-center gap-2 text-blue-600 hover:text-blue-700 text-sm"
+          >
+            <FaPlus className="text-xs" />
+            <span>Add Custom Audio Field</span>
+          </button>
+        </div>
+      );
+
+    return (
+      <div className="space-y-3 mt-3">
+        {list.map((customField) => {
+          const val = formData.audio?.[customField];
+          const isObj = val && typeof val === "object" && !Array.isArray(val);
+          return (
+            <div
+              key={customField}
+              className="relative p-3 bg-gray-50 rounded-md"
+            >
+              <label className="block text-xs font-medium text-gray-600 mb-1 capitalize">
+                {String(customField).replace(/_/g, " ")}
+              </label>
+              {isObj ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">
+                      Label
+                    </label>
+                    <input
+                      type="text"
+                      value={val.label || ""}
+                      onChange={(e) =>
+                        handleCustomFieldChange(
+                          "audio",
+                          customField,
+                          "label",
+                          e.target.value,
+                        )
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">
+                      Value
+                    </label>
+                    <input
+                      type="text"
+                      value={val.value !== undefined ? String(val.value) : ""}
+                      onChange={(e) =>
+                        handleCustomFieldChange(
+                          "audio",
+                          customField,
+                          "value",
+                          e.target.value,
+                        )
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <input
+                  type="text"
+                  value={val || ""}
+                  onChange={(e) =>
+                    handleJsonbChange("audio", customField, e.target.value)
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                />
+              )}
+              <button
+                onClick={() => removeCustomJsonField("audio", customField)}
+                className="absolute right-2 top-3 text-red-500 hover:text-red-700"
+              >
+                <FaTrash className="text-sm" />
+              </button>
+            </div>
+          );
+        })}
+
+        <div>
+          <button
+            onClick={() => addCustomJsonField("audio")}
+            className="flex items-center gap-2 text-blue-600 hover:text-blue-700 text-sm"
+          >
+            <FaPlus className="text-xs" />
+            <span>Add Custom Audio Field</span>
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  // Multimedia Specs Input Component
+  const MultimediaSpecsInput = () => {
+    const multimediaData = formData.multimedia || {};
+
+    const handleMultimediaChange = (key, value) => {
+      handleJsonbChange("multimedia", key, value);
+    };
+
+    return (
+      <div className="space-y-4">
+        <div className="border border-gray-200 rounded-lg p-4 bg-gradient-to-br from-pink-50 to-white">
+          <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+            <FaDesktop className="text-pink-600" />
+            Video Recording & Playback
+          </h3>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-2">
+                Max Recording Resolution
+              </label>
+              <input
+                type="text"
+                value={multimediaData.max_recording_resolution || ""}
+                onChange={(e) =>
+                  handleMultimediaChange(
+                    "max_recording_resolution",
+                    e.target.value,
+                  )
+                }
+                placeholder={`e.g., 8K@30fps`}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-2">
+                Video Codecs
+              </label>
+              <input
+                type="text"
+                value={multimediaData.video_codecs || ""}
+                onChange={(e) =>
+                  handleMultimediaChange("video_codecs", e.target.value)
+                }
+                placeholder={`e.g., H.264, H.265, VP9`}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-2">
+                Video Stabilization
+              </label>
+              <input
+                type="text"
+                value={multimediaData.video_stabilization || ""}
+                onChange={(e) =>
+                  handleMultimediaChange("video_stabilization", e.target.value)
+                }
+                placeholder={`e.g., EIS, OIS, Both`}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-2">
+                Max Playback Resolution
+              </label>
+              <input
+                type="text"
+                value={multimediaData.max_playback_resolution || ""}
+                onChange={(e) =>
+                  handleMultimediaChange(
+                    "max_playback_resolution",
+                    e.target.value,
+                  )
+                }
+                placeholder={`e.g., 8K`}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="border border-gray-200 rounded-lg p-4 bg-gradient-to-br from-cyan-50 to-white">
+          <h3 className="font-semibold text-gray-800 mb-4">
+            Media Formats & Features
+          </h3>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-2">
+                Supported Image Formats
+              </label>
+              <input
+                type="text"
+                value={multimediaData.image_formats || ""}
+                onChange={(e) =>
+                  handleMultimediaChange("image_formats", e.target.value)
+                }
+                placeholder={`e.g., JPEG, PNG, RAW, HEIF`}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500 text-sm"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-2">
+                Supported Audio Formats
+              </label>
+              <input
+                type="text"
+                value={multimediaData.audio_formats || ""}
+                onChange={(e) =>
+                  handleMultimediaChange("audio_formats", e.target.value)
+                }
+                placeholder={`e.g., MP3, AAC, FLAC, WAV`}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500 text-sm"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-2">
+                Supported Video Formats
+              </label>
+              <input
+                type="text"
+                value={multimediaData.video_formats || ""}
+                onChange={(e) =>
+                  handleMultimediaChange("video_formats", e.target.value)
+                }
+                placeholder={`e.g., MP4, WebM, MKV`}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500 text-sm"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-2">
+                Streaming Apps
+              </label>
+              <input
+                type="text"
+                value={multimediaData.streaming_apps || ""}
+                onChange={(e) =>
+                  handleMultimediaChange("streaming_apps", e.target.value)
+                }
+                placeholder={`e.g., Netflix, Prime Video, YouTube`}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500 text-sm"
+              />
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="block text-xs font-medium text-gray-600 mb-2">
+                Special Features
+              </label>
+              <input
+                type="text"
+                value={multimediaData.special_features || ""}
+                onChange={(e) =>
+                  handleMultimediaChange("special_features", e.target.value)
+                }
+                placeholder={`e.g., HDR10, Refresh rate support, Gaming mode`}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500 text-sm"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Add custom fields UI to Multimedia tab
+  const MultimediaCustomFields = () => {
+    const list = customJsonFields.multimedia || [];
+    if (!list.length)
+      return (
+        <div className="mt-3">
+          <button
+            onClick={() => addCustomJsonField("multimedia")}
+            className="flex items-center gap-2 text-blue-600 hover:text-blue-700 text-sm"
+          >
+            <FaPlus className="text-xs" />
+            <span>Add Custom Multimedia Field</span>
+          </button>
+        </div>
+      );
+
+    return (
+      <div className="space-y-3 mt-3">
+        {list.map((customField) => {
+          const val = formData.multimedia?.[customField];
+          const isObj = val && typeof val === "object" && !Array.isArray(val);
+          return (
+            <div
+              key={customField}
+              className="relative p-3 bg-gray-50 rounded-md"
+            >
+              <label className="block text-xs font-medium text-gray-600 mb-1 capitalize">
+                {String(customField).replace(/_/g, " ")}
+              </label>
+              {isObj ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">
+                      Label
+                    </label>
+                    <input
+                      type="text"
+                      value={val.label || ""}
+                      onChange={(e) =>
+                        handleCustomFieldChange(
+                          "multimedia",
+                          customField,
+                          "label",
+                          e.target.value,
+                        )
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">
+                      Value
+                    </label>
+                    <input
+                      type="text"
+                      value={val.value !== undefined ? String(val.value) : ""}
+                      onChange={(e) =>
+                        handleCustomFieldChange(
+                          "multimedia",
+                          customField,
+                          "value",
+                          e.target.value,
+                        )
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <input
+                  type="text"
+                  value={val || ""}
+                  onChange={(e) =>
+                    handleJsonbChange("multimedia", customField, e.target.value)
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                />
+              )}
+              <button
+                onClick={() => removeCustomJsonField("multimedia", customField)}
+                className="absolute right-2 top-3 text-red-500 hover:text-red-700"
+              >
+                <FaTrash className="text-sm" />
+              </button>
+            </div>
+          );
+        })}
+
+        <div>
+          <button
+            onClick={() => addCustomJsonField("multimedia")}
+            className="flex items-center gap-2 text-blue-600 hover:text-blue-700 text-sm"
+          >
+            <FaPlus className="text-xs" />
+            <span>Add Custom Multimedia Field</span>
+          </button>
+        </div>
       </div>
     );
   };
@@ -1613,22 +2541,6 @@ const EditMobile = () => {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-                    Rating
-                  </label>
-                  <input
-                    type="number"
-                    name="rating"
-                    step="0.1"
-                    min="0"
-                    max="5"
-                    value={formData.rating || ""}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="e.g., 4.5"
-                  />
-                </div>
 
                 <div className="sm:col-span-2">
                   <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
@@ -1920,7 +2832,7 @@ const EditMobile = () => {
                       </label>
                       <input
                         type="number"
-                        value={variant.base_price}
+                        value={variant.base_price ?? ""}
                         onChange={(e) => {
                           handleArrayFieldChange(
                             "variants",
@@ -1933,6 +2845,238 @@ const EditMobile = () => {
                         className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
                       />
                     </div>
+                  </div>
+
+                  <div className="mt-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-sm font-medium text-gray-700">
+                        Stores
+                      </h4>
+                      <button
+                        onClick={() => addStoreToVariant(index)}
+                        className="text-xs text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                      >
+                        <FaPlus className="text-xs" />
+                        Add Store
+                      </button>
+                    </div>
+
+                    {(variant.stores || []).map((store, storeIndex) => (
+                      <div
+                        key={storeIndex}
+                        className="p-3 bg-gray-50 rounded-md mb-3"
+                      >
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">
+                              Store Name
+                            </label>
+                            <CustomDropdown
+                              value={store.store_name || ""}
+                              placeholder="Select Store"
+                              isOpen={
+                                showStoreDropdown[`${index}-${storeIndex}`] ||
+                                false
+                              }
+                              setIsOpen={(val) =>
+                                setShowStoreDropdown((prev) => ({
+                                  ...prev,
+                                  [`${index}-${storeIndex}`]: val,
+                                }))
+                              }
+                              searchValue={
+                                storeSearch[`${index}-${storeIndex}`] || ""
+                              }
+                              setSearchValue={(val) =>
+                                setStoreSearch((prev) => ({
+                                  ...prev,
+                                  [`${index}-${storeIndex}`]: val,
+                                }))
+                              }
+                              filteredOptions={(storesList || []).filter(
+                                (opt) =>
+                                  opt.name
+                                    .toLowerCase()
+                                    .includes(
+                                      (
+                                        storeSearch[`${index}-${storeIndex}`] ||
+                                        ""
+                                      ).toLowerCase(),
+                                    ),
+                              )}
+                              onSelect={(opt) => {
+                                const newVariants = [...formData.variants];
+                                newVariants[index].stores[storeIndex] = {
+                                  ...newVariants[index].stores[storeIndex],
+                                  store_name: opt.name,
+                                };
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  variants: newVariants,
+                                }));
+                                setShowStoreDropdown((prev) => ({
+                                  ...prev,
+                                  [`${index}-${storeIndex}`]: false,
+                                }));
+                              }}
+                              selectedLabel={
+                                storesList?.find(
+                                  (s) => s.name === store.store_name,
+                                )?.name || ""
+                              }
+                              dropdownRef={
+                                storeDropdownRefs.current[
+                                  `${index}-${storeIndex}`
+                                ] ||
+                                (storeDropdownRefs.current[
+                                  `${index}-${storeIndex}`
+                                ] = createRef())
+                              }
+                              type="store"
+                              showSearch={true}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">
+                              Price (₹)
+                            </label>
+                            <input
+                              type="number"
+                              value={store.price ?? ""}
+                              onChange={(e) => {
+                                const newVariants = [...formData.variants];
+                                newVariants[index].stores[storeIndex] = {
+                                  ...newVariants[index].stores[storeIndex],
+                                  price: e.target.value,
+                                };
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  variants: newVariants,
+                                }));
+                              }}
+                              placeholder="Actual price"
+                              className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-3">
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">
+                              <FaTag className="inline mr-1 text-gray-400" />
+                              Discount (%)
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              max="100"
+                              value={store.discount ?? ""}
+                              onChange={(e) => {
+                                const newVariants = [...formData.variants];
+                                newVariants[index].stores[storeIndex] = {
+                                  ...newVariants[index].stores[storeIndex],
+                                  discount: e.target.value,
+                                };
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  variants: newVariants,
+                                }));
+                              }}
+                              placeholder="e.g., 15"
+                              className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                            />
+                          </div>
+                          <div className="md:col-span-2">
+                            <label className="block text-xs font-medium text-gray-600 mb-1">
+                              <FaPercent className="inline mr-1 text-gray-400" />
+                              Special Offers
+                            </label>
+                            <input
+                              type="text"
+                              value={store.offers ?? ""}
+                              onChange={(e) => {
+                                const newVariants = [...formData.variants];
+                                newVariants[index].stores[storeIndex] = {
+                                  ...newVariants[index].stores[storeIndex],
+                                  offers: e.target.value,
+                                };
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  variants: newVariants,
+                                }));
+                              }}
+                              placeholder="e.g., Bank Offer, Exchange Bonus"
+                              className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">
+                              Affiliate URL
+                            </label>
+                            <input
+                              type="url"
+                              value={store.url ?? ""}
+                              onChange={(e) => {
+                                const newVariants = [...formData.variants];
+                                newVariants[index].stores[storeIndex] = {
+                                  ...newVariants[index].stores[storeIndex],
+                                  url: e.target.value,
+                                };
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  variants: newVariants,
+                                }));
+                              }}
+                              placeholder="https://affiliate-link.com/product"
+                              className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">
+                              Offer Text
+                            </label>
+                            <div className="flex items-center space-x-2">
+                              <input
+                                type="text"
+                                value={store.offer_text ?? ""}
+                                onChange={(e) => {
+                                  const newVariants = [...formData.variants];
+                                  newVariants[index].stores[storeIndex] = {
+                                    ...newVariants[index].stores[storeIndex],
+                                    offer_text: e.target.value,
+                                  };
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    variants: newVariants,
+                                  }));
+                                }}
+                                placeholder="e.g., Limited time offer"
+                                className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                              />
+                              <button
+                                onClick={() => {
+                                  const newVariants = [...formData.variants];
+                                  newVariants[index].stores = newVariants[
+                                    index
+                                  ].stores.filter((_, i) => i !== storeIndex);
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    variants: newVariants,
+                                  }));
+                                }}
+                                className="text-red-500 hover:text-red-700 ml-2"
+                                title="Remove store"
+                              >
+                                <FaTrash />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               ))}
@@ -1993,185 +3137,581 @@ const EditMobile = () => {
 
               {/* Specification Fields */}
               <div className="space-y-4">
-                {/* Foldable toggle */}
-                <div className="flex items-center gap-3 mb-2">
-                  <label className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      checked={!!formData.is_foldable}
-                      onChange={(e) => {
-                        const enabled = e.target.checked;
-                        setFormData((prev) => {
-                          const cur = prev || {};
-                          const updated = { ...cur, is_foldable: enabled };
-                          const existing = cur[activeSpecTab] || {};
-                          if (enabled) {
-                            if (!existing.fold && !existing.flip) {
-                              updated[activeSpecTab] = {
-                                fold: {},
-                                flip: { ...existing },
-                              };
-                            }
-                          } else {
-                            if (existing.flip) {
-                              updated[activeSpecTab] = {
-                                ...(existing.flip || {}),
-                              };
-                            }
-                          }
-                          return { ...updated };
-                        });
-                      }}
-                      className="h-4 w-4"
-                    />
-                    <span className="text-sm text-gray-700">
-                      Foldable device
-                    </span>
-                  </label>
-                </div>
-
-                {activeSpecTab === "network" && (
-                  <div className="mb-3 p-3 bg-blue-50 rounded-md border border-blue-100">
-                    <div className="flex items-center space-x-2">
-                      <FaSimCard className="text-blue-500" />
-                      <span className="text-sm text-blue-700">
-                        Enter SIM details like SIM type, slots, eSIM support,
-                        etc.
-                      </span>
-                    </div>
-                  </div>
+                {/* Special handling for Camera, Audio, and Multimedia tabs */}
+                {activeSpecTab === "camera" && (
+                  <>
+                    <CameraSpecsInput />
+                    <CameraCustomFields />
+                  </>
                 )}
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {formData.is_foldable ? (
+                {activeSpecTab === "audio" && (
+                  <>
+                    <AudioSpecsInput />
+                    <AudioCustomFields />
+                  </>
+                )}
+
+                {activeSpecTab === "multimedia" && (
+                  <>
+                    <MultimediaSpecsInput />
+                    <MultimediaCustomFields />
+                  </>
+                )}
+
+                {activeSpecTab !== "camera" &&
+                  activeSpecTab !== "audio" &&
+                  activeSpecTab !== "multimedia" && (
                     <>
-                      <div className="lg:col-span-1">
-                        <h4 className="text-sm font-semibold mb-2">Fold</h4>
-                        {getDefaultFields(activeSpecTab).map((field) => (
-                          <div key={"fold-" + field} className="mb-3">
-                            <label className="block text-xs font-medium text-gray-600 mb-1 capitalize">
-                              {field.replace(/_/g, " ")}
-                            </label>
-                            <input
-                              type="text"
-                              value={
-                                (formData[activeSpecTab] &&
-                                  formData[activeSpecTab].fold &&
-                                  formData[activeSpecTab].fold[field]) ||
-                                ""
-                              }
-                              onChange={(e) =>
-                                handleJsonbChange(
-                                  activeSpecTab,
-                                  field,
-                                  e.target.value,
-                                  "fold",
-                                )
-                              }
-                              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
-                              placeholder={`Enter ${field.replace(/_/g, " ")}`}
-                            />
-                          </div>
-                        ))}
+                      {/* Foldable toggle */}
+                      <div className="flex items-center gap-3 mb-2">
+                        <label className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            checked={!!formData.is_foldable}
+                            onChange={(e) => {
+                              const enabled = e.target.checked;
+                              setFormData((prev) => {
+                                const cur = prev || {};
+                                const updated = {
+                                  ...cur,
+                                  is_foldable: enabled,
+                                };
+                                const existing = cur[activeSpecTab] || {};
+                                if (enabled) {
+                                  if (!existing.fold && !existing.flip) {
+                                    updated[activeSpecTab] = {
+                                      fold: {},
+                                      flip: { ...existing },
+                                    };
+                                  }
+                                } else {
+                                  if (existing.flip) {
+                                    updated[activeSpecTab] = {
+                                      ...(existing.flip || {}),
+                                    };
+                                  }
+                                }
+                                return { ...updated };
+                              });
+                            }}
+                            className="h-4 w-4"
+                          />
+                          <span className="text-sm text-gray-700">
+                            Foldable device
+                          </span>
+                        </label>
                       </div>
 
-                      <div className="lg:col-span-1">
-                        <h4 className="text-sm font-semibold mb-2">Flip</h4>
-                        {getDefaultFields(activeSpecTab).map((field) => (
-                          <div key={"flip-" + field} className="mb-3">
-                            <label className="block text-xs font-medium text-gray-600 mb-1 capitalize">
-                              {field.replace(/_/g, " ")}
-                            </label>
-                            <input
-                              type="text"
-                              value={
-                                (formData[activeSpecTab] &&
-                                  formData[activeSpecTab].flip &&
-                                  formData[activeSpecTab].flip[field]) ||
-                                ""
-                              }
-                              onChange={(e) =>
-                                handleJsonbChange(
-                                  activeSpecTab,
-                                  field,
-                                  e.target.value,
-                                  "flip",
-                                )
-                              }
-                              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
-                              placeholder={`Enter ${field.replace(/_/g, " ")}`}
-                            />
+                      {activeSpecTab === "network" && (
+                        <div className="mb-3 p-3 bg-blue-50 rounded-md border border-blue-100">
+                          <div className="flex items-center space-x-2">
+                            <FaSimCard className="text-blue-500" />
+                            <span className="text-sm text-blue-700">
+                              Enter SIM details like SIM type, slots, eSIM
+                              support, etc.
+                            </span>
                           </div>
-                        ))}
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {formData.is_foldable ? (
+                          <>
+                            <div className="lg:col-span-1">
+                              <h4 className="text-sm font-semibold mb-2">
+                                Fold
+                              </h4>
+                              {getDefaultFieldsArray(activeSpecTab).map(
+                                (field) => (
+                                  <div
+                                    key={"fold-" + field.key}
+                                    className="mb-3"
+                                  >
+                                    <label className="block text-xs font-medium text-gray-600 mb-1 capitalize">
+                                      {field.label}
+                                    </label>
+                                    <input
+                                      type="text"
+                                      value={
+                                        (formData[activeSpecTab] &&
+                                          formData[activeSpecTab].fold &&
+                                          formData[activeSpecTab].fold[
+                                            field.key
+                                          ]) ||
+                                        ""
+                                      }
+                                      onChange={(e) =>
+                                        handleJsonbChange(
+                                          activeSpecTab,
+                                          field.key,
+                                          e.target.value,
+                                          "fold",
+                                        )
+                                      }
+                                      className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
+                                      placeholder={`Enter ${field.label}`}
+                                    />
+                                  </div>
+                                ),
+                              )}
+                            </div>
+
+                            <div className="lg:col-span-1">
+                              <h4 className="text-sm font-semibold mb-2">
+                                Flip
+                              </h4>
+                              {getDefaultFieldsArray(activeSpecTab).map(
+                                (field) => (
+                                  <div
+                                    key={"flip-" + field.key}
+                                    className="mb-3"
+                                  >
+                                    <label className="block text-xs font-medium text-gray-600 mb-1 capitalize">
+                                      {field.label}
+                                    </label>
+                                    <input
+                                      type="text"
+                                      value={
+                                        (formData[activeSpecTab] &&
+                                          formData[activeSpecTab].flip &&
+                                          formData[activeSpecTab].flip[
+                                            field.key
+                                          ]) ||
+                                        ""
+                                      }
+                                      onChange={(e) =>
+                                        handleJsonbChange(
+                                          activeSpecTab,
+                                          field.key,
+                                          e.target.value,
+                                          "flip",
+                                        )
+                                      }
+                                      className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
+                                      placeholder={`Enter ${field.label}`}
+                                    />
+                                  </div>
+                                ),
+                              )}
+                            </div>
+                          </>
+                        ) : (
+                          getDefaultFieldsArray(activeSpecTab).map((field) => {
+                            const rawVal = field.value;
+                            const isObj =
+                              rawVal &&
+                              typeof rawVal === "object" &&
+                              !Array.isArray(rawVal);
+                            return (
+                              <div key={field.key}>
+                                <label className="block text-xs font-medium text-gray-600 mb-1 capitalize">
+                                  {field.label}
+                                </label>
+                                {isObj ? (
+                                  (() => {
+                                    try {
+                                      const obj = rawVal || {};
+                                      const values = Object.values(obj || {});
+                                      const isLabelValueMap =
+                                        values.length > 0 &&
+                                        values.every(
+                                          (v) =>
+                                            v &&
+                                            typeof v === "object" &&
+                                            ("label" in v || "value" in v),
+                                        );
+
+                                      const isPrimitiveMap =
+                                        values.length > 0 &&
+                                        values.every(
+                                          (v) =>
+                                            v === null ||
+                                            (typeof v !== "object" &&
+                                              !Array.isArray(v)),
+                                        );
+
+                                      if (isLabelValueMap) {
+                                        return (
+                                          <div className="space-y-3">
+                                            {Object.keys(obj).map(
+                                              (innerKey) => {
+                                                const innerVal =
+                                                  obj[innerKey] || {};
+                                                return (
+                                                  <div
+                                                    key={innerKey}
+                                                    className="p-2 bg-gray-50 rounded-md"
+                                                  >
+                                                    <div className="text-xs text-gray-600 mb-2 font-medium">
+                                                      {innerKey.replace(
+                                                        /_/g,
+                                                        " ",
+                                                      )}
+                                                    </div>
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                      <div>
+                                                        <label className="block text-xs text-gray-500 mb-1">
+                                                          Label
+                                                        </label>
+                                                        <input
+                                                          type="text"
+                                                          value={
+                                                            innerVal.label || ""
+                                                          }
+                                                          onChange={(e) =>
+                                                            handleNestedObjectFieldChange(
+                                                              activeSpecTab,
+                                                              field.key,
+                                                              innerKey,
+                                                              "label",
+                                                              e.target.value,
+                                                            )
+                                                          }
+                                                          className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                                                          placeholder="Label"
+                                                        />
+                                                      </div>
+                                                      <div>
+                                                        <label className="block text-xs text-gray-500 mb-1">
+                                                          Value
+                                                        </label>
+                                                        <input
+                                                          type="text"
+                                                          value={
+                                                            innerVal.value !==
+                                                            undefined
+                                                              ? String(
+                                                                  innerVal.value,
+                                                                )
+                                                              : innerVal.label ||
+                                                                ""
+                                                          }
+                                                          onChange={(e) =>
+                                                            handleNestedObjectFieldChange(
+                                                              activeSpecTab,
+                                                              field.key,
+                                                              innerKey,
+                                                              "value",
+                                                              e.target.value,
+                                                            )
+                                                          }
+                                                          className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                                                          placeholder="Value"
+                                                        />
+                                                      </div>
+                                                    </div>
+                                                  </div>
+                                                );
+                                              },
+                                            )}
+                                          </div>
+                                        );
+                                      }
+
+                                      if (isPrimitiveMap) {
+                                        return (
+                                          <div className="space-y-3">
+                                            {Object.keys(obj).map(
+                                              (innerKey) => (
+                                                <div
+                                                  key={innerKey}
+                                                  className="p-2 bg-gray-50 rounded-md"
+                                                >
+                                                  <div className="text-xs text-gray-600 mb-2 font-medium">
+                                                    {innerKey.replace(
+                                                      /_/g,
+                                                      " ",
+                                                    )}
+                                                  </div>
+                                                  <input
+                                                    type="text"
+                                                    value={
+                                                      obj[innerKey] !==
+                                                      undefined
+                                                        ? String(obj[innerKey])
+                                                        : ""
+                                                    }
+                                                    onChange={(e) =>
+                                                      handlePrimitiveNestedChange(
+                                                        activeSpecTab,
+                                                        field.key,
+                                                        innerKey,
+                                                        e.target.value,
+                                                      )
+                                                    }
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                                                    placeholder={`Enter ${innerKey.replace(/_/g, " ")}`}
+                                                  />
+                                                </div>
+                                              ),
+                                            )}
+                                          </div>
+                                        );
+                                      }
+
+                                      // Mixed object: render primitive entries as inputs and complex entries as JSON textarea
+                                      const entries = Object.entries(obj || {});
+                                      const primitiveEntries = entries.filter(
+                                        ([k, v]) =>
+                                          v === null ||
+                                          (typeof v !== "object" &&
+                                            !Array.isArray(v)),
+                                      );
+                                      const complexEntries = entries.filter(
+                                        ([k, v]) =>
+                                          v &&
+                                          (typeof v === "object" ||
+                                            Array.isArray(v)),
+                                      );
+
+                                      if (primitiveEntries.length > 0) {
+                                        return (
+                                          <div className="space-y-3">
+                                            {primitiveEntries.map(
+                                              ([innerKey, innerVal]) => (
+                                                <div
+                                                  key={innerKey}
+                                                  className="p-2 bg-gray-50 rounded-md"
+                                                >
+                                                  <div className="text-xs text-gray-600 mb-2 font-medium">
+                                                    {innerKey.replace(
+                                                      /_/g,
+                                                      " ",
+                                                    )}
+                                                  </div>
+                                                  <input
+                                                    type="text"
+                                                    value={
+                                                      innerVal !== undefined
+                                                        ? String(innerVal)
+                                                        : ""
+                                                    }
+                                                    onChange={(e) =>
+                                                      handlePrimitiveNestedChange(
+                                                        activeSpecTab,
+                                                        field.key,
+                                                        innerKey,
+                                                        e.target.value,
+                                                      )
+                                                    }
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                                                    placeholder={`Enter ${innerKey.replace(/_/g, " ")}`}
+                                                  />
+                                                </div>
+                                              ),
+                                            )}
+
+                                            {complexEntries.length > 0 && (
+                                              <div>
+                                                <label className="block text-xs text-gray-500 mb-1">
+                                                  Complex / structured keys
+                                                  (JSON)
+                                                </label>
+                                                <textarea
+                                                  value={(() => {
+                                                    try {
+                                                      const complexObj =
+                                                        Object.fromEntries(
+                                                          complexEntries,
+                                                        );
+                                                      return JSON.stringify(
+                                                        complexObj,
+                                                        null,
+                                                        2,
+                                                      );
+                                                    } catch (e) {
+                                                      return "";
+                                                    }
+                                                  })()}
+                                                  onChange={(e) => {
+                                                    const v = e.target.value;
+                                                    try {
+                                                      const parsed =
+                                                        JSON.parse(v);
+                                                      // merge parsed complex keys back into the full object
+                                                      const newObj = {
+                                                        ...obj,
+                                                        ...parsed,
+                                                      };
+                                                      handleJsonbChange(
+                                                        activeSpecTab,
+                                                        field.key,
+                                                        newObj,
+                                                      );
+                                                    } catch (err) {
+                                                      // ignore parse errors for now
+                                                    }
+                                                  }}
+                                                  className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm font-mono"
+                                                  rows={6}
+                                                />
+                                              </div>
+                                            )}
+                                          </div>
+                                        );
+                                      }
+                                    } catch (e) {
+                                      // fallthrough to textarea fallback
+                                    }
+
+                                    return (
+                                      <textarea
+                                        value={(() => {
+                                          try {
+                                            return JSON.stringify(
+                                              rawVal,
+                                              null,
+                                              2,
+                                            );
+                                          } catch (e) {
+                                            return String(rawVal);
+                                          }
+                                        })()}
+                                        onChange={(e) => {
+                                          const v = e.target.value;
+                                          try {
+                                            const parsed = JSON.parse(v);
+                                            handleJsonbChange(
+                                              activeSpecTab,
+                                              field.key,
+                                              parsed,
+                                            );
+                                          } catch (err) {
+                                            // fallback to raw string when not valid JSON
+                                            handleJsonbChange(
+                                              activeSpecTab,
+                                              field.key,
+                                              v,
+                                            );
+                                          }
+                                        }}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm font-mono"
+                                        rows={4}
+                                        placeholder={`Enter JSON for ${field.label}`}
+                                      />
+                                    );
+                                  })()
+                                ) : (
+                                  <input
+                                    type="text"
+                                    value={rawVal || ""}
+                                    onChange={(e) =>
+                                      handleJsonbChange(
+                                        activeSpecTab,
+                                        field.key,
+                                        e.target.value,
+                                      )
+                                    }
+                                    className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
+                                    placeholder={`Enter ${field.label}`}
+                                  />
+                                )}
+                              </div>
+                            );
+                          })
+                        )}
+
+                        {(customJsonFields[activeSpecTab] || []).map(
+                          (customField) => {
+                            const val = formData[activeSpecTab]?.[customField];
+                            const isObj =
+                              val &&
+                              typeof val === "object" &&
+                              !Array.isArray(val);
+                            return (
+                              <div key={customField} className="relative">
+                                <label className="block text-xs font-medium text-gray-600 mb-1 capitalize">
+                                  {String(customField).replace(/_/g, " ")}
+                                </label>
+                                {isObj ? (
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    <div>
+                                      <label className="block text-xs text-gray-500 mb-1">
+                                        Label
+                                      </label>
+                                      <input
+                                        type="text"
+                                        value={val.label || ""}
+                                        onChange={(e) =>
+                                          handleCustomFieldChange(
+                                            activeSpecTab,
+                                            customField,
+                                            "label",
+                                            e.target.value,
+                                          )
+                                        }
+                                        className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                                        placeholder="Label"
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className="block text-xs text-gray-500 mb-1">
+                                        Value
+                                      </label>
+                                      <input
+                                        type="text"
+                                        value={
+                                          val.value !== undefined
+                                            ? String(val.value)
+                                            : ""
+                                        }
+                                        onChange={(e) =>
+                                          handleCustomFieldChange(
+                                            activeSpecTab,
+                                            customField,
+                                            "value",
+                                            e.target.value,
+                                          )
+                                        }
+                                        className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                                        placeholder="Value"
+                                      />
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <input
+                                    type="text"
+                                    value={val || ""}
+                                    onChange={(e) =>
+                                      handleJsonbChange(
+                                        activeSpecTab,
+                                        customField,
+                                        e.target.value,
+                                      )
+                                    }
+                                    className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
+                                    placeholder={`Enter ${String(customField).replace(/_/g, " ")}`}
+                                  />
+                                )}
+                                <button
+                                  onClick={() =>
+                                    removeCustomJsonField(
+                                      activeSpecTab,
+                                      customField,
+                                    )
+                                  }
+                                  className="absolute right-2 top-7 text-red-500 hover:text-red-700"
+                                >
+                                  <FaTrash className="text-sm" />
+                                </button>
+                              </div>
+                            );
+                          },
+                        )}
+
+                        <div className="lg:col-span-1 col-span-full">
+                          <button
+                            onClick={() => addCustomJsonField(activeSpecTab)}
+                            className="flex items-center gap-2 text-blue-600 hover:text-blue-700 text-sm mt-4"
+                          >
+                            <FaPlus className="text-xs" />
+                            <span>Add Custom Field</span>
+                          </button>
+                        </div>
                       </div>
                     </>
-                  ) : (
-                    getDefaultFields(activeSpecTab).map((field) => (
-                      <div key={field}>
-                        <label className="block text-xs font-medium text-gray-600 mb-1 capitalize">
-                          {field.replace(/_/g, " ")}
-                        </label>
-                        <input
-                          type="text"
-                          value={formData[activeSpecTab]?.[field] || ""}
-                          onChange={(e) =>
-                            handleJsonbChange(
-                              activeSpecTab,
-                              field,
-                              e.target.value,
-                            )
-                          }
-                          className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
-                          placeholder={`Enter ${field.replace(/_/g, " ")}`}
-                        />
-                      </div>
-                    ))
                   )}
-
-                  {(customJsonFields[activeSpecTab] || []).map(
-                    (customField) => (
-                      <div key={customField} className="relative">
-                        <label className="block text-xs font-medium text-gray-600 mb-1 capitalize">
-                          {customField.replace(/_/g, " ")}
-                        </label>
-                        <input
-                          type="text"
-                          value={formData[activeSpecTab]?.[customField] || ""}
-                          onChange={(e) =>
-                            handleJsonbChange(
-                              activeSpecTab,
-                              customField,
-                              e.target.value,
-                            )
-                          }
-                          className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
-                          placeholder={`Enter ${customField.replace(
-                            /_/g,
-                            " ",
-                          )}`}
-                        />
-                        <button
-                          onClick={() =>
-                            removeCustomJsonField(activeSpecTab, customField)
-                          }
-                          className="absolute right-2 top-7 text-red-500 hover:text-red-700"
-                        >
-                          <FaTrash className="text-sm" />
-                        </button>
-                      </div>
-                    ),
-                  )}
-
-                  <div className="lg:col-span-1 col-span-full">
-                    <button
-                      onClick={() => addCustomJsonField(activeSpecTab)}
-                      className="flex items-center gap-2 text-blue-600 hover:text-blue-700 text-sm mt-4"
-                    >
-                      <FaPlus className="text-xs" />
-                      <span>Add Custom Field</span>
-                    </button>
-                  </div>
-                </div>
               </div>
             </div>
           )}

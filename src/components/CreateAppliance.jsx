@@ -1820,7 +1820,7 @@ const CreateHomeAppliance = () => {
                                 variants: newVariants,
                               }));
                             }}
-                            placeholder="Product URL"
+                            placeholder="https://affiliate-link.com/product"
                             className="px-2 py-1 border border-gray-300 rounded text-sm"
                           />
                           <input

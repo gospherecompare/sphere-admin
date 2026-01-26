@@ -1962,7 +1962,7 @@ const CreateMobile = () => {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
                           <div>
                             <label className="block text-xs font-medium text-gray-600 mb-1">
-                              Product URL
+                              Affiliate URL
                             </label>
                             <input
                               type="url"
@@ -1978,7 +1978,7 @@ const CreateMobile = () => {
                                   variants: newVariants,
                                 }));
                               }}
-                              placeholder="https://store.com/product"
+                              placeholder="https://affiliate-link.com/product"
                               className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
                             />
                           </div>
