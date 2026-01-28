@@ -286,8 +286,7 @@ function App() {
                 />
               </Routes>
               <footer className="mt-8 text-center text-sm text-gray-500">
-                &copy; {new Date().getFullYear()} Smart Arena. All rights
-                reserved.
+                &copy; {new Date().getFullYear()} Hook. All rights reserved.
               </footer>
             </div>
           </main>

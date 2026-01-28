@@ -570,80 +570,39 @@ const CategoryManagement = () => {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th
-                  scope="col"
-                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  S.NO
-                </th>
-                <th
-                  scope="col"
-                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Category Name
-                </th>
-                <th
-                  scope="col"
-                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Type
-                </th>
-                <th
-                  scope="col"
-                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Description
-                </th>
-                <th
-                  scope="col"
-                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Created Date
-                </th>
-                <th
-                  scope="col"
-                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {loading ? (
-                <tr>
-                  <td colSpan="6" className="px-4 py-8 text-center">
-                    <div className="flex justify-center">
-                      <FaSpinner className="animate-spin text-2xl text-blue-600" />
-                    </div>
-                  </td>
-                </tr>
-              ) : paginatedCategories.length > 0 ? (
-                paginatedCategories.map((category, idx) => (
-                  <tr key={category.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3">
-                      <span className="text-sm text-gray-500">
-                        {startIndex + idx + 1}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center">
-                        <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
-                          <FaLayerGroup className="text-blue-600" />
-                        </div>
-                        <div>
-                          <span className="font-medium text-gray-900 block">
-                            {category.name}
-                          </span>
-                        </div>
+        <div className="p-4">
+          {loading ? (
+            <div className="py-12 text-center">
+              <FaSpinner className="animate-spin text-3xl text-blue-600 mx-auto mb-4" />
+              <p className="text-gray-600">Loading categories...</p>
+            </div>
+          ) : filteredAndSortedCategories.length > 0 ? (
+            <div className="overflow-x-auto scrollbar-hide">
+              <div className="flex gap-4 pb-2 min-w-min">
+                {paginatedCategories.map((category, idx) => (
+                  <div
+                    key={category.id}
+                    className="flex-shrink-0 w-72 bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                  >
+                    {/* Category Name and Type Icon */}
+                    <div className="flex items-center mb-4">
+                      <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+                        <FaLayerGroup className="text-blue-600" />
                       </div>
-                    </td>
-                    <td className="px-4 py-3">
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-gray-900">
+                          {category.name}
+                        </h3>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Category #{startIndex + idx + 1}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Type Badge */}
+                    <div className="mb-3">
                       <div className="flex items-center">
-                        <div className="w-8 h-8 rounded-lg flex items-center justify-center mr-3">
+                        <div className="w-6 h-6 rounded-lg flex items-center justify-center mr-2">
                           {getTypeIcon(category.type)}
                         </div>
                         <span
@@ -654,20 +613,23 @@ const CategoryManagement = () => {
                           {getTypeLabel(category.type)}
                         </span>
                       </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="text-sm text-gray-600 truncate max-w-[200px] inline-block">
-                        {category.description || "No description"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
+                    </div>
+
+                    {/* Description */}
+                    <p className="text-sm text-gray-600 mb-4 line-clamp-2">
+                      {category.description || "No description"}
+                    </p>
+
+                    {/* Created Date */}
+                    <div className="mb-4 pb-4 border-b border-gray-200">
                       <div className="flex flex-col">
-                        <span className="text-sm text-gray-500">
+                        <span className="text-xs text-gray-500">
+                          Created on:{" "}
                           {category.created_at
                             ? new Date(category.created_at).toLocaleDateString()
                             : "N/A"}
                         </span>
-                        <span className="text-xs text-gray-400">
+                        <span className="text-xs text-gray-400 mt-1">
                           {category.created_at
                             ? new Date(category.created_at).toLocaleTimeString(
                                 [],
@@ -676,56 +638,54 @@ const CategoryManagement = () => {
                             : ""}
                         </span>
                       </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => handleEdit(category)}
-                          className="text-blue-600 hover:text-blue-900 p-2 rounded hover:bg-blue-50"
-                          title="Edit"
-                        >
-                          <FaEdit />
-                        </button>
-                        <button
-                          onClick={() =>
-                            handleDelete(category.id, category.name)
-                          }
-                          className="text-red-600 hover:text-red-900 p-2 rounded hover:bg-red-50"
-                          title="Delete"
-                        >
-                          <FaTrash />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="6" className="px-4 py-8 text-center">
-                    <div className="flex flex-col items-center">
-                      <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-3">
-                        <FaLayerGroup className="text-2xl text-gray-400" />
-                      </div>
-                      <p className="text-gray-500 font-medium">
-                        {searchTerm || typeFilter !== "all"
-                          ? "No categories found"
-                          : "No categories yet"}
-                      </p>
-                      <p className="text-gray-400 text-sm mt-1">
-                        {searchTerm
-                          ? "Try adjusting your search or filters"
-                          : "Add your first category using the form above"}
-                      </p>
                     </div>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+
+                    {/* Actions */}
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => handleEdit(category)}
+                        className="flex-1 flex items-center justify-center text-blue-600 hover:text-blue-900 hover:bg-blue-50 transition-colors p-2 rounded text-sm font-medium"
+                        title="Edit category"
+                      >
+                        <FaEdit className="mr-1" />
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDelete(category.id, category.name)}
+                        className="flex-1 flex items-center justify-center text-red-600 hover:text-red-900 hover:bg-red-50 transition-colors p-2 rounded text-sm font-medium"
+                        title="Delete category"
+                      >
+                        <FaTrash className="mr-1" />
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="py-12 text-center">
+              <div className="flex flex-col items-center">
+                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-3">
+                  <FaLayerGroup className="text-2xl text-gray-400" />
+                </div>
+                <p className="text-gray-500 font-medium">
+                  {searchTerm || typeFilter !== "all"
+                    ? "No categories found"
+                    : "No categories yet"}
+                </p>
+                <p className="text-gray-400 text-sm mt-1">
+                  {searchTerm
+                    ? "Try adjusting your search or filters"
+                    : "Add your first category using the form above"}
+                </p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Pagination */}
-        {totalPages > 1 && (
+        {totalPages > 1 && filteredAndSortedCategories.length > 0 && (
           <div className="px-4 py-3 border-t border-gray-200 bg-gray-50">
             <div className="flex items-center justify-between">
               <div className="text-sm text-gray-700">

@@ -773,146 +773,139 @@ const Brand = () => {
               </div>
             </div>
 
-            {/* Brands Table */}
-            <div className="overflow-x-auto">
+            {/* Brands Card Grid - Single Row */}
+            <div className="p-4">
               {isLoading ? (
                 <div className="py-12 text-center">
                   <FaSpinner className="animate-spin text-3xl text-blue-600 mx-auto mb-4" />
                   <p className="text-gray-600">Loading brands...</p>
                 </div>
               ) : filteredAndSortedBrands.length > 0 ? (
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th
-                        scope="col"
-                        className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
-                        Brand
-                      </th>
-
-                      <th
-                        scope="col"
-                        className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
-                        Status
-                      </th>
-                      <th
-                        scope="col"
-                        className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
-                        Created
-                      </th>
-                      <th
-                        scope="col"
-                        className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                <div className="overflow-x-auto scrollbar-hide">
+                  <div className="flex gap-4 pb-2 min-w-min">
                     {filteredAndSortedBrands.map((brand) => {
                       const isActive = brand.status === "active";
 
                       return (
-                        <tr
+                        <div
                           key={brand.id}
-                          className="hover:bg-gray-50 transition-colors"
+                          className="flex-shrink-0 w-72 bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
                         >
-                          <td className="px-4 py-3">
-                            <div className="flex items-center">
-                              <div className="flex-shrink-0 h-10 w-10">
-                                <img
-                                  className="h-10 w-10 rounded-md object-contain bg-white border border-gray-200 p-1"
-                                  src={
-                                    brand.logo ||
-                                    "https://via.placeholder.com/40?text=Logo"
-                                  }
-                                  alt={brand.name}
-                                  onError={(e) => {
-                                    e.target.onerror = null;
-                                    e.target.src =
-                                      "https://via.placeholder.com/40?text=Logo";
-                                  }}
-                                />
-                              </div>
-                              <div className="ml-3">
-                                <div className="font-medium text-gray-900">
-                                  {brand.name}
-                                </div>
-                                {/* id removed from UI */}
-                              </div>
+                          {/* Brand Logo and Name */}
+                          <div className="flex items-center mb-4">
+                            <div className="flex-shrink-0 h-16 w-16">
+                              <img
+                                className="h-16 w-16 rounded-md object-contain bg-gray-50 border border-gray-200 p-2"
+                                src={
+                                  brand.logo ||
+                                  "https://via.placeholder.com/64?text=Logo"
+                                }
+                                alt={brand.name}
+                                onError={(e) => {
+                                  e.target.onerror = null;
+                                  e.target.src =
+                                    "https://via.placeholder.com/64?text=Logo";
+                                }}
+                              />
                             </div>
-                          </td>
+                            <div className="ml-3 flex-1">
+                              <h3 className="font-semibold text-gray-900 truncate">
+                                {brand.name}
+                              </h3>
+                              <p className="text-xs text-gray-500 mt-1">
+                                {brand.category || "No category"}
+                              </p>
+                            </div>
+                          </div>
 
-                          <td className="px-4 py-3">
+                          {/* Description */}
+                          <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                            {brand.description || "No description"}
+                          </p>
+
+                          {/* Stats */}
+                          <div className="mb-4 p-2 bg-gray-50 rounded flex items-center justify-center">
+                            <div className="text-center">
+                              <p className="text-xs text-gray-500">Products</p>
+                              <p className="text-lg font-bold text-gray-900">
+                                <CountUp
+                                  end={parseInt(brand.published_products || 0)}
+                                  duration={0.5}
+                                />
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Status Badge */}
+                          <div className="mb-4">
                             <button
                               onClick={() => toggleStatus(brand)}
                               disabled={statusUpdatingId === brand.id}
-                              className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                              className={`w-full inline-flex items-center justify-center px-3 py-2 rounded-md text-xs font-medium transition-colors ${
                                 isActive
                                   ? "bg-green-100 text-green-800 hover:bg-green-200"
                                   : "bg-gray-100 text-gray-800 hover:bg-gray-200"
                               } disabled:opacity-50`}
                             >
                               {statusUpdatingId === brand.id ? (
-                                <FaSpinner className="animate-spin mr-1" />
+                                <FaSpinner className="animate-spin mr-2" />
                               ) : isActive ? (
                                 <>
-                                  <FaEye className="mr-1" />
+                                  <FaEye className="mr-2" />
                                   Active
                                 </>
                               ) : (
                                 <>
-                                  <FaEyeSlash className="mr-1" />
+                                  <FaEyeSlash className="mr-2" />
                                   Inactive
                                 </>
                               )}
                             </button>
-                          </td>
+                          </div>
 
-                          <td className="px-4 py-3">
-                            <div className="flex items-center text-sm text-gray-500">
+                          {/* Created Date */}
+                          <div className="mb-4 pb-4 border-b border-gray-200">
+                            <div className="flex items-center text-xs text-gray-500">
                               <FaCalendarAlt className="mr-2 text-gray-400" />
                               {formatDate(brand.created_at)}
                             </div>
-                          </td>
+                          </div>
 
-                          <td className="px-4 py-3">
-                            <div className="flex items-center space-x-3">
-                              <button
-                                onClick={() => handleEdit(brand)}
-                                className="text-blue-600 hover:text-blue-900 transition-colors p-1"
-                                title="Edit brand"
-                              >
-                                <FaEdit />
-                              </button>
-                              <button
-                                onClick={() => handleDelete(brand.id)}
-                                disabled={
-                                  parseInt(brand.published_products || 0) > 0
-                                }
-                                className={`p-1 transition-colors ${
-                                  parseInt(brand.published_products || 0) > 0
-                                    ? "text-gray-300 cursor-not-allowed"
-                                    : "text-red-600 hover:text-red-900"
-                                }`}
-                                title={
-                                  parseInt(brand.published_products || 0) > 0
-                                    ? "Cannot delete brand with products"
-                                    : "Delete brand"
-                                }
-                              >
-                                <FaTrash />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
+                          {/* Actions */}
+                          <div className="flex items-center space-x-2">
+                            <button
+                              onClick={() => handleEdit(brand)}
+                              className="flex-1 flex items-center justify-center text-blue-600 hover:text-blue-900 hover:bg-blue-50 transition-colors p-2 rounded text-sm font-medium"
+                              title="Edit brand"
+                            >
+                              <FaEdit className="mr-1" />
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleDelete(brand.id)}
+                              disabled={
+                                parseInt(brand.published_products || 0) > 0
+                              }
+                              className={`flex-1 flex items-center justify-center transition-colors p-2 rounded text-sm font-medium ${
+                                parseInt(brand.published_products || 0) > 0
+                                  ? "text-gray-300 cursor-not-allowed"
+                                  : "text-red-600 hover:text-red-900 hover:bg-red-50"
+                              }`}
+                              title={
+                                parseInt(brand.published_products || 0) > 0
+                                  ? "Cannot delete brand with products"
+                                  : "Delete brand"
+                              }
+                            >
+                              <FaTrash className="mr-1" />
+                              Delete
+                            </button>
+                          </div>
+                        </div>
                       );
                     })}
-                  </tbody>
-                </table>
+                  </div>
+                </div>
               ) : (
                 <div className="py-12 text-center">
                   <FaStore className="text-4xl text-gray-300 mx-auto mb-4" />

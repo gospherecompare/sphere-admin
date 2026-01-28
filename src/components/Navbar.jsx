@@ -463,8 +463,17 @@ const Navbar = ({ onToggleSidebar, sidebarCollapsed, onLogout }) => {
 
             {/* Mobile-only compact logo */}
             <div className="md:hidden flex-shrink-0">
-              <div className="flex items-center gap-1">
-                <span className="smartarena-logo">Sphere</span>
+              <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-2 sm:gap-3">
+                <div className="logo-wrapper">
+                  <h1 className="smartarena-logo">
+                    <span className="logo-letter">H</span>
+                    <span className="logo-eye"></span>
+                    <span className="logo-eye"></span>
+                    <span className="logo-letter">K</span>
+                  </h1>
+
+                  <h4 className="logo-tagline">Smart Tech. Smart Choice.</h4>
+                </div>
               </div>
             </div>
 

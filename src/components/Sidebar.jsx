@@ -36,7 +36,7 @@ import {
   FaUpload,
   FaDownload,
 } from "react-icons/fa";
-import logo from "../../assests/smartarena.png";
+import logo from "../../assests/hook-512 (1).png";
 
 // Menu configuration moved to separate object
 const MENU_CONFIG = {
@@ -663,10 +663,17 @@ const Sidebar = ({
         >
           {!collapsed ? (
             <Link to="/dashboard" className="flex items-center gap-2 min-w-0">
-              <div className="flex flex-col min-w-0 hidden sm:block">
-                <span className="smartarena-logo bg-gradient-to-r from-purple-600 to-blue-500 bg-clip-text text-transparent font-bold text-xs sm:text-sm whitespace-nowrap">
-                  Sphere
-                </span>
+              <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-2 sm:gap-3 mb-3 sm:mb-4">
+                <div className="logo-wrapper">
+                  <h1 className="smartarena-logo">
+                    <span className="logo-letter">H</span>
+                    <span className="logo-eye"></span>
+                    <span className="logo-eye"></span>
+                    <span className="logo-letter">K</span>
+                  </h1>
+
+                  <h4 className="logo-tagline">Smart Tech. Smart Choice.</h4>
+                </div>
               </div>
             </Link>
           ) : (
@@ -674,7 +681,11 @@ const Sidebar = ({
               to="/dashboard"
               className="mx-auto hover:scale-110 transition-transform flex-shrink-0"
             >
-              <p className="w-8 h-8 sm:w-10 sm:h-10 smartarena-logo">SP</p>
+              <img
+                src={logo}
+                alt="Hook Logo"
+                className="w-8 h-8 sm:w-10 sm:h-10 Hook-logo rounded-lg"
+              />
             </Link>
           )}
           <button

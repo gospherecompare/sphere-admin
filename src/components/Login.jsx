@@ -17,7 +17,7 @@ import {
   FaSignInAlt,
   FaInfoCircle,
 } from "react-icons/fa";
-import logo from "../../assests/Favicon.png";
+import logo from "../../assests/hook-512.png";
 
 const Login = ({ onLogin }) => {
   const [formData, setFormData] = useState({
@@ -141,22 +141,15 @@ const Login = ({ onLogin }) => {
               {/* Logo and Header */}
               <div className="text-center lg:text-left mb-4 sm:mb-6 md:mb-8">
                 <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-2 sm:gap-3 mb-3 sm:mb-4">
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-lg sm:rounded-xl md:rounded-2xl text-white flex items-center justify-center flex-shrink-0">
-                    <img
-                      src={logo}
-                      alt="Sphere Logo"
-                      className="w-full h-full object-contain"
-                    />
-                  </div>
-                  <div className="text-center sm:text-left">
-                    <a
-                      href="/"
-                      className="flex items-center flex-shrink-0 justify-center sm:justify-start"
-                    >
-                      <h1 className="smartarena-logo text-lg sm:text-xl md:text-2xl">
-                        SPHERE
-                      </h1>
-                    </a>
+                  <div className="logo-wrapper">
+                    <h1 className="smartarena-logo">
+                      <span className="logo-letter">H</span>
+                      <span className="logo-eye"></span>
+                      <span className="logo-eye"></span>
+                      <span className="logo-letter">K</span>
+                    </h1>
+
+                    <h4 className="logo-tagline">Smart Tech. Smart Choice.</h4>
                   </div>
                 </div>
 
@@ -341,9 +334,13 @@ const Login = ({ onLogin }) => {
               <div className="relative z-10 animate-fadeUp">
                 <div className="flex items-center gap-3 mb-6 lg:mb-8">
                   <a href="/" className="flex items-center flex-shrink-0">
-                    <h1 className="smartarena-logo_1 text-2xl lg:text-3xl">
-                      SPHERE
-                    </h1>
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-lg sm:rounded-xl md:rounded-2xl text-white flex items-center justify-center flex-shrink-0">
+                      <img
+                        src={logo}
+                        alt="Hook Logo"
+                        className="w-full h-full object-contain rounded-md"
+                      />
+                    </div>
                   </a>
                 </div>
 

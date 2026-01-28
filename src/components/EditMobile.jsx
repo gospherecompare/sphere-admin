@@ -2541,7 +2541,6 @@ const EditMobile = () => {
                   />
                 </div>
 
-
                 <div className="sm:col-span-2">
                   <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                     Launch Date
