@@ -32,6 +32,11 @@ const ViewMobiles = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortBy, setSortBy] = useState("newest");
+  const [brandFilter, setBrandFilter] = useState("all");
+  const [storageFilter, setStorageFilter] = useState("all");
+  const [ramFilter, setRamFilter] = useState("all");
+  const [variantFilter, setVariantFilter] = useState("all");
+  const [variantStoreFilter, setVariantStoreFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [toasts, setToasts] = useState([]);
   const navigate = useNavigate();
@@ -132,7 +137,73 @@ const ViewMobiles = () => {
           }
         });
 
-        setMobiles(processedMobiles);
+        // Group processed rows by product id so each product appears once (variants aggregated)
+        const groupedMap = new Map();
+        processedMobiles.forEach((m) => {
+          const pid =
+            m.id || (m.raw && (m.raw.id || m.raw._id)) || m.rowKey || m.name;
+          if (!groupedMap.has(pid)) {
+            groupedMap.set(pid, {
+              id: m.id,
+              rowKey: pid,
+              name: m.name,
+              brand: m.brand,
+              model: m.model,
+              published: m.published,
+              images: Array.isArray(m.images) ? [...m.images] : [],
+              variants: m.variant
+                ? [m.variant]
+                : Array.isArray(m.variants)
+                  ? [...m.variants]
+                  : [],
+              priceList: typeof m.price === "number" ? [m.price] : [],
+              storagesSet: new Set(m.storage ? [m.storage] : []),
+              ramsSet: new Set(m.ram ? [m.ram] : []),
+              raw: m.raw || {},
+              created_at:
+                (m.raw && (m.raw.created_at || m.raw.createdAt)) ||
+                m.launch_date ||
+                m.raw?.created_at ||
+                null,
+            });
+          } else {
+            const g = groupedMap.get(pid);
+            if (Array.isArray(m.images))
+              g.images.push(...m.images.filter(Boolean));
+            if (m.variant) g.variants.push(m.variant);
+            if (Array.isArray(m.variants)) g.variants.push(...m.variants);
+            if (typeof m.price === "number") g.priceList.push(m.price);
+            if (m.storage) g.storagesSet.add(m.storage);
+            if (m.ram) g.ramsSet.add(m.ram);
+            g.published = g.published || m.published;
+          }
+        });
+
+        const groupedMobiles = Array.from(groupedMap.values()).map((g) => {
+          const prices = (g.priceList || []).filter(
+            (p) => typeof p === "number" && p > 0,
+          );
+          const price = prices.length ? Math.min(...prices) : 0;
+          const storages = Array.from(g.storagesSet || []).filter(Boolean);
+          const rams = Array.from(g.ramsSet || []).filter(Boolean);
+          return {
+            id: g.id,
+            rowKey: g.rowKey,
+            name: g.name,
+            brand: g.brand,
+            model: g.model,
+            published: g.published,
+            images: Array.from(new Set(g.images || [])).filter(Boolean),
+            variants: g.variants || [],
+            price,
+            storage: storages.join("/") || "",
+            ram: rams.join("/") || "",
+            raw: g.raw || {},
+            created_at: g.created_at,
+          };
+        });
+
+        setMobiles(groupedMobiles);
         showToast("Success", "Mobiles loaded successfully", "success");
       } catch (err) {
         console.error("Failed to fetch mobiles:", err);
@@ -161,11 +232,136 @@ const ViewMobiles = () => {
   };
 
   // Filter and sort mobiles
+  // Derived filter options
+  const brands = Array.from(
+    new Set(
+      mobiles.map((m) => (m.brand || "").toString().trim()).filter(Boolean),
+    ),
+  ).sort();
+  const rams = Array.from(
+    new Set(
+      mobiles.map((m) => (m.ram || "").toString().trim()).filter(Boolean),
+    ),
+  ).sort((a, b) => {
+    const na = parseInt(a) || 0;
+    const nb = parseInt(b) || 0;
+    return na - nb;
+  });
+  const storages = Array.from(
+    new Set(
+      mobiles.map((m) => (m.storage || "").toString().trim()).filter(Boolean),
+    ),
+  ).sort((a, b) => {
+    const na = parseInt(a) || 0;
+    const nb = parseInt(b) || 0;
+    return na - nb;
+  });
+
+  const clearAllFilters = () => {
+    setSearchTerm("");
+    setStatusFilter("all");
+    setSortBy("newest");
+    setBrandFilter("all");
+    setStorageFilter("all");
+    setRamFilter("all");
+    setVariantFilter("all");
+    setVariantStoreFilter("all");
+    setCurrentPage(1);
+  };
+
+  // Helpers to check variant store/price/affiliate completeness
+  const isVariantComplete = (variant) => {
+    if (!variant) return false;
+    const storePrices = variant.store_prices || variant.storePrices || [];
+    if (!Array.isArray(storePrices) || storePrices.length === 0) return false;
+    // A store price entry is considered complete if it has a positive price and a store identifier and/or affiliate/link
+    return storePrices.some((sp) => {
+      const price = Number(sp?.price) || 0;
+      const hasPrice = price > 0;
+      const hasAffiliate = Boolean(
+        sp?.affiliate_link ||
+        sp?.affiliate ||
+        sp?.affiliateUrl ||
+        sp?.link ||
+        sp?.url,
+      );
+      const hasStore = Boolean(
+        sp?.store || sp?.store_id || sp?.shop || sp?.merchant,
+      );
+      return hasPrice && (hasAffiliate || hasStore);
+    });
+  };
+
+  const productAllVariantsComplete = (mobile) => {
+    // If product has variants, ensure every variant is complete
+    if (Array.isArray(mobile.variants) && mobile.variants.length > 0) {
+      return mobile.variants.every((v) => isVariantComplete(v));
+    }
+    // For single-row products, try to inspect raw.store_prices or raw data
+    const raw = mobile.raw || {};
+    const storePrices =
+      raw.store_prices || raw.storePrices || raw.store_price || [];
+    if (Array.isArray(storePrices) && storePrices.length > 0) {
+      return storePrices.some((sp) => {
+        const price = Number(sp?.price) || 0;
+        const hasPrice = price > 0;
+        const hasAffiliate = Boolean(
+          sp?.affiliate_link ||
+          sp?.affiliate ||
+          sp?.affiliateUrl ||
+          sp?.link ||
+          sp?.url,
+        );
+        const hasStore = Boolean(
+          sp?.store || sp?.store_id || sp?.shop || sp?.merchant,
+        );
+        return hasPrice && (hasAffiliate || hasStore);
+      });
+    }
+    return false;
+  };
   const filteredAndSortedMobiles = mobiles
     .filter((mobile) => {
       if (statusFilter === "all") return true;
       if (statusFilter === "published") return mobile.published;
       if (statusFilter === "unpublished") return !mobile.published;
+      return true;
+    })
+    .filter((mobile) => {
+      if (brandFilter === "all") return true;
+      return (
+        (mobile.brand || "").toString().toLowerCase() ===
+        brandFilter.toString().toLowerCase()
+      );
+    })
+    .filter((mobile) => {
+      if (storageFilter === "all") return true;
+      return (
+        (mobile.storage || "").toString().toLowerCase() ===
+        storageFilter.toString().toLowerCase()
+      );
+    })
+    .filter((mobile) => {
+      if (ramFilter === "all") return true;
+      return (
+        (mobile.ram || "").toString().toLowerCase() ===
+        ramFilter.toString().toLowerCase()
+      );
+    })
+
+    .filter((mobile) => {
+      if (variantFilter === "all") return true;
+      const hasVariants =
+        Array.isArray(mobile.variants) && mobile.variants.length > 0;
+      if (variantFilter === "with") return hasVariants;
+      if (variantFilter === "without") return !hasVariants;
+      return true;
+    })
+    .filter((mobile) => {
+      if (variantStoreFilter === "all") return true;
+      const allComplete = productAllVariantsComplete(mobile);
+      if (variantStoreFilter === "complete") return allComplete;
+      if (variantStoreFilter === "incomplete") return !allComplete;
       return true;
     })
     .filter(
@@ -176,10 +372,16 @@ const ViewMobiles = () => {
     )
     .sort((a, b) => {
       if (sortBy === "newest") {
-        return new Date(b.launch_date) - new Date(a.launch_date);
+        return (
+          new Date(b.created_at || b.launch_date) -
+          new Date(a.created_at || a.launch_date)
+        );
       }
       if (sortBy === "oldest") {
-        return new Date(a.launch_date) - new Date(b.launch_date);
+        return (
+          new Date(a.created_at || a.launch_date) -
+          new Date(b.created_at || b.launch_date)
+        );
       }
       if (sortBy === "name") {
         return a.name.localeCompare(b.name);
@@ -203,6 +405,19 @@ const ViewMobiles = () => {
     startIndex,
     startIndex + itemsPerPage,
   );
+
+  // Reset to first page when filters or sort change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [
+    searchTerm,
+    statusFilter,
+    brandFilter,
+    storageFilter,
+    ramFilter,
+    variantFilter,
+    sortBy,
+  ]);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -385,6 +600,22 @@ const ViewMobiles = () => {
         day: "2-digit",
         month: "short",
         year: "numeric",
+      });
+    } catch (error) {
+      return "Invalid date";
+    }
+  };
+
+  const formatDateTime = (dateString) => {
+    if (!dateString) return "N/A";
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
       });
     } catch (error) {
       return "Invalid date";
@@ -632,8 +863,111 @@ const ViewMobiles = () => {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-              {/* Search */}
-              <div className="relative flex-1 sm:flex-none">
+              {/* Filter & Sort */}
+              <div className="flex flex-wrap gap-1 items-center">
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="px-1.5 sm:px-2 py-1 text-[11px] border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent whitespace-nowrap min-w-[88px]"
+                >
+                  <option value="all">All Status</option>
+                  <option value="published">Published</option>
+                  <option value="unpublished">Drafts</option>
+                </select>
+
+                <select
+                  value={brandFilter}
+                  onChange={(e) => setBrandFilter(e.target.value)}
+                  className="px-1.5 sm:px-2 py-1 text-[11px] border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent whitespace-nowrap min-w-[100px]"
+                >
+                  <option value="all">All Brands</option>
+                  {brands.map((b) => (
+                    <option key={b} value={b}>
+                      {b}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  value={storageFilter}
+                  onChange={(e) => setStorageFilter(e.target.value)}
+                  className="px-1.5 sm:px-2 py-1 text-[11px] border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent whitespace-nowrap min-w-[88px]"
+                >
+                  <option value="all">All Storage</option>
+                  {storages.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  value={ramFilter}
+                  onChange={(e) => setRamFilter(e.target.value)}
+                  className="px-1.5 sm:px-2 py-1 text-[11px] border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent whitespace-nowrap min-w-[88px]"
+                >
+                  <option value="all">All RAM</option>
+                  {rams.map((r) => (
+                    <option key={r} value={r}>
+                      {r}
+                    </option>
+                  ))}
+                </select>
+
+                {/* price inputs removed */}
+
+                <select
+                  value={variantFilter}
+                  onChange={(e) => setVariantFilter(e.target.value)}
+                  className="px-1.5 sm:px-2 py-1 text-[11px] border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent whitespace-nowrap min-w-[88px]"
+                >
+                  <option value="all">All Variants</option>
+                  <option value="with">With Variants</option>
+                  <option value="without">Without Variants</option>
+                </select>
+
+                <select
+                  value={variantStoreFilter}
+                  onChange={(e) => setVariantStoreFilter(e.target.value)}
+                  className="px-1.5 sm:px-2 py-1 text-[11px] border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent whitespace-nowrap min-w-[140px]"
+                >
+                  <option value="all">All</option>
+                  <option value="complete">All Variants Have Store Data</option>
+                  <option value="incomplete">Missing Variant Store Data</option>
+                </select>
+
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="px-1.5 sm:px-2 py-1 text-[11px] border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent whitespace-nowrap min-w-[88px]"
+                >
+                  <option value="newest">Newest</option>
+                  <option value="oldest">Oldest</option>
+                  <option value="name">Name A-Z</option>
+                  <option value="price-high">Price ↓</option>
+                  <option value="price-low">Price ↑</option>
+                </select>
+
+                <button
+                  onClick={clearAllFilters}
+                  className="px-2 py-1 text-xs border border-gray-300 rounded-md bg-white hover:bg-gray-50"
+                  title="Clear filters"
+                >
+                  Clear
+                </button>
+              </div>
+
+              {/* Export/Import removed from header - moved to table top */}
+            </div>
+          </div>
+        </div>
+
+        {/* Responsive Table / Card Layout */}
+        <div className="overflow-x-auto">
+          {/* Table Top Export/Import */}
+          <div className="px-3 sm:px-4 py-2 border-b border-gray-100 flex items-center justify-between gap-2">
+            <div className="w-full sm:w-1/2">
+              <div className="relative w-full">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <FaSearch className="text-gray-400 text-sm" />
                 </div>
@@ -645,62 +979,32 @@ const ViewMobiles = () => {
                   className="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
+            </div>
 
-              {/* Filter & Sort */}
-              <div className="flex gap-2 overflow-x-auto">
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="px-2 sm:px-3 py-2 text-xs sm:text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent whitespace-nowrap"
-                >
-                  <option value="all">All Status</option>
-                  <option value="published">Published</option>
-                  <option value="unpublished">Drafts</option>
-                </select>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => handleExport()}
+                className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-md text-xs sm:text-sm whitespace-nowrap"
+              >
+                <FaDownload className="text-xs sm:text-sm" />
+                <span>Export</span>
+              </button>
 
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className="px-2 sm:px-3 py-2 text-xs sm:text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent whitespace-nowrap"
-                >
-                  <option value="newest">Newest</option>
-                  <option value="oldest">Oldest</option>
-                  <option value="name">Name A-Z</option>
-                  <option value="price-high">Price ↓</option>
-                  <option value="price-low">Price ↑</option>
-                </select>
-              </div>
-
-              {/* Export/Import */}
-              <div className="hidden sm:flex gap-2">
-                <button
-                  onClick={() => handleExport()}
-                  className="flex items-center gap-1 sm:gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-md text-xs sm:text-sm whitespace-nowrap"
-                >
-                  <FaDownload className="text-xs sm:text-sm" />
-                  <span className="hidden sm:inline">Export</span>
+              <div className="relative">
+                <input
+                  type="file"
+                  accept=".json,.csv,.xlsx,.xls"
+                  onChange={(e) => handleImport(e.target.files[0])}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  id="import-file"
+                />
+                <button className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-md text-xs sm:text-sm whitespace-nowrap">
+                  <FaUpload className="text-xs sm:text-sm" />
+                  <span>Import</span>
                 </button>
-
-                <div className="relative">
-                  <input
-                    type="file"
-                    accept=".json,.csv,.xlsx,.xls"
-                    onChange={(e) => handleImport(e.target.files[0])}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                    id="import-file"
-                  />
-                  <button className="flex items-center gap-1 sm:gap-2 bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-md text-xs sm:text-sm whitespace-nowrap">
-                    <FaUpload className="text-xs sm:text-sm" />
-                    <span className="">Import</span>
-                  </button>
-                </div>
               </div>
             </div>
           </div>
-        </div>
-
-        {/* Responsive Table / Card Layout */}
-        <div className="overflow-x-auto">
           {/* Desktop Table View */}
           <table className="hidden md:table w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -715,7 +1019,7 @@ const ViewMobiles = () => {
                   Specs
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Price
+                  Created
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
@@ -748,12 +1052,12 @@ const ViewMobiles = () => {
                     }
                     className="hover:bg-gray-50"
                   >
-                    <td className="px-4 py-3">
+                    <td className="px-4  py-3">
                       <div className="flex items-center">
-                        <div className="flex-shrink-0 h-10 w-10">
+                        <div className="flex-shrink-0 h-14 w-14 ">
                           {mobile.images && mobile.images.length > 0 ? (
                             <img
-                              className="h-10 w-10 rounded-md object-contain bg-white border border-gray-200 p-1"
+                              className="rounded-sm object-contain"
                               src={mobile.images[0]}
                               alt={mobile.name}
                               onError={(e) => {
@@ -805,8 +1109,8 @@ const ViewMobiles = () => {
                     </td>
 
                     <td className="px-4 py-3">
-                      <div className="text-sm font-semibold text-green-600">
-                        {formatPrice(mobile.price)}
+                      <div className="text-sm text-gray-700">
+                        {formatDateTime(mobile.created_at)}
                       </div>
                       <div className="text-xs text-gray-500">
                         {mobile.variants?.length || 0} variants
@@ -964,9 +1268,9 @@ const ViewMobiles = () => {
                           </p>
                         </div>
                         <div>
-                          <p className="text-gray-500">Price</p>
-                          <p className="font-medium text-green-600">
-                            {formatPrice(mobile.price)}
+                          <p className="text-gray-500">Created</p>
+                          <p className="font-medium text-gray-900">
+                            {formatDateTime(mobile.created_at)}
                           </p>
                         </div>
                         <div>
