@@ -14,6 +14,7 @@ import CreateMobile from "./components/CreateMobile";
 import ViewMobiles from "./components/ViewMobiles";
 import Login from "./components/Login";
 import EditMobile from "./components/EditMobile";
+import ApiTester from "./components/ApiTester";
 import UserManagement from "./components/Usermanagment";
 import PermissionManagement from "./components/Permissionmangement";
 import SpecificationsManager from "./components/SpecMangement";
@@ -258,6 +259,7 @@ function App() {
                   path="/change-password"
                   element={<ChangePasswordModal />}
                 />
+                <Route path="/api-tester" element={<ApiTester />} />
                 <Route
                   path="/specifications/store"
                   element={<OnlineStoreManagement />}

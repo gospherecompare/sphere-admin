@@ -265,6 +265,12 @@ const MENU_CONFIG = {
           icon: <FaNetworkWired />,
           path: "/settings/api",
         },
+        {
+          id: "set-api-tester",
+          label: "API Tester",
+          icon: <FaNetworkWired />,
+          path: "/api-tester",
+        },
       ],
     },
     {
