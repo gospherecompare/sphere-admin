@@ -451,7 +451,7 @@ const EditMobile = () => {
           }));
 
           return {
-            id: v?.id,
+            id: v?.id || v?.variant_id || v?.variantId,
             ram: v?.ram || "",
             storage: v?.storage || v?.storage_size || "",
             base_price:
@@ -528,7 +528,8 @@ const EditMobile = () => {
         const transformedData = {
           name: apiData?.name || "",
           category: apiData?.category || "Smart Phone",
-          brand: apiData?.brand || "",
+          brand:
+            apiData?.brand || apiData?.brand_name || apiData?.brandName || "",
           model: apiData?.model || "",
           // rating removed
           launch_date: apiData?.launch_date

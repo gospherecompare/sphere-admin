@@ -202,6 +202,7 @@ function App() {
                   path="/products/smartphones/inventory"
                   element={<ViewMobiles />}
                 />
+
                 <Route
                   path="/products"
                   element={

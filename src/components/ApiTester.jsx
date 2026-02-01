@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import Cookies from "js-cookie";
 import { buildUrl, getAuthToken } from "../api";
 import {
@@ -37,12 +37,13 @@ const methodColors = {
 
 // Predefined endpoints for quick selection
 const presetEndpoints = [
-  { name: "Smartphones List", method: "GET", url: "/api/smartphone" },
+  { name: "Smartphones List", method: "GET", url: "/api/smartphones" },
   {
     name: "Create Smartphone (insert)",
     method: "POST",
     url: "/api/smartphones/req",
   },
+  { name: "Update Smartphone", method: "PUT", url: "/api/smartphones/:id" },
   { name: "Categories", method: "GET", url: "/api/categories" },
   { name: "Brands", method: "GET", url: "/api/brands" },
   { name: "Create Laptop", method: "POST", url: "/api/laptop" },
@@ -83,6 +84,8 @@ export default function ApiTester() {
   const [activeTab, setActiveTab] = useState("body");
   const [presetBody, setPresetBody] = useState("json");
   const [collections, setCollections] = useState([]);
+  const [userPresets, setUserPresets] = useState([]);
+  const [importText, setImportText] = useState("");
   const [responseTime, setResponseTime] = useState(0);
   const [copied, setCopied] = useState(false);
 
@@ -160,11 +163,13 @@ export default function ApiTester() {
     }
 
     try {
-      const res = await fetch(fullUrl, {
-        method,
-        headers: headersObj,
-        body: parsedBody ? JSON.stringify(parsedBody) : undefined,
-      });
+      const fetchOptions = { method, headers: headersObj };
+      // Browsers disallow a body on GET/HEAD requests
+      if (parsedBody && !/^(GET|HEAD)$/i.test(method)) {
+        fetchOptions.body = JSON.stringify(parsedBody);
+      }
+
+      const res = await fetch(fullUrl, fetchOptions);
 
       const endTime = Date.now();
       setResponseTime(endTime - startTime);
@@ -213,6 +218,71 @@ export default function ApiTester() {
     }
   };
 
+  // Load user presets from localStorage
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("apiTester.presets");
+      if (raw) setUserPresets(JSON.parse(raw));
+    } catch (e) {
+      // ignore
+    }
+  }, []);
+
+  const persistPresets = (presets) => {
+    try {
+      localStorage.setItem("apiTester.presets", JSON.stringify(presets));
+    } catch (e) {
+      // ignore
+    }
+  };
+
+  // Save current request as user preset
+  const savePreset = () => {
+    const preset = {
+      name: `${method} ${url}`,
+      method,
+      url,
+      body,
+      headers,
+      queryParams,
+      token,
+    };
+    const newPresets = [preset, ...userPresets].slice(0, 50);
+    setUserPresets(newPresets);
+    persistPresets(newPresets);
+  };
+
+  const deletePreset = (index) => {
+    const p = [...userPresets];
+    p.splice(index, 1);
+    setUserPresets(p);
+    persistPresets(p);
+  };
+
+  // Import presets from JSON text
+  const importPresets = () => {
+    try {
+      const parsed = JSON.parse(importText);
+      if (!Array.isArray(parsed))
+        throw new Error("Import must be a JSON array");
+      const normalized = parsed.map((it) => ({
+        name: it.name || `${it.method || "GET"} ${it.url || ""}`,
+        method: it.method || "GET",
+        url: it.url || "",
+        body: it.body || "",
+        headers: it.headers || [],
+        queryParams: it.queryParams || [],
+        token: it.token || "",
+      }));
+      const merged = [...normalized, ...userPresets].slice(0, 100);
+      setUserPresets(merged);
+      persistPresets(merged);
+      setImportText("");
+    } catch (e) {
+      setError(`Import failed: ${e.message}`);
+    }
+  };
+
   // Copy response to clipboard
   const copyResponse = () => {
     if (response) {
@@ -247,8 +317,20 @@ export default function ApiTester() {
 
   // Load preset
   const loadPreset = (preset) => {
-    setMethod(preset.method);
-    setUrl(preset.url);
+    setMethod(preset.method || "GET");
+    setUrl(preset.url || "");
+    if (preset.body !== undefined)
+      setBody(
+        typeof preset.body === "string"
+          ? preset.body
+          : JSON.stringify(preset.body, null, 2),
+      );
+    if (Array.isArray(preset.headers) && preset.headers.length)
+      setHeaders(preset.headers);
+    if (Array.isArray(preset.queryParams) && preset.queryParams.length)
+      setQueryParams(preset.queryParams);
+    if (preset.token) setToken(preset.token);
+    setActiveTab("body");
   };
 
   // Beautify JSON
@@ -293,6 +375,14 @@ export default function ApiTester() {
               >
                 <FaSave />
                 <span className="hidden sm:inline">Save</span>
+              </button>
+              <button
+                onClick={savePreset}
+                title="Save current request as preset"
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center gap-2 transition-colors"
+              >
+                <FaFileCode />
+                <span className="hidden sm:inline">Save Preset</span>
               </button>
               <button
                 onClick={clearAll}
@@ -699,6 +789,52 @@ export default function ApiTester() {
                 <FaBook /> Quick Presets
               </h3>
               <div className="space-y-2">
+                {userPresets.length > 0 && (
+                  <div className="mb-2">
+                    <div className="text-xs text-gray-500 mb-1">
+                      Saved Presets
+                    </div>
+                    {userPresets.map((preset, i) => (
+                      <div key={`user-${i}`} className="flex gap-2">
+                        <button
+                          onClick={() => loadPreset(preset)}
+                          className="flex-1 p-2 border border-gray-200 rounded-lg text-left hover:bg-gray-50 transition-colors"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <div className="flex items-center gap-2 mb-1">
+                                <span
+                                  className={`px-2 py-0.5 text-xs font-medium rounded text-white ${methodColors[preset.method] || "bg-gray-500"}`}
+                                >
+                                  {preset.method}
+                                </span>
+                                <span className="text-sm font-medium text-gray-900">
+                                  {preset.name}
+                                </span>
+                              </div>
+                              <p className="text-xs text-gray-500 truncate">
+                                {preset.url}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  deletePreset(i);
+                                }}
+                                title="Delete preset"
+                                className="text-red-500 p-1"
+                              >
+                                <FaTrash />
+                              </button>
+                            </div>
+                          </div>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 {presetEndpoints.map((preset, index) => (
                   <button
                     key={index}
@@ -725,6 +861,33 @@ export default function ApiTester() {
                     </div>
                   </button>
                 ))}
+
+                <div className="mt-3">
+                  <div className="text-xs text-gray-500 mb-1">
+                    Import Presets (JSON array)
+                  </div>
+                  <textarea
+                    value={importText}
+                    onChange={(e) => setImportText(e.target.value)}
+                    rows={4}
+                    className="w-full font-mono text-xs border border-gray-300 rounded-lg p-2"
+                    placeholder='[ { "name": "List products", "method": "GET", "url": "/api/smartphones" } ]'
+                  />
+                  <div className="flex gap-2 mt-2">
+                    <button
+                      onClick={importPresets}
+                      className="px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded"
+                    >
+                      Import
+                    </button>
+                    <button
+                      onClick={() => setImportText("")}
+                      className="px-3 py-1 bg-gray-50 hover:bg-gray-100 rounded"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
 
