@@ -29,7 +29,6 @@ import {
   FaChevronDown,
   FaChevronRight,
   FaExclamationTriangle,
-  FaPalette,
   FaTags,
   FaBoxOpen,
   FaCog,
@@ -100,7 +99,6 @@ const EditMobile = () => {
   const [expandedSections, setExpandedSections] = useState({
     basic: true,
     images: true,
-    colors: true,
     variants: true,
     specs: true,
     sensors: true,
@@ -109,7 +107,7 @@ const EditMobile = () => {
   // Default form structure
   const defaultFormData = {
     name: "",
-    category: "Smart Phone",
+    segment: "Smart Phone",
     brand: "",
     model: "",
     launch_date: "",
@@ -185,7 +183,7 @@ const EditMobile = () => {
   // Get selected category label
   const getSelectedCategoryLabel = () => {
     const selectedCategory = categoriesList.find(
-      (cat) => cat.value === formData?.category,
+      (cat) => cat.value === formData?.segment,
     );
     return selectedCategory ? selectedCategory.label : "";
   };
@@ -212,11 +210,11 @@ const EditMobile = () => {
     setBrandSearch("");
   };
 
-  // Handle category selection
+  // Handle segment selection
   const handleCategorySelect = (category) => {
     setFormData((prev) => ({
       ...prev,
-      category: category.value,
+      segment: category.value,
     }));
     setShowCategoryDropdown(false);
     setCategorySearch("");
@@ -304,7 +302,7 @@ const EditMobile = () => {
           })
           .map((r) => ({
             value: r.name || r.value || `cat_${r.id}`,
-            label: r.name || r.title || r.value || `Category ${r.id}`,
+            label: r.name || r.title || r.value || `Segment ${r.id}`,
           }));
 
         if (opts.length) setCategoriesList(opts);
@@ -527,7 +525,7 @@ const EditMobile = () => {
         // Transform API data
         const transformedData = {
           name: apiData?.name || "",
-          category: apiData?.category || "Smart Phone",
+          segment: apiData?.segment || apiData?.category || "Smart Phone",
           brand:
             apiData?.brand || apiData?.brand_name || apiData?.brandName || "",
           model: apiData?.model || "",
@@ -891,15 +889,6 @@ const EditMobile = () => {
     return cleaned;
   };
 
-  // Add color
-  const addColor = () => {
-    addArrayFieldItem("colors", {
-      name: "",
-      code: "#cccccc",
-    });
-    showToast("Color Added", "New color option added", "success");
-  };
-
   // Add variant
   const addVariant = () => {
     addArrayFieldItem("variants", {
@@ -1095,7 +1084,8 @@ const EditMobile = () => {
       const submitData = {
         id,
         name: formData.name || "",
-        category: formData.category || "",
+        segment: formData.segment || "",
+        category: formData.segment || "",
         brand: formData.brand || "",
         model: formData.model || "",
         launch_date: formData.launch_date || null,
@@ -2458,7 +2448,7 @@ const EditMobile = () => {
                   Basic Information
                 </h2>
                 <p className="text-xs text-gray-600 hidden sm:block">
-                  Name, brand, model and category
+                  Name, brand, model and segment
                 </p>
               </div>
             </div>
@@ -2524,11 +2514,11 @@ const EditMobile = () => {
 
                 <div>
                   <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-                    Category *
+                    Segment *
                   </label>
                   <CustomDropdown
-                    value={formData.category}
-                    placeholder="Select Category"
+                    value={formData.segment}
+                    placeholder="Select Segment"
                     isOpen={showCategoryDropdown}
                     setIsOpen={setShowCategoryDropdown}
                     searchValue={categorySearch}
@@ -2630,110 +2620,6 @@ const EditMobile = () => {
           )}
         </div>
 
-        {/* Colors Section with name and color picker */}
-        <div className="bg-white rounded-lg shadow-md">
-          <button
-            onClick={() => toggleSection("colors")}
-            className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border-b border-gray-200 flex items-center justify-between hover:bg-gray-50 transition-colors"
-          >
-            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-              <div className="w-8 h-8 bg-pink-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                <FaPalette className="text-pink-600 text-sm" />
-              </div>
-              <div className="text-left min-w-0">
-                <h2 className="font-semibold text-sm sm:text-base text-gray-800">
-                  Colors
-                </h2>
-                <p className="text-xs text-gray-600 hidden sm:block">
-                  {formData.colors.length} colors added
-                </p>
-              </div>
-            </div>
-            {expandedSections.colors ? (
-              <FaChevronDown className="text-sm flex-shrink-0 ml-2" />
-            ) : (
-              <FaChevronRight className="text-sm flex-shrink-0 ml-2" />
-            )}
-          </button>
-
-          {expandedSections.colors && (
-            <div className="p-3 sm:p-4 space-y-3 sm:space-y-4">
-              <button
-                onClick={addColor}
-                className="flex items-center gap-2 text-blue-600 hover:text-blue-700 text-sm"
-              >
-                <FaPlus className="text-sm" />
-                <span>Add Color</span>
-              </button>
-
-              {formData.colors.map((color, index) => (
-                <div
-                  key={index}
-                  className="p-3 sm:p-4 bg-gray-50 rounded-md space-y-3 sm:space-y-4"
-                >
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-medium text-gray-700">
-                      Color #{index + 1}
-                    </h4>
-                    <button
-                      onClick={() => removeArrayFieldItem("colors", index)}
-                      className="text-red-500 hover:text-red-700 text-sm"
-                    >
-                      <FaTrash />
-                    </button>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                    <div>
-                      <label className="block text-xs sm:text-sm font-medium text-gray-600 mb-1">
-                        Color Name
-                      </label>
-                      <input
-                        type="text"
-                        value={color.name}
-                        onChange={(e) => {
-                          handleArrayFieldChange(
-                            "colors",
-                            index,
-                            "name",
-                            e.target.value,
-                          );
-                        }}
-                        placeholder="e.g., Midnight Black, Alpine Green"
-                        className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs sm:text-sm font-medium text-gray-600 mb-1">
-                        Color Code
-                      </label>
-                      <div className="flex items-center space-x-2">
-                        <div
-                          className="w-8 h-8 rounded border border-gray-300"
-                          style={{ backgroundColor: color.code }}
-                        />
-                        <input
-                          type="color"
-                          value={color.code}
-                          onChange={(e) => {
-                            handleArrayFieldChange(
-                              "colors",
-                              index,
-                              "code",
-                              e.target.value,
-                            );
-                          }}
-                          className="flex-1 h-10 cursor-pointer"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
         {/* Variants Section with updated store fields */}
         <div className="bg-white rounded-lg shadow-md">
           <button
@@ -2792,38 +2678,106 @@ const EditMobile = () => {
                       <label className="block text-xs sm:text-sm font-medium text-gray-600 mb-1">
                         RAM
                       </label>
-                      <input
-                        type="text"
+                      <CustomDropdown
                         value={variant.ram || ""}
-                        onChange={(e) => {
+                        placeholder="Select RAM"
+                        isOpen={showRamDropdown[index] || false}
+                        setIsOpen={(val) =>
+                          setShowRamDropdown((prev) => ({
+                            ...prev,
+                            [index]: val,
+                          }))
+                        }
+                        searchValue={ramSearch[index] || ""}
+                        setSearchValue={(val) =>
+                          setRamSearch((prev) => ({ ...prev, [index]: val }))
+                        }
+                        filteredOptions={(memoryOptions.rams || []).filter(
+                          (opt) =>
+                            opt.name
+                              .toLowerCase()
+                              .includes((ramSearch[index] || "").toLowerCase()),
+                        )}
+                        onSelect={(opt) => {
                           handleArrayFieldChange(
                             "variants",
                             index,
                             "ram",
-                            e.target.value,
+                            opt.name,
                           );
+                          setShowRamDropdown((prev) => ({
+                            ...prev,
+                            [index]: false,
+                          }));
                         }}
-                        placeholder="e.g., 8GB"
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        selectedLabel={
+                          memoryOptions.rams?.find((r) => r.name === variant.ram)
+                            ?.name ||
+                          variant.ram ||
+                          ""
+                        }
+                        dropdownRef={
+                          ramDropdownRefs.current[index] ||
+                          (ramDropdownRefs.current[index] = createRef())
+                        }
+                        type="memory"
+                        showSearch={true}
                       />
                     </div>
                     <div>
                       <label className="block text-xs sm:text-sm font-medium text-gray-600 mb-1">
                         Storage
                       </label>
-                      <input
-                        type="text"
+                      <CustomDropdown
                         value={variant.storage || ""}
-                        onChange={(e) => {
+                        placeholder="Select Storage"
+                        isOpen={showStorageDropdown[index] || false}
+                        setIsOpen={(val) =>
+                          setShowStorageDropdown((prev) => ({
+                            ...prev,
+                            [index]: val,
+                          }))
+                        }
+                        searchValue={storageSearch[index] || ""}
+                        setSearchValue={(val) =>
+                          setStorageSearch((prev) => ({
+                            ...prev,
+                            [index]: val,
+                          }))
+                        }
+                        filteredOptions={(memoryOptions.storages || []).filter(
+                          (opt) =>
+                            opt.name
+                              .toLowerCase()
+                              .includes(
+                                (storageSearch[index] || "").toLowerCase(),
+                              ),
+                        )}
+                        onSelect={(opt) => {
                           handleArrayFieldChange(
                             "variants",
                             index,
                             "storage",
-                            e.target.value,
+                            opt.name,
                           );
+                          setShowStorageDropdown((prev) => ({
+                            ...prev,
+                            [index]: false,
+                          }));
                         }}
-                        placeholder="e.g., 128GB"
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        selectedLabel={
+                          memoryOptions.storages?.find(
+                            (s) => s.name === variant.storage,
+                          )?.name ||
+                          variant.storage ||
+                          ""
+                        }
+                        dropdownRef={
+                          storageDropdownRefs.current[index] ||
+                          (storageDropdownRefs.current[index] = createRef())
+                        }
+                        type="memory"
+                        showSearch={true}
                       />
                     </div>
                     <div>

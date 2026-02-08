@@ -78,13 +78,20 @@ const ViewMobiles = () => {
             (mobile.raw && (mobile.raw.product_id || mobile.raw.productId)) ||
             null;
 
+          const launchDateRaw =
+            mobile.launch_date ||
+            mobile.launchDate ||
+            mobile.launch_date_text ||
+            mobile.launchDateText ||
+            null;
+
           const base = {
             id: productId,
             name: mobile.name || mobile.product_name || "Unnamed",
             brand: mobile.brand || mobile.brand_name || "Unknown",
             model: mobile.model || mobile.model_name || "Unknown",
             published,
-            launch_date: mobile.launch_date || mobile.created_at,
+            launch_date: launchDateRaw,
             images: mobile.images || [],
             variants: mobile.variants || [],
             raw: mobile,
@@ -142,66 +149,70 @@ const ViewMobiles = () => {
         processedMobiles.forEach((m) => {
           const pid =
             m.id || (m.raw && (m.raw.id || m.raw._id)) || m.rowKey || m.name;
-          if (!groupedMap.has(pid)) {
-            groupedMap.set(pid, {
-              id: m.id,
-              rowKey: pid,
-              name: m.name,
-              brand: m.brand,
-              model: m.model,
-              published: m.published,
-              images: Array.isArray(m.images) ? [...m.images] : [],
-              variants: m.variant
-                ? [m.variant]
-                : Array.isArray(m.variants)
-                  ? [...m.variants]
-                  : [],
-              priceList: typeof m.price === "number" ? [m.price] : [],
-              storagesSet: new Set(m.storage ? [m.storage] : []),
-              ramsSet: new Set(m.ram ? [m.ram] : []),
-              raw: m.raw || {},
-              created_at:
-                (m.raw && (m.raw.created_at || m.raw.createdAt)) ||
-                m.launch_date ||
-                m.raw?.created_at ||
-                null,
-            });
-          } else {
-            const g = groupedMap.get(pid);
-            if (Array.isArray(m.images))
-              g.images.push(...m.images.filter(Boolean));
-            if (m.variant) g.variants.push(m.variant);
-            if (Array.isArray(m.variants)) g.variants.push(...m.variants);
-            if (typeof m.price === "number") g.priceList.push(m.price);
-            if (m.storage) g.storagesSet.add(m.storage);
-            if (m.ram) g.ramsSet.add(m.ram);
-            g.published = g.published || m.published;
-          }
-        });
+            if (!groupedMap.has(pid)) {
+              groupedMap.set(pid, {
+                id: m.id,
+                rowKey: pid,
+                name: m.name,
+                brand: m.brand,
+                model: m.model,
+                published: m.published,
+                launch_date:
+                  (m.raw && (m.raw.launch_date || m.raw.launchDate)) ||
+                  m.launch_date ||
+                  null,
+                images: Array.isArray(m.images) ? [...m.images] : [],
+                variants: m.variant
+                  ? [m.variant]
+                  : Array.isArray(m.variants)
+                    ? [...m.variants]
+                    : [],
+                priceList: typeof m.price === "number" ? [m.price] : [],
+                storagesSet: new Set(m.storage ? [m.storage] : []),
+                ramsSet: new Set(m.ram ? [m.ram] : []),
+                raw: m.raw || {},
+                created_at:
+                  (m.raw && (m.raw.created_at || m.raw.createdAt)) ||
+                  null,
+              });
+            } else {
+              const g = groupedMap.get(pid);
+              if (Array.isArray(m.images))
+                g.images.push(...m.images.filter(Boolean));
+              if (m.variant) g.variants.push(m.variant);
+              if (Array.isArray(m.variants)) g.variants.push(...m.variants);
+              if (typeof m.price === "number") g.priceList.push(m.price);
+              if (m.storage) g.storagesSet.add(m.storage);
+              if (m.ram) g.ramsSet.add(m.ram);
+              g.published = g.published || m.published;
+              if (!g.launch_date && m.launch_date) g.launch_date = m.launch_date;
+            }
+          });
 
-        const groupedMobiles = Array.from(groupedMap.values()).map((g) => {
-          const prices = (g.priceList || []).filter(
-            (p) => typeof p === "number" && p > 0,
-          );
-          const price = prices.length ? Math.min(...prices) : 0;
-          const storages = Array.from(g.storagesSet || []).filter(Boolean);
-          const rams = Array.from(g.ramsSet || []).filter(Boolean);
-          return {
-            id: g.id,
-            rowKey: g.rowKey,
-            name: g.name,
-            brand: g.brand,
-            model: g.model,
-            published: g.published,
-            images: Array.from(new Set(g.images || [])).filter(Boolean),
-            variants: g.variants || [],
-            price,
-            storage: storages.join("/") || "",
-            ram: rams.join("/") || "",
-            raw: g.raw || {},
-            created_at: g.created_at,
-          };
-        });
+          const groupedMobiles = Array.from(groupedMap.values()).map((g) => {
+            const prices = (g.priceList || []).filter(
+              (p) => typeof p === "number" && p > 0,
+            );
+            const price = prices.length ? Math.min(...prices) : 0;
+            const storages = Array.from(g.storagesSet || []).filter(Boolean);
+            const rams = Array.from(g.ramsSet || []).filter(Boolean);
+            return {
+              id: g.id,
+              rowKey: g.rowKey,
+              name: g.name,
+              brand: g.brand,
+              model: g.model,
+              published: g.published,
+              launch_date: g.launch_date,
+              images: Array.from(new Set(g.images || [])).filter(Boolean),
+              variants: g.variants || [],
+              price,
+              storage: storages.join("/") || "",
+              ram: rams.join("/") || "",
+              raw: g.raw || {},
+              created_at: g.created_at,
+            };
+          });
 
         setMobiles(groupedMobiles);
         showToast("Success", "Mobiles loaded successfully", "success");
@@ -373,14 +384,12 @@ const ViewMobiles = () => {
     .sort((a, b) => {
       if (sortBy === "newest") {
         return (
-          new Date(b.created_at || b.launch_date) -
-          new Date(a.created_at || a.launch_date)
+          new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
         );
       }
       if (sortBy === "oldest") {
         return (
-          new Date(a.created_at || a.launch_date) -
-          new Date(b.created_at || b.launch_date)
+          new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime()
         );
       }
       if (sortBy === "name") {
@@ -595,6 +604,22 @@ const ViewMobiles = () => {
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
     try {
+      // Handle date-only values without timezone shifting (e.g. "2026-02-08")
+      const s = String(dateString).trim();
+      const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (m) {
+        const y = Number(m[1]);
+        const mo = Number(m[2]);
+        const d = Number(m[3]);
+        const utcDate = new Date(Date.UTC(y, mo - 1, d));
+        return utcDate.toLocaleDateString("en-GB", {
+          timeZone: "UTC",
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        });
+      }
+
       const date = new Date(dateString);
       return date.toLocaleDateString("en-GB", {
         day: "2-digit",

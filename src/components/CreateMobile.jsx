@@ -38,7 +38,7 @@ const CreateMobile = () => {
       brand_id: "",
     },
     smartphone: {
-      category: "Smart Phone",
+      segment: "Smart Phone",
       brand: "",
       model: "",
       launch_date: "",
@@ -196,7 +196,7 @@ const CreateMobile = () => {
           })
           .map((r) => ({
             value: r.name || r.value || `cat_${r.id}`,
-            label: r.name || r.title || r.value || `Category ${r.id}`,
+            label: r.name || r.title || r.value || `Segment ${r.id}`,
           }));
 
         if (opts.length) setCategoriesList(opts);
@@ -372,7 +372,7 @@ const CreateMobile = () => {
       ...prev,
       smartphone: {
         ...prev.smartphone,
-        category: category.value,
+        segment: category.value,
       },
     }));
     setShowCategoryDropdown(false);
@@ -596,7 +596,7 @@ const CreateMobile = () => {
   // Get selected category label
   const getSelectedCategoryLabel = () => {
     const selectedCategory = categoriesList.find(
-      (cat) => cat.value === formData.smartphone.category,
+      (cat) => cat.value === formData.smartphone.segment,
     );
     return selectedCategory ? selectedCategory.label : "";
   };
@@ -746,17 +746,18 @@ const CreateMobile = () => {
 
     try {
       const token = Cookies.get("authToken");
-      const submitData = {
-        product: {
-          name: formData.product.name,
-          brand_id: Number(formData.product.brand_id),
-        },
-        smartphone: {
-          category: formData.smartphone.category,
-          brand: formData.smartphone.brand,
-          model: formData.smartphone.model,
-          launch_date: formData.smartphone.launch_date || null,
-          colors: formData.smartphone.colors.filter(
+        const submitData = {
+          product: {
+            name: formData.product.name,
+            brand_id: Number(formData.product.brand_id),
+          },
+          smartphone: {
+            segment: formData.smartphone.segment,
+            category: formData.smartphone.segment,
+            brand: formData.smartphone.brand,
+            model: formData.smartphone.model,
+            launch_date: formData.smartphone.launch_date || null,
+            colors: formData.smartphone.colors.filter(
             (color) => color.name && color.code,
           ),
           build_design: formData.smartphone.build_design,
@@ -811,7 +812,7 @@ const CreateMobile = () => {
       setFormData({
         product: { name: "", brand_id: "" },
         smartphone: {
-          category: "Smart Phone",
+          segment: "Smart Phone",
           brand: "",
           model: "",
           launch_date: "",
@@ -1314,7 +1315,7 @@ const CreateMobile = () => {
                   Basic Information
                 </h2>
                 <p className="text-xs text-gray-600 hidden sm:block">
-                  Name, brand, model and category
+                  Name, brand, model and segment
                 </p>
               </div>
             </div>
@@ -1380,11 +1381,11 @@ const CreateMobile = () => {
 
                 <div>
                   <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-                    Category *
+                    Segment *
                   </label>
                   <CustomDropdown
-                    value={formData.smartphone.category}
-                    placeholder="Select Category"
+                    value={formData.smartphone.segment}
+                    placeholder="Select Segment"
                     isOpen={showCategoryDropdown}
                     setIsOpen={setShowCategoryDropdown}
                     searchValue={categorySearch}
