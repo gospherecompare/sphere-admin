@@ -889,11 +889,11 @@ const ViewMobiles = () => {
 
             <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
               {/* Filter & Sort */}
-              <div className="flex flex-wrap gap-1 items-center">
+              <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:gap-1 items-center">
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="px-1.5 sm:px-2 py-1 text-[11px] border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent whitespace-nowrap min-w-[88px]"
+                  className="w-full sm:w-auto px-1.5 sm:px-2 py-1 text-[11px] border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent whitespace-nowrap min-w-[88px]"
                 >
                   <option value="all">All Status</option>
                   <option value="published">Published</option>
@@ -903,7 +903,7 @@ const ViewMobiles = () => {
                 <select
                   value={brandFilter}
                   onChange={(e) => setBrandFilter(e.target.value)}
-                  className="px-1.5 sm:px-2 py-1 text-[11px] border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent whitespace-nowrap min-w-[100px]"
+                  className="w-full sm:w-auto px-1.5 sm:px-2 py-1 text-[11px] border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent whitespace-nowrap min-w-[100px]"
                 >
                   <option value="all">All Brands</option>
                   {brands.map((b) => (
@@ -916,7 +916,7 @@ const ViewMobiles = () => {
                 <select
                   value={storageFilter}
                   onChange={(e) => setStorageFilter(e.target.value)}
-                  className="px-1.5 sm:px-2 py-1 text-[11px] border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent whitespace-nowrap min-w-[88px]"
+                  className="w-full sm:w-auto px-1.5 sm:px-2 py-1 text-[11px] border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent whitespace-nowrap min-w-[88px]"
                 >
                   <option value="all">All Storage</option>
                   {storages.map((s) => (
@@ -929,7 +929,7 @@ const ViewMobiles = () => {
                 <select
                   value={ramFilter}
                   onChange={(e) => setRamFilter(e.target.value)}
-                  className="px-1.5 sm:px-2 py-1 text-[11px] border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent whitespace-nowrap min-w-[88px]"
+                  className="w-full sm:w-auto px-1.5 sm:px-2 py-1 text-[11px] border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent whitespace-nowrap min-w-[88px]"
                 >
                   <option value="all">All RAM</option>
                   {rams.map((r) => (
@@ -944,7 +944,7 @@ const ViewMobiles = () => {
                 <select
                   value={variantFilter}
                   onChange={(e) => setVariantFilter(e.target.value)}
-                  className="px-1.5 sm:px-2 py-1 text-[11px] border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent whitespace-nowrap min-w-[88px]"
+                  className="w-full sm:w-auto px-1.5 sm:px-2 py-1 text-[11px] border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent whitespace-nowrap min-w-[88px]"
                 >
                   <option value="all">All Variants</option>
                   <option value="with">With Variants</option>
@@ -954,7 +954,7 @@ const ViewMobiles = () => {
                 <select
                   value={variantStoreFilter}
                   onChange={(e) => setVariantStoreFilter(e.target.value)}
-                  className="px-1.5 sm:px-2 py-1 text-[11px] border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent whitespace-nowrap min-w-[140px]"
+                  className="w-full sm:w-auto px-1.5 sm:px-2 py-1 text-[11px] border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent whitespace-nowrap min-w-[140px]"
                 >
                   <option value="all">All</option>
                   <option value="complete">All Variants Have Store Data</option>
@@ -964,7 +964,7 @@ const ViewMobiles = () => {
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
-                  className="px-1.5 sm:px-2 py-1 text-[11px] border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent whitespace-nowrap min-w-[88px]"
+                  className="w-full sm:w-auto px-1.5 sm:px-2 py-1 text-[11px] border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent whitespace-nowrap min-w-[88px]"
                 >
                   <option value="newest">Newest</option>
                   <option value="oldest">Oldest</option>
@@ -975,7 +975,7 @@ const ViewMobiles = () => {
 
                 <button
                   onClick={clearAllFilters}
-                  className="px-2 py-1 text-xs border border-gray-300 rounded-md bg-white hover:bg-gray-50"
+                  className="w-full sm:w-auto px-2 py-1 text-xs border border-gray-300 rounded-md bg-white hover:bg-gray-50"
                   title="Clear filters"
                 >
                   Clear
@@ -990,7 +990,7 @@ const ViewMobiles = () => {
         {/* Responsive Table / Card Layout */}
         <div className="overflow-x-auto">
           {/* Table Top Export/Import */}
-          <div className="px-3 sm:px-4 py-2 border-b border-gray-100 flex items-center justify-between gap-2">
+          <div className="px-3 sm:px-4 py-2 border-b border-gray-100 flex flex-col items-stretch sm:flex-row sm:items-center sm:justify-between gap-2">
             <div className="w-full sm:w-1/2">
               <div className="relative w-full">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -1006,16 +1006,16 @@ const ViewMobiles = () => {
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="w-full sm:w-auto grid grid-cols-2 gap-2 sm:flex sm:items-center sm:justify-end">
               <button
                 onClick={() => handleExport()}
-                className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-md text-xs sm:text-sm whitespace-nowrap"
+                className="w-full sm:w-auto flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-md text-xs sm:text-sm whitespace-nowrap"
               >
                 <FaDownload className="text-xs sm:text-sm" />
                 <span>Export</span>
               </button>
 
-              <div className="relative">
+              <div className="relative w-full sm:w-auto">
                 <input
                   type="file"
                   accept=".json,.csv,.xlsx,.xls"
@@ -1023,7 +1023,7 @@ const ViewMobiles = () => {
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                   id="import-file"
                 />
-                <button className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-md text-xs sm:text-sm whitespace-nowrap">
+                <button className="w-full sm:w-auto flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-md text-xs sm:text-sm whitespace-nowrap">
                   <FaUpload className="text-xs sm:text-sm" />
                   <span>Import</span>
                 </button>
@@ -1285,7 +1285,7 @@ const ViewMobiles = () => {
                         </button>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-2 text-xs sm:text-sm mb-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs sm:text-sm mb-2">
                         <div>
                           <p className="text-gray-500">Model</p>
                           <p className="font-medium text-gray-900">

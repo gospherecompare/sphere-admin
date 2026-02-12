@@ -267,6 +267,292 @@ const EditMobile = () => {
     { id: "multimedia", label: "Multimedia", icon: FaDesktop },
   ];
 
+  const getSpecUiHints = (specId) => {
+    const base = {
+      labelOverrides: {
+        ai_features: "AI Features",
+        score: "Score",
+        ip_rating: "IP Rating",
+        water_dust_resistance: "Water/Dust Resistance",
+        screen_to_body_ratio: "Screen-to-Body Ratio",
+        touch_sampling_rate: "Touch Sampling Rate",
+        pixel_density: "Pixel Density",
+        rated_capacity: "Rated Capacity",
+        fast_charging: "Fast Charging",
+        wireless_charging: "Wireless Charging",
+        fm_radio: "FM Radio",
+        antutu_score: "AnTuTu Score",
+        cpu_cores: "CPU Cores",
+        "5g_bands": "5G Bands",
+        "5g_support": "5G Support",
+        esim_support: "eSIM Support",
+      },
+      helpText: {
+        ai_features: "Add one feature per item (e.g., AI Unblur)",
+      },
+      placeholderOverrides: {},
+      arrayItemPlaceholderOverrides: {
+        ai_features: "e.g., AI Unblur",
+      },
+    };
+
+    const perSpec = {
+      build_design: {
+        labelOverrides: {
+          material: "Materials",
+          colors: "Colors",
+          durability: "Durability / Warranty",
+        },
+        helpText: {
+          colors: "Add one color name per item (e.g., Black Velvet)",
+          ip_rating: "Ingress protection rating (e.g., IP68)",
+        },
+        placeholderOverrides: {
+          height: "e.g., 150.8 mm",
+          width: "e.g., 71.7 mm",
+          thickness: "e.g., 8.2 mm",
+          weight: "e.g., 185 g",
+          material: "e.g., Glass / Aluminum",
+          ip_rating: "e.g., IP68",
+          durability: "e.g., Gorilla Glass / Warranty details",
+        },
+        arrayItemPlaceholderOverrides: {
+          colors: "e.g., Black Velvet",
+        },
+      },
+      display: {
+        labelOverrides: {
+          size: "Display Size",
+          resolution: "Display Resolution",
+          type: "Display Type",
+          panel: "Panel Type",
+          refresh_rate: "Refresh Rate",
+          brightness: "Brightness",
+          color_depth: "Color Depth",
+          cover_glass: "Cover Glass",
+          wet_touch: "Wet Touch",
+          glove_mode: "Glove Mode",
+          protection: "Protection",
+        },
+        placeholderOverrides: {
+          size: "e.g., 6.32 inch",
+          resolution: "e.g., 2640 × 1216",
+          panel: "e.g., LTPO AMOLED",
+          refresh_rate: "e.g., 1–120 Hz",
+          touch_sampling_rate: "e.g., 240 Hz",
+          screen_to_body_ratio: "e.g., 93%",
+          pixel_density: "e.g., 460 PPI",
+          brightness: "e.g., 1600 nits (HBM)",
+          color_depth: "e.g., 10-bit, 100% DCI-P3",
+          cover_glass: "e.g., Gorilla Glass",
+          protection: "e.g., Gorilla Glass Victus",
+        },
+      },
+      performance: {
+        labelOverrides: {
+          operating_system: "OS (Android/iOS)",
+          os: "UI / Skin",
+          processor: "Processor",
+          chipset: "Chipset",
+          benchmark_score: "Benchmark Score",
+          ram_boost: "RAM Boost",
+          ram_type: "RAM Type",
+          storage: "Storage",
+          storage_type: "Storage Type",
+          network_boost: "Network Boost / Gaming",
+        },
+        placeholderOverrides: {
+          operating_system: "e.g., Android 15 (OxygenOS 15)",
+          os: "e.g., OxygenOS / One UI / iOS",
+          processor: "e.g., Snapdragon 8 Elite",
+          chipset: "e.g., Snapdragon 8 Elite",
+          cpu: "e.g., Oryon @ 4.32 GHz",
+          gpu: "e.g., Adreno 830",
+          benchmark_score: "e.g., 1,850,000",
+          antutu_score: "e.g., 2,000,000",
+          ram_type: "e.g., LPDDR5X",
+          storage_type: "e.g., UFS 4.0",
+          storage: "e.g., 256 GB / 512 GB",
+        },
+      },
+      camera: {
+        labelOverrides: {
+          rear_camera: "Rear Camera System",
+          front_camera: "Front (Selfie) Camera",
+          ultra_wide: "Ultra Wide Lens",
+          wide: "Wide Lens",
+          telephoto: "Telephoto Lens",
+          periscope: "Periscope Lens",
+          macro: "Macro Lens",
+          depth: "Depth Sensor",
+          main: "Main Lens",
+          sensor: "Sensor Model",
+          resolution: "Resolution",
+          aperture: "Aperture",
+          focal_length: "Focal Length",
+          optical_zoom: "Optical Zoom",
+          digital_zoom: "Digital Zoom",
+          ois: "Optical Stabilization (OIS)",
+          eis: "Electronic Stabilization (EIS)",
+          autofocus: "Autofocus",
+          fov: "Field of View (FOV)",
+          underwater_photography: "Underwater Mode",
+        },
+        helpText: {
+          rear_camera:
+            "Add lenses under this (main, telephoto, ultra wide, etc.)",
+          front_camera: "Selfie camera details",
+        },
+        placeholderOverrides: {
+          resolution: "e.g., 50 MP",
+          sensor: "e.g., Sony LYT-700",
+          aperture: "e.g., f/1.8",
+          optical_zoom: "e.g., 2x",
+          digital_zoom: "e.g., 10x",
+          focal_length: "e.g., 24 mm",
+          ois: "e.g., Supported / No",
+          eis: "e.g., Supported / No",
+          autofocus: "e.g., Supported / No",
+          fov: "e.g., 90 deg",
+        },
+      },
+      battery: {
+        labelOverrides: {
+          capacity: "Battery Capacity",
+          type: "Battery Type",
+          charging: "Charging Type",
+        },
+        placeholderOverrides: {
+          capacity: "e.g., 5850 mAh",
+          rated_capacity: "e.g., 5700 mAh",
+          fast_charging: "e.g., 80W SUPERVOOC",
+          wireless_charging: "e.g., 50W",
+          charging: "e.g., USB Type-C",
+          type: "e.g., Li-Po",
+        },
+      },
+      connectivity: {
+        labelOverrides: {
+          audio: "Audio Technology",
+          sim_type: "SIM Type",
+          sim_slots: "SIM Slots",
+          dual_standby: "Dual Standby",
+        },
+        helpText: {
+          wifi: "Add supported Wi-Fi standards (Wi-Fi 7, Wi-Fi 6E, etc.)",
+        },
+        placeholderOverrides: {
+          bluetooth: "e.g., Bluetooth 6.0",
+          usb: "e.g., USB Type-C",
+          audio: "e.g., Dolby Atmos / OReality Audio",
+          nfc: "e.g., Yes / No",
+          sim_type: "e.g., Dual Nano-SIM + eSIM",
+          sim_slots: "e.g., 2",
+          esim_support: "e.g., Yes / No",
+          dual_standby: "e.g., Yes / No",
+        },
+        arrayItemPlaceholderOverrides: {
+          wifi: "e.g., Wi-Fi 7",
+        },
+      },
+      network: {
+        labelOverrides: {
+          sim: "SIM",
+          network_types: "Network Types",
+          network_bands: "Network Bands",
+        },
+        helpText: {
+          "5g_bands": "Add one band per item (e.g., n78)",
+        },
+        placeholderOverrides: {
+          sim: "e.g., Dual Nano-SIM + eSIM",
+          network_types: "e.g., 2G / 3G / 4G / 5G",
+          "5g_support": "e.g., Yes / No",
+          network_bands: "e.g., SA/NSA, LTE bands, etc.",
+        },
+        arrayItemPlaceholderOverrides: {
+          "5g_bands": "e.g., n78",
+        },
+      },
+      ports: {
+        labelOverrides: {
+          usb_type: "USB Type",
+          headphone_jack: "Headphone Jack",
+          charging_port: "Charging Port",
+        },
+        placeholderOverrides: {
+          usb_type: "e.g., USB-C (USB 3.1)",
+          headphone_jack: "e.g., Yes / No",
+          charging_port: "e.g., USB Type-C",
+        },
+      },
+      audio: {
+        labelOverrides: {
+          speaker_type: "Speaker Type",
+          speaker_count: "Speaker Count",
+          max_volume: "Max Volume",
+          microphone_count: "Microphone Count",
+          microphone_features: "Microphone Features",
+        },
+        placeholderOverrides: {
+          speakers: "e.g., Stereo speakers",
+          speaker_type: "e.g., Dual speaker",
+          speaker_count: "e.g., 2",
+          max_volume: "e.g., 90 dB",
+          microphone: "e.g., Dual mic",
+          microphone_count: "e.g., 2",
+          microphone_features: "e.g., Noise cancellation",
+          audio_jack: "e.g., No",
+        },
+      },
+      multimedia: {
+        labelOverrides: {
+          video_formats: "Video Formats",
+          audio_formats: "Audio Formats",
+          rear_video: "Rear Video",
+          front_video: "Front Video",
+          slow_motion: "Slow Motion",
+        },
+        helpText: {
+          rear_video: "Add supported FPS per resolution (4K, 1080p, etc.)",
+          front_video: "Selfie video recording options",
+          slow_motion: "Add resolution + FPS pairs (e.g., 1080p 240fps)",
+        },
+        placeholderOverrides: {
+          video_formats: "e.g., MP4, MKV",
+          audio_formats: "e.g., AAC, FLAC",
+          fm_radio: "e.g., Yes / No",
+        },
+        arrayItemPlaceholderOverrides: {
+          "4k": "e.g., 60fps",
+          "1080p": "e.g., 60fps",
+          "720p": "e.g., 30fps",
+          slow_motion: "e.g., 1080p 240fps",
+        },
+      },
+    };
+
+    const spec = perSpec[specId] || {};
+    return {
+      labelOverrides: {
+        ...base.labelOverrides,
+        ...(spec.labelOverrides || {}),
+      },
+      helpText: {
+        ...base.helpText,
+        ...(spec.helpText || {}),
+      },
+      placeholderOverrides: {
+        ...base.placeholderOverrides,
+        ...(spec.placeholderOverrides || {}),
+      },
+      arrayItemPlaceholderOverrides: {
+        ...base.arrayItemPlaceholderOverrides,
+        ...(spec.arrayItemPlaceholderOverrides || {}),
+      },
+    };
+  };
+
   // Scroll to top on component mount
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -426,9 +712,11 @@ const EditMobile = () => {
         };
 
         // Normalize variants
-        const rawVariants = Array.isArray(apiData?.variants)
-          ? apiData.variants
-          : [];
+        const rawVariants = Array.isArray(apiData?.variants_json)
+          ? apiData.variants_json
+          : Array.isArray(apiData?.variants)
+            ? apiData.variants
+            : [];
         const variants = rawVariants.map((v) => {
           const parsedStorePrices = Array.isArray(v?.store_prices)
             ? v.store_prices
@@ -497,6 +785,8 @@ const EditMobile = () => {
         // Merge connectivity/network/connectivity_network into a single object
         const connectivityObj = {
           ...normalizeSafe(apiData?.connectivity_network),
+          ...normalizeSafe(apiData?.connectivity_json),
+          ...normalizeSafe(apiData?.network_json),
           ...normalizeSafe(apiData?.connectivity),
           ...normalizeSafe(apiData?.network),
         };
@@ -524,7 +814,11 @@ const EditMobile = () => {
 
         // Transform API data
         const transformedData = {
-          name: apiData?.name || "",
+          name:
+            apiData?.name ||
+            apiData?.product_name ||
+            apiData?.productName ||
+            "",
           segment: apiData?.segment || apiData?.category || "Smart Phone",
           brand:
             apiData?.brand || apiData?.brand_name || apiData?.brandName || "",
@@ -533,8 +827,10 @@ const EditMobile = () => {
           launch_date: apiData?.launch_date
             ? new Date(apiData.launch_date).toISOString().split("T")[0]
             : "",
-          images: Array.isArray(safeParse(apiData?.images, []))
-            ? safeParse(apiData?.images, [])
+          images: Array.isArray(
+            safeParse(apiData?.images_json ?? apiData?.images, []),
+          )
+            ? safeParse(apiData?.images_json ?? apiData?.images, [])
             : [],
           colors:
             Array.isArray(safeParse(apiData?.colors, [])) &&
@@ -554,19 +850,27 @@ const EditMobile = () => {
             stores: v.stores || [],
           })),
           variant_store_prices: variant_store_prices,
-          build_design: extractSphereRating(apiData?.build_design),
-          display: extractSphereRating(apiData?.display),
-          performance: extractSphereRating(apiData?.performance),
-          camera: extractSphereRating(apiData?.camera),
-          battery: extractSphereRating(apiData?.battery),
+          build_design: extractSphereRating(
+            apiData?.build_design_json ?? apiData?.build_design,
+          ),
+          display: extractSphereRating(apiData?.display_json ?? apiData?.display),
+          performance: extractSphereRating(
+            apiData?.performance_json ?? apiData?.performance,
+          ),
+          camera: extractSphereRating(apiData?.camera_json ?? apiData?.camera),
+          battery: extractSphereRating(
+            apiData?.battery_json ?? apiData?.battery,
+          ),
           // populate connectivity and network separately (fallback to merged object)
           connectivity: (function () {
-            const c = extractSphereRating(apiData?.connectivity);
+            const c = extractSphereRating(
+              apiData?.connectivity_json ?? apiData?.connectivity,
+            );
             if (c && Object.keys(c).length) return c;
             return extractSphereRating(connectivityObj);
           })(),
           network: (function () {
-            const n = extractSphereRating(apiData?.network);
+            const n = extractSphereRating(apiData?.network_json ?? apiData?.network);
             if (n && Object.keys(n).length) return n;
             return extractSphereRating(connectivityObj);
           })(),
@@ -574,9 +878,15 @@ const EditMobile = () => {
             typeof apiData?.sensors === "string"
               ? apiData.sensors
               : safeParse(apiData?.sensors, ""),
-          ports: safeParse(apiData?.ports, {}),
-          audio: safeParse(apiData?.audio, {}),
-          multimedia: safeParse(apiData?.multimedia, {}),
+          ports: safeParse(
+            apiData?.ports_json ?? apiData?.port_json ?? apiData?.ports,
+            {},
+          ),
+          audio: safeParse(apiData?.audio_json ?? apiData?.audio, {}),
+          multimedia: safeParse(
+            apiData?.multimedia_json ?? apiData?.multimedia,
+            {},
+          ),
           is_foldable: apiData?.is_foldable || false,
         };
 
@@ -669,8 +979,15 @@ const EditMobile = () => {
 
         setFormData(transformedData);
 
-        if (apiData.published !== undefined) {
-          setPublishEnabled(apiData.published);
+        const publishedVal =
+          apiData?.published ??
+          apiData?.publish ??
+          apiData?.is_published ??
+          apiData?.isPublished ??
+          apiData?.is_published ??
+          undefined;
+        if (publishedVal !== undefined) {
+          setPublishEnabled(!!publishedVal);
         }
 
         setDataLoaded(true);
@@ -754,6 +1071,47 @@ const EditMobile = () => {
       ...prev,
       [name]: value,
     }));
+  };
+
+  const setSpecSection = (specKey, nextValue) => {
+    setFormData((prev) => ({
+      ...prev,
+      [specKey]: nextValue,
+    }));
+  };
+
+  const setFoldableSpecSectionSide = (specKey, side, nextValue) => {
+    setFormData((prev) => {
+      const current =
+        prev &&
+        prev[specKey] &&
+        typeof prev[specKey] === "object" &&
+        !Array.isArray(prev[specKey])
+          ? prev[specKey]
+          : {};
+
+      const foldValue =
+        side === "fold"
+          ? nextValue
+          : current.fold && typeof current.fold === "object"
+            ? current.fold
+            : {};
+      const flipValue =
+        side === "flip"
+          ? nextValue
+          : current.flip && typeof current.flip === "object"
+            ? current.flip
+            : {};
+
+      return {
+        ...prev,
+        [specKey]: {
+          ...current,
+          fold: foldValue,
+          flip: flipValue,
+        },
+      };
+    });
   };
 
   // Handle JSONB object changes
@@ -874,6 +1232,18 @@ const EditMobile = () => {
     };
 
     const cleaned = clean(input) || {};
+
+    // Preserve explicit empty arrays for "replace semantics" fields so the API can
+    // apply deletions (e.g., deleting the last store from a variant).
+    if (Array.isArray(input?.variants) && input.variants.length === 0) {
+      cleaned.variants = [];
+    }
+    if (
+      Array.isArray(input?.variant_store_prices) &&
+      input.variant_store_prices.length === 0
+    ) {
+      cleaned.variant_store_prices = [];
+    }
 
     // For variant_store_prices, drop variant_index when variant_id present
     if (Array.isArray(cleaned.variant_store_prices)) {
@@ -1084,24 +1454,40 @@ const EditMobile = () => {
       const submitData = {
         id,
         name: formData.name || "",
+        product_name: formData.name || "",
+        product_type: "smartphone",
         segment: formData.segment || "",
         category: formData.segment || "",
         brand: formData.brand || "",
+        brand_name: formData.brand || "",
         model: formData.model || "",
         launch_date: formData.launch_date || null,
+        publish: publishEnabled,
         images: formData.images || [],
+        images_json: formData.images || [],
         colors: formData.colors.filter((color) => color.name && color.code),
         build_design: formData.build_design,
+        build_design_json: formData.build_design,
         display: formData.display,
+        display_json: formData.display,
         performance: formData.performance,
+        performance_json: formData.performance,
         camera: formData.camera,
+        camera_json: formData.camera,
         battery: formData.battery,
+        battery_json: formData.battery,
         connectivity: formData.connectivity,
+        connectivity_json: formData.connectivity,
         network: formData.network,
+        network_json: formData.network,
         sensors: formData.sensors || null,
         ports: formData.ports,
+        ports_json: formData.ports,
+        port_json: formData.ports,
         audio: formData.audio,
+        audio_json: formData.audio,
         multimedia: formData.multimedia,
+        multimedia_json: formData.multimedia,
         is_foldable: formData.is_foldable || false,
         published: publishEnabled,
         // include variants and per-variant store prices so edits persist
@@ -1133,6 +1519,24 @@ const EditMobile = () => {
           });
           return out;
         })(),
+        variants_json: (formData.variants || []).map((v) => ({
+          ram: v.ram || null,
+          storage: v.storage || null,
+          base_price: v.base_price ? Number(v.base_price) : null,
+          variant_id: v.id || null,
+          store_prices: (Array.isArray(v.stores) ? v.stores : []).map((s) => ({
+            id: s.id || null,
+            store: s.store_name || null,
+            store_name: s.store_name || null,
+            price: s.price ? Number(s.price) : null,
+            url: s.url || null,
+            offer_text: s.offer_text || null,
+            delivery_info: s.delivery_info || s.deliveryInfo || null,
+            discount: s.discount || null,
+            offers: s.offers || null,
+            custom_properties: s.custom_properties || {},
+          })),
+        })),
       };
 
       const token = Cookies.get("authToken");
@@ -1211,6 +1615,8 @@ const EditMobile = () => {
       </div>
     );
   };
+
+  const specUi = getSpecUiHints(activeSpecTab);
 
   // Custom Dropdown Component - Matching CreateMobile
   const CustomDropdown = ({
@@ -1379,6 +1785,7 @@ const EditMobile = () => {
                           e.target.value,
                         )
                       }
+                      placeholder="Label"
                       className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
                     />
                   </div>
@@ -1397,6 +1804,7 @@ const EditMobile = () => {
                           e.target.value,
                         )
                       }
+                      placeholder="Value"
                       className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
                     />
                   </div>
@@ -1408,6 +1816,7 @@ const EditMobile = () => {
                   onChange={(e) =>
                     handleJsonbChange("camera", customField, e.target.value)
                   }
+                  placeholder={`Enter ${String(customField).replace(/_/g, " ")}`}
                   className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
                 />
               )}
@@ -1778,6 +2187,7 @@ const EditMobile = () => {
                           e.target.value,
                         )
                       }
+                      placeholder="Label"
                       className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
                     />
                   </div>
@@ -1796,6 +2206,7 @@ const EditMobile = () => {
                           e.target.value,
                         )
                       }
+                      placeholder="Value"
                       className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
                     />
                   </div>
@@ -1807,6 +2218,7 @@ const EditMobile = () => {
                   onChange={(e) =>
                     handleJsonbChange("audio", customField, e.target.value)
                   }
+                  placeholder={`Enter ${String(customField).replace(/_/g, " ")}`}
                   className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
                 />
               )}
@@ -2050,6 +2462,7 @@ const EditMobile = () => {
                           e.target.value,
                         )
                       }
+                      placeholder="Label"
                       className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
                     />
                   </div>
@@ -2068,6 +2481,7 @@ const EditMobile = () => {
                           e.target.value,
                         )
                       }
+                      placeholder="Value"
                       className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
                     />
                   </div>
@@ -2079,6 +2493,7 @@ const EditMobile = () => {
                   onChange={(e) =>
                     handleJsonbChange("multimedia", customField, e.target.value)
                   }
+                  placeholder={`Enter ${String(customField).replace(/_/g, " ")}`}
                   className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
                 />
               )}
@@ -2600,6 +3015,8 @@ const EditMobile = () => {
                   type="file"
                   accept="image/*"
                   multiple
+                  title="Upload mobile images"
+                  aria-label="Upload mobile images"
                   onChange={(e) => {
                     const files = Array.from(e.target.files || []);
                     if (files.length) handleImageUpload(files);
@@ -3091,7 +3508,111 @@ const EditMobile = () => {
 
               {/* Specification Fields */}
               <div className="space-y-4">
-                {/* Special handling for Camera, Audio, and Multimedia tabs */}
+                {/* Dynamic JSON editor (supports nested objects/arrays like camera_json + ai_features) */}
+                <div className="flex items-center gap-3 mb-2">
+                  <label className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={!!formData.is_foldable}
+                      onChange={(e) => {
+                        const enabled = e.target.checked;
+                        setFormData((prev) => {
+                          const cur = prev || {};
+                          const updated = {
+                            ...cur,
+                            is_foldable: enabled,
+                          };
+                          const existing = cur[activeSpecTab] || {};
+                          if (enabled) {
+                            if (!existing.fold && !existing.flip) {
+                              updated[activeSpecTab] = {
+                                fold: {},
+                                flip: { ...existing },
+                              };
+                            }
+                          } else {
+                            if (existing.flip) {
+                              updated[activeSpecTab] = {
+                                ...(existing.flip || {}),
+                              };
+                            }
+                          }
+                          return { ...updated };
+                        });
+                      }}
+                      title="Enable to edit Fold and Flip specs separately"
+                      aria-label="Foldable device toggle"
+                      className="h-4 w-4"
+                    />
+                    <span className="text-sm text-gray-700">
+                      Foldable device
+                    </span>
+                  </label>
+                </div>
+
+                {activeSpecTab === "network" && (
+                  <div className="mb-3 p-3 bg-blue-50 rounded-md border border-blue-100">
+                    <div className="flex items-center space-x-2">
+                      <FaSimCard className="text-blue-500" />
+                      <span className="text-sm text-blue-700">
+                        Enter SIM details like SIM type, slots, eSIM support,
+                        etc.
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {formData.is_foldable ? (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div>
+                      <h4 className="text-sm font-semibold mb-2">Fold</h4>
+                      <DynamicForm
+                        data={formData[activeSpecTab]?.fold || {}}
+                        onChange={(next) =>
+                          setFoldableSpecSectionSide(activeSpecTab, "fold", next)
+                        }
+                        labelOverrides={specUi.labelOverrides}
+                        helpText={specUi.helpText}
+                        placeholderOverrides={specUi.placeholderOverrides}
+                        arrayItemPlaceholderOverrides={
+                          specUi.arrayItemPlaceholderOverrides
+                        }
+                      />
+                    </div>
+
+                    <div>
+                      <h4 className="text-sm font-semibold mb-2">Flip</h4>
+                      <DynamicForm
+                        data={formData[activeSpecTab]?.flip || {}}
+                        onChange={(next) =>
+                          setFoldableSpecSectionSide(activeSpecTab, "flip", next)
+                        }
+                        labelOverrides={specUi.labelOverrides}
+                        helpText={specUi.helpText}
+                        placeholderOverrides={specUi.placeholderOverrides}
+                        arrayItemPlaceholderOverrides={
+                          specUi.arrayItemPlaceholderOverrides
+                        }
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <DynamicForm
+                    data={formData[activeSpecTab] || {}}
+                    onChange={(next) => setSpecSection(activeSpecTab, next)}
+                    labelOverrides={specUi.labelOverrides}
+                    helpText={specUi.helpText}
+                    placeholderOverrides={specUi.placeholderOverrides}
+                    arrayItemPlaceholderOverrides={
+                      specUi.arrayItemPlaceholderOverrides
+                    }
+                  />
+                )}
+
+                {/* Legacy editor (disabled) */}
+                {false && (
+                  <>
+                    {/* Special handling for Camera, Audio, and Multimedia tabs */}
                 {activeSpecTab === "camera" && (
                   <>
                     <CameraSpecsInput />
@@ -3149,6 +3670,8 @@ const EditMobile = () => {
                                 return { ...updated };
                               });
                             }}
+                            title="Enable to edit Fold and Flip specs separately"
+                            aria-label="Foldable device toggle"
                             className="h-4 w-4"
                           />
                           <span className="text-sm text-gray-700">
@@ -3499,6 +4022,7 @@ const EditMobile = () => {
                                                   }}
                                                   className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm font-mono"
                                                   rows={6}
+                                                  placeholder={`Paste JSON here (e.g., {"key": "value"})`}
                                                 />
                                               </div>
                                             )}
@@ -3666,6 +4190,8 @@ const EditMobile = () => {
                       </div>
                     </>
                   )}
+                  </>
+                )}
               </div>
             </div>
           )}

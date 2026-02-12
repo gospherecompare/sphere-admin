@@ -14,6 +14,7 @@ import {
   FaChartLine,
   FaArrowRight,
   FaArrowUp,
+  FaArrowDown,
   FaShoppingBag,
   FaUsers,
   FaCog,
@@ -32,6 +33,7 @@ import {
   FaQuestionCircle,
   FaBolt, // Added FaBolt
   FaExclamationCircle, // Already imported but confirming
+  FaMinus,
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { buildUrl } from "../api";
@@ -55,6 +57,14 @@ const Dashboard = () => {
   const [error, setError] = useState(null);
   const [timeFilter, setTimeFilter] = useState("today");
   const [searchQuery, setSearchQuery] = useState("");
+
+  const [trendingType, setTrendingType] = useState("smartphone");
+  const [trendingSnapshot, setTrendingSnapshot] = useState({
+    updated_at: null,
+    results: [],
+  });
+  const [trendingLoading, setTrendingLoading] = useState(false);
+  const [trendingError, setTrendingError] = useState(null);
 
   // Enhanced stats with more data
   const stats = useMemo(
@@ -207,6 +217,54 @@ const Dashboard = () => {
     { id: "month", label: "This Month" },
     { id: "all", label: "All Time" },
   ];
+
+  const trendingTypeOptions = useMemo(
+    () => [
+      { value: "smartphone", label: "Smartphones" },
+      { value: "laptop", label: "Laptops" },
+      { value: "home_appliance", label: "Home Appliances" },
+      { value: "networking", label: "Networking" },
+      { value: "accessories", label: "Accessories" },
+    ],
+    [],
+  );
+
+  const fetchTrendingSnapshot = useCallback(async () => {
+    setTrendingLoading(true);
+    setTrendingError(null);
+
+    try {
+      const token = Cookies.get("authToken");
+      const headers = token
+        ? {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          }
+        : { "Content-Type": "application/json" };
+
+      const qs = new URLSearchParams();
+      qs.set("type", trendingType);
+      qs.set("limit", "5");
+
+      const res = await fetch(buildUrl(`/api/admin/trending?${qs}`), {
+        method: "GET",
+        headers,
+      });
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+
+      setTrendingSnapshot({
+        updated_at: data.updated_at || null,
+        results: Array.isArray(data.results) ? data.results : [],
+      });
+    } catch (err) {
+      console.error("Dashboard trending fetch error:", err);
+      setTrendingError(err.message || "Failed to load trending snapshot");
+    } finally {
+      setTrendingLoading(false);
+    }
+  }, [trendingType]);
 
   // Get color classes with gradients
   const getColorClasses = useCallback((color) => {
@@ -428,6 +486,10 @@ const Dashboard = () => {
     };
   }, []);
 
+  useEffect(() => {
+    fetchTrendingSnapshot();
+  }, [fetchTrendingSnapshot]);
+
   // Format date to relative time
   const formatRelativeTime = (dateString) => {
     const date = new Date(dateString);
@@ -442,6 +504,22 @@ const Dashboard = () => {
     if (diffHours < 24) return `${diffHours}h ago`;
     if (diffDays < 7) return `${diffDays}d ago`;
     return date.toLocaleDateString();
+  };
+
+  const formatDateTime = (value) => {
+    if (!value) return "-";
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return String(value);
+
+    return new Intl.DateTimeFormat(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      timeZoneName: "short",
+    }).format(d);
   };
 
   return (
@@ -785,6 +863,203 @@ const Dashboard = () => {
 
         {/* Right Column - Quick Actions & Insights */}
         <div className="space-y-4 sm:space-y-6">
+          {/* Trending Snapshot */}
+          <div className="bg-white shadow-md rounded-lg p-4 sm:p-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+              <div className="min-w-0">
+                <h2 className="text-lg sm:text-xl font-bold text-gray-900 flex items-center gap-2">
+                  <FaChartLine className="text-blue-600" />
+                  Trending Snapshot
+                </h2>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                    7d momentum
+                  </span>
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-[11px] font-semibold bg-gray-50 text-gray-700 border border-gray-200">
+                    Top 5
+                  </span>
+                  {trendingSnapshot.updated_at && (
+                    <span
+                      className="text-[11px] text-gray-500"
+                      title={`Updated at ${formatDateTime(trendingSnapshot.updated_at)}`}
+                    >
+                      Updated {formatRelativeTime(trendingSnapshot.updated_at)}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 w-full md:w-auto">
+                <select
+                  value={trendingType}
+                  onChange={(e) => setTrendingType(e.target.value)}
+                  className="flex-1 md:flex-none px-3 py-2 border border-gray-200 rounded-lg bg-white text-gray-700 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  aria-label="Trending type"
+                >
+                  {trendingTypeOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  onClick={fetchTrendingSnapshot}
+                  className="px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-700 transition-colors disabled:opacity-60"
+                  disabled={trendingLoading}
+                  title="Refresh trending snapshot"
+                >
+                  {trendingLoading ? "Loading..." : "Refresh"}
+                </button>
+              </div>
+            </div>
+
+            {trendingError && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+                {trendingError}
+              </div>
+            )}
+
+            {trendingLoading && trendingSnapshot.results.length === 0 ? (
+              <div className="text-sm text-gray-600 py-6 text-center">
+                Loading trending...
+              </div>
+            ) : trendingSnapshot.results.length === 0 ? (
+              <div className="text-sm text-gray-600">
+                <p>No trending data yet.</p>
+                <button
+                  onClick={() => navigate("/reports/trending")}
+                  className="mt-3 inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700"
+                >
+                  Open Trending Manager <FaArrowRight />
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {(() => {
+                  const maxScore = Math.max(
+                    ...trendingSnapshot.results.map((r) =>
+                      Number.isFinite(Number(r.trending_score))
+                        ? Number(r.trending_score)
+                        : 0,
+                    ),
+                    0,
+                  );
+
+                  return trendingSnapshot.results.map((r) => {
+                    const current = Number(r.views_7d ?? 0);
+                    const prev = Number(r.views_prev_7d ?? 0);
+                    const delta = current - prev;
+
+                    const trendPill =
+                      delta > 0
+                        ? "bg-green-50 text-green-700 border-green-200"
+                        : delta < 0
+                          ? "bg-red-50 text-red-700 border-red-200"
+                          : "bg-gray-50 text-gray-600 border-gray-200";
+
+                    const score = Number(r.trending_score ?? 0);
+                    const pct =
+                      maxScore > 0 && Number.isFinite(score)
+                        ? Math.min(100, Math.max(0, (score / maxScore) * 100))
+                        : 0;
+
+                    return (
+                      <div
+                        key={r.product_id}
+                        className="p-3 rounded-xl border border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm transition-all"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="font-semibold text-gray-900 truncate">
+                              {r.name}
+                            </p>
+                            <div className="mt-0.5 flex items-center gap-2 min-w-0">
+                              <p className="text-xs text-gray-600 truncate">
+                                {r.brand || "Unknown brand"}
+                              </p>
+                              {r.manual_boost && (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-orange-50 text-orange-700 border border-orange-200 whitespace-nowrap">
+                                  Manual
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="mt-3 grid grid-cols-2 gap-2">
+                              <div className="px-2 py-1.5 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-between">
+                                <span className="text-[10px] font-semibold text-blue-700 uppercase tracking-wide">
+                                  UV7d
+                                </span>
+                                <span className="text-xs font-bold text-blue-900">
+                                  {Number(r.views_7d ?? 0).toLocaleString()}
+                                </span>
+                              </div>
+                              <div className="px-2 py-1.5 rounded-lg bg-purple-50 border border-purple-100 flex items-center justify-between">
+                                <span className="text-[10px] font-semibold text-purple-700 uppercase tracking-wide">
+                                  Cmp7d
+                                </span>
+                                <span className="text-xs font-bold text-purple-900">
+                                  {Number(r.compares_7d ?? 0).toLocaleString()}
+                                </span>
+                              </div>
+                              <div className="px-2 py-1.5 rounded-lg bg-gray-50 border border-gray-200 flex items-center justify-between">
+                                <span className="text-[10px] font-semibold text-gray-700 uppercase tracking-wide">
+                                  Total UV
+                                </span>
+                                <span className="text-xs font-bold text-gray-900">
+                                  {Number(
+                                    r.unique_visitors_total ?? 0,
+                                  ).toLocaleString()}
+                                </span>
+                              </div>
+                              <div className="px-2 py-1.5 rounded-lg bg-gray-50 border border-gray-200 flex items-center justify-between">
+                                <span className="text-[10px] font-semibold text-gray-700 uppercase tracking-wide">
+                                  Total Cmp
+                                </span>
+                                <span className="text-xs font-bold text-gray-900">
+                                  {Number(r.compares_total ?? 0).toLocaleString()}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <span
+                            className={`inline-flex items-center gap-1 px-2 py-1 rounded-full border text-[11px] font-semibold whitespace-nowrap ${trendPill}`}
+                            title="Change vs previous 7 days"
+                          >
+                            {delta > 0 ? (
+                              <FaArrowUp />
+                            ) : delta < 0 ? (
+                              <FaArrowDown />
+                            ) : (
+                              <FaMinus />
+                            )}
+                            {delta > 0 ? `+${delta}` : `${delta}`}
+                          </span>
+                        </div>
+
+                        <div className="mt-3">
+                          <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-gradient-to-r from-blue-500 to-purple-600 rounded-full"
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
+
+                <button
+                  onClick={() => navigate("/reports/trending")}
+                  className="w-full mt-1 inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
+                >
+                  Manage Trending <FaArrowRight />
+                </button>
+              </div>
+            )}
+          </div>
+
           {/* Quick Actions */}
           <div className="bg-white shadow-md rounded-lg p-4 sm:p-6">
             <div className="flex items-center justify-between mb-4 sm:mb-6">

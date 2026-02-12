@@ -1,4 +1,6 @@
 // Central API config — update this single value when backend URL changes.
+import Cookies from "js-cookie";
+
 const API_BASE = "https://api.apisphere.in";
 
 // buildUrl('/path') -> 'https://api.apisphere.in/path'
@@ -15,10 +17,7 @@ const getAuthToken = () => {
   } catch (e) {
     // ignore localStorage errors
   }
-  // lazy require to avoid adding cookie dependency here
   try {
-    // eslint-disable-next-line global-require
-    const Cookies = require("js-cookie");
     return Cookies.get("authToken");
   } catch (e) {
     return null;

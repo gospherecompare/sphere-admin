@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, createRef } from "react";
 import Cookies from "js-cookie";
 import { buildUrl } from "../api";
 import { uploadToCloudinary } from "../config/cloudinary";
+import DynamicForm from "./DynamicForm";
 import {
   FaMobile,
   FaSave,
@@ -31,6 +32,121 @@ import {
   FaSimCard,
 } from "react-icons/fa";
 
+const createDefaultSmartphoneSpecs = () => ({
+  build_design: {
+    score: "",
+    height: "",
+    width: "",
+    thickness: "",
+    weight: "",
+    material: "",
+    ip_rating: "",
+    colors: [],
+    water_dust_resistance: "",
+    durability: "",
+    liquid_resistance: "",
+    monsoon_ready: "",
+    ai_features: [],
+  },
+  display: {
+    score: "",
+    size: "",
+    resolution: "",
+    type: "",
+    panel: "",
+    refresh_rate: "",
+    touch_sampling_rate: "",
+    screen_to_body_ratio: "",
+    pixel_density: "",
+    brightness: "",
+    color_depth: "",
+    protection: "",
+    cover_glass: "",
+    wet_touch: "",
+    glove_mode: "",
+    ai_features: [],
+  },
+  performance: {
+    score: "",
+    operating_system: "",
+    os: "",
+    processor: "",
+    chipset: "",
+    cpu: "",
+    cpu_cores: "",
+    gpu: "",
+    benchmark_score: "",
+    antutu_score: "",
+    ram_boost: "",
+    ram_type: "",
+    storage: "",
+    storage_type: "",
+    network_boost: "",
+    ai_features: [],
+  },
+  camera: {
+    score: "",
+    rear_camera: {},
+    front_camera: {},
+    underwater_photography: "",
+    ai_features: [],
+  },
+  battery: {
+    score: "",
+    capacity: "",
+    rated_capacity: "",
+    type: "",
+    charging: "",
+    fast_charging: "",
+    wireless_charging: "",
+    ai_features: [],
+  },
+  connectivity: {
+    score: "",
+    wifi: [],
+    bluetooth: "",
+    usb: "",
+    audio: "",
+    nfc: "",
+    sim_type: "",
+    sim_slots: "",
+    esim_support: "",
+    dual_standby: "",
+    ai_features: [],
+  },
+  network: {
+    score: "",
+    sim: "",
+    "5g_bands": [],
+    network_types: "",
+    "5g_support": "",
+    network_bands: "",
+  },
+  ports: {
+    usb_type: "",
+    headphone_jack: "",
+    charging_port: "",
+  },
+  audio: {
+    speakers: "",
+    audio_jack: "",
+    microphone: "",
+    speaker_type: "",
+    speaker_count: "",
+    max_volume: "",
+    microphone_count: "",
+    microphone_features: "",
+  },
+  multimedia: {
+    video_formats: "",
+    audio_formats: "",
+    fm_radio: "",
+    rear_video: {},
+    front_video: {},
+    ai_features: [],
+  },
+});
+
 const CreateMobile = () => {
   const [formData, setFormData] = useState({
     product: {
@@ -43,16 +159,8 @@ const CreateMobile = () => {
       model: "",
       launch_date: "",
       colors: [],
-      build_design: {},
-      display: {},
-      performance: {},
-      camera: {},
-      battery: {},
-      connectivity: {},
-      network: {},
-      ports: {},
-      audio: {},
-      multimedia: {},
+      is_foldable: false,
+      ...createDefaultSmartphoneSpecs(),
       sensors: "",
     },
     images: [],
@@ -61,7 +169,6 @@ const CreateMobile = () => {
 
   const [isLoading, setIsLoading] = useState(false);
   const [activeSpecTab, setActiveSpecTab] = useState("build_design");
-  const [customJsonFields, setCustomJsonFields] = useState({});
   const [brandsList, setBrandsList] = useState([]);
   const [storesList, setStoresList] = useState([]);
   const [memoryOptions, setMemoryOptions] = useState({
@@ -427,6 +534,58 @@ const CreateMobile = () => {
     });
   };
 
+  const specEditorHiddenKeys = [
+    "sphere_score",
+    "sphere_description",
+    "sphere_images",
+  ];
+
+  const setSpecSection = (specKey, nextValue) => {
+    setFormData((prev) => ({
+      ...prev,
+      smartphone: {
+        ...prev.smartphone,
+        [specKey]: nextValue,
+      },
+    }));
+  };
+
+  const setFoldableSpecSectionSide = (specKey, side, nextValue) => {
+    setFormData((prev) => {
+      const current =
+        prev.smartphone &&
+        prev.smartphone[specKey] &&
+        typeof prev.smartphone[specKey] === "object"
+          ? prev.smartphone[specKey]
+          : {};
+
+      const foldValue =
+        side === "fold"
+          ? nextValue
+          : current.fold && typeof current.fold === "object"
+            ? current.fold
+            : {};
+      const flipValue =
+        side === "flip"
+          ? nextValue
+          : current.flip && typeof current.flip === "object"
+            ? current.flip
+            : {};
+
+      return {
+        ...prev,
+        smartphone: {
+          ...prev.smartphone,
+          [specKey]: {
+            ...current,
+            fold: foldValue,
+            flip: flipValue,
+          },
+        },
+      };
+    });
+  };
+
   // Add color with name and code
   const addColor = () => {
     setFormData((prev) => ({
@@ -615,109 +774,290 @@ const CreateMobile = () => {
     { id: "multimedia", label: "Multimedia", icon: FaDesktop },
   ];
 
-  // Get default fields for each specification category - updated with SIM details
-  const getDefaultFields = (category) => {
-    const defaults = {
-      build_design: [
-        "height",
-        "width",
-        "thickness",
-        "weight",
-        "material",
-        "ip_rating",
-      ],
-      display: [
-        "size",
-        "resolution",
-        "type",
-        "refresh_rate",
-        "protection",
-        "brightness",
-      ],
-      performance: [
-        "processor",
-        "cpu_cores",
-        "gpu",
-        "os",
-        "chipset",
-        "antutu_score",
-      ],
-      camera: [
-        "rear_camera_setup",
-        "main_camera",
-        "front_camera",
-        "video_recording",
-        "camera_features",
-      ],
-      battery: [
-        "capacity",
-        "type",
-        "charging",
-        "fast_charging",
-        "wireless_charging",
-      ],
-      connectivity: [
-        "wifi",
-        "bluetooth",
-        "nfc",
-        "sim_type",
-        "sim_slots",
-        "esim_support",
-        "dual_standby",
-      ],
-      network: ["network_types", "5g_support", "network_bands"],
-      ports: ["usb_type", "headphone_jack", "charging_port"],
-      audio: ["speakers", "audio_jack", "microphone"],
-      multimedia: ["video_formats", "audio_formats", "fm_radio"],
+  const getSpecUiHints = (specId) => {
+    const base = {
+      labelOverrides: {
+        ai_features: "AI Features",
+        score: "Score",
+        ip_rating: "IP Rating",
+        water_dust_resistance: "Water/Dust Resistance",
+        screen_to_body_ratio: "Screen-to-Body Ratio",
+        touch_sampling_rate: "Touch Sampling Rate",
+        pixel_density: "Pixel Density",
+        rated_capacity: "Rated Capacity",
+        fast_charging: "Fast Charging",
+        wireless_charging: "Wireless Charging",
+        fm_radio: "FM Radio",
+        antutu_score: "AnTuTu Score",
+        cpu_cores: "CPU Cores",
+        "5g_bands": "5G Bands",
+        "5g_support": "5G Support",
+        esim_support: "eSIM Support",
+      },
+      helpText: {
+        ai_features: "Add one feature per item (e.g., AI Unblur)",
+      },
+      placeholderOverrides: {},
+      arrayItemPlaceholderOverrides: {
+        ai_features: "e.g., AI Unblur",
+      },
     };
-    return defaults[category] || [];
-  };
 
-  // Add custom field
-  const addCustomJsonField = (field) => {
-    const fieldName = prompt("Enter field name:");
-    if (fieldName && fieldName.trim()) {
-      const cleanFieldName = fieldName.trim();
-      setCustomJsonFields((prev) => ({
-        ...prev,
-        [field]: [...(prev[field] || []), cleanFieldName],
-      }));
-      setFormData((prev) => ({
-        ...prev,
-        smartphone: {
-          ...prev.smartphone,
-          [field]: {
-            ...prev.smartphone[field],
-            [cleanFieldName]: "",
-          },
+    const perSpec = {
+      build_design: {
+        labelOverrides: {
+          material: "Materials",
+          colors: "Colors",
+          durability: "Durability / Warranty",
         },
-      }));
-      showToast(
-        "Field Added",
-        `Custom field "${cleanFieldName}" added`,
-        "success",
-      );
-    }
-  };
+        helpText: {
+          colors: "Add one color name per item (e.g., Black Velvet)",
+          ip_rating: "Ingress protection rating (e.g., IP68)",
+        },
+        placeholderOverrides: {
+          height: "e.g., 150.8 mm",
+          width: "e.g., 71.7 mm",
+          thickness: "e.g., 8.2 mm",
+          weight: "e.g., 185 g",
+          material: "e.g., Glass / Aluminum",
+          ip_rating: "e.g., IP68",
+          durability: "e.g., Gorilla Glass / Warranty details",
+        },
+        arrayItemPlaceholderOverrides: {
+          colors: "e.g., Black Velvet",
+        },
+      },
+      display: {
+        labelOverrides: {
+          size: "Display Size",
+          resolution: "Display Resolution",
+          type: "Display Type",
+          panel: "Panel Type",
+          refresh_rate: "Refresh Rate",
+          brightness: "Brightness",
+          color_depth: "Color Depth",
+          cover_glass: "Cover Glass",
+          wet_touch: "Wet Touch",
+          glove_mode: "Glove Mode",
+          protection: "Protection",
+        },
+        placeholderOverrides: {
+          size: "e.g., 6.32 inch",
+          resolution: "e.g., 2640 × 1216",
+          panel: "e.g., LTPO AMOLED",
+          refresh_rate: "e.g., 1–120 Hz",
+          touch_sampling_rate: "e.g., 240 Hz",
+          screen_to_body_ratio: "e.g., 93%",
+          pixel_density: "e.g., 460 PPI",
+          brightness: "e.g., 1600 nits (HBM)",
+          color_depth: "e.g., 10-bit, 100% DCI-P3",
+          cover_glass: "e.g., Gorilla Glass",
+          protection: "e.g., Gorilla Glass Victus",
+        },
+      },
+      performance: {
+        labelOverrides: {
+          operating_system: "OS (Android/iOS)",
+          os: "UI / Skin",
+          processor: "Processor",
+          chipset: "Chipset",
+          benchmark_score: "Benchmark Score",
+          ram_boost: "RAM Boost",
+          ram_type: "RAM Type",
+          storage: "Storage",
+          storage_type: "Storage Type",
+          network_boost: "Network Boost / Gaming",
+        },
+        placeholderOverrides: {
+          operating_system: "e.g., Android 15 (OxygenOS 15)",
+          os: "e.g., OxygenOS / One UI / iOS",
+          processor: "e.g., Snapdragon 8 Elite",
+          chipset: "e.g., Snapdragon 8 Elite",
+          cpu: "e.g., Oryon @ 4.32 GHz",
+          gpu: "e.g., Adreno 830",
+          benchmark_score: "e.g., 1,850,000",
+          antutu_score: "e.g., 2,000,000",
+          ram_type: "e.g., LPDDR5X",
+          storage_type: "e.g., UFS 4.0",
+          storage: "e.g., 256 GB / 512 GB",
+        },
+      },
+      camera: {
+        labelOverrides: {
+          rear_camera: "Rear Camera System",
+          front_camera: "Front (Selfie) Camera",
+          ultra_wide: "Ultra Wide Lens",
+          wide: "Wide Lens",
+          telephoto: "Telephoto Lens",
+          periscope: "Periscope Lens",
+          macro: "Macro Lens",
+          depth: "Depth Sensor",
+          main: "Main Lens",
+          sensor: "Sensor Model",
+          resolution: "Resolution",
+          aperture: "Aperture",
+          focal_length: "Focal Length",
+          optical_zoom: "Optical Zoom",
+          digital_zoom: "Digital Zoom",
+          ois: "Optical Stabilization (OIS)",
+          eis: "Electronic Stabilization (EIS)",
+          autofocus: "Autofocus",
+          fov: "Field of View (FOV)",
+          underwater_photography: "Underwater Mode",
+        },
+        helpText: {
+          rear_camera:
+            "Add lenses under this (main, telephoto, ultra wide, etc.)",
+          front_camera: "Selfie camera details",
+        },
+        placeholderOverrides: {
+          resolution: "e.g., 50 MP",
+          sensor: "e.g., Sony LYT-700",
+          aperture: "e.g., f/1.8",
+          optical_zoom: "e.g., 2x",
+          digital_zoom: "e.g., 10x",
+          focal_length: "e.g., 24 mm",
+          ois: "e.g., Supported / No",
+          eis: "e.g., Supported / No",
+          autofocus: "e.g., Supported / No",
+          fov: "e.g., 90 deg",
+        },
+      },
+      battery: {
+        labelOverrides: {
+          capacity: "Battery Capacity",
+          type: "Battery Type",
+          charging: "Charging Type",
+        },
+        placeholderOverrides: {
+          capacity: "e.g., 5850 mAh",
+          rated_capacity: "e.g., 5700 mAh",
+          fast_charging: "e.g., 80W SUPERVOOC",
+          wireless_charging: "e.g., 50W",
+          charging: "e.g., USB Type-C",
+          type: "e.g., Li-Po",
+        },
+      },
+      connectivity: {
+        labelOverrides: {
+          audio: "Audio Technology",
+          sim_type: "SIM Type",
+          sim_slots: "SIM Slots",
+          dual_standby: "Dual Standby",
+        },
+        helpText: {
+          wifi: "Add supported Wi-Fi standards (Wi-Fi 7, Wi-Fi 6E, etc.)",
+        },
+        placeholderOverrides: {
+          bluetooth: "e.g., Bluetooth 6.0",
+          usb: "e.g., USB Type-C",
+          audio: "e.g., Dolby Atmos / OReality Audio",
+          nfc: "e.g., Yes / No",
+          sim_type: "e.g., Dual Nano-SIM + eSIM",
+          sim_slots: "e.g., 2",
+          esim_support: "e.g., Yes / No",
+          dual_standby: "e.g., Yes / No",
+        },
+        arrayItemPlaceholderOverrides: {
+          wifi: "e.g., Wi-Fi 7",
+        },
+      },
+      network: {
+        labelOverrides: {
+          sim: "SIM",
+          network_types: "Network Types",
+          network_bands: "Network Bands",
+        },
+        helpText: {
+          "5g_bands": "Add one band per item (e.g., n78)",
+        },
+        placeholderOverrides: {
+          sim: "e.g., Dual Nano-SIM + eSIM",
+          network_types: "e.g., 2G / 3G / 4G / 5G",
+          "5g_support": "e.g., Yes / No",
+          network_bands: "e.g., SA/NSA, LTE bands, etc.",
+        },
+        arrayItemPlaceholderOverrides: {
+          "5g_bands": "e.g., n78",
+        },
+      },
+      ports: {
+        labelOverrides: {
+          usb_type: "USB Type",
+          headphone_jack: "Headphone Jack",
+          charging_port: "Charging Port",
+        },
+        placeholderOverrides: {
+          usb_type: "e.g., USB-C (USB 3.1)",
+          headphone_jack: "e.g., Yes / No",
+          charging_port: "e.g., USB Type-C",
+        },
+      },
+      audio: {
+        labelOverrides: {
+          speaker_type: "Speaker Type",
+          speaker_count: "Speaker Count",
+          max_volume: "Max Volume",
+          microphone_count: "Microphone Count",
+          microphone_features: "Microphone Features",
+        },
+        placeholderOverrides: {
+          speakers: "e.g., Stereo speakers",
+          speaker_type: "e.g., Dual speaker",
+          speaker_count: "e.g., 2",
+          max_volume: "e.g., 90 dB",
+          microphone: "e.g., Dual mic",
+          microphone_count: "e.g., 2",
+          microphone_features: "e.g., Noise cancellation",
+          audio_jack: "e.g., No",
+        },
+      },
+      multimedia: {
+        labelOverrides: {
+          video_formats: "Video Formats",
+          audio_formats: "Audio Formats",
+          rear_video: "Rear Video",
+          front_video: "Front Video",
+          slow_motion: "Slow Motion",
+        },
+        helpText: {
+          rear_video: "Add supported FPS per resolution (4K, 1080p, etc.)",
+          front_video: "Selfie video recording options",
+          slow_motion: "Add resolution + FPS pairs (e.g., 1080p 240fps)",
+        },
+        placeholderOverrides: {
+          video_formats: "e.g., MP4, MKV",
+          audio_formats: "e.g., AAC, FLAC",
+          fm_radio: "e.g., Yes / No",
+        },
+        arrayItemPlaceholderOverrides: {
+          "4k": "e.g., 60fps",
+          "1080p": "e.g., 60fps",
+          "720p": "e.g., 30fps",
+          slow_motion: "e.g., 1080p 240fps",
+        },
+      },
+    };
 
-  // Remove custom field
-  const removeCustomJsonField = (field, fieldName) => {
-    setCustomJsonFields((prev) => ({
-      ...prev,
-      [field]: (prev[field] || []).filter((name) => name !== fieldName),
-    }));
-    setFormData((prev) => {
-      const updatedField = { ...prev.smartphone[field] };
-      delete updatedField[fieldName];
-      return {
-        ...prev,
-        smartphone: {
-          ...prev.smartphone,
-          [field]: updatedField,
-        },
-      };
-    });
-    showToast("Field Removed", `Custom field "${fieldName}" removed`, "info");
+    const spec = perSpec[specId] || {};
+    return {
+      labelOverrides: {
+        ...base.labelOverrides,
+        ...(spec.labelOverrides || {}),
+      },
+      helpText: {
+        ...base.helpText,
+        ...(spec.helpText || {}),
+      },
+      placeholderOverrides: {
+        ...base.placeholderOverrides,
+        ...(spec.placeholderOverrides || {}),
+      },
+      arrayItemPlaceholderOverrides: {
+        ...base.arrayItemPlaceholderOverrides,
+        ...(spec.arrayItemPlaceholderOverrides || {}),
+      },
+    };
   };
 
   // Form submit handler
@@ -787,6 +1127,44 @@ const CreateMobile = () => {
           })),
         })),
         published: publishEnabled,
+        // Also include the "suffix json" payload shape for compatibility
+        // with endpoints that expect flattened *_json fields.
+        product_name: formData.product.name,
+        product_type: "smartphone",
+        brand_name: formData.smartphone.brand,
+        category: formData.smartphone.segment,
+        model: formData.smartphone.model,
+        launch_date: formData.smartphone.launch_date || null,
+        sensors: formData.smartphone.sensors || null,
+        publish: publishEnabled,
+        images_json: formData.images,
+        build_design_json: formData.smartphone.build_design,
+        display_json: formData.smartphone.display,
+        performance_json: formData.smartphone.performance,
+        camera_json: formData.smartphone.camera,
+        battery_json: formData.smartphone.battery,
+        connectivity_json: formData.smartphone.connectivity,
+        network_json: formData.smartphone.network,
+        ports_json: formData.smartphone.ports,
+        audio_json: formData.smartphone.audio,
+        multimedia_json: formData.smartphone.multimedia,
+        variants_json: formData.variants.map((v) => ({
+          ram: v.ram || null,
+          storage: v.storage || null,
+          base_price: v.base_price ? Number(v.base_price) : null,
+          variant_id: null,
+          store_prices: (v.stores || []).map((s) => ({
+            store: s.store_name || null,
+            store_name: s.store_name || null,
+            price: s.price ? Number(s.price) : null,
+            currency: s.currency || undefined,
+            availability: s.availability || undefined,
+            url: s.url || null,
+            offer_text: s.offer_text || null,
+            discount: s.discount || null,
+            offers: s.offers || null,
+          })),
+        })),
       };
 
       const res = await fetch(buildUrl("/api/smartphones"), {
@@ -817,22 +1195,13 @@ const CreateMobile = () => {
           model: "",
           launch_date: "",
           colors: [],
-          build_design: {},
-          display: {},
-          performance: {},
-          camera: {},
-          battery: {},
-          connectivity: {},
-          network: {},
-          ports: {},
-          audio: {},
-          multimedia: {},
+          is_foldable: false,
+          ...createDefaultSmartphoneSpecs(),
           sensors: "",
         },
         images: [],
         variants: [],
       });
-      setCustomJsonFields({});
       setPublishEnabled(false);
     } catch (error) {
       console.error("Create mobile error:", error);
@@ -882,6 +1251,8 @@ const CreateMobile = () => {
       </div>
     );
   };
+
+  const specUi = getSpecUiHints(activeSpecTab);
 
   // Custom Dropdown Component - FIXED VERSION
   const CustomDropdown = ({
@@ -1467,6 +1838,8 @@ const CreateMobile = () => {
                   type="file"
                   accept="image/*"
                   multiple
+                  title="Upload mobile images"
+                  aria-label="Upload mobile images"
                   onChange={(e) => {
                     const files = Array.from(e.target.files || []);
                     if (files.length) handleImageUpload(files);
@@ -1594,6 +1967,8 @@ const CreateMobile = () => {
                               },
                             }));
                           }}
+                          title="Pick a color"
+                          aria-label={`Color code${color.name ? ` for ${color.name}` : ""}`}
                           className="flex-1 h-10 cursor-pointer"
                         />
                       </div>
@@ -2103,6 +2478,8 @@ const CreateMobile = () => {
                           return { ...prev, smartphone: updated };
                         });
                       }}
+                      title="Enable to edit Fold and Flip specs separately"
+                      aria-label="Foldable device toggle"
                       className="h-4 w-4"
                     />
                     <span className="text-sm text-gray-700">
@@ -2122,240 +2499,153 @@ const CreateMobile = () => {
                   </div>
                 )}
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {formData.smartphone.is_foldable ? (
-                    // Render fold & flip side-by-side (use two columns)
-                    <>
-                      <div className="lg:col-span-1">
-                        <h4 className="text-sm font-semibold mb-2">Fold</h4>
-                        {getDefaultFields(activeSpecTab).map((field) => (
-                          <div key={"fold-" + field} className="mb-3">
-                            <label className="block text-xs font-medium text-gray-600 mb-1 capitalize">
-                              {field.replace(/_/g, " ")}
-                            </label>
-                            <input
-                              type="text"
-                              value={
-                                (formData.smartphone[activeSpecTab] &&
-                                  formData.smartphone[activeSpecTab].fold &&
-                                  formData.smartphone[activeSpecTab].fold[
-                                    field
-                                  ]) ||
-                                ""
-                              }
-                              onChange={(e) =>
-                                handleJsonbChange(
-                                  activeSpecTab,
-                                  field,
-                                  e.target.value,
-                                  "fold",
-                                )
-                              }
-                              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
-                              placeholder={`Enter ${field.replace(/_/g, " ")}`}
-                            />
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className="lg:col-span-1">
-                        <h4 className="text-sm font-semibold mb-2">Flip</h4>
-                        {getDefaultFields(activeSpecTab).map((field) => (
-                          <div key={"flip-" + field} className="mb-3">
-                            <label className="block text-xs font-medium text-gray-600 mb-1 capitalize">
-                              {field.replace(/_/g, " ")}
-                            </label>
-                            <input
-                              type="text"
-                              value={
-                                (formData.smartphone[activeSpecTab] &&
-                                  formData.smartphone[activeSpecTab].flip &&
-                                  formData.smartphone[activeSpecTab].flip[
-                                    field
-                                  ]) ||
-                                ""
-                              }
-                              onChange={(e) =>
-                                handleJsonbChange(
-                                  activeSpecTab,
-                                  field,
-                                  e.target.value,
-                                  "flip",
-                                )
-                              }
-                              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
-                              placeholder={`Enter ${field.replace(/_/g, " ")}`}
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    </>
-                  ) : (
-                    getDefaultFields(activeSpecTab).map((field) => (
-                      <div key={field}>
-                        <label className="block text-xs font-medium text-gray-600 mb-1 capitalize">
-                          {field.replace(/_/g, " ")}
-                        </label>
-                        <input
-                          type="text"
-                          value={
-                            formData.smartphone[activeSpecTab]?.[field] || ""
-                          }
-                          onChange={(e) =>
-                            handleJsonbChange(
-                              activeSpecTab,
-                              field,
-                              e.target.value,
-                            )
-                          }
-                          className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
-                          placeholder={`Enter ${field.replace(/_/g, " ")}`}
-                        />
-                      </div>
-                    ))
-                  )}
-
-                  {(customJsonFields[activeSpecTab] || []).map(
-                    (customField) => (
-                      <div key={customField} className="relative">
-                        <label className="block text-xs font-medium text-gray-600 mb-1 capitalize">
-                          {customField.replace(/_/g, " ")}
-                        </label>
-                        <input
-                          type="text"
-                          value={
-                            formData.smartphone[activeSpecTab]?.[customField] ||
-                            ""
-                          }
-                          onChange={(e) =>
-                            handleJsonbChange(
-                              activeSpecTab,
-                              customField,
-                              e.target.value,
-                            )
-                          }
-                          className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
-                          placeholder={`Enter ${customField.replace(
-                            /_/g,
-                            " ",
-                          )}`}
-                        />
-                        <button
-                          onClick={() =>
-                            removeCustomJsonField(activeSpecTab, customField)
-                          }
-                          className="absolute right-2 top-7 text-red-500 hover:text-red-700"
-                        >
-                          <FaTrash className="text-sm" />
-                        </button>
-                      </div>
-                    ),
-                  )}
-
-                  {/* Sphere rating inputs for active spec tab */}
-                  <div className="lg:col-span-1 col-span-full">
-                    <h4 className="text-sm font-semibold mb-3">
-                      Sphere Rating
-                    </h4>
-                    <div className="mb-3">
-                      <label className="block text-xs font-medium text-gray-600 mb-1">
-                        Score (0-100)
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        max="100"
-                        step="1"
-                        value={
-                          formData.smartphone[activeSpecTab]?.sphere_score ?? ""
+                {formData.smartphone.is_foldable ? (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div>
+                      <h4 className="text-sm font-semibold mb-2">Fold</h4>
+                      <DynamicForm
+                        data={formData.smartphone[activeSpecTab]?.fold || {}}
+                        onChange={(next) =>
+                          setFoldableSpecSectionSide(activeSpecTab, "fold", next)
                         }
-                        onChange={(e) =>
-                          handleJsonbChange(
-                            activeSpecTab,
-                            "sphere_score",
-                            e.target.value === "" ? "" : Number(e.target.value),
-                          )
+                        hiddenKeys={specEditorHiddenKeys}
+                        labelOverrides={specUi.labelOverrides}
+                        helpText={specUi.helpText}
+                        placeholderOverrides={specUi.placeholderOverrides}
+                        arrayItemPlaceholderOverrides={
+                          specUi.arrayItemPlaceholderOverrides
                         }
-                        className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
                       />
                     </div>
 
-                    <div className="mb-3">
-                      <label className="block text-xs font-medium text-gray-600 mb-1">
-                        Description
-                      </label>
-                      <textarea
-                        value={
-                          formData.smartphone[activeSpecTab]
-                            ?.sphere_description || ""
+                    <div>
+                      <h4 className="text-sm font-semibold mb-2">Flip</h4>
+                      <DynamicForm
+                        data={formData.smartphone[activeSpecTab]?.flip || {}}
+                        onChange={(next) =>
+                          setFoldableSpecSectionSide(activeSpecTab, "flip", next)
                         }
-                        onChange={(e) =>
-                          handleJsonbChange(
-                            activeSpecTab,
-                            "sphere_description",
-                            e.target.value,
-                          )
+                        hiddenKeys={specEditorHiddenKeys}
+                        labelOverrides={specUi.labelOverrides}
+                        helpText={specUi.helpText}
+                        placeholderOverrides={specUi.placeholderOverrides}
+                        arrayItemPlaceholderOverrides={
+                          specUi.arrayItemPlaceholderOverrides
                         }
-                        className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm h-20"
                       />
                     </div>
+                  </div>
+                ) : (
+                  <DynamicForm
+                    data={formData.smartphone[activeSpecTab] || {}}
+                    onChange={(next) => setSpecSection(activeSpecTab, next)}
+                    hiddenKeys={specEditorHiddenKeys}
+                    labelOverrides={specUi.labelOverrides}
+                    helpText={specUi.helpText}
+                    placeholderOverrides={specUi.placeholderOverrides}
+                    arrayItemPlaceholderOverrides={
+                      specUi.arrayItemPlaceholderOverrides
+                    }
+                  />
+                )}
 
-                    <div className="mb-3">
-                      <label className="block text-xs font-medium text-gray-600 mb-1">
-                        Images
-                      </label>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        multiple
-                        onChange={(e) =>
-                          handleSphereImagesUpload(
-                            activeSpecTab,
-                            e.target.files,
-                          )
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
-                      />
+                {/* Sphere rating inputs for active spec tab */}
+                <div className="mt-6">
+                  <h4 className="text-sm font-semibold mb-3">Sphere Rating</h4>
 
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {(
-                          formData.smartphone[activeSpecTab]?.sphere_images ||
-                          []
-                        ).map((url, idx) => (
-                          <div key={idx} className="relative w-20 h-20">
-                            <img
-                              src={url}
-                              alt={`sphere-${idx}`}
-                              className="w-20 h-20 object-cover rounded"
-                              onError={(e) => {
-                                e.target.onerror = null;
-                                e.target.src =
-                                  "https://via.placeholder.com/80?text=Image";
-                              }}
-                            />
-                            <button
-                              type="button"
-                              onClick={() =>
-                                removeSphereImage(activeSpecTab, idx)
-                              }
-                              className="absolute top-0 right-0 bg-white rounded-full p-1 text-red-500 border"
-                            >
-                              <FaTimes className="text-xs" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
+                  <div className="mb-3">
+                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                      Score (0-100)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="1"
+                      placeholder="0-100"
+                      title="Enter a score between 0 and 100"
+                      aria-label="Sphere score (0 to 100)"
+                      value={
+                        formData.smartphone[activeSpecTab]?.sphere_score ?? ""
+                      }
+                      onChange={(e) =>
+                        handleJsonbChange(
+                          activeSpecTab,
+                          "sphere_score",
+                          e.target.value === "" ? "" : Number(e.target.value),
+                        )
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
+                    />
+                  </div>
+
+                  <div className="mb-3">
+                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                      Description
+                    </label>
+                    <textarea
+                      value={
+                        formData.smartphone[activeSpecTab]?.sphere_description ||
+                        ""
+                      }
+                      onChange={(e) =>
+                        handleJsonbChange(
+                          activeSpecTab,
+                          "sphere_description",
+                          e.target.value,
+                        )
+                      }
+                      placeholder="Write a short summary for this section (optional)"
+                      className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm h-20"
+                    />
+                  </div>
+
+                  <div className="mb-3">
+                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                      Images
+                    </label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      title="Upload sphere rating images"
+                      aria-label="Upload sphere rating images"
+                      onChange={(e) =>
+                        handleSphereImagesUpload(activeSpecTab, e.target.files)
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Upload 1+ images for this section (optional).
+                    </p>
+
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {(
+                        formData.smartphone[activeSpecTab]?.sphere_images || []
+                      ).map((url, idx) => (
+                        <div key={idx} className="relative w-20 h-20">
+                          <img
+                            src={url}
+                            alt={`sphere-${idx}`}
+                            className="w-20 h-20 object-cover rounded"
+                            onError={(e) => {
+                              e.target.onerror = null;
+                              e.target.src =
+                                "https://via.placeholder.com/80?text=Image";
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeSphereImage(activeSpecTab, idx)}
+                            className="absolute top-0 right-0 bg-white rounded-full p-1 text-red-500 border"
+                          >
+                            <FaTimes className="text-xs" />
+                          </button>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </div>
-
-                <button
-                  onClick={() => addCustomJsonField(activeSpecTab)}
-                  className="flex items-center gap-2 text-blue-600 hover:text-blue-700 text-sm"
-                >
-                  <FaPlus className="text-xs" />
-                  <span>Add Custom Field</span>
-                </button>
               </div>
             </div>
           )}

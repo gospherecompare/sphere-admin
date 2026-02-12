@@ -34,6 +34,7 @@ import ProductCategoryReport from "./components/Reports/ProductCategory";
 import ProductPublishStatusReport from "./components/Reports/ProductPublish";
 import PublishedByUserReport from "./components/Reports/PublishUser";
 import RecentPublishActivity from "./components/Reports/RecentPublish";
+import TrendingManager from "./components/Reports/TrendingManager";
 import EditLaptop from "./components/EditLaptop";
 import EditHomeAppliance from "./components/EditAppliance";
 import Cookies from "js-cookie";
@@ -286,6 +287,10 @@ function App() {
                 <Route
                   path="/reports/recentactivity"
                   element={<RecentPublishActivity />}
+                />
+                <Route
+                  path="/reports/trending"
+                  element={<TrendingManager />}
                 />
               </Routes>
               <footer className="mt-8 text-center text-sm text-gray-500">

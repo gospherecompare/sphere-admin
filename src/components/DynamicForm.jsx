@@ -1,481 +1,262 @@
-import React, { useState } from "react";
-import { FaPlus, FaTrash, FaChevronDown, FaChevronRight } from "react-icons/fa";
+import React, { useMemo, useState } from "react";
+import { FaChevronDown, FaChevronRight, FaPlus, FaTrash } from "react-icons/fa";
 
-/**
- * DynamicForm - Reusable dynamic form renderer for nested JSON specifications
- *
- * Props:
- * - data: The JSON object to render (can have nested objects, arrays, primitives)
- * - onChange: Callback when data changes (receives updated data)
- * - onNestedChange: Callback for nested primitive updates (receives path array and value)
- * - fieldPath: Array representing the path to this field for nested tracking
- * - level: Current nesting level (for styling)
- * - showAddButton: Whether to show "Add custom field" button
- * - onAddField: Callback when adding a new field
- */
-const DynamicForm = ({
-  data = {},
-  onChange,
-  onNestedChange,
-  fieldPath = [],
-  level = 0,
-  showAddButton = false,
-  onAddField,
-}) => {
-  const [expandedSections, setExpandedSections] = useState({});
+const isPlainObject = (value) =>
+  value !== null && typeof value === "object" && !Array.isArray(value);
 
-  const toggleSection = (key) => {
-    setExpandedSections((prev) => ({
-      ...prev,
-      [key]: !prev[key],
-    }));
-  };
+const ACRONYM_MAP = {
+  ai: "AI",
+  cpu: "CPU",
+  gpu: "GPU",
+  ram: "RAM",
+  rom: "ROM",
+  os: "OS",
+  ui: "UI",
+  nfc: "NFC",
+  usb: "USB",
+  ufs: "UFS",
+  fps: "FPS",
+  hz: "Hz",
+  ppi: "PPI",
+  hdr: "HDR",
+  ois: "OIS",
+  eis: "EIS",
+  fov: "FOV",
+  sim: "SIM",
+  esim: "eSIM",
+  ip: "IP",
+  lcd: "LCD",
+  oled: "OLED",
+  amoled: "AMOLED",
+  ltpo: "LTPO",
+  lte: "LTE",
+  wifi: "Wi-Fi",
+  "5g": "5G",
+  "4g": "4G",
+  "3g": "3G",
+  "2g": "2G",
+  mah: "mAh",
+  ghz: "GHz",
+  mhz: "MHz",
+  khz: "kHz",
+  gb: "GB",
+  tb: "TB",
+  kb: "KB",
+  mb: "MB",
+  qhd: "QHD",
+  fhd: "FHD",
+  uhd: "UHD",
+  hd: "HD",
+  vooc: "VOOC",
+  supervooc: "SUPERVOOC",
+};
 
-  const handlePrimitiveChange = (key, value) => {
-    const newData = { ...data, [key]: value };
-    onChange(newData);
-  };
+const formatToken = (token) => {
+  if (!token) return "";
+  const lower = token.toLowerCase();
+  if (ACRONYM_MAP[lower]) return ACRONYM_MAP[lower];
+  if (/^\d+g$/i.test(token)) return `${token.slice(0, -1)}G`;
+  if (/^\d+(?:\.\d+)?$/.test(token)) return token;
+  if (/[0-9]/.test(token)) return token.toUpperCase();
+  return token.charAt(0).toUpperCase() + token.slice(1).toLowerCase();
+};
 
-  const handleNestedObjectChange = (key, nestedKey, value) => {
-    const newData = { ...data };
-    if (!newData[key] || typeof newData[key] !== "object") {
-      newData[key] = {};
-    }
-    newData[key] = { ...newData[key], [nestedKey]: value };
-    onChange(newData);
+const formatLabel = (raw) => {
+  if (!raw) return "";
+  return String(raw)
+    .replace(/_/g, " ")
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .split(" ")
+    .filter(Boolean)
+    .map(formatToken)
+    .join(" ");
+};
 
-    // Also call onNestedChange if provided
-    if (onNestedChange) {
-      const path = [...fieldPath, key, nestedKey];
-      onNestedChange(path, value);
-    }
-  };
+const createDefaultValue = (type) => {
+  switch (type) {
+    case "number":
+      return 0;
+    case "boolean":
+      return false;
+    case "object":
+      return {};
+    case "array":
+      return [];
+    case "null":
+      return null;
+    case "string":
+    default:
+      return "";
+  }
+};
 
-  const handleArrayChange = (key, index, itemKey, value) => {
-    const newData = { ...data };
-    if (!Array.isArray(newData[key])) {
-      newData[key] = [];
-    }
-    const newArray = [...newData[key]];
-    newArray[index] = { ...newArray[index], [itemKey]: value };
-    newData[key] = newArray;
-    onChange(newData);
-  };
+const inferType = (value) => {
+  if (Array.isArray(value)) return "array";
+  if (isPlainObject(value)) return "object";
+  if (typeof value === "number") return "number";
+  if (typeof value === "boolean") return "boolean";
+  if (value === null) return "null";
+  return "string";
+};
 
-  const addArrayItem = (key, template = {}) => {
-    const newData = { ...data };
-    if (!Array.isArray(newData[key])) {
-      newData[key] = [];
-    }
-    newData[key] = [...newData[key], { ...template }];
-    onChange(newData);
-  };
+const isPrimitiveValue = (value) => {
+  const t = inferType(value);
+  return t === "string" || t === "number" || t === "boolean" || t === "null";
+};
 
-  const removeArrayItem = (key, index) => {
-    const newData = { ...data };
-    if (Array.isArray(newData[key])) {
-      newData[key] = newData[key].filter((_, i) => i !== index);
-      onChange(newData);
-    }
-  };
+const PrimitiveEditor = ({ value, onChange, placeholder }) => {
+  const type = inferType(value);
 
-  const handleJsonChange = (key, value) => {
-    try {
-      const parsed = JSON.parse(value);
-      const newData = { ...data, [key]: parsed };
-      onChange(newData);
-    } catch (err) {
-      // If not valid JSON, store as string
-      const newData = { ...data, [key]: value };
-      onChange(newData);
-    }
-  };
-
-  const formatLabel = (key) => {
-    return key
-      .replace(/_/g, " ")
-      .split(" ")
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(" ");
-  };
-
-  if (!data || typeof data !== "object" || Array.isArray(data)) {
-    return null;
+  if (type === "boolean") {
+    return (
+      <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+        <input
+          type="checkbox"
+          checked={!!value}
+          onChange={(e) => onChange(!!e.target.checked)}
+          title="Toggle true/false"
+          aria-label="Toggle true/false"
+          className="h-4 w-4"
+        />
+        <span>{value ? "True" : "False"}</span>
+      </label>
+    );
   }
 
-  const entries = Object.entries(data);
+  if (type === "number") {
+    return (
+      <input
+        type="number"
+        value={Number.isFinite(value) ? value : 0}
+        onChange={(e) => {
+          const next = e.target.value;
+          if (next === "") {
+            onChange(null);
+            return;
+          }
+          const n = Number(next);
+          onChange(Number.isFinite(n) ? n : null);
+        }}
+        placeholder={placeholder}
+        title={placeholder || "Enter a number"}
+        aria-label={placeholder || "Enter a number"}
+        className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+      />
+    );
+  }
 
   return (
-    <div
-      className={`space-y-3 ${level > 0 ? "ml-2 pl-3 border-l-2 border-gray-200" : ""}`}
-    >
-      {entries.map(([key, value]) => {
-        const isObject =
-          value && typeof value === "object" && !Array.isArray(value);
-        const isArray = Array.isArray(value);
-        const isPrimitive = !isObject && !isArray;
-        const isRatingObject =
-          isObject &&
-          typeof value === "object" &&
-          ("score" in value || "images" in value || "description" in value);
-
-        return (
-          <div key={key} className="space-y-2">
-            {/* Primitive Value */}
-            {isPrimitive && (
-              <div className="p-2.5 bg-gray-50 rounded-md hover:bg-gray-100 transition-colors">
-                <label className="block text-xs font-semibold text-gray-700 mb-2 capitalize">
-                  {formatLabel(key)}
-                </label>
-                <input
-                  type="text"
-                  value={value !== undefined ? String(value) : ""}
-                  onChange={(e) => handlePrimitiveChange(key, e.target.value)}
-                  placeholder={`Enter ${formatLabel(key).toLowerCase()}`}
-                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                />
-              </div>
-            )}
-
-            {/* Nested Object */}
-            {isObject && !isRatingObject && (
-              <div className="border border-gray-200 rounded-lg overflow-hidden">
-                <button
-                  type="button"
-                  onClick={() => toggleSection(key)}
-                  className="w-full px-3 py-2 bg-gray-100 hover:bg-gray-150 flex items-center justify-between transition-colors text-left"
-                >
-                  <span className="text-sm font-semibold text-gray-700 capitalize">
-                    {formatLabel(key)}
-                  </span>
-                  {expandedSections[key] ? (
-                    <FaChevronDown className="text-xs text-gray-500" />
-                  ) : (
-                    <FaChevronRight className="text-xs text-gray-500" />
-                  )}
-                </button>
-
-                {expandedSections[key] && (
-                  <div className="p-3 bg-white space-y-3">
-                    {Object.entries(value).map(([nestedKey, nestedValue]) => {
-                      const nestedIsObject =
-                        nestedValue &&
-                        typeof nestedValue === "object" &&
-                        !Array.isArray(nestedValue);
-                      const nestedIsArray = Array.isArray(nestedValue);
-                      const nestedIsPrimitive =
-                        !nestedIsObject && !nestedIsArray;
-
-                      if (nestedIsPrimitive) {
-                        return (
-                          <div
-                            key={nestedKey}
-                            className="p-2 bg-gray-50 rounded border border-gray-200 hover:bg-gray-100 transition-colors"
-                          >
-                            <label className="block text-xs font-semibold text-gray-600 mb-1 capitalize">
-                              {formatLabel(nestedKey)}
-                            </label>
-                            <input
-                              type="text"
-                              value={
-                                nestedValue !== undefined
-                                  ? String(nestedValue)
-                                  : ""
-                              }
-                              onChange={(e) =>
-                                handleNestedObjectChange(
-                                  key,
-                                  nestedKey,
-                                  e.target.value,
-                                )
-                              }
-                              placeholder={`Enter ${formatLabel(nestedKey).toLowerCase()}`}
-                              className="w-full px-3 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
-                            />
-                          </div>
-                        );
-                      }
-
-                      if (nestedIsArray) {
-                        return (
-                          <ArrayField
-                            key={nestedKey}
-                            fieldKey={key}
-                            nestedKey={nestedKey}
-                            items={nestedValue}
-                            onItemChange={(index, itemKey, value) =>
-                              handleArrayChange(key, index, itemKey, value)
-                            }
-                            onAddItem={() => addArrayItem(key)}
-                            onRemoveItem={(index) =>
-                              removeArrayItem(key, index)
-                            }
-                          />
-                        );
-                      }
-
-                      if (nestedIsObject) {
-                        return (
-                          <NestedObjectField
-                            key={nestedKey}
-                            fieldKey={key}
-                            nestedKey={nestedKey}
-                            value={nestedValue}
-                            onChange={(updatedValue) =>
-                              handleNestedObjectChange(
-                                key,
-                                nestedKey,
-                                updatedValue,
-                              )
-                            }
-                          />
-                        );
-                      }
-
-                      return null;
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Rating Object (Special Case) */}
-            {isRatingObject && (
-              <RatingField
-                fieldKey={key}
-                value={value}
-                onChange={(updatedValue) =>
-                  handlePrimitiveChange(key, updatedValue)
-                }
-              />
-            )}
-
-            {/* Array */}
-            {isArray && (
-              <ArrayField
-                fieldKey={key}
-                nestedKey={null}
-                items={value}
-                onItemChange={(index, itemKey, val) =>
-                  handleArrayChange(key, index, itemKey, val)
-                }
-                onAddItem={() => addArrayItem(key)}
-                onRemoveItem={(index) => removeArrayItem(key, index)}
-              />
-            )}
-          </div>
-        );
-      })}
-
-      {/* Add Custom Field Button */}
-      {showAddButton && onAddField && level === 0 && (
-        <button
-          type="button"
-          onClick={() => onAddField()}
-          className="flex items-center gap-2 text-blue-600 hover:text-blue-700 text-sm mt-4 font-medium"
-        >
-          <FaPlus className="text-xs" />
-          <span>Add Custom Field</span>
-        </button>
-      )}
-    </div>
+    <input
+      type="text"
+      value={value === null || value === undefined ? "" : String(value)}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+    />
   );
 };
 
-/**
- * ArrayField - Renders array items with add/remove functionality
- */
-const ArrayField = ({
-  fieldKey,
-  nestedKey,
-  items,
-  onItemChange,
-  onAddItem,
-  onRemoveItem,
+const KeyRow = ({
+  name,
+  value,
+  onChange,
+  onRemove,
+  level,
+  hiddenKeys,
+  getLabel,
+  getHelp,
+  getPlaceholder,
+  arrayItemPlaceholder,
+  labelOverrides,
+  helpText,
+  placeholderOverrides,
+  arrayItemPlaceholderOverrides,
 }) => {
-  const [expanded, setExpanded] = useState(true);
+  const nested = isPlainObject(value) || Array.isArray(value);
+  const [expanded, setExpanded] = useState(level <= 1);
 
-  const label = nestedKey ? formatLabel(nestedKey) : formatLabel(fieldKey);
+  if (hiddenKeys.includes(name)) return null;
+  const label = getLabel(name);
+  const help = getHelp(name);
+  const placeholder = getPlaceholder(name);
+  const arrayItemPlaceholderForKey =
+    arrayItemPlaceholder ||
+    (arrayItemPlaceholderOverrides ? arrayItemPlaceholderOverrides[name] : "");
 
-  return (
-    <div className="border border-blue-200 rounded-lg overflow-hidden bg-blue-50">
-      <button
-        type="button"
-        onClick={() => setExpanded(!expanded)}
-        className="w-full px-3 py-2 bg-blue-100 hover:bg-blue-150 flex items-center justify-between transition-colors text-left"
-      >
-        <span className="text-sm font-semibold text-blue-800 capitalize">
-          {label} ({items.length})
-        </span>
-        {expanded ? (
-          <FaChevronDown className="text-xs text-blue-600" />
-        ) : (
-          <FaChevronRight className="text-xs text-blue-600" />
-        )}
-      </button>
-
-      {expanded && (
-        <div className="p-3 bg-white space-y-3">
-          {items.length === 0 ? (
-            <p className="text-xs text-gray-500 italic">No items yet</p>
-          ) : (
-            items.map((item, index) => (
-              <ArrayItem
-                key={index}
-                index={index}
-                item={item}
-                onItemChange={(itemKey, value) =>
-                  onItemChange(index, itemKey, value)
-                }
-                onRemove={() => onRemoveItem(index)}
-              />
-            ))
-          )}
-
+  if (!nested) {
+    return (
+      <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
+        <div className="flex items-start justify-between gap-2 mb-2">
+          <div>
+            <label className="block text-xs font-semibold text-gray-700">
+              {label}
+            </label>
+            {help ? (
+              <p className="text-[11px] text-gray-500 mt-1">{help}</p>
+            ) : null}
+          </div>
           <button
             type="button"
-            onClick={onAddItem}
-            className="flex items-center gap-2 text-blue-600 hover:text-blue-700 text-xs font-medium mt-2"
+            onClick={onRemove}
+            className="p-1 text-red-600 hover:text-red-700"
+            title="Remove field"
           >
-            <FaPlus className="text-xs" />
-            <span>Add {label} Item</span>
+            <FaTrash className="text-xs" />
           </button>
         </div>
-      )}
-    </div>
-  );
-};
-
-/**
- * ArrayItem - Renders individual array items
- */
-const ArrayItem = ({ index, item, onItemChange, onRemove }) => {
-  const [expanded, setExpanded] = useState(false);
-
-  // Determine if item is object, primitive, or mixed
-  const isPrimitive =
-    typeof item !== "object" || Array.isArray(item) || item === null;
-  const isObject = typeof item === "object" && !Array.isArray(item);
-
-  if (isPrimitive) {
-    return (
-      <div className="p-2 bg-gray-50 rounded border border-gray-200 flex items-center gap-2">
-        <input
-          type="text"
-          value={item !== undefined ? String(item) : ""}
-          onChange={(e) => onItemChange(null, e.target.value)}
-          placeholder="Enter value"
-          className="flex-1 px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
+        <PrimitiveEditor
+          value={value}
+          onChange={onChange}
+          placeholder={placeholder || `Enter ${label}`}
         />
+      </div>
+    );
+  }
+
+  return (
+    <div className="border border-gray-200 rounded-lg overflow-hidden bg-white">
+      <div className="flex items-center justify-between gap-2 px-3 py-2 bg-gray-100">
+        <button
+          type="button"
+          onClick={() => setExpanded((p) => !p)}
+          className="flex items-center gap-2 text-left min-w-0"
+          title={expanded ? "Collapse" : "Expand"}
+        >
+          {expanded ? (
+            <FaChevronDown className="text-xs text-gray-500 flex-shrink-0" />
+          ) : (
+            <FaChevronRight className="text-xs text-gray-500 flex-shrink-0" />
+          )}
+          <span className="text-sm font-semibold text-gray-700 truncate">
+            {label}
+          </span>
+        </button>
+
         <button
           type="button"
           onClick={onRemove}
-          className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
+          className="p-1 text-red-600 hover:text-red-700 flex-shrink-0"
+          title="Remove field"
         >
           <FaTrash className="text-xs" />
         </button>
       </div>
-    );
-  }
-
-  if (isObject) {
-    return (
-      <div className="p-2 bg-gray-50 rounded border border-gray-300">
-        <button
-          type="button"
-          onClick={() => setExpanded(!expanded)}
-          className="w-full flex items-center justify-between text-left"
-        >
-          <span className="text-xs font-semibold text-gray-700">
-            Item {index + 1}
-          </span>
-          <div className="flex items-center gap-2">
-            {expanded ? (
-              <FaChevronDown className="text-xs text-gray-500" />
-            ) : (
-              <FaChevronRight className="text-xs text-gray-500" />
-            )}
-            <button
-              type="button"
-              onClick={onRemove}
-              className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded"
-            >
-              <FaTrash className="text-xs" />
-            </button>
-          </div>
-        </button>
-
-        {expanded && (
-          <div className="mt-2 space-y-2 pl-2 border-l-2 border-gray-300">
-            {Object.entries(item).map(([key, value]) => (
-              <div key={key} className="text-xs">
-                <label className="block font-medium text-gray-600 mb-1 capitalize">
-                  {formatLabel(key)}
-                </label>
-                <input
-                  type="text"
-                  value={value !== undefined ? String(value) : ""}
-                  onChange={(e) => onItemChange(key, e.target.value)}
-                  placeholder={`Enter ${formatLabel(key).toLowerCase()}`}
-                  className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-400"
-                />
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  return null;
-};
-
-/**
- * NestedObjectField - Handles deeply nested objects
- */
-const NestedObjectField = ({ fieldKey, nestedKey, value, onChange }) => {
-  const [expanded, setExpanded] = useState(false);
-
-  const label = formatLabel(nestedKey);
-
-  const handleJsonEdit = (jsonString) => {
-    try {
-      const parsed = JSON.parse(jsonString);
-      onChange(parsed);
-    } catch (err) {
-      // Keep as string if invalid JSON
-      onChange(jsonString);
-    }
-  };
-
-  return (
-    <div className="border border-purple-200 rounded-lg overflow-hidden bg-purple-50">
-      <button
-        type="button"
-        onClick={() => setExpanded(!expanded)}
-        className="w-full px-3 py-2 bg-purple-100 hover:bg-purple-150 flex items-center justify-between transition-colors text-left"
-      >
-        <span className="text-sm font-semibold text-purple-800 capitalize">
-          {label} (nested)
-        </span>
-        {expanded ? (
-          <FaChevronDown className="text-xs text-purple-600" />
-        ) : (
-          <FaChevronRight className="text-xs text-purple-600" />
-        )}
-      </button>
 
       {expanded && (
-        <div className="p-3 bg-white">
-          <label className="block text-xs text-gray-600 mb-2 font-medium">
-            JSON Editor
-          </label>
-          <textarea
-            value={JSON.stringify(value, null, 2)}
-            onChange={(e) => handleJsonEdit(e.target.value)}
-            placeholder="Edit as JSON"
-            className="w-full px-3 py-2 border border-gray-300 rounded text-xs font-mono focus:outline-none focus:ring-2 focus:ring-purple-400"
-            rows={6}
+        <div className="p-3">
+          {help ? (
+            <p className="text-xs text-gray-500 mb-3">{help}</p>
+          ) : null}
+          <DynamicForm
+            data={value}
+            onChange={onChange}
+            level={level + 1}
+            hiddenKeys={hiddenKeys}
+            labelOverrides={labelOverrides}
+            helpText={helpText}
+            placeholderOverrides={placeholderOverrides}
+            arrayItemPlaceholderOverrides={arrayItemPlaceholderOverrides}
+            arrayItemPlaceholder={arrayItemPlaceholderForKey}
           />
         </div>
       )}
@@ -483,83 +264,266 @@ const NestedObjectField = ({ fieldKey, nestedKey, value, onChange }) => {
   );
 };
 
-/**
- * RatingField - Specialized field for sphere_rating objects
- */
-const RatingField = ({ fieldKey, value, onChange }) => {
-  const [expanded, setExpanded] = useState(false);
+const ObjectEditor = ({
+  data,
+  onChange,
+  level,
+  hiddenKeys,
+  labelOverrides,
+  helpText,
+  placeholderOverrides,
+  arrayItemPlaceholderOverrides,
+  arrayItemPlaceholder,
+}) => {
+  const keys = useMemo(() => {
+    if (!isPlainObject(data)) return [];
+    return Object.keys(data).filter((k) => !hiddenKeys.includes(k));
+  }, [data, hiddenKeys]);
 
-  const handleScoreChange = (newScore) => {
-    const updated = { ...value, score: newScore };
-    onChange(updated);
+  const [newKey, setNewKey] = useState("");
+  const [newType, setNewType] = useState("string");
+
+  const addField = () => {
+    const key = newKey.trim();
+    if (!key) return;
+    if (Object.prototype.hasOwnProperty.call(data, key)) return;
+    const next = { ...data, [key]: createDefaultValue(newType) };
+    onChange(next);
+    setNewKey("");
+    setNewType("string");
   };
 
-  const handleDescriptionChange = (newDesc) => {
-    const updated = { ...value, description: newDesc };
-    onChange(updated);
+  const removeField = (key) => {
+    const next = { ...data };
+    delete next[key];
+    onChange(next);
+  };
+
+  const updateKey = (key, nextValue) => {
+    onChange({ ...data, [key]: nextValue });
+  };
+
+  const getLabel = (key) =>
+    (labelOverrides && labelOverrides[key]) || formatLabel(key);
+  const getHelp = (key) => (helpText && helpText[key]) || "";
+  const getPlaceholder = (key) =>
+    (placeholderOverrides && placeholderOverrides[key]) || "";
+
+  // Two-up layout on desktop, single column on mobile
+  const gridMode = level <= 2;
+
+  return (
+    <div className={level > 0 ? "ml-2 pl-3 border-l-2 border-gray-200" : ""}>
+      {keys.length === 0 ? (
+        <div className="text-xs text-gray-500 italic mb-3">No fields yet</div>
+      ) : (
+        <div
+          className={
+            gridMode
+              ? "grid grid-cols-1 md:grid-cols-2 gap-3"
+              : "space-y-3"
+          }
+        >
+          {keys.map((k) => {
+            const value = data[k];
+            const isComplex = isPlainObject(value) || Array.isArray(value);
+            return (
+              <div
+                key={k}
+                className={gridMode && isComplex ? "md:col-span-2" : ""}
+              >
+                <KeyRow
+                  name={k}
+                  value={value}
+                  onChange={(v) => updateKey(k, v)}
+                  onRemove={() => removeField(k)}
+                  level={level}
+                  hiddenKeys={hiddenKeys}
+                  getLabel={getLabel}
+                  getHelp={getHelp}
+                  getPlaceholder={getPlaceholder}
+                  labelOverrides={labelOverrides}
+                  helpText={helpText}
+                  placeholderOverrides={placeholderOverrides}
+                  arrayItemPlaceholderOverrides={arrayItemPlaceholderOverrides}
+                  arrayItemPlaceholder={arrayItemPlaceholder}
+                />
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <div className="border border-dashed border-gray-300 rounded-md p-3 bg-white">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <input
+            type="text"
+            value={newKey}
+            onChange={(e) => setNewKey(e.target.value)}
+            placeholder="New field name"
+            className="sm:col-span-2 px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+          />
+          <select
+            value={newType}
+            onChange={(e) => setNewType(e.target.value)}
+            className="px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+          >
+            <option value="string">String</option>
+            <option value="number">Number</option>
+            <option value="boolean">Boolean</option>
+            <option value="object">Object</option>
+            <option value="array">Array</option>
+            <option value="null">Null</option>
+          </select>
+        </div>
+        <button
+          type="button"
+          onClick={addField}
+          className="mt-2 inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 text-sm font-medium"
+        >
+          <FaPlus className="text-xs" />
+          <span>Add Field</span>
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const ArrayEditor = ({
+  data,
+  onChange,
+  level,
+  hiddenKeys,
+  labelOverrides,
+  helpText,
+  placeholderOverrides,
+  arrayItemPlaceholder,
+  arrayItemPlaceholderOverrides,
+}) => {
+  const [expanded, setExpanded] = useState(level <= 1);
+  const [newType, setNewType] = useState("string");
+
+  const inferredType = useMemo(() => {
+    if (!Array.isArray(data) || data.length === 0) return null;
+    return inferType(data[0]);
+  }, [data]);
+
+  const addItem = () => {
+    const type = inferredType || newType;
+    const next = [...data, createDefaultValue(type)];
+    onChange(next);
+  };
+
+  const updateItem = (index, nextValue) => {
+    const next = data.map((v, i) => (i === index ? nextValue : v));
+    onChange(next);
+  };
+
+  const removeItem = (index) => {
+    const next = data.filter((_, i) => i !== index);
+    onChange(next);
   };
 
   return (
-    <div className="border border-yellow-300 rounded-lg overflow-hidden bg-yellow-50">
-      <button
-        type="button"
-        onClick={() => setExpanded(!expanded)}
-        className="w-full px-3 py-2 bg-yellow-100 hover:bg-yellow-150 flex items-center justify-between transition-colors text-left"
-      >
-        <span className="text-sm font-semibold text-yellow-800 capitalize">
-          {formatLabel(fieldKey)} Rating
-        </span>
-        {expanded ? (
-          <FaChevronDown className="text-xs text-yellow-600" />
-        ) : (
-          <FaChevronRight className="text-xs text-yellow-600" />
-        )}
-      </button>
+    <div
+      className={
+        level > 0 ? "ml-2 pl-3 border-l-2 border-gray-200" : ""
+      }
+    >
+        <div className="flex items-center justify-between gap-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-md">
+        <button
+          type="button"
+          onClick={() => setExpanded((p) => !p)}
+          className="flex items-center gap-2 text-left"
+        >
+          {expanded ? (
+            <FaChevronDown className="text-xs text-blue-700" />
+          ) : (
+            <FaChevronRight className="text-xs text-blue-700" />
+          )}
+          <span className="text-sm font-semibold text-blue-900">
+            Items ({Array.isArray(data) ? data.length : 0})
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={addItem}
+          className="inline-flex items-center gap-2 text-blue-700 hover:text-blue-800 text-sm font-medium"
+        >
+          <FaPlus className="text-xs" />
+          <span>Add Item</span>
+        </button>
+      </div>
 
       {expanded && (
-        <div className="p-3 bg-white space-y-3">
-          {value.score !== undefined && (
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-2">
-                Score
-              </label>
-              <input
-                type="number"
-                value={value.score}
-                onChange={(e) => handleScoreChange(Number(e.target.value))}
-                min="0"
-                max="100"
-                placeholder="0-100"
-                className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
-              />
+        <div className="mt-2 space-y-2">
+          {Array.isArray(data) && data.length === 0 && (
+            <div className="border border-dashed border-gray-300 rounded-md p-3 bg-white">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-center">
+                <span className="text-xs text-gray-600 sm:col-span-2">
+                  Choose the type for new items:
+                </span>
+                <select
+                  value={newType}
+                  onChange={(e) => setNewType(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                >
+                  <option value="string">String</option>
+                  <option value="number">Number</option>
+                  <option value="boolean">Boolean</option>
+                  <option value="object">Object</option>
+                  <option value="array">Array</option>
+                  <option value="null">Null</option>
+                </select>
+              </div>
             </div>
           )}
 
-          {value.description !== undefined && (
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-2">
-                Description
-              </label>
-              <textarea
-                value={value.description}
-                onChange={(e) => handleDescriptionChange(e.target.value)}
-                placeholder="Enter description"
-                className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
-                rows={4}
-              />
-            </div>
-          )}
+          {Array.isArray(data) &&
+            data.map((item, index) => {
+              const primitive = isPrimitiveValue(item);
+              return (
+                <div
+                  key={`item-${index}`}
+                  className="border border-gray-200 rounded-md p-3 bg-white"
+                >
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <span className="text-xs font-semibold text-gray-700">
+                      Item {index + 1}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => removeItem(index)}
+                      className="p-1 text-red-600 hover:text-red-700"
+                      title="Remove item"
+                    >
+                      <FaTrash className="text-xs" />
+                    </button>
+                  </div>
 
-          {value.images && Array.isArray(value.images) && (
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-2">
-                Images
-              </label>
-              <p className="text-xs text-gray-500 italic">
-                {value.images.length} image(s)
-              </p>
-            </div>
-          )}
+                  {primitive ? (
+                    <PrimitiveEditor
+                      value={item}
+                      onChange={(v) => updateItem(index, v)}
+                      placeholder={arrayItemPlaceholder || "Enter value"}
+                    />
+                  ) : (
+                    <DynamicForm
+                      data={item}
+                      onChange={(v) => updateItem(index, v)}
+                      level={level + 1}
+                      hiddenKeys={hiddenKeys}
+                      labelOverrides={labelOverrides}
+                      helpText={helpText}
+                      placeholderOverrides={placeholderOverrides}
+                      arrayItemPlaceholderOverrides={arrayItemPlaceholderOverrides}
+                      arrayItemPlaceholder={arrayItemPlaceholder}
+                    />
+                  )}
+                </div>
+              );
+            })}
         </div>
       )}
     </div>
@@ -567,14 +531,63 @@ const RatingField = ({ fieldKey, value, onChange }) => {
 };
 
 /**
- * Helper function to format labels
+ * DynamicForm - Reusable dynamic form renderer for nested JSON specifications.
+ *
+ * Supports:
+ * - Primitive fields (string/number/boolean/null)
+ * - Nested objects (recursively)
+ * - Arrays of primitives/objects (recursively)
  */
-const formatLabel = (key) => {
-  return key
-    .replace(/_/g, " ")
-    .split(" ")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
+const DynamicForm = ({
+  data,
+  onChange,
+  level = 0,
+  hiddenKeys = [],
+  labelOverrides = {},
+  helpText = {},
+  placeholderOverrides = {},
+  arrayItemPlaceholderOverrides = {},
+  arrayItemPlaceholder = "",
+}) => {
+  if (Array.isArray(data)) {
+    return (
+      <ArrayEditor
+        data={data}
+        onChange={onChange}
+        level={level}
+        hiddenKeys={hiddenKeys}
+        labelOverrides={labelOverrides}
+        helpText={helpText}
+        placeholderOverrides={placeholderOverrides}
+        arrayItemPlaceholderOverrides={arrayItemPlaceholderOverrides}
+        arrayItemPlaceholder={arrayItemPlaceholder}
+      />
+    );
+  }
+
+  if (isPlainObject(data)) {
+    return (
+      <ObjectEditor
+        data={data}
+        onChange={onChange}
+        level={level}
+        hiddenKeys={hiddenKeys}
+        labelOverrides={labelOverrides}
+        helpText={helpText}
+        placeholderOverrides={placeholderOverrides}
+        arrayItemPlaceholderOverrides={arrayItemPlaceholderOverrides}
+        arrayItemPlaceholder={arrayItemPlaceholder}
+      />
+    );
+  }
+
+  return (
+    <PrimitiveEditor
+      value={data}
+      onChange={onChange}
+      placeholder={arrayItemPlaceholder}
+    />
+  );
 };
 
 export default DynamicForm;

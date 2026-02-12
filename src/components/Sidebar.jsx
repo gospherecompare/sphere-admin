@@ -304,6 +304,12 @@ const MENU_CONFIG = {
           path: "/reports/recentactivity",
         },
         {
+          id: "trending-manager-rep",
+          label: "Trending Manager",
+          icon: <FaChartLine />,
+          path: "/reports/trending",
+        },
+        {
           id: "import-rep",
           label: "Import",
           icon: <FaUpload />,
