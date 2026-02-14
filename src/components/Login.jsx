@@ -17,7 +17,7 @@ import {
   FaSignInAlt,
   FaInfoCircle,
 } from "react-icons/fa";
-import logo from "../../assests/hook-512.png";
+import HookLogo from "./Ui/hooklogo";
 
 const Login = ({ onLogin }) => {
   const [formData, setFormData] = useState({
@@ -141,16 +141,7 @@ const Login = ({ onLogin }) => {
               {/* Logo and Header */}
               <div className="text-center lg:text-left mb-4 sm:mb-6 md:mb-8">
                 <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-2 sm:gap-3 mb-3 sm:mb-4">
-                  <div className="logo-wrapper">
-                    <h1 className="smartarena-logo">
-                      <span className="logo-letter">H</span>
-                      <span className="logo-eye"></span>
-                      <span className="logo-eye"></span>
-                      <span className="logo-letter">K</span>
-                    </h1>
-
-                    <h4 className="logo-tagline">Smart Tech. Smart Choice.</h4>
-                  </div>
+                  <HookLogo className="h-8 w-auto sm:h-9 md:h-10" />
                 </div>
 
                 <div className="mt-3 sm:mt-4 md:mt-6">
@@ -334,12 +325,8 @@ const Login = ({ onLogin }) => {
               <div className="relative z-10 animate-fadeUp">
                 <div className="flex items-center gap-3 mb-6 lg:mb-8">
                   <a href="/" className="flex items-center flex-shrink-0">
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-lg sm:rounded-xl md:rounded-2xl text-white flex items-center justify-center flex-shrink-0">
-                      <img
-                        src={logo}
-                        alt="Hook Logo"
-                        className="w-full h-full object-contain rounded-md"
-                      />
+                    <div className="rounded-lg bg-white/95 px-2 py-1.5 shadow-sm">
+                      <HookLogo className="h-8 w-auto sm:h-9 md:h-10" />
                     </div>
                   </a>
                 </div>

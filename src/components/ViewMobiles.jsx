@@ -242,6 +242,19 @@ const ViewMobiles = () => {
     setToasts((prev) => prev.filter((toast) => toast.id !== id));
   };
 
+  const resolveProductId = (mobile) => {
+    if (!mobile) return null;
+    return (
+      mobile.raw?.product_id ||
+      mobile.product_id ||
+      mobile.id ||
+      mobile.raw?.id ||
+      mobile.raw?._id ||
+      mobile.raw?.productId ||
+      null
+    );
+  };
+
   // Filter and sort mobiles
   // Derived filter options
   const brands = Array.from(
@@ -1175,11 +1188,20 @@ const ViewMobiles = () => {
                     <td className="px-4 py-3 text-sm font-medium">
                       <div className="flex items-center gap-2">
                         <button
-                          onClick={() =>
-                            navigate(`/edit-mobile/${mobile.id}`, {
+                          onClick={() => {
+                            const editId = resolveProductId(mobile);
+                            if (!editId) {
+                              showToast(
+                                "Error",
+                                "Missing product id for edit",
+                                "error",
+                              );
+                              return;
+                            }
+                            navigate(`/edit-mobile/${editId}`, {
                               state: { smartphone: mobile.raw },
-                            })
-                          }
+                            });
+                          }}
                           className="text-blue-600 hover:text-blue-900"
                           title="Edit mobile"
                         >
@@ -1322,11 +1344,20 @@ const ViewMobiles = () => {
 
                       <div className="flex gap-2">
                         <button
-                          onClick={() =>
-                            navigate(`/edit-mobile/${mobile.id}`, {
+                          onClick={() => {
+                            const editId = resolveProductId(mobile);
+                            if (!editId) {
+                              showToast(
+                                "Error",
+                                "Missing product id for edit",
+                                "error",
+                              );
+                              return;
+                            }
+                            navigate(`/edit-mobile/${editId}`, {
                               state: { mobile },
-                            })
-                          }
+                            });
+                          }}
                           className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-2 py-1.5 rounded text-xs font-medium transition"
                           title="Edit mobile"
                         >

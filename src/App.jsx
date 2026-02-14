@@ -63,16 +63,15 @@ function App() {
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  const isTokenValid = () => {
+  const parseTokenPayload = (token) => {
     try {
-      const token = Cookies.get("authToken");
-      if (!token) return false;
+      if (!token) return null;
       // simple parse - decode payload
       const parts = token.split(".");
-      if (parts.length !== 3) return false;
+      if (parts.length !== 3) return null;
       const payload = parts[1].replace(/-/g, "+").replace(/_/g, "/");
       const decoded = atob(payload.replace(/=+$/, ""));
-      const obj = JSON.parse(
+      return JSON.parse(
         decodeURIComponent(
           decoded
             .split("")
@@ -82,15 +81,61 @@ function App() {
             .join(""),
         ),
       );
-      if (!obj.exp) return false;
-      const now = Math.floor(Date.now() / 1000);
-      return obj.exp > now;
     } catch (err) {
-      return false;
+      return null;
     }
   };
 
+  const getTokenExpiryMs = (token) => {
+    const payload = parseTokenPayload(token);
+    if (!payload || !payload.exp) return null;
+    return payload.exp * 1000;
+  };
+
+  const isTokenValid = (token = Cookies.get("authToken")) => {
+    const expMs = getTokenExpiryMs(token);
+    if (!expMs) return false;
+    return expMs > Date.now();
+  };
+
   const [isAuthenticated, setIsAuthenticated] = useState(() => isTokenValid());
+
+  const clearAuth = () => {
+    Cookies.remove("authToken");
+    Cookies.remove("user");
+    Cookies.remove("username");
+    Cookies.remove("role");
+    setIsAuthenticated(false);
+  };
+
+  useEffect(() => {
+    if (!isAuthenticated) return undefined;
+
+    const token = Cookies.get("authToken");
+    const expMs = getTokenExpiryMs(token);
+    const now = Date.now();
+
+    if (!token || !expMs || expMs <= now) {
+      clearAuth();
+      return undefined;
+    }
+
+    const timeoutId = setTimeout(() => {
+      clearAuth();
+    }, expMs - now);
+
+    const intervalId = setInterval(() => {
+      const currentToken = Cookies.get("authToken");
+      if (!currentToken || !isTokenValid(currentToken)) {
+        clearAuth();
+      }
+    }, 10000);
+
+    return () => {
+      clearTimeout(timeoutId);
+      clearInterval(intervalId);
+    };
+  }, [isAuthenticated]);
 
   // Close sidebar when route changes (mobile)
   const handleRouteChange = () => {
@@ -157,12 +202,7 @@ function App() {
             sidebarCollapsed={sidebarCollapsed}
             sidebarOpen={sidebarOpen}
             isMobile={isMobile}
-            onLogout={() => {
-              // remove cookies and update auth state
-              Cookies.remove("authToken");
-              Cookies.remove("user");
-              setIsAuthenticated(false);
-            }}
+            onLogout={clearAuth}
           />
           <main
             className="flex-1 overflow-auto p-2 md:p-6"
