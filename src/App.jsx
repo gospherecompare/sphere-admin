@@ -37,6 +37,7 @@ import RecentPublishActivity from "./components/Reports/RecentPublish";
 import TrendingManager from "./components/Reports/TrendingManager";
 import EditLaptop from "./components/EditLaptop";
 import EditHomeAppliance from "./components/EditAppliance";
+import CompareScoring from "./components/Settings/CompareScoring";
 import Cookies from "js-cookie";
 
 function App() {
@@ -302,6 +303,10 @@ function App() {
                   element={<ChangePasswordModal />}
                 />
                 <Route path="/api-tester" element={<ApiTester />} />
+                <Route
+                  path="/settings/compare-scoring"
+                  element={<CompareScoring />}
+                />
                 <Route
                   path="/specifications/store"
                   element={<OnlineStoreManagement />}

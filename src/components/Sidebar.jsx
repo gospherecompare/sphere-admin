@@ -266,6 +266,12 @@ const MENU_CONFIG = {
           path: "/settings/api",
         },
         {
+          id: "set-compare-scoring",
+          label: "Compare Scoring",
+          icon: <FaChartLine />,
+          path: "/settings/compare-scoring",
+        },
+        {
           id: "set-api-tester",
           label: "API Tester",
           icon: <FaNetworkWired />,
