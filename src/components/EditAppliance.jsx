@@ -52,6 +52,23 @@ const EditHomeAppliance = () => {
       model_number: "",
       release_year: new Date().getFullYear(),
       country_of_origin: "",
+      key_specs_json: {},
+      basic_info_json: {},
+      display_json: {},
+      video_engine_json: {},
+      audio_json: {},
+      smart_tv_json: {},
+      connectivity_json: {},
+      ports_json: {},
+      power_json: {},
+      gaming_json: {},
+      dimensions_json: {},
+      design_json: {},
+      physical_json: {},
+      product_details_json: {},
+      in_the_box_json: {},
+      warranty_json: {},
+      rating_json: {},
       specifications: {},
       features: [],
       performance: {},
@@ -62,10 +79,11 @@ const EditHomeAppliance = () => {
     variants: [],
     published: false,
   });
+  const [tvSource, setTvSource] = useState({});
 
   const [isLoading, setIsLoading] = useState(false);
   const [isFetching, setIsFetching] = useState(true);
-  const [activeSpecTab, setActiveSpecTab] = useState("specifications");
+  const [activeSpecTab, setActiveSpecTab] = useState("key_specs_json");
   const [customJsonFields, setCustomJsonFields] = useState({});
   const [brandsList, setBrandsList] = useState([]);
   const [applianceOptions, setApplianceOptions] = useState([]);
@@ -136,13 +154,188 @@ const EditHomeAppliance = () => {
 
   const yearsList = generateYears();
 
+  const tvSectionKeys = [
+    "key_specs_json",
+    "basic_info_json",
+    "display_json",
+    "video_engine_json",
+    "audio_json",
+    "smart_tv_json",
+    "connectivity_json",
+    "ports_json",
+    "power_json",
+    "gaming_json",
+    "dimensions_json",
+    "design_json",
+    "physical_json",
+    "product_details_json",
+    "in_the_box_json",
+    "warranty_json",
+    "rating_json",
+  ];
+
+  const specTabs = [
+    {
+      id: "key_specs_json",
+      label: "Key Specs",
+      icon: FaBox,
+      helpText: "Primary highlights like screen size, resolution, HDR, and smart support.",
+    },
+    {
+      id: "display_json",
+      label: "Display",
+      icon: FaTv,
+      helpText: "Panel, refresh rate, brightness, contrast, color and motion details.",
+    },
+    {
+      id: "audio_json",
+      label: "Audio",
+      icon: FaBolt,
+      helpText: "Speakers, output power, Dolby support, and sound features.",
+    },
+    {
+      id: "smart_tv_json",
+      label: "Smart TV",
+      icon: FaHome,
+      helpText: "OS, app ecosystem, assistants, mirroring, and smart features.",
+    },
+    {
+      id: "connectivity_json",
+      label: "Connectivity",
+      icon: FaIndustry,
+      helpText: "Wi-Fi, Bluetooth, Ethernet, casting, and platform connectivity.",
+    },
+    {
+      id: "ports_json",
+      label: "Ports",
+      icon: FaTag,
+      helpText: "HDMI, USB, optical, ARC/eARC, RF input, and physical I/O details.",
+    },
+    {
+      id: "power_json",
+      label: "Power",
+      icon: FaBolt,
+      helpText: "Power consumption, eco mode, supply details, and standby usage.",
+    },
+    {
+      id: "gaming_json",
+      label: "Gaming",
+      icon: FaBolt,
+      helpText: "ALLM, VRR, HDMI 2.1, input lag, and gaming readiness settings.",
+    },
+    {
+      id: "dimensions_json",
+      label: "Dimensions",
+      icon: FaRuler,
+      helpText: "Width, height, depth, weight, mount support, and stand information.",
+    },
+    {
+      id: "design_json",
+      label: "Design",
+      icon: FaIndustry,
+      helpText: "Bezel, body color, stand style/color, and material details.",
+    },
+    {
+      id: "warranty_json",
+      label: "Warranty",
+      icon: FaShieldAlt,
+      helpText: "Product/panel warranty, service type, and origin details.",
+    },
+    {
+      id: "rating_json",
+      label: "Ratings",
+      icon: FaStar,
+      helpText: "Overall, expert, and user ratings for the TV model.",
+    },
+    {
+      id: "basic_info_json",
+      label: "Basic Info",
+      icon: FaInfoCircle,
+      helpText: "Model identifier and launch year basics.",
+    },
+    {
+      id: "video_engine_json",
+      label: "Video Engine",
+      icon: FaBolt,
+      helpText: "Image processor and upscaling/video processing related settings.",
+    },
+    {
+      id: "physical_json",
+      label: "Physical",
+      icon: FaRuler,
+      helpText: "General physical attributes grouped under physical details.",
+    },
+    {
+      id: "product_details_json",
+      label: "Product Details",
+      icon: FaCalendar,
+      helpText: "Additional product details like launch timeline and origin metadata.",
+    },
+    {
+      id: "in_the_box_json",
+      label: "In The Box",
+      icon: FaBox,
+      helpText: "Box contents such as remote, cables, and documentation.",
+    },
+  ];
+
+  const toObject = (value) =>
+    value && typeof value === "object" && !Array.isArray(value) ? value : {};
+
+  const normalizeFormScalar = (value) => {
+    if (value === null || value === undefined) return "";
+    if (Array.isArray(value)) return JSON.stringify(value);
+    if (typeof value === "object") return JSON.stringify(value);
+    return String(value);
+  };
+
+  const sectionToFormInputs = (section) => {
+    const normalized = {};
+    Object.entries(toObject(section)).forEach(([key, value]) => {
+      normalized[key] = normalizeFormScalar(value);
+    });
+    return normalized;
+  };
+
+  const parseMaybeJsonValue = (value) => {
+    if (value === null || value === undefined) return null;
+    if (typeof value !== "string") return value;
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    if (trimmed === "true") return true;
+    if (trimmed === "false") return false;
+    if (/^-?\d+(\.\d+)?$/.test(trimmed)) return Number(trimmed);
+    const isJsonLike =
+      (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
+      (trimmed.startsWith("[") && trimmed.endsWith("]"));
+    if (isJsonLike) {
+      try {
+        return JSON.parse(trimmed);
+      } catch {
+        return value;
+      }
+    }
+    return value;
+  };
+
+  const sectionFromFormInputs = (section) => {
+    const normalized = {};
+    Object.entries(toObject(section)).forEach(([key, value]) => {
+      const parsed = parseMaybeJsonValue(value);
+      if (parsed !== null && parsed !== undefined && parsed !== "") {
+        normalized[key] = parsed;
+      }
+    });
+    return normalized;
+  };
+
   // Fetch appliance data by ID
   useEffect(() => {
     const fetchApplianceData = async () => {
       try {
         setIsFetching(true);
         const token = Cookies.get("authToken");
-        const res = await fetch(buildUrl(`/api/home-appliances/${id}`), {
+        const res = await fetch(buildUrl(`/api/tvs/${id}`), {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
 
@@ -160,45 +353,245 @@ const EditHomeAppliance = () => {
 
         const data = await res.json();
 
-        // Support both old and new response shapes: prefer data.home_appliance when present
-        const ha = data.home_appliance || data;
+        // Support both legacy and tv response shapes.
+        const ha = data.tv || data.home_appliance || data;
+        setTvSource(ha);
+
+        const applianceTypeValue =
+          ha.appliance_type ||
+          ha.applianceType ||
+          ha.category ||
+          (ha.product_type === "tv" ? "television" : "") ||
+          "television";
+
+        const sourceWarranty = toObject(ha.warranty_json);
+        const sourcePhysical = toObject(ha.physical_json);
+        const sourceProductDetails = toObject(ha.product_details_json);
+        const sourceBasicInfo = toObject(ha.basic_info_json);
+
+        const rawDimensions =
+          Object.keys(toObject(ha.dimensions_json)).length > 0
+            ? toObject(ha.dimensions_json)
+            : toObject(sourcePhysical.dimensions_json);
+
+        const rawDesign =
+          Object.keys(toObject(ha.design_json)).length > 0
+            ? toObject(ha.design_json)
+            : toObject(sourcePhysical.design_json);
+
+        const rawRating =
+          Object.keys(toObject(ha.rating_json)).length > 0
+            ? toObject(ha.rating_json)
+            : toObject(sourceWarranty.rating_json);
+
+        const rawInTheBox =
+          Object.keys(toObject(ha.in_the_box_json)).length > 0
+            ? toObject(ha.in_the_box_json)
+            : Array.isArray(sourceWarranty.in_the_box)
+              ? { in_the_box: sourceWarranty.in_the_box }
+              : {};
+
+        const basicInfoSection = sectionToFormInputs({
+          ...sourceBasicInfo,
+          ...(ha.model_number || ha.model || ha.modelNumber
+            ? {
+                model_number:
+                  ha.model_number || ha.model || ha.modelNumber || "",
+              }
+            : {}),
+          ...(ha.release_year ||
+          ha.releaseYear ||
+          sourceProductDetails.launch_year ||
+          sourceBasicInfo.launch_year
+            ? {
+                launch_year:
+                  ha.release_year ||
+                  ha.releaseYear ||
+                  sourceProductDetails.launch_year ||
+                  sourceBasicInfo.launch_year,
+              }
+            : {}),
+        });
+
+        const productDetailsSection = sectionToFormInputs({
+          ...sourceProductDetails,
+          ...(ha.country_of_origin ||
+          ha.countryOfOrigin ||
+          sourceWarranty.country_of_origin
+            ? {
+                country_of_origin:
+                  ha.country_of_origin ||
+                  ha.countryOfOrigin ||
+                  sourceWarranty.country_of_origin,
+              }
+            : {}),
+        });
+
+        const tvSections = {
+          key_specs_json: sectionToFormInputs({
+            ...toObject(ha.key_specs_json),
+            ...toObject(ha.specifications),
+          }),
+          basic_info_json: basicInfoSection,
+          display_json: sectionToFormInputs(toObject(ha.display_json)),
+          video_engine_json: sectionToFormInputs({
+            ...toObject(ha.video_engine_json),
+            ...toObject(ha.performance),
+          }),
+          audio_json: sectionToFormInputs(toObject(ha.audio_json)),
+          smart_tv_json: sectionToFormInputs(toObject(ha.smart_tv_json)),
+          connectivity_json: sectionToFormInputs(toObject(ha.connectivity_json)),
+          ports_json: sectionToFormInputs(toObject(ha.ports_json)),
+          power_json: sectionToFormInputs(toObject(ha.power_json)),
+          gaming_json: sectionToFormInputs(toObject(ha.gaming_json)),
+          dimensions_json: sectionToFormInputs(rawDimensions),
+          design_json: sectionToFormInputs(rawDesign),
+          physical_json: sectionToFormInputs(sourcePhysical),
+          product_details_json: productDetailsSection,
+          in_the_box_json: sectionToFormInputs(rawInTheBox),
+          warranty_json: sectionToFormInputs({
+            ...sourceWarranty,
+            ...toObject(ha.warranty),
+          }),
+          rating_json: sectionToFormInputs(rawRating),
+        };
+
+        const legacySpecificationSection = {
+          ...tvSections.key_specs_json,
+          ...tvSections.display_json,
+        };
+        const legacyPerformanceSection = {
+          ...tvSections.video_engine_json,
+          ...tvSections.audio_json,
+          ...tvSections.smart_tv_json,
+          ...tvSections.connectivity_json,
+          ...tvSections.ports_json,
+          ...tvSections.power_json,
+          ...tvSections.gaming_json,
+        };
+        const legacyPhysicalSection = {
+          ...tvSections.physical_json,
+          ...tvSections.dimensions_json,
+          ...tvSections.design_json,
+        };
+        const legacyWarrantySection = {
+          ...tvSections.warranty_json,
+          ...tvSections.rating_json,
+        };
+
+        const normalizedVariants = (
+          Array.isArray(data.variants)
+            ? data.variants
+            : Array.isArray(data.variants_json)
+              ? data.variants_json
+              : []
+        ).map((variant, index) => {
+          const row = toObject(variant);
+          const rawStores = Array.isArray(row.stores)
+            ? row.stores
+            : Array.isArray(row.store_prices)
+              ? row.store_prices
+              : [];
+
+          return {
+            variant_key:
+              row.variant_key || row.screen_size || `tv_variant_${index + 1}`,
+            base_price:
+              row.base_price !== undefined && row.base_price !== null
+                ? String(row.base_price)
+                : "",
+            stores: rawStores.map((store) => ({
+              store_name: store?.store_name || store?.store || "",
+              price:
+                store?.price !== undefined && store?.price !== null
+                  ? String(store.price)
+                  : "",
+              url: store?.url || "",
+              offer_text: store?.offer_text || "",
+            })),
+          };
+        });
+
+        const normalizedImages = Array.isArray(data.images)
+          ? data.images
+          : Array.isArray(data.images_json)
+            ? data.images_json
+            : Array.isArray(ha.images_json)
+              ? ha.images_json
+              : [];
+
+        const featureList = Array.isArray(ha.features)
+          ? ha.features
+          : Array.isArray(ha.smart_tv_json?.smart_features)
+            ? ha.smart_tv_json.smart_features
+            : Array.isArray(ha.smart_tv_json?.supported_apps)
+              ? ha.smart_tv_json.supported_apps
+              : [];
 
         // Transform API response to match form structure
         setFormData({
           product: {
-            name: data.product?.name || ha.name || "",
-            brand_id: data.product?.brand_id ?? ha.brand_id ?? "",
+            name: data.product?.name || data.product_name || ha.name || "",
+            brand_id:
+              data.product?.brand_id ?? data.brand_id ?? ha.brand_id ?? "",
           },
           home_appliance: {
-            appliance_type: ha.appliance_type || ha.applianceType || "",
-            model_number: ha.model_number || ha.modelNumber || "",
+            appliance_type: applianceTypeValue,
+            model_number:
+              ha.model_number ||
+              ha.modelNumber ||
+              ha.model ||
+              ha.basic_info_json?.model_number ||
+              "",
             release_year:
-              ha.release_year || ha.releaseYear || new Date().getFullYear(),
-            country_of_origin: ha.country_of_origin || ha.countryOfOrigin || "",
-            specifications: ha.specifications || {},
-            features: ha.features || [],
-            performance: ha.performance || {},
-            physical_details: ha.physical_details || {},
-            warranty: ha.warranty || {},
+              ha.release_year ||
+              ha.releaseYear ||
+              ha.product_details_json?.launch_year ||
+              ha.basic_info_json?.launch_year ||
+              new Date().getFullYear(),
+            country_of_origin:
+              ha.country_of_origin ||
+              ha.countryOfOrigin ||
+              ha.product_details_json?.country_of_origin ||
+              ha.warranty_json?.country_of_origin ||
+              "",
+            key_specs_json: tvSections.key_specs_json,
+            basic_info_json: tvSections.basic_info_json,
+            display_json: tvSections.display_json,
+            video_engine_json: tvSections.video_engine_json,
+            audio_json: tvSections.audio_json,
+            smart_tv_json: tvSections.smart_tv_json,
+            connectivity_json: tvSections.connectivity_json,
+            ports_json: tvSections.ports_json,
+            power_json: tvSections.power_json,
+            gaming_json: tvSections.gaming_json,
+            dimensions_json: tvSections.dimensions_json,
+            design_json: tvSections.design_json,
+            physical_json: tvSections.physical_json,
+            product_details_json: tvSections.product_details_json,
+            in_the_box_json: tvSections.in_the_box_json,
+            warranty_json: tvSections.warranty_json,
+            rating_json: tvSections.rating_json,
+            specifications: legacySpecificationSection,
+            features: featureList,
+            performance: legacyPerformanceSection,
+            physical_details: legacyPhysicalSection,
+            warranty: legacyWarrantySection,
           },
-          images: data.images || [],
-          variants: data.variants || [],
-          published: data.published ?? data.is_published ?? false,
+          images: normalizedImages,
+          variants: normalizedVariants,
+          published:
+            data.published ?? data.is_published ?? data.publish ?? false,
         });
 
         // Extract custom JSON fields
+        const sectionMap = tvSectionKeys.reduce((acc, sectionKey) => {
+          acc[sectionKey] = tvSections[sectionKey] || {};
+          return acc;
+        }, {});
         const customFields = {};
-        [
-          "specifications",
-          "performance",
-          "physical_details",
-          "warranty",
-        ].forEach((field) => {
-          const fieldData = ha[field] || {};
-          const defaultFields = getDefaultFields(
-            field,
-            ha.appliance_type || ha.applianceType,
-          );
+        Object.entries(sectionMap).forEach(([field, fieldData]) => {
+          const defaultFields = getDefaultFields(field, applianceTypeValue);
           const custom = Object.keys(fieldData).filter(
             (key) => !defaultFields.includes(key),
           );
@@ -310,6 +703,8 @@ const EditHomeAppliance = () => {
               .toString()
               .toLowerCase();
             return (
+              pt === "tv" ||
+              pt === "television" ||
               pt === "appliance" ||
               pt === "home_appliance" ||
               pt === "home-appliance" ||
@@ -318,7 +713,7 @@ const EditHomeAppliance = () => {
           })
           .map((r) => ({
             value: r.name || r.value || `cat_${r.id}`,
-            label: r.name || r.title || r.value || `Appliance ${r.id}`,
+            label: r.name || r.title || r.value || `TV ${r.id}`,
           }));
 
         if (opts.length) setApplianceOptions(opts);
@@ -424,6 +819,50 @@ const EditHomeAppliance = () => {
         [name]: value,
       },
     }));
+  };
+
+  // Handle brand selection from custom dropdown
+  const handleBrandSelect = (brand) => {
+    const brandId =
+      brand && typeof brand === "object"
+        ? brand.id ?? brand._id ?? brand.value ?? brand.name ?? ""
+        : brand ?? "";
+    const brandName =
+      brand && typeof brand === "object"
+        ? brand.name ?? brand.label ?? brand.value ?? String(brandId)
+        : String(brandId || "");
+
+    setFormData((prev) => ({
+      ...prev,
+      product: {
+        ...prev.product,
+        brand_id: String(brandId),
+      },
+      home_appliance: {
+        ...prev.home_appliance,
+        brand: brandName,
+      },
+    }));
+    setShowBrandDropdown(false);
+    setBrandSearch("");
+  };
+
+  // Handle appliance type/category selection from custom dropdown
+  const handleApplianceSelect = (appliance) => {
+    const applianceValue =
+      appliance && typeof appliance === "object"
+        ? appliance.value ?? appliance.id ?? appliance.name ?? ""
+        : appliance ?? "";
+
+    setFormData((prev) => ({
+      ...prev,
+      home_appliance: {
+        ...prev.home_appliance,
+        appliance_type: String(applianceValue),
+      },
+    }));
+    setShowApplianceDropdown(false);
+    setApplianceSearch("");
   };
 
   // Handle image upload (centralized utility)
@@ -584,7 +1023,148 @@ const EditHomeAppliance = () => {
 
   // Get default fields for each specification category based on appliance type
   const getDefaultFields = (category, applianceType) => {
-    const type = applianceType || formData.home_appliance.appliance_type;
+    const type = (
+      applianceType ||
+      formData.home_appliance.appliance_type ||
+      ""
+    ).toLowerCase();
+
+    const tvDefaults = {
+      key_specs_json: [
+        "screen_size",
+        "resolution",
+        "panel_type",
+        "refresh_rate",
+        "smart_tv",
+        "operating_system",
+        "hdr_support",
+        "audio_output",
+        "gaming_ready",
+      ],
+      basic_info_json: ["model_number", "launch_year", "title"],
+      display_json: [
+        "panel_type",
+        "resolution",
+        "refresh_rate",
+        "brightness",
+        "contrast",
+        "color_technology",
+        "viewing_angle",
+        "hdr_formats",
+        "motion_technology",
+        "gaming_features",
+      ],
+      video_engine_json: [
+        "processor",
+        "upscaling",
+        "picture_engine",
+        "motion_processing",
+      ],
+      audio_json: [
+        "speaker_type",
+        "output_power",
+        "dolby_audio",
+        "dolby_atmos",
+        "dts_support",
+        "sound_modes",
+        "audio_features",
+      ],
+      smart_tv_json: [
+        "operating_system",
+        "app_store",
+        "voice_assistant",
+        "chromecast",
+        "screen_mirroring",
+        "ai_recommendations",
+        "supported_apps",
+        "remote_features",
+        "smart_features",
+      ],
+      connectivity_json: [
+        "wifi",
+        "bluetooth",
+        "ethernet",
+        "screen_cast",
+        "mobile_connectivity",
+        "airplay_support",
+      ],
+      ports_json: [
+        "hdmi",
+        "usb",
+        "ethernet",
+        "optical_audio",
+        "audio_jack",
+        "arc_earc",
+        "rf_in",
+      ],
+      power_json: [
+        "power_consumption",
+        "energy_rating",
+        "standby_power",
+        "eco_mode",
+        "power_supply",
+      ],
+      gaming_json: [
+        "gaming_mode",
+        "vr_r",
+        "allm",
+        "input_lag",
+        "hdmi_2_1",
+      ],
+      dimensions_json: [
+        "width",
+        "height",
+        "depth",
+        "weight",
+        "wall_mount_support",
+        "wall_mount_size",
+        "stand_type",
+      ],
+      design_json: [
+        "bezel_type",
+        "body_color",
+        "build_material",
+        "stand_color",
+      ],
+      physical_json: ["width", "height", "depth", "weight", "installation_type"],
+      product_details_json: ["launch_year", "country_of_origin"],
+      in_the_box_json: ["in_the_box"],
+      warranty_json: [
+        "product_warranty",
+        "panel_warranty",
+        "service_type",
+        "country_of_origin",
+        "in_the_box",
+      ],
+      rating_json: ["overall_rating", "expert_rating", "user_rating"],
+      // Legacy grouped keys (for backward compatibility).
+      specifications: [
+        "screen_size",
+        "resolution",
+        "panel_type",
+        "refresh_rate",
+        "smart_tv",
+        "hdr_support",
+      ],
+      performance: [
+        "refresh_rate",
+        "audio_output",
+        "gaming_ready",
+        "energy_rating",
+        "power_consumption",
+      ],
+      physical_details: ["width", "height", "depth", "weight", "stand_type"],
+      warranty: [
+        "product_warranty",
+        "panel_warranty",
+        "service_type",
+        "country_of_origin",
+      ],
+    };
+
+    if (type === "television" || type === "tv") {
+      return tvDefaults[category] || [];
+    }
 
     // Common fields for all appliances
     const commonSpecs = [
@@ -792,39 +1372,231 @@ const EditHomeAppliance = () => {
 
     try {
       const token = Cookies.get("authToken");
+      const releaseYear = formData.home_appliance.release_year
+        ? Number(formData.home_appliance.release_year)
+        : new Date().getFullYear();
+      const countryOfOrigin = formData.home_appliance.country_of_origin || null;
+      const parsedBrandId = Number(formData.product.brand_id);
+      const brandId = Number.isFinite(parsedBrandId) ? parsedBrandId : null;
+
+      const parsedSections = tvSectionKeys.reduce((acc, sectionKey) => {
+        acc[sectionKey] = sectionFromFormInputs(
+          formData.home_appliance[sectionKey],
+        );
+        return acc;
+      }, {});
+
+      const sectionFeatures = Array.isArray(
+        parsedSections.smart_tv_json?.smart_features,
+      )
+        ? parsedSections.smart_tv_json.smart_features.filter(Boolean)
+        : Array.isArray(parsedSections.smart_tv_json?.supported_apps)
+          ? parsedSections.smart_tv_json.supported_apps.filter(Boolean)
+          : [];
+
+      const features = (formData.home_appliance.features || [])
+        .map((feature) => String(feature || "").trim())
+        .filter(Boolean);
+
+      const mergedFeatures = features.length ? features : sectionFeatures;
+
+      const keySpecs = parsedSections.key_specs_json || {};
+      const basicInfo = parsedSections.basic_info_json || {};
+      const display = parsedSections.display_json || {};
+      const videoEngine = parsedSections.video_engine_json || {};
+      const audio = parsedSections.audio_json || {};
+      const smartTv = parsedSections.smart_tv_json || {};
+      const connectivity = parsedSections.connectivity_json || {};
+      const ports = parsedSections.ports_json || {};
+      const power = parsedSections.power_json || {};
+      const gaming = parsedSections.gaming_json || {};
+      const dimensions = parsedSections.dimensions_json || {};
+      const design = parsedSections.design_json || {};
+      const physical = parsedSections.physical_json || {};
+      const productDetails = parsedSections.product_details_json || {};
+      const inTheBox = parsedSections.in_the_box_json || {};
+      const warranty = parsedSections.warranty_json || {};
+      const rating = parsedSections.rating_json || {};
+
+      const mergedBasicInfoJson = {
+        ...toObject(tvSource.basic_info_json),
+        ...basicInfo,
+        model_number:
+          formData.home_appliance.model_number ||
+          basicInfo.model_number ||
+          toObject(tvSource.basic_info_json).model_number ||
+          null,
+        launch_year:
+          releaseYear ||
+          basicInfo.launch_year ||
+          toObject(tvSource.basic_info_json).launch_year ||
+          null,
+      };
+
+      const mergedProductDetailsJson = {
+        ...toObject(tvSource.product_details_json),
+        ...productDetails,
+        ...(releaseYear ? { launch_year: releaseYear } : {}),
+        ...(countryOfOrigin ? { country_of_origin: countryOfOrigin } : {}),
+      };
+
+      const mergedSmartTvJson = {
+        ...toObject(tvSource.smart_tv_json),
+        ...smartTv,
+        ...(mergedFeatures.length ? { smart_features: mergedFeatures } : {}),
+      };
+
+      const mergedPhysicalJson = {
+        ...toObject(tvSource.physical_json),
+        ...physical,
+        ...(Object.keys(dimensions).length
+          ? { dimensions_json: dimensions }
+          : {}),
+        ...(Object.keys(design).length ? { design_json: design } : {}),
+      };
+
+      const mergedWarrantyJson = {
+        ...toObject(tvSource.warranty_json),
+        ...warranty,
+        ...(Object.keys(rating).length ? { rating_json: rating } : {}),
+        ...(countryOfOrigin ? { country_of_origin: countryOfOrigin } : {}),
+      };
+
+      const mergedInTheBoxJson = {
+        ...toObject(tvSource.in_the_box_json),
+        ...inTheBox,
+        ...(inTheBox.in_the_box
+          ? {}
+          : Array.isArray(mergedWarrantyJson.in_the_box)
+            ? { in_the_box: mergedWarrantyJson.in_the_box }
+            : {}),
+      };
+
+      const legacySpecifications = { ...keySpecs, ...display };
+      const legacyPerformance = {
+        ...videoEngine,
+        ...audio,
+        ...smartTv,
+        ...connectivity,
+        ...ports,
+        ...power,
+        ...gaming,
+      };
+      const legacyPhysicalDetails = {
+        ...physical,
+        ...dimensions,
+        ...design,
+      };
+      const legacyWarranty = { ...warranty, ...rating };
+
+      const tvVariants = formData.variants.map((variant, index) => {
+        const stores = Array.isArray(variant?.stores)
+          ? variant.stores
+          : Array.isArray(variant?.store_prices)
+            ? variant.store_prices
+            : [];
+
+        return {
+          variant_key:
+            variant?.variant_key || variant?.screen_size || `tv_variant_${index + 1}`,
+          screen_size: variant?.screen_size || null,
+          base_price:
+            variant?.base_price !== undefined &&
+            variant?.base_price !== null &&
+            variant?.base_price !== ""
+              ? Number(variant.base_price)
+              : null,
+          store_prices: stores.map((store) => ({
+            store_name: store?.store_name || store?.store || null,
+            price:
+              store?.price !== undefined &&
+              store?.price !== null &&
+              store?.price !== ""
+                ? Number(store.price)
+                : null,
+            url: store?.url || null,
+            offer_text: store?.offer_text || null,
+            delivery_info: store?.delivery_info || null,
+          })),
+        };
+      });
+
       const submitData = {
         product: {
           name: formData.product.name,
-          brand_id: Number(formData.product.brand_id),
+          brand_id: brandId,
         },
+        product_name: formData.product.name,
+        brand_id: brandId,
+        category: formData.home_appliance.appliance_type || "television",
+        model: formData.home_appliance.model_number,
+        publish: Boolean(formData.published),
+        key_specs_json: {
+          ...toObject(tvSource.key_specs_json),
+          ...keySpecs,
+        },
+        basic_info_json: mergedBasicInfoJson,
+        display_json: {
+          ...toObject(tvSource.display_json),
+          ...display,
+        },
+        video_engine_json: {
+          ...toObject(tvSource.video_engine_json),
+          ...videoEngine,
+        },
+        audio_json: {
+          ...toObject(tvSource.audio_json),
+          ...audio,
+        },
+        smart_tv_json: mergedSmartTvJson,
+        gaming_json: {
+          ...toObject(tvSource.gaming_json),
+          ...gaming,
+        },
+        ports_json: {
+          ...toObject(tvSource.ports_json),
+          ...ports,
+        },
+        connectivity_json: {
+          ...toObject(tvSource.connectivity_json),
+          ...connectivity,
+        },
+        power_json: {
+          ...toObject(tvSource.power_json),
+          ...power,
+        },
+        physical_json: mergedPhysicalJson,
+        product_details_json: mergedProductDetailsJson,
+        in_the_box_json: mergedInTheBoxJson,
+        warranty_json: {
+          ...mergedWarrantyJson,
+        },
+        dimensions_json: dimensions,
+        design_json: design,
+        rating_json: rating,
+        images_json: formData.images,
+        variants_json: tvVariants,
+        // Backward compatibility for legacy transformer.
         home_appliance: {
           appliance_type: formData.home_appliance.appliance_type,
           model_number: formData.home_appliance.model_number,
-          release_year: formData.home_appliance.release_year
-            ? Number(formData.home_appliance.release_year)
-            : new Date().getFullYear(),
-          country_of_origin: formData.home_appliance.country_of_origin || null,
-          specifications: formData.home_appliance.specifications,
-          features: formData.home_appliance.features.filter(Boolean),
-          performance: formData.home_appliance.performance,
-          physical_details: formData.home_appliance.physical_details,
-          warranty: formData.home_appliance.warranty,
+          release_year: releaseYear,
+          country_of_origin: countryOfOrigin,
+          specifications: legacySpecifications,
+          features: mergedFeatures,
+          performance: legacyPerformance,
+          physical_details: legacyPhysicalDetails,
+          warranty: legacyWarranty,
         },
         images: formData.images,
-        variants: formData.variants.map((v) => ({
-          variant_key: v.variant_key || null,
-          base_price: v.base_price ? Number(v.base_price) : null,
-          stores: v.stores.map((s) => ({
-            store_name: s.store_name || null,
-            price: s.price ? Number(s.price) : null,
-            url: s.url || null,
-            offer_text: s.offer_text || null,
-          })),
+        variants: tvVariants.map((v) => ({
+          ...v,
+          stores: v.store_prices,
         })),
         published: formData.published,
       };
 
-      const res = await fetch(buildUrl(`/api/home-appliances/${id}`), {
+      const res = await fetch(buildUrl(`/api/tvs/${id}`), {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -838,7 +1610,7 @@ const EditHomeAppliance = () => {
         throw new Error(errorData.message || "Failed to update appliance");
       }
 
-      const result = await res.json();
+      await res.json();
 
       showToast(
         "Success",
@@ -848,9 +1620,9 @@ const EditHomeAppliance = () => {
         "success",
       );
 
-      // Redirect after success to the appliances inventory view
+      // Redirect after success to TV inventory view.
       setTimeout(() => {
-        navigate("/products/homeappliances/inventory");
+        navigate("/products/tvs/inventory");
       }, 1500);
     } catch (error) {
       console.error("Update appliance error:", error);
@@ -876,14 +1648,6 @@ const EditHomeAppliance = () => {
       "info",
     );
   };
-
-  // Specification tabs for home appliances
-  const specTabs = [
-    { id: "specifications", label: "Specifications", icon: FaBox },
-    { id: "performance", label: "Performance", icon: FaBolt },
-    { id: "physical_details", label: "Physical Details", icon: FaRuler },
-    { id: "warranty", label: "Warranty", icon: FaShieldAlt },
-  ];
 
   // Toast Component
   const Toast = ({ toast }) => {
@@ -1737,14 +2501,12 @@ const EditHomeAppliance = () => {
                   <div className="flex items-center space-x-2">
                     <FaInfoCircle className="text-blue-500" />
                     <span className="text-sm text-blue-700">
-                      {activeSpecTab === "specifications" &&
-                        "Enter key specifications like capacity, type, motor, etc."}
-                      {activeSpecTab === "performance" &&
-                        "Enter performance metrics like energy rating, power consumption, etc."}
-                      {activeSpecTab === "physical_details" &&
-                        "Enter physical dimensions and weight"}
-                      {activeSpecTab === "warranty" &&
-                        "Enter warranty details for product and components"}
+                      {specTabs.find((tab) => tab.id === activeSpecTab)
+                        ?.helpText ||
+                        `Enter specification values for ${activeSpecTab.replace(
+                          /_/g,
+                          " ",
+                        )}`}
                     </span>
                   </div>
                 </div>
@@ -1894,7 +2656,7 @@ const EditHomeAppliance = () => {
           </button>
 
           <button
-            onClick={() => navigate("/products/homeappliances/inventory")}
+            onClick={() => navigate("/products/tvs/inventory")}
             className="px-6 py-3 border border-blue-300 text-blue-600 rounded-md font-medium hover:bg-blue-50 flex items-center justify-center gap-2"
           >
             <FaEye />

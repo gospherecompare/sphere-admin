@@ -1,7 +1,7 @@
 // Central API config — update this single value when backend URL changes.
 import Cookies from "js-cookie";
 
-const API_BASE = "https://api.apisphere.in";
+const API_BASE = "http://localhost:5000";
 
 // buildUrl('/path') -> 'https://api.apisphere.in/path'
 const buildUrl = (path = "") => {

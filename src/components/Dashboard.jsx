@@ -222,7 +222,7 @@ const Dashboard = () => {
     () => [
       { value: "smartphone", label: "Smartphones" },
       { value: "laptop", label: "Laptops" },
-      { value: "home_appliance", label: "Home Appliances" },
+      { value: "tv", label: "TVs" },
       { value: "networking", label: "Networking" },
       { value: "accessories", label: "Accessories" },
     ],
@@ -389,7 +389,7 @@ const Dashboard = () => {
           fetch(buildUrl("/api/brands"), { headers }),
           fetch(buildUrl("/api/smartphone"), { headers }),
           fetch(buildUrl("/api/laptop"), { headers }),
-          fetch(buildUrl("/api/homeappliance"), { headers }),
+          fetch(buildUrl("/api/tv"), { headers }),
           fetch(buildUrl("/api/networking"), { headers }),
         ]);
 
@@ -405,7 +405,7 @@ const Dashboard = () => {
           brandsRes.ok ? brandsRes.json() : { brands: [] },
           mobilesRes.ok ? mobilesRes.json() : { smartphones: [] },
           laptopsRes.ok ? laptopsRes.json() : { laptops: [] },
-          appliancesRes.ok ? appliancesRes.json() : { home_appliances: [] },
+          appliancesRes.ok ? appliancesRes.json() : { tvs: [] },
           networkingRes.ok ? networkingRes.json() : { networking: [] },
         ]);
 
@@ -413,7 +413,7 @@ const Dashboard = () => {
 
         const mobiles = mobilesData.smartphones || [];
         const laptops = laptopsData.laptops || [];
-        const appliances = appliancesData.home_appliances || [];
+        const appliances = appliancesData.tvs || [];
         const networking = networkingData.networking || [];
 
         setCounts({

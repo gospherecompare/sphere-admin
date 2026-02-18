@@ -101,6 +101,7 @@ const RecentPublishActivity = () => {
         return <FaMobileAlt className="text-blue-600" />;
       case "laptop":
         return <FaLaptop className="text-purple-600" />;
+      case "tv":
       case "home_appliance":
         return <FaHome className="text-green-600" />;
       case "networking":
@@ -834,7 +835,7 @@ const RecentPublishActivity = () => {
                             ? "bg-blue-500"
                             : type === "laptop"
                               ? "bg-purple-500"
-                              : type === "home_appliance"
+                              : type === "home_appliance" || type === "tv"
                                 ? "bg-green-500"
                                 : "bg-orange-500"
                         }`}

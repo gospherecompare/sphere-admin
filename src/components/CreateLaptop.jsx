@@ -56,6 +56,10 @@ const CreateLaptop = () => {
       storage: {},
       battery: {},
       connectivity: {},
+      ports: {},
+      multimedia: {},
+      security: {},
+      camera: {},
       physical: {},
       software: {},
       features: [],
@@ -529,6 +533,10 @@ const CreateLaptop = () => {
     { id: "storage", label: "Storage", icon: FaHdd },
     { id: "battery", label: "Battery", icon: FaBatteryFull },
     { id: "connectivity", label: "Connectivity", icon: FaWifi },
+    { id: "ports", label: "Ports", icon: FaPlug },
+    { id: "multimedia", label: "Multimedia", icon: FaDesktop },
+    { id: "security", label: "Security", icon: FaShieldAlt },
+    { id: "camera", label: "Camera", icon: FaCamera },
     { id: "physical", label: "Physical", icon: FaWeightHanging },
     { id: "software", label: "Software", icon: FaCode },
     { id: "warranty", label: "Warranty", icon: FaShieldAlt },
@@ -590,6 +598,35 @@ const CreateLaptop = () => {
         "thunderbolt",
         "audio_jack",
         "card_reader",
+      ],
+      ports: [
+        "usb_type_a",
+        "usb_type_c",
+        "hdmi",
+        "thunderbolt",
+        "audio_jack",
+        "sd_card_reader",
+      ],
+      multimedia: [
+        "speaker",
+        "webcam",
+        "microphone",
+        "keyboard",
+        "trackpad",
+        "stylus_support",
+      ],
+      security: [
+        "fingerprint",
+        "face_unlock",
+        "tpm",
+        "camera_shutter",
+        "kensington_lock",
+      ],
+      camera: [
+        "webcam_resolution",
+        "ir_camera",
+        "privacy_shutter",
+        "camera_features",
       ],
       physical: [
         "weight",
@@ -666,6 +703,88 @@ const CreateLaptop = () => {
     showToast("Field Removed", `Custom field "${fieldName}" removed`, "info");
   };
 
+  const buildCanonicalLaptopPayload = ({ images = [], variants = [] } = {}) => {
+    const colors = (formData.laptop.colors || []).filter(
+      (color) => color.name && color.code,
+    );
+    const features = (formData.laptop.features || []).filter(Boolean);
+
+    const cpu = formData.laptop.cpu || {};
+    const display = formData.laptop.display || {};
+    const memory = formData.laptop.memory || {};
+    const storage = formData.laptop.storage || {};
+    const battery = formData.laptop.battery || {};
+    const connectivity = formData.laptop.connectivity || {};
+    const ports = formData.laptop.ports || {};
+    const multimedia = formData.laptop.multimedia || {};
+    const security = formData.laptop.security || {};
+    const camera = formData.laptop.camera || {};
+    const physical = formData.laptop.physical || {};
+    const software = formData.laptop.software || {};
+    const warranty = formData.laptop.warranty || {};
+
+    return {
+      basic_info: {
+        product_name: formData.product.name || null,
+        title: formData.product.name || null,
+        category: formData.laptop.category || null,
+        laptop_type: formData.laptop.category || null,
+        brand_name: formData.laptop.brand || null,
+        brand: formData.laptop.brand || null,
+        model: formData.laptop.model || null,
+        launch_date: formData.laptop.launch_date || null,
+        product_type: "Laptop",
+        colors,
+      },
+      performance: {
+        ...cpu,
+        processor:
+          cpu.processor ||
+          [cpu.brand, cpu.model].filter(Boolean).join(" ").trim() ||
+          null,
+      },
+      display,
+      memory: {
+        ...memory,
+        ram: memory.ram || memory.capacity || null,
+        ram_type: memory.ram_type || memory.type || null,
+      },
+      storage: {
+        ...storage,
+        storage: storage.storage || storage.capacity || null,
+        storage_type: storage.storage_type || storage.type || null,
+      },
+      battery,
+      multimedia: {
+        ...multimedia,
+        ...(features.length ? { features } : {}),
+      },
+      ports,
+      security,
+      camera,
+      physical,
+      software,
+      metadata: {
+        spec_schema_version: 2,
+        build_design: {
+          ...physical,
+          colors,
+          thickness: physical.thickness || physical.depth || null,
+        },
+        connectivity: { ...connectivity },
+        warranty: { ...warranty },
+        environmental: {},
+        in_the_box: {},
+        import_details: {},
+        images,
+        variants,
+        dynamic: {
+          publish: null,
+        },
+      },
+    };
+  };
+
   // Form submit handler
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -692,44 +811,29 @@ const CreateLaptop = () => {
 
     try {
       const token = Cookies.get("authToken");
+      const normalizedVariants = formData.variants.map((v) => ({
+        ram: v.ram || null,
+        storage: v.storage || null,
+        base_price: v.base_price ? Number(v.base_price) : null,
+        stores: (v.stores || []).map((s) => ({
+          store_name: s.store_name || null,
+          price: s.price ? Number(s.price) : null,
+          url: s.url || null,
+          offer_text: s.offer_text || null,
+          discount: s.discount || null,
+          offers: s.offers || null,
+        })),
+      }));
+      const laptopPayload = buildCanonicalLaptopPayload({
+        images: formData.images,
+        variants: normalizedVariants,
+      });
       const submitData = {
         product: {
           name: formData.product.name,
           brand_id: Number(formData.product.brand_id),
         },
-        laptop: {
-          category: formData.laptop.category,
-          brand: formData.laptop.brand,
-          model: formData.laptop.model,
-          launch_date: formData.laptop.launch_date || null,
-          colors: formData.laptop.colors.filter(
-            (color) => color.name && color.code,
-          ),
-          cpu: formData.laptop.cpu,
-          display: formData.laptop.display,
-          memory: formData.laptop.memory,
-          storage: formData.laptop.storage,
-          battery: formData.laptop.battery,
-          connectivity: formData.laptop.connectivity,
-          physical: formData.laptop.physical,
-          software: formData.laptop.software,
-          features: formData.laptop.features.filter(Boolean),
-          warranty: formData.laptop.warranty,
-        },
-        images: formData.images,
-        variants: formData.variants.map((v) => ({
-          ram: v.ram || null,
-          storage: v.storage || null,
-          base_price: v.base_price ? Number(v.base_price) : null,
-          stores: v.stores.map((s) => ({
-            store_name: s.store_name || null,
-            price: s.price ? Number(s.price) : null,
-            url: s.url || null,
-            offer_text: s.offer_text || null,
-            discount: s.discount || null,
-            offers: s.offers || null,
-          })),
-        })),
+        laptop: laptopPayload,
         published: publishEnabled,
       };
 
@@ -770,6 +874,10 @@ const CreateLaptop = () => {
           storage: {},
           battery: {},
           connectivity: {},
+          ports: {},
+          multimedia: {},
+          security: {},
+          camera: {},
           physical: {},
           software: {},
           features: [],

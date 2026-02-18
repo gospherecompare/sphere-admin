@@ -46,8 +46,64 @@ const presetEndpoints = [
   { name: "Update Smartphone", method: "PUT", url: "/api/smartphones/:id" },
   { name: "Categories", method: "GET", url: "/api/categories" },
   { name: "Brands", method: "GET", url: "/api/brands" },
-  { name: "Create Laptop", method: "POST", url: "/api/laptop" },
+  { name: "Create Laptop", method: "POST", url: "/api/laptops" },
+  { name: "TVs List", method: "GET", url: "/api/tvs" },
+  {
+    name: "Create TV",
+    method: "POST",
+    url: "/api/tvs",
+    body: {
+      product_name: "Samsung Neo QLED 55",
+      brand_name: "Samsung",
+      category: "television",
+      model: "QN90D",
+      publish: false,
+      key_specs_json: {
+        resolution: "4K UHD",
+        screen_size: "55 inch",
+        panel_type: "QLED",
+      },
+      basic_info_json: {
+        title: "Samsung Neo QLED 55",
+        model_number: "QN90D",
+      },
+      smart_tv_json: {
+        os: "Tizen",
+        smart_features: ["Netflix", "YouTube", "Prime Video"],
+      },
+      images_json: ["https://example.com/tv-front.jpg"],
+      variants_json: [
+        {
+          variant_key: "55-inch",
+          screen_size: "55 inch",
+          base_price: 1499,
+          store_prices: [
+            {
+              store_name: "Amazon",
+              price: 1499,
+              url: "https://example.com/samsung-neo-qled-55",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  { name: "Update TV", method: "PUT", url: "/api/tvs/:id" },
   { name: "Network Devices", method: "GET", url: "/api/networking" },
+  {
+    name: "Feature Click (track)",
+    method: "POST",
+    url: "/api/public/feature-click",
+    body: {
+      device_type: "laptop",
+      feature_id: "battery-life",
+    },
+  },
+  {
+    name: "Popular Features",
+    method: "GET",
+    url: "/api/public/popular-features?deviceType=laptop&days=7&limit=20",
+  },
 ];
 
 export default function ApiTester() {
@@ -88,8 +144,328 @@ export default function ApiTester() {
   const [importText, setImportText] = useState("");
   const [responseTime, setResponseTime] = useState(0);
   const [copied, setCopied] = useState(false);
+  const [postResponsePath, setPostResponsePath] = useState("/api/smartphones/req");
+  const [postResponseLoading, setPostResponseLoading] = useState(false);
 
   const responseRef = useRef(null);
+
+  const toObject = (value) =>
+    value && typeof value === "object" && !Array.isArray(value) ? value : {};
+
+  const resolveRequestUrl = (input, queryString = "") => {
+    const inputUrl =
+      input && String(input).trim() ? String(input).trim() : "/api/smartphone";
+    if (/^https?:\/\//i.test(inputUrl)) {
+      return inputUrl + (queryString ? `?${queryString}` : "");
+    }
+    const path = inputUrl.startsWith("/") ? inputUrl : `/${inputUrl}`;
+    return buildUrl(path) + (queryString ? `?${queryString}` : "");
+  };
+
+  const normalizeDirectPostPayload = (targetPath, payload) => {
+    const target = String(targetPath || "").toLowerCase();
+    let source = payload;
+
+    if (Array.isArray(source)) {
+      if (source.length === 1) source = source[0];
+      else {
+        return {
+          payload: source,
+          error:
+            "Response contains an array. Pick a single object response before direct POST.",
+        };
+      }
+    }
+
+    const sourceObj = toObject(source);
+    if (Object.keys(sourceObj).length && sourceObj.data) {
+      const dataObj = sourceObj.data;
+      if (Array.isArray(dataObj)) {
+        if (dataObj.length === 1) source = dataObj[0];
+      } else if (dataObj && typeof dataObj === "object") {
+        source = dataObj;
+      }
+    }
+
+    if (target.includes("/api/laptops")) {
+      const raw = toObject(source);
+
+      if (Array.isArray(raw.laptops)) {
+        if (raw.laptops.length === 1) {
+          source = raw.laptops[0];
+        } else {
+          return {
+            payload: raw,
+            error:
+              "The response has multiple laptops. Open one item first, then use direct POST.",
+          };
+        }
+      }
+
+      const row = toObject(source);
+      const product = toObject(row.product);
+      const laptop = toObject(row.laptop);
+      const rowSections = toObject(row.spec_sections);
+      const laptopSections = toObject(laptop.spec_sections);
+      const canonicalBasicInfo = toObject(row.basic_info);
+      const canonicalMetadata = toObject(row.metadata);
+      const basicInfo = toObject(
+        laptop.basic_info_json || row.basic_info_json || canonicalBasicInfo,
+      );
+
+      const inferredName =
+        product.name ||
+        row.name ||
+        row.product_name ||
+        canonicalBasicInfo.product_name ||
+        canonicalBasicInfo.title ||
+        basicInfo.title ||
+        basicInfo.model_name ||
+        laptop.model ||
+        row.model ||
+        canonicalBasicInfo.model ||
+        null;
+
+      const inferredBrandId = product.brand_id ?? row.brand_id ?? null;
+
+      const topLevelLaptopKeys = [
+        "category",
+        "brand",
+        "model",
+        "launch_date",
+        "colors",
+        "cpu",
+        "display",
+        "memory",
+        "storage",
+        "battery",
+        "connectivity",
+        "ports",
+        "multimedia",
+        "security",
+        "camera",
+        "physical",
+        "software",
+        "features",
+        "warranty",
+        "basic_info_json",
+        "build_design_json",
+        "performance_json",
+        "memory_json",
+        "storage_json",
+        "display_json",
+        "battery_json",
+        "connectivity_json",
+        "ports_json",
+        "multimedia_json",
+        "software_json",
+        "security_json",
+        "camera_json",
+        "physical_json",
+        "warranty_json",
+        "environmental_json",
+        "in_the_box_json",
+        "import_details_json",
+      ];
+
+      const mergedLaptop = {
+        ...rowSections,
+        ...laptopSections,
+        ...laptop,
+      };
+      delete mergedLaptop.spec_sections;
+
+      const canonicalSectionMap = [
+        ["basic_info", "basic_info"],
+        ["performance", "performance"],
+        ["display", "display"],
+        ["memory", "memory"],
+        ["storage", "storage"],
+        ["battery", "battery"],
+        ["multimedia", "multimedia"],
+        ["ports", "ports"],
+        ["camera", "camera"],
+        ["security", "security"],
+        ["physical", "physical"],
+        ["software", "software"],
+        ["metadata", "metadata"],
+      ];
+      canonicalSectionMap.forEach(([sourceKey, targetKey]) => {
+        if (
+          row[sourceKey] !== undefined &&
+          mergedLaptop[targetKey] === undefined
+        ) {
+          mergedLaptop[targetKey] = row[sourceKey];
+        }
+      });
+
+      topLevelLaptopKeys.forEach((key) => {
+        if (row[key] !== undefined && mergedLaptop[key] === undefined) {
+          mergedLaptop[key] = row[key];
+        }
+      });
+
+      return {
+        payload: {
+          product: {
+            ...product,
+            name: inferredName,
+            brand_id: inferredBrandId,
+          },
+          laptop: mergedLaptop,
+          images: Array.isArray(row.images)
+            ? row.images
+            : Array.isArray(canonicalMetadata.images)
+              ? canonicalMetadata.images
+              : [],
+          variants: Array.isArray(row.variants)
+            ? row.variants
+            : Array.isArray(canonicalMetadata.variants)
+              ? canonicalMetadata.variants
+              : [],
+          published:
+            typeof row.published === "boolean"
+              ? row.published
+              : !!row.is_published,
+        },
+        error: null,
+      };
+    }
+
+    if (target.includes("/api/smartphones/req")) {
+      const row = toObject(source);
+      const product = toObject(row.product);
+      const basicInfo = toObject(row.basic_info_json);
+      const normalized = {
+        ...row,
+        product_name:
+          row.product_name ||
+          row.name ||
+          product.name ||
+          basicInfo.model_name ||
+          null,
+        brand_name:
+          row.brand_name || row.brand || product.brand || row.brand_name || null,
+        model: row.model || basicInfo.model || null,
+      };
+      return { payload: normalized, error: null };
+    }
+
+    if (target.includes("/api/tvs")) {
+      const raw = toObject(source);
+
+      if (Array.isArray(raw.tvs)) {
+        if (raw.tvs.length === 1) {
+          source = raw.tvs[0];
+        } else {
+          return {
+            payload: raw,
+            error:
+              "The response has multiple TVs. Open one item first, then use direct POST.",
+          };
+        }
+      }
+
+      const row = toObject(source);
+      const product = toObject(row.product);
+      const tv = toObject(row.tv);
+      const payloadSource = Object.keys(tv).length > 0 ? tv : row;
+      const basicInfo = toObject(
+        payloadSource.basic_info_json || row.basic_info_json,
+      );
+
+      const productName =
+        row.product_name ||
+        row.name ||
+        payloadSource.product_name ||
+        product.name ||
+        basicInfo.title ||
+        payloadSource.model ||
+        row.model ||
+        null;
+
+      const normalized = {
+        product_name: productName,
+        brand_id:
+          product.brand_id ??
+          row.brand_id ??
+          payloadSource.brand_id ??
+          undefined,
+        brand_name:
+          row.brand_name ||
+          row.brand ||
+          payloadSource.brand_name ||
+          product.brand ||
+          undefined,
+        category: payloadSource.category ?? row.category ?? undefined,
+        model: payloadSource.model ?? row.model ?? undefined,
+        key_specs_json:
+          payloadSource.key_specs_json ?? row.key_specs_json ?? undefined,
+        basic_info_json:
+          payloadSource.basic_info_json ?? row.basic_info_json ?? undefined,
+        display_json: payloadSource.display_json ?? row.display_json ?? undefined,
+        video_engine_json:
+          payloadSource.video_engine_json ?? row.video_engine_json ?? undefined,
+        audio_json: payloadSource.audio_json ?? row.audio_json ?? undefined,
+        smart_tv_json:
+          payloadSource.smart_tv_json ?? row.smart_tv_json ?? undefined,
+        gaming_json: payloadSource.gaming_json ?? row.gaming_json ?? undefined,
+        ports_json: payloadSource.ports_json ?? row.ports_json ?? undefined,
+        connectivity_json:
+          payloadSource.connectivity_json ?? row.connectivity_json ?? undefined,
+        power_json: payloadSource.power_json ?? row.power_json ?? undefined,
+        physical_json:
+          payloadSource.physical_json ?? row.physical_json ?? undefined,
+        product_details_json:
+          payloadSource.product_details_json ??
+          row.product_details_json ??
+          undefined,
+        in_the_box_json:
+          payloadSource.in_the_box_json ?? row.in_the_box_json ?? undefined,
+        warranty_json:
+          payloadSource.warranty_json ?? row.warranty_json ?? undefined,
+        images_json: Array.isArray(row.images_json)
+          ? row.images_json
+          : Array.isArray(row.images)
+            ? row.images
+            : Array.isArray(payloadSource.images_json)
+              ? payloadSource.images_json
+              : Array.isArray(payloadSource.images)
+                ? payloadSource.images
+                : [],
+        variants_json: Array.isArray(row.variants_json)
+          ? row.variants_json
+          : Array.isArray(row.variants)
+            ? row.variants
+            : Array.isArray(payloadSource.variants_json)
+              ? payloadSource.variants_json
+              : Array.isArray(payloadSource.variants)
+                ? payloadSource.variants
+                : [],
+      };
+
+      const publishValue =
+        row.publish ??
+        row.published ??
+        row.is_published ??
+        payloadSource.publish ??
+        payloadSource.published ??
+        payloadSource.is_published;
+      if (typeof publishValue === "boolean") {
+        normalized.publish = publishValue;
+      }
+
+      Object.keys(normalized).forEach((key) => {
+        if (normalized[key] === undefined) {
+          delete normalized[key];
+        }
+      });
+
+      return { payload: normalized, error: null };
+    }
+
+    return { payload: source, error: null };
+  };
 
   // Add a new header
   const addHeader = () => {
@@ -143,24 +519,14 @@ export default function ApiTester() {
     if (body && body.trim() && activeTab === "body") {
       try {
         parsedBody = JSON.parse(body);
-      } catch (e) {
-        setError(`Invalid JSON: ${e.message}`);
+      } catch {
+        setError("Invalid JSON body.");
         setLoading(false);
         return;
       }
     }
 
-    // Build URL: handle empty input and absolute URLs
-    const inputUrl =
-      url && String(url).trim() ? String(url).trim() : "/api/smartphone";
-    let fullUrl;
-    if (/^https?:\/\//i.test(inputUrl)) {
-      fullUrl = inputUrl + (queryString ? `?${queryString}` : "");
-    } else {
-      // ensure leading slash for buildUrl
-      const path = inputUrl.startsWith("/") ? inputUrl : `/${inputUrl}`;
-      fullUrl = buildUrl(path) + (queryString ? `?${queryString}` : "");
-    }
+    const fullUrl = resolveRequestUrl(url, queryString);
 
     try {
       const fetchOptions = { method, headers: headersObj };
@@ -178,7 +544,7 @@ export default function ApiTester() {
       let parsedResponse = null;
       try {
         parsedResponse = JSON.parse(text);
-      } catch (e) {
+      } catch {
         parsedResponse = text;
       }
 
@@ -210,6 +576,125 @@ export default function ApiTester() {
     }
   };
 
+  // POST current response body to a target API path
+  const postJsonResponseDirectly = async () => {
+    if (!response || response.body === undefined || response.body === null) {
+      setError("No response JSON available to post.");
+      return;
+    }
+
+    let payload = response.body;
+    if (typeof payload === "string") {
+      try {
+        payload = JSON.parse(payload);
+      } catch {
+        setError("Response is not valid JSON. Cannot post directly.");
+        return;
+      }
+    }
+
+    const target = postResponsePath && String(postResponsePath).trim();
+    if (!target) {
+      setError("API Path is required for posting response JSON.");
+      return;
+    }
+
+    const normalized = normalizeDirectPostPayload(target, payload);
+    if (normalized.error) {
+      setError(normalized.error);
+      return;
+    }
+    payload = normalized.payload;
+
+    const targetLower = target.toLowerCase();
+    if (targetLower.includes("/api/laptops")) {
+      const p = toObject(payload);
+      if (!toObject(p.product).name) {
+        setError(
+          "Missing required field: product.name. Open a single laptop response or set body manually.",
+        );
+        return;
+      }
+    }
+    if (targetLower.includes("/api/smartphones/req")) {
+      const p = toObject(payload);
+      if (!p.product_name || !p.brand_name || !p.model) {
+        setError(
+          "Missing required fields for smartphone create: product_name, brand_name, model.",
+        );
+        return;
+      }
+    }
+    if (targetLower.includes("/api/tvs")) {
+      const p = toObject(payload);
+      const product = toObject(p.product);
+      const basicInfo = toObject(p.basic_info_json);
+      const productName =
+        p.product_name || p.name || product.name || basicInfo.title || p.model;
+      if (!productName) {
+        setError(
+          "Missing required field for TV create: product_name (or product.name / basic_info_json.title / model).",
+        );
+        return;
+      }
+    }
+
+    const startTime = Date.now();
+    setPostResponseLoading(true);
+    setError(null);
+
+    try {
+      const headersObj = { "Content-Type": "application/json" };
+      if (token && token.trim()) {
+        headersObj.Authorization = `Bearer ${token}`;
+      }
+      const fullUrl = resolveRequestUrl(target);
+
+      const res = await fetch(fullUrl, {
+        method: "POST",
+        headers: headersObj,
+        body: JSON.stringify(payload),
+      });
+
+      const endTime = Date.now();
+      const text = await res.text();
+      let parsedResponse = null;
+      try {
+        parsedResponse = JSON.parse(text);
+      } catch {
+        parsedResponse = text;
+      }
+
+      const responseData = {
+        status: res.status,
+        ok: res.ok,
+        headers: Object.fromEntries(res.headers.entries()),
+        body: parsedResponse,
+        size: text.length,
+        time: endTime - startTime,
+      };
+
+      setResponse(responseData);
+      setResponseTime(endTime - startTime);
+      setMethod("POST");
+      setUrl(target);
+
+      const historyEntry = {
+        method: "POST",
+        url: fullUrl,
+        status: res.status,
+        ok: res.ok,
+        timestamp: new Date().toISOString(),
+        time: endTime - startTime,
+      };
+      setHistory([historyEntry, ...history.slice(0, 9)]);
+    } catch (err) {
+      setError(err.message || "Direct response post failed");
+    } finally {
+      setPostResponseLoading(false);
+    }
+  };
+
   // Fill token from cookies
   const fillTokenFromCookies = () => {
     const authToken = getAuthToken() || Cookies.get("authToken");
@@ -223,7 +708,7 @@ export default function ApiTester() {
     try {
       const raw = localStorage.getItem("apiTester.presets");
       if (raw) setUserPresets(JSON.parse(raw));
-    } catch (e) {
+    } catch {
       // ignore
     }
   }, []);
@@ -231,7 +716,7 @@ export default function ApiTester() {
   const persistPresets = (presets) => {
     try {
       localStorage.setItem("apiTester.presets", JSON.stringify(presets));
-    } catch (e) {
+    } catch {
       // ignore
     }
   };
@@ -278,8 +763,8 @@ export default function ApiTester() {
       setUserPresets(merged);
       persistPresets(merged);
       setImportText("");
-    } catch (e) {
-      setError(`Import failed: ${e.message}`);
+    } catch {
+      setError("Import failed: invalid JSON format.");
     }
   };
 
@@ -338,7 +823,7 @@ export default function ApiTester() {
     try {
       const parsed = JSON.parse(body);
       setBody(JSON.stringify(parsed, null, 2));
-    } catch (e) {
+    } catch {
       // Not valid JSON, do nothing
     }
   };
@@ -444,6 +929,9 @@ export default function ApiTester() {
                       ? `${(history.reduce((a, b) => a + b.time, 0) / history.length).toFixed(0)}ms`
                       : "0ms"}
                   </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Last: {responseTime}ms
+                  </p>
                 </div>
                 <FaClock className="text-orange-500 text-xl" />
               </div>
@@ -475,7 +963,7 @@ export default function ApiTester() {
                         type="text"
                         value={url}
                         onChange={(e) => setUrl(e.target.value)}
-                        placeholder="Enter request URL"
+                        placeholder="Enter API path or full URL (e.g. /api/laptops)"
                         className="w-full border border-gray-300 border-l-0 rounded-r-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                       <FaGlobe className="absolute right-3 top-3 text-gray-400" />
@@ -770,6 +1258,32 @@ export default function ApiTester() {
                           : JSON.stringify(response.body, null, 2)}
                       </pre>
                     </div>
+
+                    <div className="mt-4 p-3 border border-gray-200 rounded-lg bg-gray-50">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        API Path (POST current response JSON)
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={postResponsePath}
+                          onChange={(e) => setPostResponsePath(e.target.value)}
+                          placeholder="/api/target-endpoint"
+                          className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                        <button
+                          onClick={postJsonResponseDirectly}
+                          disabled={postResponseLoading}
+                          className={`px-3 py-2 rounded-lg text-sm font-medium text-white ${
+                            postResponseLoading
+                              ? "bg-blue-400 cursor-not-allowed"
+                              : "bg-blue-600 hover:bg-blue-700"
+                          }`}
+                        >
+                          {postResponseLoading ? "Posting..." : "Post JSON"}
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 ) : (
                   <div className="text-center py-12 text-gray-500">
@@ -941,3 +1455,4 @@ export default function ApiTester() {
     </div>
   );
 }
+

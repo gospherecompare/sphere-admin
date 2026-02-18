@@ -307,7 +307,7 @@ const TrendingManager = () => {
     () => [
       { value: "smartphone", label: "Smartphone" },
       { value: "laptop", label: "Laptop" },
-      { value: "home_appliance", label: "Home Appliance" },
+      { value: "tv", label: "TV" },
       { value: "networking", label: "Networking" },
       { value: "accessories", label: "Accessories" },
     ],
@@ -377,6 +377,12 @@ const TrendingManager = () => {
               Admin-only view: shows internal signals (views/compares/score) and
               lets you manually boost products.
             </p>
+            {type === "laptop" && (
+              <p className="text-xs text-blue-600 mt-1">
+                Laptop boosts and badges here are reflected on laptop trending
+                cards in the client app.
+              </p>
+            )}
             {updatedAt && (
               <p className="text-xs text-gray-500 mt-1">
                 Updated at: {formatDateTime(updatedAt)}

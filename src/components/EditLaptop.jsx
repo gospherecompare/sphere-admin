@@ -176,6 +176,240 @@ const EditLaptop = () => {
     return new Date(year, month + 1, 0).getDate();
   };
 
+  const toObject = (value) =>
+    value && typeof value === "object" && !Array.isArray(value) ? value : {};
+
+  const toArray = (value) => (Array.isArray(value) ? value : []);
+
+  const normalizeDateInput = (value) => {
+    if (!value) return "";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return String(value).slice(0, 10);
+    return date.toISOString().split("T")[0];
+  };
+
+  const normalizeColorRows = (colors) => {
+    return toArray(colors)
+      .map((color) => {
+        if (color && typeof color === "object") {
+          const name = String(
+            color.name || color.label || color.value || "",
+          ).trim();
+          if (!name) return null;
+          return {
+            name,
+            code: color.code || color.hex || color.color_code || "#cccccc",
+          };
+        }
+        const name = String(color || "").trim();
+        if (!name) return null;
+        return { name, code: "#cccccc" };
+      })
+      .filter(Boolean);
+  };
+
+  const normalizeStoreRows = (stores) => {
+    return toArray(stores).map((store) => {
+      const s = toObject(store);
+      return {
+        ...s,
+        store_name: s.store_name || s.store || "",
+        price: s.price || "",
+        url: s.url || "",
+        offer_text: s.offer_text || s.offer || "",
+        delivery_info: s.delivery_info || s.offers || "",
+        offers: s.offers || s.delivery_info || "",
+        discount: s.discount || "",
+      };
+    });
+  };
+
+  const normalizeVariantRows = (variants) => {
+    return toArray(variants).map((variant) => {
+      const v = toObject(variant);
+      const attributes = toObject(v.attributes);
+      const storeRows = Array.isArray(v.stores)
+        ? v.stores
+        : Array.isArray(v.store_prices)
+          ? v.store_prices
+          : [];
+      return {
+        ...v,
+        ram: v.ram || attributes.ram || "",
+        storage: v.storage || attributes.storage || "",
+        base_price: v.base_price ?? v.price ?? "",
+        stores: normalizeStoreRows(storeRows),
+      };
+    });
+  };
+
+  const pickFirstObject = (...values) => {
+    for (const value of values) {
+      const obj = toObject(value);
+      if (Object.keys(obj).length > 0) return obj;
+    }
+    return {};
+  };
+
+  const pickFirstArray = (...values) => {
+    for (const value of values) {
+      if (Array.isArray(value)) return value;
+    }
+    return [];
+  };
+
+  const mapLaptopApiToForm = (apiData) => {
+    const payload = toObject(apiData);
+    const product = toObject(payload.product);
+    const explicitLaptop = toObject(payload.laptop);
+    const laptopRaw =
+      Object.keys(explicitLaptop).length > 0 ? explicitLaptop : payload;
+    const metadata = {
+      ...toObject(laptopRaw.meta),
+      ...pickFirstObject(laptopRaw.metadata, payload.metadata),
+    };
+    const specSections = {
+      ...toObject(payload.spec_sections),
+      ...toObject(laptopRaw.spec_sections),
+    };
+
+    const basicInfo = pickFirstObject(
+      laptopRaw.basic_info,
+      payload.basic_info,
+      specSections.basic_info_json,
+    );
+    const multimediaObj = pickFirstObject(
+      laptopRaw.multimedia,
+      payload.multimedia,
+      specSections.multimedia_json,
+    );
+
+    const images = pickFirstArray(
+      payload.images,
+      laptopRaw.images,
+      metadata.images,
+      specSections.images_json,
+    );
+
+    const variants = normalizeVariantRows(
+      pickFirstArray(
+        payload.variants,
+        laptopRaw.variants,
+        metadata.variants,
+        specSections.variants_json,
+      ),
+    );
+
+    const features = pickFirstArray(
+      laptopRaw.features,
+      payload.features,
+      multimediaObj.features,
+    );
+
+    const category =
+      laptopRaw.category ||
+      payload.category ||
+      basicInfo.category ||
+      basicInfo.laptop_type ||
+      "";
+    const brand =
+      laptopRaw.brand ||
+      payload.brand ||
+      basicInfo.brand_name ||
+      basicInfo.brand ||
+      laptopRaw.brand_name ||
+      payload.brand_name ||
+      "";
+    const model = laptopRaw.model || payload.model || basicInfo.model || "";
+    const launchDate = normalizeDateInput(
+      laptopRaw.launch_date ||
+        payload.launch_date ||
+        basicInfo.launch_date ||
+        "",
+    );
+    const colors = normalizeColorRows(
+      (Array.isArray(laptopRaw.colors) && laptopRaw.colors.length > 0
+        ? laptopRaw.colors
+        : null) ||
+        (Array.isArray(payload.colors) && payload.colors.length > 0
+          ? payload.colors
+          : null) ||
+        basicInfo.colors,
+    );
+
+    return {
+      product: {
+        name:
+          product.name ||
+          laptopRaw.name ||
+          payload.name ||
+          basicInfo.product_name ||
+          basicInfo.title ||
+          "",
+        brand_id: product.brand_id || laptopRaw.brand_id || payload.brand_id || "",
+      },
+      laptop: {
+        category,
+        brand,
+        model,
+        launch_date: launchDate,
+        colors,
+        cpu: pickFirstObject(
+          laptopRaw.cpu,
+          laptopRaw.performance,
+          payload.cpu,
+          payload.performance,
+          specSections.performance_json,
+        ),
+        display: pickFirstObject(
+          laptopRaw.display,
+          payload.display,
+          specSections.display_json,
+        ),
+        memory: pickFirstObject(
+          laptopRaw.memory,
+          payload.memory,
+          specSections.memory_json,
+        ),
+        storage: pickFirstObject(
+          laptopRaw.storage,
+          payload.storage,
+          specSections.storage_json,
+        ),
+        battery: pickFirstObject(
+          laptopRaw.battery,
+          payload.battery,
+          specSections.battery_json,
+        ),
+        connectivity: pickFirstObject(
+          laptopRaw.connectivity,
+          payload.connectivity,
+          metadata.connectivity,
+          specSections.connectivity_json,
+        ),
+        physical: pickFirstObject(
+          laptopRaw.physical,
+          payload.physical,
+          specSections.physical_json,
+        ),
+        software: pickFirstObject(
+          laptopRaw.software,
+          payload.software,
+          specSections.software_json,
+        ),
+        features: toArray(features),
+        warranty: pickFirstObject(
+          laptopRaw.warranty,
+          payload.warranty,
+          metadata.warranty,
+          specSections.warranty_json,
+        ),
+      },
+      images: toArray(images),
+      variants,
+    };
+  };
+
   // Fetch laptop data
   const fetchLaptopData = useCallback(async () => {
     try {
@@ -193,41 +427,19 @@ const EditLaptop = () => {
       }
 
       const data = await res.json();
-      setOriginalData(data);
-
-      // Transform data to match form structure
-      const transformedData = {
-        product: {
-          name: data.product?.name || "",
-          brand_id: data.product?.brand_id || "",
-        },
-        laptop: {
-          category: data.laptop?.category || "",
-          brand: data.laptop?.brand || "",
-          model: data.laptop?.model || "",
-          launch_date: data.laptop?.launch_date || "",
-          colors: data.laptop?.colors || [],
-          cpu: data.laptop?.cpu || {},
-          display: data.laptop?.display || {},
-          memory: data.laptop?.memory || {},
-          storage: data.laptop?.storage || {},
-          battery: data.laptop?.battery || {},
-          connectivity: data.laptop?.connectivity || {},
-          physical: data.laptop?.physical || {},
-          software: data.laptop?.software || {},
-          features: data.laptop?.features || [],
-          warranty: data.laptop?.warranty || {},
-        },
-        images: data.images || [],
-        variants: data.variants || [],
-      };
+      const transformedData = mapLaptopApiToForm(data);
+      setOriginalData(transformedData);
 
       setFormData(transformedData);
-      setPublishEnabled(data.published || false);
+      setPublishEnabled(
+        typeof data?.published === "boolean"
+          ? data.published
+          : Boolean(data?.is_published),
+      );
 
       // Set date picker if launch date exists
-      if (data.laptop?.launch_date) {
-        const date = new Date(data.laptop.launch_date);
+      if (transformedData.laptop?.launch_date) {
+        const date = new Date(transformedData.laptop.launch_date);
         setSelectedDate({
           year: date.getFullYear(),
           month: date.getMonth(),
@@ -249,9 +461,9 @@ const EditLaptop = () => {
         "warranty",
       ];
       jsonFields.forEach((field) => {
-        if (data.laptop?.[field]) {
+        if (transformedData.laptop?.[field]) {
           const defaultFields = getDefaultFields(field);
-          const existingKeys = Object.keys(data.laptop[field] || {});
+          const existingKeys = Object.keys(transformedData.laptop[field] || {});
           const customKeys = existingKeys.filter(
             (key) => !defaultFields.includes(key),
           );

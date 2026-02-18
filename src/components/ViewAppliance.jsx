@@ -1,8 +1,7 @@
-import React, { useState, useEffect, useRef } from "react";
+﻿import React, { useState, useEffect, useRef } from "react";
 import CountUp from "react-countup";
 import { useNavigate } from "react-router-dom";
 import {
-  FaHome,
   FaPlus,
   FaEdit,
   FaTrash,
@@ -27,11 +26,12 @@ import {
   FaCog,
   FaCube,
   FaFlag,
+  FaTv,
 } from "react-icons/fa";
 import Cookies from "js-cookie";
 import { buildUrl } from "../api";
 
-const ViewHomeAppliances = () => {
+const ViewTVs = () => {
   const [appliances, setAppliances] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -45,6 +45,32 @@ const ViewHomeAppliances = () => {
   const navigate = useNavigate();
   const itemsPerPage = 10;
 
+  const asObject = (value) =>
+    value && typeof value === "object" && !Array.isArray(value) ? value : {};
+
+  const resolveTvId = (tv) =>
+    tv?.product_id ||
+    tv?.id ||
+    tv?._id ||
+    tv?.product?.id ||
+    tv?.product?.product_id ||
+    null;
+
+  const formatScalar = (value) => {
+    if (value === null || value === undefined || value === "") return "N/A";
+    if (Array.isArray(value)) {
+      return value.length ? value.join(", ") : "N/A";
+    }
+    if (typeof value === "object") {
+      try {
+        return JSON.stringify(value);
+      } catch {
+        return "N/A";
+      }
+    }
+    return String(value);
+  };
+
   // Fetch appliances from API
   useEffect(() => {
     const fetchAppliances = async () => {
@@ -52,7 +78,7 @@ const ViewHomeAppliances = () => {
       setError(null);
       try {
         const token = Cookies.get("authToken");
-        const res = await fetch(buildUrl("/api/homeappliance"), {
+        const res = await fetch(buildUrl("/api/tv"), {
           method: "GET",
           headers: {
             Authorization: token ? `Bearer ${token}` : undefined,
@@ -65,77 +91,131 @@ const ViewHomeAppliances = () => {
 
         let rows = [];
         if (Array.isArray(data)) rows = data;
-        else if (data && Array.isArray(data.home_appliances))
-          rows = data.home_appliances;
+        else if (data && Array.isArray(data.tvs)) rows = data.tvs;
         else if (data && Array.isArray(data.data)) rows = data.data;
-        else rows = data.home_appliances || [];
+        else rows = data.tvs || [];
 
-        // Process appliances data
+        // Process tv rows with support for both legacy and current payloads.
         const processedAppliances = rows.map((appliance) => {
-          // Get specifications
-          const type = appliance.specifications?.type || "N/A";
-          const motor = appliance.specifications?.motor || "N/A";
-          const capacity = appliance.specifications?.capacity || "N/A";
+          const keySpecs = asObject(appliance.key_specs_json);
+          const display = asObject(appliance.display_json);
+          const performance = asObject(appliance.video_engine_json);
+          const audio = asObject(appliance.audio_json);
+          const smartTv = asObject(appliance.smart_tv_json);
+          const connectivity = asObject(appliance.connectivity_json);
+          const ports = asObject(appliance.ports_json);
+          const power = asObject(appliance.power_json);
+          const physical = asObject(appliance.physical_json);
+          const dimensionsJson = asObject(appliance.dimensions_json);
+          const designJson = asObject(appliance.design_json);
+          const warranty = asObject(appliance.warranty_json);
+          const details = asObject(appliance.product_details_json);
+          const basicInfo = asObject(appliance.basic_info_json);
 
-          // Get performance
-          const energyRating = appliance.performance?.energy_rating || "N/A";
+          const physicalDetails = {
+            ...physical,
+            ...dimensionsJson,
+            ...designJson,
+          };
+
+          const rawFeatures = Array.isArray(appliance.features)
+            ? appliance.features
+            : Array.isArray(smartTv.smart_features)
+              ? smartTv.smart_features
+              : Array.isArray(smartTv.supported_apps)
+                ? smartTv.supported_apps
+                : [];
+
+          const id = resolveTvId(appliance);
+          const applianceTypeRaw =
+            appliance.category ||
+            appliance.appliance_type ||
+            appliance.applianceType ||
+            appliance.product_type;
+
+          const type =
+            keySpecs.panel_type ||
+            display.panel_type ||
+            keySpecs.resolution ||
+            display.resolution ||
+            "N/A";
+          const capacity =
+            keySpecs.screen_size ||
+            display.screen_size ||
+            keySpecs.size ||
+            display.size ||
+            "N/A";
+          const motor =
+            keySpecs.refresh_rate ||
+            display.refresh_rate ||
+            performance.refresh_rate ||
+            "N/A";
+          const energyRating =
+            power.energy_rating || performance.energy_rating || "N/A";
           const waterConsumption =
-            appliance.performance?.water_consumption || "N/A";
+            audio.output_power || keySpecs.audio_output || "N/A";
 
-          // Get physical details
-          const dimensions = appliance.physical_details
-            ? `${appliance.physical_details.width || ""} × ${
-                appliance.physical_details.height || ""
-              } × ${appliance.physical_details.depth || ""}`
-            : "N/A";
-          const weight = appliance.physical_details?.weight || "N/A";
-
-          // Get warranty
-          const motorWarranty = appliance.warranty?.motor || "N/A";
-          const productWarranty = appliance.warranty?.product || "N/A";
-
-          // Get features
-          const features = Array.isArray(appliance.features)
-            ? appliance.features.slice(0, 3)
-            : [];
-
-          // Format appliance type for display
-          const applianceType = appliance.appliance_type
-            ? appliance.appliance_type
-                .replace(/_/g, " ")
-                .replace(/\b\w/g, (l) => l.toUpperCase())
-            : "N/A";
+          const width = physicalDetails.width || "";
+          const height = physicalDetails.height || "";
+          const depth = physicalDetails.depth || "";
+          const dimensions =
+            width || height || depth
+              ? `${width || "-"} × ${height || "-"} × ${depth || "-"}`
+              : "N/A";
 
           return {
-            id: appliance.product_id || appliance.id || appliance._id || null,
-            name: appliance.name || "Unnamed Appliance",
+            id,
+            editId: id,
+            name: appliance.product_name || appliance.name || "Unnamed TV",
             brand: appliance.brand_name || appliance.brand || "Unknown",
-            model: appliance.model_number || "N/A",
-            applianceType: applianceType,
-            type: type,
-            motor: motor,
-            capacity: capacity,
-            energyRating: energyRating,
-            waterConsumption: waterConsumption,
-            dimensions: dimensions,
-            weight: weight,
-            motorWarranty: motorWarranty,
-            productWarranty: productWarranty,
-            releaseYear: appliance.release_year || "N/A",
-            country: appliance.country_of_origin || "N/A",
-            features: features,
-            published: appliance.is_published || appliance.published || false,
-            launch_date: appliance.created_at,
+            model:
+              appliance.model_number ||
+              appliance.model ||
+              basicInfo.model_number ||
+              "N/A",
+            applianceType:
+              applianceTypeRaw && String(applianceTypeRaw).trim()
+                ? String(applianceTypeRaw)
+                    .replace(/_/g, " ")
+                    .replace(/\b\w/g, (l) => l.toUpperCase())
+                : "Television",
+            type: formatScalar(type),
+            motor: formatScalar(motor),
+            capacity: formatScalar(capacity),
+            energyRating: formatScalar(energyRating),
+            waterConsumption: formatScalar(waterConsumption),
+            dimensions: formatScalar(dimensions),
+            weight: formatScalar(physicalDetails.weight),
+            motorWarranty: formatScalar(
+              warranty.panel_warranty || warranty.panel || warranty.installation,
+            ),
+            productWarranty: formatScalar(
+              warranty.product_warranty || warranty.product,
+            ),
+            releaseYear: formatScalar(
+              appliance.release_year ||
+                details.launch_year ||
+                basicInfo.launch_year,
+            ),
+            country: formatScalar(
+              appliance.country_of_origin ||
+                details.country_of_origin ||
+                warranty.country_of_origin,
+            ),
+            features: rawFeatures,
+            published: Boolean(
+              appliance.is_published ?? appliance.published ?? appliance.publish,
+            ),
+            launch_date: appliance.created_at || appliance.updated_at || null,
             raw: appliance,
           };
         });
-
         setAppliances(processedAppliances);
-        showToast("Success", "Home appliances loaded successfully", "success");
+        showToast("Success", "TVs loaded successfully", "success");
       } catch (err) {
-        console.error("Failed to fetch home appliances:", err);
-        setError(err.message || "Failed to load home appliances");
-        showToast("Error", "Failed to load home appliances", "error");
+        console.error("Failed to fetch TVs:", err);
+        setError(err.message || "Failed to load TVs");
+        showToast("Error", "Failed to load TVs", "error");
       } finally {
         setLoading(false);
       }
@@ -240,7 +320,7 @@ const ViewHomeAppliances = () => {
 
     try {
       const token = Cookies.get("authToken");
-      const res = await fetch(buildUrl(`/api/home-appliance/${id}`), {
+      const res = await fetch(buildUrl(`/api/tvs/${id}`), {
         method: "DELETE",
         headers: {
           Authorization: token ? `Bearer ${token}` : "",
@@ -268,7 +348,7 @@ const ViewHomeAppliances = () => {
 
       if (!resolvedId) {
         console.error("togglePublish: missing id for appliance", appliance);
-        showToast("Error", "Missing appliance id, cannot update", "error");
+        showToast("Error", "Missing TV id, cannot update", "error");
         return;
       }
 
@@ -391,12 +471,12 @@ const ViewHomeAppliances = () => {
 
       showToast(
         "Export Successful",
-        `${exportData.length} appliances exported`,
+        `${exportData.length} TVs exported`,
         "success",
       );
     } catch (error) {
       console.error("Export error:", error);
-      showToast("Export Failed", "Failed to export appliances", "error");
+      showToast("Export Failed", "Failed to export TVs", "error");
     }
   };
 
@@ -421,7 +501,7 @@ const ViewHomeAppliances = () => {
 
       showToast(
         "Import Successful",
-        "Home appliances imported successfully",
+        "TVs imported successfully",
         "success",
       );
 
@@ -429,7 +509,7 @@ const ViewHomeAppliances = () => {
       window.location.reload();
     } catch (error) {
       console.error("Import error:", error);
-      showToast("Import Failed", "Failed to import appliances", "error");
+      showToast("Import Failed", "Failed to import TVs", "error");
     }
   };
 
@@ -478,20 +558,20 @@ const ViewHomeAppliances = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
-              Home Appliance Management
+              TV Management
             </h1>
             <p className="text-gray-600 mt-1">
-              Manage your home appliance inventory and specifications
+              Manage your TV inventory and specifications
             </p>
           </div>
 
           <div className="flex flex-wrap gap-2">
             <button
-              onClick={() => navigate("/create-home-appliance")}
+              onClick={() => navigate("/products/tvs/create")}
               className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium"
             >
               <FaPlus className="text-sm" />
-              <span>Add Appliance</span>
+              <span>Add TV</span>
             </button>
           </div>
         </div>
@@ -501,13 +581,13 @@ const ViewHomeAppliances = () => {
           <div className="bg-white rounded-lg border border-gray-200 p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500">Total Appliances</p>
+                <p className="text-sm text-gray-500">Total TVs</p>
                 <p className="text-2xl font-bold text-gray-900">
                   <CountUp end={totalAppliances} duration={1.0} />
                 </p>
               </div>
               <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                <FaHome className="text-blue-600" />
+                <FaTv className="text-blue-600" />
               </div>
             </div>
           </div>
@@ -554,7 +634,7 @@ const ViewHomeAppliances = () => {
         <div className="px-4 py-3 border-b border-gray-200">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center space-x-2">
-              <h2 className="font-semibold text-gray-800">Appliances List</h2>
+              <h2 className="font-semibold text-gray-800">TVs List</h2>
               <span className="bg-gray-100 text-gray-600 text-sm px-2 py-1 rounded-full">
                 {filteredAndSortedAppliances.length}
               </span>
@@ -570,7 +650,7 @@ const ViewHomeAppliances = () => {
                   type="text"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Search appliances..."
+                  placeholder="Search TVs..."
                   className="pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full sm:w-64"
                 />
               </div>
@@ -610,7 +690,7 @@ const ViewHomeAppliances = () => {
                   <option value="name">Name A-Z</option>
                   <option value="brand">Brand</option>
                   <option value="capacity">Capacity</option>
-                  <option value="type">Appliance Type</option>
+                  <option value="type">TV Type</option>
                 </select>
               </div>
 
@@ -711,7 +791,7 @@ const ViewHomeAppliances = () => {
                       <div className="flex items-center">
                         <div className="flex-shrink-0 h-12 w-12">
                           <div className="h-12 w-12 rounded-md bg-gradient-to-r from-indigo-500 to-purple-600 flex items-center justify-center">
-                            <FaHome className="text-white text-lg" />
+                            <FaTv className="text-white text-lg" />
                           </div>
                         </div>
                         <div className="ml-3">
@@ -731,7 +811,7 @@ const ViewHomeAppliances = () => {
                             </div>
                           </div>
                           <div className="text-xs text-gray-500 mt-1">
-                            Model: {appliance.model} • {appliance.releaseYear}
+                            Model: {appliance.model} | {appliance.releaseYear}
                           </div>
                         </div>
                       </div>
@@ -743,7 +823,7 @@ const ViewHomeAppliances = () => {
                         <div className="flex items-center text-sm">
                           <FaCog className="text-gray-400 mr-2 flex-shrink-0" />
                           <span className="text-gray-900">
-                            {appliance.capacity} • {appliance.type}
+                            {appliance.capacity} | {appliance.type}
                           </span>
                         </div>
                         <div className="flex items-center text-sm">
@@ -755,7 +835,7 @@ const ViewHomeAppliances = () => {
                         <div className="flex items-center text-sm">
                           <FaShieldAlt className="text-gray-400 mr-2 flex-shrink-0" />
                           <span className="text-gray-900 text-xs">
-                            Motor: {appliance.motorWarranty}, Product:{" "}
+                            Panel: {appliance.motorWarranty}, Product:{" "}
                             {appliance.productWarranty}
                           </span>
                         </div>
@@ -783,7 +863,7 @@ const ViewHomeAppliances = () => {
                               Features:
                             </div>
                             <div className="flex flex-wrap gap-1">
-                              {appliance.features.map((feature, idx) => (
+                              {appliance.features.slice(0, 3).map((feature, idx) => (
                                 <span
                                   key={idx}
                                   className="inline-block bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded"
@@ -856,38 +936,74 @@ const ViewHomeAppliances = () => {
                     <td className="px-4 py-3 text-sm font-medium">
                       <div className="flex items-center space-x-2">
                         <button
-                          onClick={() =>
-                            navigate(
-                              `/products/homeappliances/${appliance.id}/edit`,
-                              {
-                                state: { appliance: appliance.raw },
-                              },
-                            )
-                          }
-                          className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50"
-                          title="Edit appliance"
+                          onClick={() => {
+                            const targetId =
+                              appliance.editId ||
+                              appliance.id ||
+                              resolveTvId(appliance.raw);
+                            if (!targetId) {
+                              showToast(
+                                "Missing ID",
+                                "Unable to open edit page: TV id is missing.",
+                                "error",
+                              );
+                              return;
+                            }
+                            navigate(`/products/tvs/${targetId}/edit`, {
+                              state: { appliance: appliance.raw },
+                            });
+                          }}
+                          className={`p-1 rounded ${
+                            appliance.editId || appliance.id
+                              ? "text-blue-600 hover:text-blue-900 hover:bg-blue-50"
+                              : "text-gray-400 cursor-not-allowed"
+                          }`}
+                          disabled={!(appliance.editId || appliance.id)}
+                          title="Edit TV"
                         >
                           <FaEdit />
                         </button>
                         <button
-                          onClick={() =>
-                            navigate(
-                              `/home-appliance/${encodeURIComponent(
-                                appliance.name,
-                              )}`,
-                            )
-                          }
+                          onClick={() => {
+                            const targetId =
+                              appliance.editId ||
+                              appliance.id ||
+                              resolveTvId(appliance.raw);
+                            if (!targetId) {
+                              showToast(
+                                "Missing ID",
+                                "Unable to open TV details: id is missing.",
+                                "error",
+                              );
+                              return;
+                            }
+                            navigate(`/products/tvs/${targetId}/edit`, {
+                              state: { appliance: appliance.raw },
+                            });
+                          }}
                           className="text-green-600 hover:text-green-900 p-1 rounded hover:bg-green-50"
                           title="View details"
                         >
                           <FaEye />
                         </button>
                         <button
-                          onClick={() =>
-                            handleDelete(appliance.id, appliance.name)
-                          }
+                          onClick={() => {
+                            const targetId =
+                              appliance.editId ||
+                              appliance.id ||
+                              resolveTvId(appliance.raw);
+                            if (!targetId) {
+                              showToast(
+                                "Missing ID",
+                                "Unable to delete: TV id is missing.",
+                                "error",
+                              );
+                              return;
+                            }
+                            handleDelete(targetId, appliance.name);
+                          }}
                           className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50"
-                          title="Delete appliance"
+                          title="Delete TV"
                         >
                           <FaTrash />
                         </button>
@@ -899,16 +1015,16 @@ const ViewHomeAppliances = () => {
                 <tr>
                   <td colSpan="7" className="px-4 py-8 text-center">
                     <div className="flex flex-col items-center">
-                      <FaHome className="text-4xl text-gray-300 mb-3" />
+                      <FaTv className="text-4xl text-gray-300 mb-3" />
                       <p className="text-gray-500 font-medium">
                         {searchTerm
-                          ? "No appliances found"
-                          : "No appliances yet"}
+                          ? "No TVs found"
+                          : "No TVs yet"}
                       </p>
                       <p className="text-gray-400 text-sm mt-1">
                         {searchTerm
                           ? "Try adjusting your search"
-                          : "Add your first appliance using the form"}
+                          : "Add your first TV using the form"}
                       </p>
                     </div>
                   </td>
@@ -934,7 +1050,7 @@ const ViewHomeAppliances = () => {
                 <span className="font-medium">
                   {filteredAndSortedAppliances.length}
                 </span>{" "}
-                appliances
+                TVs
               </div>
               <div className="flex items-center space-x-2">
                 <button
@@ -994,11 +1110,14 @@ const ViewHomeAppliances = () => {
         <p className="text-sm text-blue-700">
           <strong>Note:</strong> Click on status buttons to toggle between
           Published and Draft states. Click on action buttons (Edit, View,
-          Delete) to manage individual appliances.
+          Delete) to manage individual TVs.
         </p>
       </div>
     </div>
   );
 };
 
-export default ViewHomeAppliances;
+export default ViewTVs;
+
+
+

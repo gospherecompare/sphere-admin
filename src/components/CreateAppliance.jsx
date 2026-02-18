@@ -310,6 +310,8 @@ const CreateHomeAppliance = () => {
               .toString()
               .toLowerCase();
             return (
+              pt === "tv" ||
+              pt === "television" ||
               pt === "appliance" ||
               pt === "home_appliance" ||
               pt === "home-appliance" ||
@@ -318,7 +320,7 @@ const CreateHomeAppliance = () => {
           })
           .map((r) => ({
             value: r.name || r.value || `cat_${r.id}`,
-            label: r.name || r.title || r.value || `Appliance ${r.id}`,
+            label: r.name || r.title || r.value || `TV ${r.id}`,
           }));
 
         if (opts.length) setApplianceOptions(opts);
@@ -784,7 +786,7 @@ const CreateHomeAppliance = () => {
         published: publishEnabled,
       };
 
-      const res = await fetch(buildUrl("/api/home-appliances"), {
+      const res = await fetch(buildUrl("/api/tvs"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

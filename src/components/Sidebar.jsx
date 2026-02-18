@@ -35,6 +35,7 @@ import {
   FaShopify,
   FaUpload,
   FaDownload,
+  FaTv,
 } from "react-icons/fa";
 import HookLogo from "./Ui/hooklogo";
 
@@ -139,22 +140,22 @@ const MENU_CONFIG = {
           ],
         },
         {
-          id: "home-appliances",
-          label: "Home Appliances",
-          icon: <FaCog />,
+          id: "tvs",
+          label: "TVs",
+          icon: <FaTv />,
           type: "submenu",
           children: [
             {
-              id: "ha-create",
-              label: "Create Product",
+              id: "tv-create",
+              label: "Create TV",
               icon: <FaPlus />,
-              path: "/products/appliances/create",
+              path: "/products/tvs/create",
             },
             {
-              id: "ha-inventory",
+              id: "tv-inventory",
               label: "Inventory",
               icon: <FaBox />,
-              path: "/products/homeappliances/inventory",
+              path: "/products/tvs/inventory",
             },
           ],
         },
@@ -314,6 +315,18 @@ const MENU_CONFIG = {
           label: "Trending Manager",
           icon: <FaChartLine />,
           path: "/reports/trending",
+        },
+        {
+          id: "hook-score-rep",
+          label: "Hook Score Report",
+          icon: <FaChartLine />,
+          path: "/reports/hook-score",
+        },
+        {
+          id: "feature-click-rep",
+          label: "Feature Clicks",
+          icon: <FaChartLine />,
+          path: "/reports/feature-clicks",
         },
         {
           id: "import-rep",
@@ -681,7 +694,7 @@ const Sidebar = ({
         >
           {!collapsed ? (
             <Link to="/dashboard" className="flex items-center gap-2 min-w-0">
-              <HookLogo className="h-8 w-auto max-w-[160px] sm:h-9 sm:max-w-[180px]" />
+              <HookLogo className="h-9 w-auto max-w-[170px] sm:h-10 sm:max-w-[190px]" />
             </Link>
           ) : (
             <Link
@@ -689,7 +702,7 @@ const Sidebar = ({
               className="mx-auto hover:scale-110 transition-transform flex-shrink-0"
             >
               <div className="h-8 w-8 overflow-hidden rounded-lg sm:h-10 sm:w-10">
-                <HookLogo className="h-8 w-[112px] max-w-none sm:h-10 sm:w-[140px]" />
+                <HookLogo showText={false} className="h-8 w-8 sm:h-10 sm:w-10" />
               </div>
             </Link>
           )}

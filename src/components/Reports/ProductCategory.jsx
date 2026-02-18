@@ -88,6 +88,7 @@ const ProductCategoryReport = () => {
         return <FaMobileAlt className={`text-blue-500 ${size}`} />;
       case "laptop":
         return <FaLaptop className={`text-purple-500 ${size}`} />;
+      case "tv":
       case "home_appliance":
         return <FaHome className={`text-green-500 ${size}`} />;
       case "networking":

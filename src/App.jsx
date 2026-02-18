@@ -24,7 +24,7 @@ import AccountManagement from "./components/AccountManagement";
 import CreateLaptop from "./components/CreateLaptop";
 import CreateHomeAppliance from "./components/CreateAppliance";
 import ViewLaptops from "./components/ViewLaptop";
-import ViewHomeAppliances from "./components/ViewAppliance";
+import ViewTVs from "./components/ViewAppliance";
 import ViewCustomers from "./components/ViewCustomers";
 import RamStorageConfig from "./components/Ramstorage";
 import Brand from "./components/Brand";
@@ -35,6 +35,8 @@ import ProductPublishStatusReport from "./components/Reports/ProductPublish";
 import PublishedByUserReport from "./components/Reports/PublishUser";
 import RecentPublishActivity from "./components/Reports/RecentPublish";
 import TrendingManager from "./components/Reports/TrendingManager";
+import HookScoreReport from "./components/Reports/HookScoreReport";
+import FeatureClicksReport from "./components/Reports/FeatureClicksReport";
 import EditLaptop from "./components/EditLaptop";
 import EditHomeAppliance from "./components/EditAppliance";
 import CompareScoring from "./components/Settings/CompareScoring";
@@ -211,8 +213,8 @@ function App() {
               isMobile && sidebarOpen ? () => setSidebarOpen(false) : undefined
             }
           >
-            <div className="max-w-7xl mx-auto w-full px-2 sm:px-6 lg:px-8">
-              <div className="mb-1 "></div>
+            <div className="mx-auto w-full sm:px-6">
+              <Breadcrumbs />
               <Routes>
                 <Route
                   path="/"
@@ -237,6 +239,10 @@ function App() {
                   element={<EditHomeAppliance />}
                 />
                 <Route
+                  path="/products/tvs/:id/edit"
+                  element={<EditHomeAppliance />}
+                />
+                <Route
                   path="/products/smartphones/create"
                   element={<CreateMobile />}
                 />
@@ -257,7 +263,11 @@ function App() {
                 />
                 <Route
                   path="/products/homeappliances/inventory"
-                  element={<ViewHomeAppliances />}
+                  element={<ViewTVs />}
+                />
+                <Route
+                  path="/products/tvs/inventory"
+                  element={<ViewTVs />}
                 />
                 <Route
                   path="/products/laptops/create"
@@ -265,6 +275,14 @@ function App() {
                 />
                 <Route
                   path="/products/appliances/create"
+                  element={<CreateHomeAppliance />}
+                />
+                <Route
+                  path="/create-home-appliance"
+                  element={<CreateHomeAppliance />}
+                />
+                <Route
+                  path="/products/tvs/create"
                   element={<CreateHomeAppliance />}
                 />
                 <Route path="/edit-mobile/:id" element={<EditMobile />} />
@@ -333,9 +351,14 @@ function App() {
                   path="/reports/recentactivity"
                   element={<RecentPublishActivity />}
                 />
+                <Route path="/reports/trending" element={<TrendingManager />} />
                 <Route
-                  path="/reports/trending"
-                  element={<TrendingManager />}
+                  path="/reports/hook-score"
+                  element={<HookScoreReport />}
+                />
+                <Route
+                  path="/reports/feature-clicks"
+                  element={<FeatureClicksReport />}
                 />
               </Routes>
               <footer className="mt-8 text-center text-sm text-gray-500">

@@ -86,6 +86,7 @@ const ProductPublishStatusReport = () => {
         return <FaMobileAlt className="text-blue-500" />;
       case "laptop":
         return <FaLaptop className="text-purple-500" />;
+      case "tv":
       case "home_appliance":
         return <FaHome className="text-green-500" />;
       case "networking":

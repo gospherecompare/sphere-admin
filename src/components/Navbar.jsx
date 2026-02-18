@@ -462,14 +462,24 @@ const Navbar = ({ onToggleSidebar, sidebarCollapsed, onLogout }) => {
               )}
             </button>
 
-            {/* Mobile-only compact logo */}
-            <div className="md:hidden flex-shrink-0">
-              <HookLogo className="h-7 w-auto sm:h-8" />
+            {/* Mobile-only logo */}
+            <div className="md:hidden flex items-center flex-shrink-0">
+              <HookLogo className="h-8 w-auto sm:h-9" />
             </div>
+
+            {/* Desktop logo */}
+            <button
+              type="button"
+              onClick={handleLogoClick}
+              className="hidden md:flex items-center flex-shrink-0"
+              aria-label="Go to dashboard"
+            >
+              <HookLogo className="h-9 w-auto lg:h-10" />
+            </button>
 
             {/* Desktop Search */}
             <div
-              className="hidden md:block ml-auto mr-2 lg:mr-4"
+              className="hidden md:block ml-2 lg:ml-3 mr-2 lg:mr-4"
               ref={searchContainerRef}
             >
               <form onSubmit={handleSearchSubmit} className="relative">

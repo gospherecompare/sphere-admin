@@ -229,13 +229,25 @@ const ViewLaptops = () => {
         },
       });
 
-      if (!res.ok) throw new Error("Delete failed");
+      if (!res.ok) {
+        const errorBody = await res.json().catch(() => ({}));
+        throw new Error(errorBody.message || errorBody.error || "Delete failed");
+      }
 
-      setLaptops(laptops.filter((laptop) => laptop.id !== id));
-      showToast("Success", `"${name}" deleted successfully`, "success");
+      const data = await res.json().catch(() => ({}));
+      setLaptops((prev) => prev.filter((laptop) => laptop.id !== id));
+      showToast(
+        "Success",
+        data.message || `"${name}" deleted successfully`,
+        "success",
+      );
     } catch (err) {
       console.error("Delete error:", err);
-      showToast("Error", `Failed to delete "${name}"`, "error");
+      showToast(
+        "Error",
+        err?.message || `Failed to delete "${name}"`,
+        "error",
+      );
     }
   };
 
