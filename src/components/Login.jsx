@@ -127,6 +127,13 @@ const Login = ({ onLogin }) => {
             sameSite: "strict",
             path: "/",
           });
+
+          Cookies.set("loginAt", new Date().toISOString(), {
+            expires: rememberMe ? 7 : 1,
+            secure: false,
+            sameSite: "strict",
+            path: "/",
+          });
         }
 
         // Store user info using cookies

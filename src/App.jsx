@@ -142,6 +142,7 @@ function App() {
     Cookies.remove("user");
     Cookies.remove("username");
     Cookies.remove("role");
+    Cookies.remove("loginAt");
     setIsAuthenticated(false);
   };
 

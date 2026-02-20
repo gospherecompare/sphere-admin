@@ -145,6 +145,7 @@ const UserMenu = ({
   role,
   userName,
   userId,
+  loginTimeLabel,
   isOpen,
   onClose,
   onNavigate,
@@ -171,6 +172,9 @@ const UserMenu = ({
               </p>
               <p className="text-xs text-gray-400 mt-0.5 truncate">
                 {role || "Admin"}
+              </p>
+              <p className="text-xs text-gray-400 mt-0.5 truncate">
+                Login: {loginTimeLabel || "N/A"}
               </p>
             </div>
           </div>
@@ -250,6 +254,54 @@ const Navbar = ({ onToggleSidebar, sidebarCollapsed, onLogout }) => {
   const role = Cookies.get("userRole") || Cookies.get("role") || "Admin";
   const userId = Cookies.get("userId");
   const userName = Cookies.get("userName") || "";
+
+  const parseJwtPayload = (token) => {
+    try {
+      if (!token) return null;
+      const parts = token.split(".");
+      if (parts.length !== 3) return null;
+      const payload = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+      const decoded = atob(payload.replace(/=+$/, ""));
+      return JSON.parse(
+        decodeURIComponent(
+          decoded
+            .split("")
+            .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+            .join(""),
+        ),
+      );
+    } catch {
+      return null;
+    }
+  };
+
+  const loginTimeLabel = useMemo(() => {
+    const formatDate = (dateObj) => {
+      if (!dateObj || Number.isNaN(dateObj.getTime())) return "N/A";
+      return dateObj.toLocaleString("en-US", {
+        month: "short",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    };
+
+    const fromCookie = Cookies.get("loginAt");
+    if (fromCookie) {
+      const cookieDate = new Date(fromCookie);
+      if (!Number.isNaN(cookieDate.getTime())) {
+        return formatDate(cookieDate);
+      }
+    }
+
+    const payload = parseJwtPayload(Cookies.get("authToken"));
+    if (payload?.iat) {
+      const issuedDate = new Date(Number(payload.iat) * 1000);
+      return formatDate(issuedDate);
+    }
+
+    return "N/A";
+  }, [location.pathname]);
 
   // Get complete user object if available
   const getUserData = () => {
@@ -523,6 +575,15 @@ const Navbar = ({ onToggleSidebar, sidebarCollapsed, onLogout }) => {
 
           {/* Right Section */}
           <div className="flex items-center gap-1 sm:gap-2 md:gap-3 flex-shrink-0">
+            <div className="hidden sm:block text-right leading-tight">
+              <p className="text-[10px] uppercase tracking-wide text-gray-400">
+                Login
+              </p>
+              <p className="text-xs font-medium text-gray-600">
+                {loginTimeLabel}
+              </p>
+            </div>
+
             {/* Profile Section */}
             <div className="relative user-btn flex-shrink-0">
               <div
@@ -541,6 +602,9 @@ const Navbar = ({ onToggleSidebar, sidebarCollapsed, onLogout }) => {
                   <p className="text-xs text-gray-500 truncate">
                     {role || "Admin"}
                   </p>
+                  <p className="text-xs text-gray-400 truncate">
+                    Login {loginTimeLabel}
+                  </p>
                 </div>
               </div>
 
@@ -549,6 +613,7 @@ const Navbar = ({ onToggleSidebar, sidebarCollapsed, onLogout }) => {
                 role={role}
                 userName={userName}
                 userId={userId}
+                loginTimeLabel={loginTimeLabel}
                 isOpen={showUserMenu}
                 onClose={() => setShowUserMenu(false)}
                 onNavigate={navigate}
