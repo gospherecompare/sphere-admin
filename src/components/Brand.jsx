@@ -395,7 +395,7 @@ const Brand = () => {
   const inactiveBrands = brands.filter((b) => b.status === "inactive").length;
 
   return (
-    <div className="min-h-screen bg-gray-50 p-3 sm:p-4 md:p-6 lg:p-8">
+    <div className="min-h-full bg-gray-50 p-1 sm:p-2 md:p-2">
       {/* Header */}
       <div className="mb-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
@@ -937,3 +937,5 @@ const Brand = () => {
 };
 
 export default Brand;
+
+

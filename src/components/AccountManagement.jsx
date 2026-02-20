@@ -328,7 +328,7 @@ const AccountManagement = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-3 sm:p-4 md:p-6 lg:p-8">
+    <div className="min-h-full bg-gray-50 p-1 sm:p-2 md:p-2">
       {/* Header */}
 
       <div className="max-w-6xl mx-auto">
@@ -781,3 +781,5 @@ const AccountManagement = () => {
 };
 
 export default AccountManagement;
+
+

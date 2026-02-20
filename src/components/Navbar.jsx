@@ -28,7 +28,6 @@ import {
   FaBuilding,
   FaImage,
 } from "react-icons/fa";
-import HookLogo from "./Ui/hooklogo";
 
 // Constants and utilities
 
@@ -472,10 +471,6 @@ const Navbar = ({ onToggleSidebar, sidebarCollapsed, onLogout }) => {
     setShowUserMenu((prev) => !prev);
   }, []);
 
-  const handleLogoClick = useCallback(() => {
-    navigate("/dashboard");
-  }, [navigate]);
-
   // Render
   return (
     <>
@@ -493,12 +488,20 @@ const Navbar = ({ onToggleSidebar, sidebarCollapsed, onLogout }) => {
         .animate-slideDown {
           animation: slideDown 0.2s ease-out;
         }
+        @media (min-width: 1024px) {
+          .admin-top-nav .admin-nav-left > :not(.header-search) {
+            display: none !important;
+          }
+          .admin-top-nav [aria-label="HOOKS"] {
+            display: none !important;
+          }
+        }
       `}</style>
 
-      <nav className="bg-white shadow-sm px-3 sm:px-4 md:px-6 py-3 sm:py-4 relative z-50">
+      <nav className="admin-top-nav bg-white shadow-sm px-3 sm:px-4 md:px-6 py-3 sm:py-4 relative z-50">
         <div className="flex items-center justify-between gap-2 sm:gap-3 md:gap-4">
           {/* Left Section */}
-          <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+          <div className="admin-nav-left flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
             {/* Hamburger Menu Button */}
             <button
               onClick={onToggleSidebar}
@@ -512,24 +515,9 @@ const Navbar = ({ onToggleSidebar, sidebarCollapsed, onLogout }) => {
               )}
             </button>
 
-            {/* Mobile-only logo */}
-            <div className="md:hidden flex items-center flex-shrink-0">
-              <HookLogo className="h-8 w-auto sm:h-9" />
-            </div>
-
-            {/* Desktop logo */}
-            <button
-              type="button"
-              onClick={handleLogoClick}
-              className="hidden md:flex items-center flex-shrink-0"
-              aria-label="Go to dashboard"
-            >
-              <HookLogo className="h-9 w-auto lg:h-10" />
-            </button>
-
-            {/* Desktop Search */}
+            {/* Global Search */}
             <div
-              className="hidden md:block ml-2 lg:ml-3 mr-2 lg:mr-4"
+              className="header-search flex-1 min-w-0 mr-1 sm:mr-2 md:mr-4"
               ref={searchContainerRef}
             >
               <form onSubmit={handleSearchSubmit} className="relative">
@@ -550,12 +538,12 @@ const Navbar = ({ onToggleSidebar, sidebarCollapsed, onLogout }) => {
                   }}
                   className="pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-full
                          focus:outline-none focus:ring-2 focus:ring-blue-500
-                         focus:border-transparent w-48 sm:w-56 md:w-48 lg:w-56 xl:w-72 search-input"
+                         focus:border-transparent w-full search-input"
                 />
 
                 {/* Search Suggestions */}
                 {showSuggestions && (
-                  <div className="absolute left-0 right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-xl z-50 max-h-80 overflow-y-auto w-48 sm:w-56 md:w-48 lg:w-56 xl:w-72">
+                  <div className="absolute left-0 right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-xl z-50 max-h-80 overflow-y-auto">
                     <SearchSuggestions
                       suggestions={suggestions}
                       loading={suggestionsLoading}

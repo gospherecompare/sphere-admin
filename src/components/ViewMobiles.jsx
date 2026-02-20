@@ -157,70 +157,69 @@ const ViewMobiles = () => {
         processedMobiles.forEach((m) => {
           const pid =
             m.id || (m.raw && (m.raw.id || m.raw._id)) || m.rowKey || m.name;
-            if (!groupedMap.has(pid)) {
-              groupedMap.set(pid, {
-                id: m.id,
-                rowKey: pid,
-                name: m.name,
-                brand: m.brand,
-                model: m.model,
-                published: m.published,
-                launch_date:
-                  (m.raw && (m.raw.launch_date || m.raw.launchDate)) ||
-                  m.launch_date ||
-                  null,
-                images: Array.isArray(m.images) ? [...m.images] : [],
-                variants: m.variant
-                  ? [m.variant]
-                  : Array.isArray(m.variants)
-                    ? [...m.variants]
-                    : [],
-                priceList: typeof m.price === "number" ? [m.price] : [],
-                storagesSet: new Set(m.storage ? [m.storage] : []),
-                ramsSet: new Set(m.ram ? [m.ram] : []),
-                raw: m.raw || {},
-                created_at:
-                  (m.raw && (m.raw.created_at || m.raw.createdAt)) ||
-                  null,
-              });
-            } else {
-              const g = groupedMap.get(pid);
-              if (Array.isArray(m.images))
-                g.images.push(...m.images.filter(Boolean));
-              if (m.variant) g.variants.push(m.variant);
-              if (Array.isArray(m.variants)) g.variants.push(...m.variants);
-              if (typeof m.price === "number") g.priceList.push(m.price);
-              if (m.storage) g.storagesSet.add(m.storage);
-              if (m.ram) g.ramsSet.add(m.ram);
-              g.published = g.published || m.published;
-              if (!g.launch_date && m.launch_date) g.launch_date = m.launch_date;
-            }
-          });
+          if (!groupedMap.has(pid)) {
+            groupedMap.set(pid, {
+              id: m.id,
+              rowKey: pid,
+              name: m.name,
+              brand: m.brand,
+              model: m.model,
+              published: m.published,
+              launch_date:
+                (m.raw && (m.raw.launch_date || m.raw.launchDate)) ||
+                m.launch_date ||
+                null,
+              images: Array.isArray(m.images) ? [...m.images] : [],
+              variants: m.variant
+                ? [m.variant]
+                : Array.isArray(m.variants)
+                  ? [...m.variants]
+                  : [],
+              priceList: typeof m.price === "number" ? [m.price] : [],
+              storagesSet: new Set(m.storage ? [m.storage] : []),
+              ramsSet: new Set(m.ram ? [m.ram] : []),
+              raw: m.raw || {},
+              created_at:
+                (m.raw && (m.raw.created_at || m.raw.createdAt)) || null,
+            });
+          } else {
+            const g = groupedMap.get(pid);
+            if (Array.isArray(m.images))
+              g.images.push(...m.images.filter(Boolean));
+            if (m.variant) g.variants.push(m.variant);
+            if (Array.isArray(m.variants)) g.variants.push(...m.variants);
+            if (typeof m.price === "number") g.priceList.push(m.price);
+            if (m.storage) g.storagesSet.add(m.storage);
+            if (m.ram) g.ramsSet.add(m.ram);
+            g.published = g.published || m.published;
+            if (!g.launch_date && m.launch_date) g.launch_date = m.launch_date;
+          }
+        });
 
-          const groupedMobiles = Array.from(groupedMap.values()).map((g) => {
-            const prices = (g.priceList || []).filter(
-              (p) => typeof p === "number" && p > 0,
-            );
-            const price = prices.length ? Math.min(...prices) : 0;
-            const storages = Array.from(g.storagesSet || []).filter(Boolean);
-            const rams = Array.from(g.ramsSet || []).filter(Boolean);
-            return {
-              id: g.id,
-              rowKey: g.rowKey,
-              name: g.name,
-              brand: g.brand,
-              model: g.model,
-              published: g.published,
-              launch_date: g.launch_date,
-              images: Array.from(new Set(g.images || [])).filter(Boolean),
-              variants: g.variants || [],
-              price,
-              storage: storages.join("/") || "",
-              ram: rams.join("/") || "",
-              raw: g.raw || {},
-              created_at: g.created_at,
-            };
-          });
+        const groupedMobiles = Array.from(groupedMap.values()).map((g) => {
+          const prices = (g.priceList || []).filter(
+            (p) => typeof p === "number" && p > 0,
+          );
+          const price = prices.length ? Math.min(...prices) : 0;
+          const storages = Array.from(g.storagesSet || []).filter(Boolean);
+          const rams = Array.from(g.ramsSet || []).filter(Boolean);
+          return {
+            id: g.id,
+            rowKey: g.rowKey,
+            name: g.name,
+            brand: g.brand,
+            model: g.model,
+            published: g.published,
+            launch_date: g.launch_date,
+            images: Array.from(new Set(g.images || [])).filter(Boolean),
+            variants: g.variants || [],
+            price,
+            storage: storages.join("/") || "",
+            ram: rams.join("/") || "",
+            raw: g.raw || {},
+            created_at: g.created_at,
+          };
+        });
 
         setMobiles(groupedMobiles);
         showToast("Success", "Mobiles loaded successfully", "success");
@@ -405,12 +404,14 @@ const ViewMobiles = () => {
     .sort((a, b) => {
       if (sortBy === "newest") {
         return (
-          new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+          new Date(b.created_at || 0).getTime() -
+          new Date(a.created_at || 0).getTime()
         );
       }
       if (sortBy === "oldest") {
         return (
-          new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime()
+          new Date(a.created_at || 0).getTime() -
+          new Date(b.created_at || 0).getTime()
         );
       }
       if (sortBy === "name") {
@@ -787,7 +788,7 @@ const ViewMobiles = () => {
   const unpublishedMobiles = mobiles.filter((m) => !m.published).length;
 
   return (
-    <div className="min-h-screen bg-gray-50 p-3 sm:p-4 md:p-6 lg:p-8">
+    <div className="min-h-full bg-white p-1 sm:p-2 md:p-2">
       {/* Toast Container */}
       <div className="fixed top-4 right-4 z-50 space-y-2 max-w-xs">
         {toasts.map((toast) => (

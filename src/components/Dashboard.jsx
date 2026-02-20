@@ -523,7 +523,7 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-3 sm:p-4 md:p-6 lg:p-8">
+    <div className="min-h-full bg-gray-50 p-1 sm:p-2 md:p-2">
       {/* Header Section */}
       <div className="mb-6 sm:mb-8">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 sm:gap-6 mb-6 sm:mb-8">
@@ -1251,3 +1251,4 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
+

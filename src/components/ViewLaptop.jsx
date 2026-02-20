@@ -457,7 +457,7 @@ const ViewLaptops = () => {
   const unpublishedLaptops = laptops.filter((l) => !l.published).length;
 
   return (
-    <div className="min-h-screen bg-gray-50 p-3 sm:p-4 md:p-6 lg:p-8">
+    <div className="min-h-full bg-gray-50 p-1 sm:p-2 md:p-2">
       {/* Toast Container */}
       <div className="fixed top-4 right-4 z-50 space-y-2">
         {toasts.map((toast) => (
@@ -982,3 +982,5 @@ const ViewLaptops = () => {
 };
 
 export default ViewLaptops;
+
+

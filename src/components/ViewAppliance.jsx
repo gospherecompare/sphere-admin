@@ -1,4 +1,4 @@
-ï»¿import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import CountUp from "react-countup";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
@@ -168,7 +168,7 @@ const ViewTVs = () => {
           const depth = physicalDetails.depth || "";
           const dimensions =
             width || height || depth
-              ? `${width || "-"} Ã— ${height || "-"} Ã— ${depth || "-"}`
+              ? `${width || "-"} × ${height || "-"} × ${depth || "-"}`
               : "N/A";
 
           return {
@@ -527,7 +527,7 @@ const ViewTVs = () => {
   const unpublishedAppliances = appliances.filter((a) => !a.published).length;
 
   return (
-    <div className="min-h-screen bg-gray-50 p-3 sm:p-4 md:p-6 lg:p-8">
+    <div className="min-h-full bg-gray-50 p-1 sm:p-2 md:p-2">
       {/* Toast Container */}
       <div className="fixed top-4 right-4 z-50 space-y-2">
         {toasts.map((toast) => (
@@ -1126,6 +1126,8 @@ const ViewTVs = () => {
 };
 
 export default ViewTVs;
+
+
 
 
 

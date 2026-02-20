@@ -2818,7 +2818,7 @@ const EditMobile = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 p-3 sm:p-4 md:p-6 lg:p-8">
+      <div className="min-h-full bg-gray-50 p-1 sm:p-2 md:p-2">
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="text-center">
             <FaSpinner className="animate-spin text-6xl text-blue-600 mx-auto mb-6" />
@@ -2834,7 +2834,7 @@ const EditMobile = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 p-3 sm:p-4 md:p-6 lg:p-8">
+      <div className="min-h-full bg-gray-50 p-1 sm:p-2 md:p-2">
         <div className="bg-white rounded-lg shadow-md border border-red-200 p-6 md:p-8 text-center">
           <FaExclamationTriangle className="text-5xl text-red-500 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-gray-800 mb-2">
@@ -2861,7 +2861,7 @@ const EditMobile = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-3 sm:p-4 md:p-6 lg:p-8">
+    <div className="min-h-full bg-gray-50 p-1 sm:p-2 md:p-2">
       {/* Toast Container */}
       <div className="fixed top-4 right-4 z-50 space-y-2 max-w-xs">
         {toasts.map((toast) => (
@@ -4389,3 +4389,5 @@ const EditMobile = () => {
 };
 
 export default EditMobile;
+
+
