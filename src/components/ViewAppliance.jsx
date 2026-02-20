@@ -1,6 +1,6 @@
 ﻿import React, { useState, useEffect, useRef } from "react";
 import CountUp from "react-countup";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   FaPlus,
   FaEdit,
@@ -42,8 +42,16 @@ const ViewTVs = () => {
   const [sortBy, setSortBy] = useState("newest");
   const [currentPage, setCurrentPage] = useState(1);
   const [toasts, setToasts] = useState([]);
+  const location = useLocation();
   const navigate = useNavigate();
   const itemsPerPage = 10;
+
+  useEffect(() => {
+    const seededSearch = location.state?.searchTerm;
+    if (typeof seededSearch === "string" && seededSearch.trim()) {
+      setSearchTerm(seededSearch.trim());
+    }
+  }, [location.key, location.state]);
 
   const asObject = (value) =>
     value && typeof value === "object" && !Array.isArray(value) ? value : {};

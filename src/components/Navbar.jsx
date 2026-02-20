@@ -9,6 +9,7 @@ import React, {
 import { useLocation, useNavigate } from "react-router-dom";
 import Cookies from "js-cookie";
 import { buildUrl } from "../api";
+import { getSearchNavigationTarget } from "../utils/searchNavigation";
 import {
   FaSearch,
   FaBell,
@@ -429,18 +430,15 @@ const Navbar = ({ onToggleSidebar, sidebarCollapsed, onLogout }) => {
 
   const handleSelectSuggestion = useCallback(
     (suggestion) => {
-      if (suggestion.type === "product") {
-        navigate(`/product/${encodeURIComponent(suggestion.name)}`);
-      } else if (suggestion.type === "brand") {
-        navigate(`/brand/${encodeURIComponent(suggestion.name)}`);
-      }
+      const target = getSearchNavigationTarget(suggestion, searchQuery.trim());
+      navigate(target.path, target.state ? { state: target.state } : undefined);
 
       setSearchQuery("");
       setSuggestions([]);
       setShowSuggestions(false);
       setActiveIndex(-1);
     },
-    [navigate],
+    [navigate, searchQuery],
   );
 
   const performSearch = useCallback(
@@ -541,7 +539,7 @@ const Navbar = ({ onToggleSidebar, sidebarCollapsed, onLogout }) => {
                 <input
                   ref={searchInputRef}
                   type="text"
-                  placeholder="Search products..."
+                  placeholder="Search products, brands..."
                   value={searchQuery}
                   onChange={handleSearchChange}
                   onKeyDown={handleKeyDown}

@@ -1,6 +1,7 @@
 // components/Brand.js
 import React, { useState, useEffect } from "react";
 import Cookies from "js-cookie";
+import { useLocation } from "react-router-dom";
 import { buildUrl } from "../api";
 import { uploadToCloudinary } from "../config/cloudinary";
 import CountUp from "react-countup";
@@ -26,6 +27,7 @@ import {
 } from "react-icons/fa";
 
 const Brand = () => {
+  const location = useLocation();
   const [formData, setFormData] = useState({
     name: "",
     logo: "",
@@ -47,6 +49,13 @@ const Brand = () => {
   const [statusUpdatingId, setStatusUpdatingId] = useState(null);
   const [activeFilter, setActiveFilter] = useState("all");
   const [sortBy, setSortBy] = useState("newest");
+
+  useEffect(() => {
+    const seededSearch = location.state?.searchTerm;
+    if (typeof seededSearch === "string" && seededSearch.trim()) {
+      setSearchTerm(seededSearch.trim());
+    }
+  }, [location.key, location.state]);
 
   const categoryTypes = [
     "Electronics",

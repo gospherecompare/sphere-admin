@@ -42,6 +42,7 @@ import EditLaptop from "./components/EditLaptop";
 import EditHomeAppliance from "./components/EditAppliance";
 import CompareScoring from "./components/Settings/CompareScoring";
 import Cookies from "js-cookie";
+import GlobalSearchResults from "./components/GlobalSearchResults";
 
 const AUTH_NOTICE_STORAGE_KEY = "hooksAdminAuthNotice";
 const POST_LOGIN_REDIRECT_KEY = "hooksAdminPostLoginRedirect";
@@ -283,6 +284,7 @@ function App() {
                   path="/dashboard"
                   element={<Dashboard isMobile={isMobile} />}
                 />
+                <Route path="/search" element={<GlobalSearchResults />} />
                 <Route
                   path="/products/laptops/:id/edit"
                   element={<EditLaptop />}
