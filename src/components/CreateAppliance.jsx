@@ -449,8 +449,10 @@ const CreateHomeAppliance = () => {
       variants: [
         ...prev.variants,
         {
+          screen_size: "",
           variant_key: "",
           base_price: "",
+          images: [],
           stores: [],
         },
       ],
@@ -471,6 +473,7 @@ const CreateHomeAppliance = () => {
             price: "",
             url: "",
             offer_text: "",
+            delivery_info: "",
           },
         ],
       };
@@ -512,6 +515,58 @@ const CreateHomeAppliance = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleVariantImageUpload = async (variantIndex, files) => {
+    if (!files || files.length === 0) return;
+    const fileList = Array.from(files);
+    setIsLoading(true);
+    try {
+      const uploadedImages = [];
+      for (const file of fileList) {
+        const data = await uploadToCloudinary(file, "appliances");
+        if (data && data.secure_url) uploadedImages.push(data.secure_url);
+      }
+
+      setFormData((prev) => {
+        const updatedVariants = [...(prev.variants || [])];
+        const target = updatedVariants[variantIndex] || {};
+        const existingImages = Array.isArray(target.images) ? target.images : [];
+        updatedVariants[variantIndex] = {
+          ...target,
+          images: [...existingImages, ...uploadedImages],
+        };
+        return { ...prev, variants: updatedVariants };
+      });
+      showToast(
+        "Upload Successful",
+        `${uploadedImages.length} variant image(s) uploaded`,
+        "success",
+      );
+    } catch (error) {
+      console.error("Variant image upload error:", error);
+      showToast(
+        "Upload Failed",
+        error.message || "Error uploading variant images",
+        "error",
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const removeVariantImage = (variantIndex, imageIndex) => {
+    setFormData((prev) => {
+      const updatedVariants = [...(prev.variants || [])];
+      const target = updatedVariants[variantIndex] || {};
+      const existingImages = Array.isArray(target.images) ? target.images : [];
+      updatedVariants[variantIndex] = {
+        ...target,
+        images: existingImages.filter((_, idx) => idx !== imageIndex),
+      };
+      return { ...prev, variants: updatedVariants };
+    });
+    showToast("Image Removed", "Variant image removed successfully", "info");
   };
 
   // Remove image
@@ -763,18 +818,128 @@ const CreateHomeAppliance = () => {
 
     try {
       const token = Cookies.get("authToken");
+      const releaseYear = formData.home_appliance.release_year
+        ? Number(formData.home_appliance.release_year)
+        : new Date().getFullYear();
+      const countryOfOrigin = formData.home_appliance.country_of_origin || null;
+
+      const normalizeTvStores = (stores = []) => {
+        const byStore = new Map();
+        (Array.isArray(stores) ? stores : []).forEach((store) => {
+          const storeName = String(
+            store?.store_name || store?.store || "",
+          ).trim();
+          if (!storeName) return;
+          const normalizedRow = {
+            store_name: storeName,
+            price:
+              store?.price !== undefined &&
+              store?.price !== null &&
+              store?.price !== ""
+                ? Number(store.price)
+                : null,
+            url: store?.url || null,
+            offer_text: store?.offer_text || null,
+            delivery_info: store?.delivery_info || null,
+          };
+          const mapKey = storeName.toLowerCase();
+          const previous = byStore.get(mapKey);
+          if (!previous) {
+            byStore.set(mapKey, normalizedRow);
+            return;
+          }
+          const prevPrice =
+            typeof previous.price === "number" ? previous.price : null;
+          const nextPrice =
+            typeof normalizedRow.price === "number" ? normalizedRow.price : null;
+          const shouldReplace =
+            (nextPrice !== null && prevPrice === null) ||
+            (nextPrice !== null && prevPrice !== null && nextPrice < prevPrice);
+          if (shouldReplace) byStore.set(mapKey, normalizedRow);
+        });
+        return Array.from(byStore.values()).sort((a, b) => {
+          const pa = typeof a.price === "number" ? a.price : null;
+          const pb = typeof b.price === "number" ? b.price : null;
+          if (pa !== null && pb !== null && pa !== pb) return pa - pb;
+          if (pa !== null && pb === null) return -1;
+          if (pa === null && pb !== null) return 1;
+          return String(a.store_name || "").localeCompare(
+            String(b.store_name || ""),
+          );
+        });
+      };
+
+      const tvVariants = (formData.variants || [])
+        .map((variant, index) => {
+          const screenSize = String(
+            variant?.screen_size || variant?.variant_key || "",
+          ).trim();
+          const variantKey = String(
+            variant?.variant_key || screenSize || `tv_variant_${index + 1}`,
+          ).trim();
+          const images = (Array.isArray(variant?.images) ? variant.images : [])
+            .map((img) => String(img || "").trim())
+            .filter(Boolean);
+          const storePrices = normalizeTvStores(
+            Array.isArray(variant?.stores)
+              ? variant.stores
+              : Array.isArray(variant?.store_prices)
+                ? variant.store_prices
+                : [],
+          );
+          const basePrice =
+            variant?.base_price !== undefined &&
+            variant?.base_price !== null &&
+            variant?.base_price !== ""
+              ? Number(variant.base_price)
+              : null;
+
+          if (!variantKey && !screenSize && !basePrice && !storePrices.length) {
+            return null;
+          }
+
+          return {
+            variant_key: variantKey,
+            screen_size: screenSize || null,
+            base_price: Number.isFinite(basePrice) ? basePrice : null,
+            images,
+            store_prices: storePrices,
+          };
+        })
+        .filter(Boolean);
+
       const submitData = {
         product: {
           name: formData.product.name,
           brand_id: Number(formData.product.brand_id),
         },
+        product_name: formData.product.name,
+        brand_id: Number(formData.product.brand_id),
+        category: formData.home_appliance.appliance_type || "television",
+        model: formData.home_appliance.model_number,
+        publish: Boolean(publishEnabled),
+        key_specs_json: formData.home_appliance.specifications || {},
+        basic_info_json: {
+          model_number: formData.home_appliance.model_number || null,
+          launch_year: releaseYear || null,
+        },
+        video_engine_json: formData.home_appliance.performance || {},
+        physical_json: formData.home_appliance.physical_details || {},
+        product_details_json: {
+          country_of_origin: countryOfOrigin,
+          launch_year: releaseYear || null,
+        },
+        warranty_json: formData.home_appliance.warranty || {},
+        smart_tv_json: {
+          smart_features: (formData.home_appliance.features || []).filter(Boolean),
+        },
+        images_json: formData.images,
+        variants_json: tvVariants,
         home_appliance: {
           appliance_type: formData.home_appliance.appliance_type,
           model_number: formData.home_appliance.model_number,
-          release_year: formData.home_appliance.release_year
-            ? Number(formData.home_appliance.release_year)
-            : new Date().getFullYear(),
-          country_of_origin: formData.home_appliance.country_of_origin || null,
+          release_year: releaseYear,
+          country_of_origin: countryOfOrigin,
           specifications: formData.home_appliance.specifications,
           features: formData.home_appliance.features.filter(Boolean),
           performance: formData.home_appliance.performance,
@@ -782,15 +947,9 @@ const CreateHomeAppliance = () => {
           warranty: formData.home_appliance.warranty,
         },
         images: formData.images,
-        variants: formData.variants.map((v) => ({
-          variant_key: v.variant_key || null,
-          base_price: v.base_price ? Number(v.base_price) : null,
-          stores: v.stores.map((s) => ({
-            store_name: s.store_name || null,
-            price: s.price ? Number(s.price) : null,
-            url: s.url || null,
-            offer_text: s.offer_text || null,
-          })),
+        variants: tvVariants.map((v) => ({
+          ...v,
+          stores: v.store_prices,
         })),
         published: publishEnabled,
       };
@@ -1656,10 +1815,32 @@ const CreateHomeAppliance = () => {
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
                     <div>
                       <label className="block text-xs font-medium text-gray-600 mb-1">
-                        Variant Key
+                        Screen Size
+                      </label>
+                      <input
+                        type="text"
+                        value={variant.screen_size || ""}
+                        onChange={(e) => {
+                          const newVariants = [...formData.variants];
+                          newVariants[index] = {
+                            ...newVariants[index],
+                            screen_size: e.target.value,
+                          };
+                          setFormData((prev) => ({
+                            ...prev,
+                            variants: newVariants,
+                          }));
+                        }}
+                        placeholder="e.g., 43 inch, 55 inch"
+                        className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Variant Key (optional)
                       </label>
                       <input
                         type="text"
@@ -1701,6 +1882,56 @@ const CreateHomeAppliance = () => {
                         className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
                       />
                     </div>
+                  </div>
+
+                  <div className="mt-2 mb-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-sm font-medium text-gray-700">
+                        Variant Images
+                      </h4>
+                      <label className="text-xs text-blue-600 hover:text-blue-700 cursor-pointer">
+                        + Upload
+                        <input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          className="hidden"
+                          onChange={(e) => {
+                            const files = Array.from(e.target.files || []);
+                            if (files.length) handleVariantImageUpload(index, files);
+                            e.target.value = "";
+                          }}
+                        />
+                      </label>
+                    </div>
+                    {Array.isArray(variant.images) && variant.images.length > 0 ? (
+                      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+                        {variant.images.map((img, imageIndex) => (
+                          <div
+                            key={`${index}-variant-image-${imageIndex}`}
+                            className="relative rounded border border-gray-200 overflow-hidden bg-white"
+                          >
+                            <img
+                              src={img}
+                              alt={`Variant ${index + 1} ${imageIndex + 1}`}
+                              className="w-full h-16 object-cover"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeVariantImage(index, imageIndex)}
+                              className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 text-white text-[10px] flex items-center justify-center"
+                              title="Remove image"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-gray-500">
+                        No variant images added
+                      </p>
+                    )}
                   </div>
 
                   <div className="mt-4">
@@ -1837,6 +2068,41 @@ const CreateHomeAppliance = () => {
                             placeholder="Offer text"
                             className="px-2 py-1 border border-gray-300 rounded text-sm"
                           />
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
+                          <input
+                            type="text"
+                            value={store.delivery_info || ""}
+                            onChange={(e) => {
+                              const newVariants = [...formData.variants];
+                              newVariants[index].stores[storeIndex] = {
+                                ...newVariants[index].stores[storeIndex],
+                                delivery_info: e.target.value,
+                              };
+                              setFormData((prev) => ({
+                                ...prev,
+                                variants: newVariants,
+                              }));
+                            }}
+                            placeholder="Delivery info (optional)"
+                            className="px-2 py-1 border border-gray-300 rounded text-sm"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newVariants = [...formData.variants];
+                              newVariants[index].stores = (newVariants[index].stores || []).filter(
+                                (_, idx) => idx !== storeIndex,
+                              );
+                              setFormData((prev) => ({
+                                ...prev,
+                                variants: newVariants,
+                              }));
+                            }}
+                            className="px-2 py-1 border border-red-200 text-red-600 rounded text-sm hover:bg-red-50"
+                          >
+                            Remove Store
+                          </button>
                         </div>
                       </div>
                     ))}

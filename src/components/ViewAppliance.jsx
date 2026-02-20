@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+﻿import React, { useState, useEffect, useRef } from "react";
 import CountUp from "react-countup";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
@@ -24,6 +24,7 @@ import {
   FaRulerCombined,
   FaShieldAlt,
   FaCog,
+  FaTag,
   FaCube,
   FaFlag,
   FaTv,
@@ -135,6 +136,63 @@ const ViewTVs = () => {
                 : [];
 
           const id = resolveTvId(appliance);
+          const rawVariants = Array.isArray(appliance.variants)
+            ? appliance.variants
+            : Array.isArray(appliance.variants_json)
+              ? appliance.variants_json
+              : [];
+          const normalizedVariants = rawVariants.map((row, index) => {
+            const variant = asObject(row);
+            const stores = Array.isArray(variant.store_prices)
+              ? variant.store_prices
+              : Array.isArray(variant.stores)
+                ? variant.stores
+                : [];
+            return {
+              variant_id: variant.variant_id || variant.id || index + 1,
+              variant_key:
+                variant.variant_key ||
+                variant.screen_size ||
+                `tv_variant_${index + 1}`,
+              screen_size:
+                variant.screen_size || variant.size || variant.variant_key || "",
+              base_price:
+                variant.base_price !== undefined && variant.base_price !== null
+                  ? Number(variant.base_price)
+                  : null,
+              store_prices: stores
+                .map((store) => ({
+                  store_name: store?.store_name || store?.store || "",
+                  price:
+                    store?.price !== undefined && store?.price !== null
+                      ? Number(store.price)
+                      : null,
+                }))
+                .filter((store) => store.store_name),
+            };
+          });
+          const variantSizes = Array.from(
+            new Set(
+              normalizedVariants
+                .map((variant) => String(variant.screen_size || "").trim())
+                .filter(Boolean),
+            ),
+          );
+          const variantPrices = normalizedVariants
+            .flatMap((variant) => [
+              variant.base_price,
+              ...(variant.store_prices || []).map((store) => store.price),
+            ])
+            .filter(
+              (price) =>
+                typeof price === "number" &&
+                Number.isFinite(price) &&
+                price > 0,
+            );
+          const minVariantPrice = variantPrices.length
+            ? Math.min(...variantPrices)
+            : null;
+
           const applianceTypeRaw =
             appliance.category ||
             appliance.appliance_type ||
@@ -152,6 +210,7 @@ const ViewTVs = () => {
             display.screen_size ||
             keySpecs.size ||
             display.size ||
+            (variantSizes.length ? variantSizes.join(", ") : "") ||
             "N/A";
           const motor =
             keySpecs.refresh_rate ||
@@ -168,7 +227,7 @@ const ViewTVs = () => {
           const depth = physicalDetails.depth || "";
           const dimensions =
             width || height || depth
-              ? `${width || "-"} � ${height || "-"} � ${depth || "-"}`
+              ? `${width || "-"} × ${height || "-"} × ${depth || "-"}`
               : "N/A";
 
           return {
@@ -190,6 +249,9 @@ const ViewTVs = () => {
             type: formatScalar(type),
             motor: formatScalar(motor),
             capacity: formatScalar(capacity),
+            variantCount: normalizedVariants.length,
+            variantSizes,
+            minPrice: minVariantPrice,
             energyRating: formatScalar(energyRating),
             waterConsumption: formatScalar(waterConsumption),
             dimensions: formatScalar(dimensions),
@@ -215,6 +277,7 @@ const ViewTVs = () => {
               appliance.is_published ?? appliance.published ?? appliance.publish,
             ),
             launch_date: appliance.created_at || appliance.updated_at || null,
+            variants: normalizedVariants,
             raw: appliance,
           };
         });
@@ -820,7 +883,15 @@ const ViewTVs = () => {
                           </div>
                           <div className="text-xs text-gray-500 mt-1">
                             Model: {appliance.model} | {appliance.releaseYear}
+                            {appliance.variantCount > 0
+                              ? ` | ${appliance.variantCount} variants`
+                              : ""}
                           </div>
+                          {appliance.minPrice ? (
+                            <div className="text-xs text-emerald-600 mt-1 font-semibold">
+                              Starts at ₹{Number(appliance.minPrice).toLocaleString()}
+                            </div>
+                          ) : null}
                         </div>
                       </div>
                     </td>
@@ -840,6 +911,12 @@ const ViewTVs = () => {
                             {appliance.motor}
                           </span>
                         </div>
+                        {appliance.variantSizes.length > 0 && (
+                          <div className="flex items-center text-xs text-gray-600">
+                            <FaTag className="text-gray-400 mr-2 flex-shrink-0" />
+                            <span>{appliance.variantSizes.join(", ")}</span>
+                          </div>
+                        )}
                         <div className="flex items-center text-sm">
                           <FaShieldAlt className="text-gray-400 mr-2 flex-shrink-0" />
                           <span className="text-gray-900 text-xs">
@@ -1126,6 +1203,7 @@ const ViewTVs = () => {
 };
 
 export default ViewTVs;
+
 
 
 
