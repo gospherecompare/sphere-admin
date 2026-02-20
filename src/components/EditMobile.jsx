@@ -111,6 +111,7 @@ const EditMobile = () => {
     brand: "",
     model: "",
     launch_date: "",
+    created_at: "",
     images: [],
     colors: [],
     variants: [],
@@ -146,6 +147,48 @@ const EditMobile = () => {
     "November",
     "December",
   ];
+
+  const parseDateSafe = (value) => {
+    if (!value) return null;
+    const str = String(value).trim();
+    if (!str) return null;
+
+    // Keep date-only values stable without timezone drift.
+    const dateOnly = str.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (dateOnly) {
+      const year = Number(dateOnly[1]);
+      const month = Number(dateOnly[2]) - 1;
+      const day = Number(dateOnly[3]);
+      const d = new Date(year, month, day);
+      return Number.isNaN(d.getTime()) ? null : d;
+    }
+
+    const d = new Date(str);
+    return Number.isNaN(d.getTime()) ? null : d;
+  };
+
+  const toDateInputValue = (value) => {
+    if (!value) return "";
+    const str = String(value).trim();
+    if (!str) return "";
+
+    // Accept values like 2026-02-20T00:00:00.000Z / 2026-02-20
+    const isoPrefix = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (isoPrefix) {
+      return `${isoPrefix[1]}-${isoPrefix[2]}-${isoPrefix[3]}`;
+    }
+
+    const parsed = parseDateSafe(str);
+    return parsed ? parsed.toISOString().split("T")[0] : "";
+  };
+
+  const pickFirstValidDateInput = (...values) => {
+    for (const value of values) {
+      const normalized = toDateInputValue(value);
+      if (normalized) return normalized;
+    }
+    return "";
+  };
 
   // Generate years for dropdown
   const generateYears = () => {
@@ -245,12 +288,14 @@ const EditMobile = () => {
   // Initialize date from form data
   useEffect(() => {
     if (formData?.launch_date) {
-      const date = new Date(formData.launch_date);
-      setSelectedDate({
-        year: date.getFullYear(),
-        month: date.getMonth(),
-        day: date.getDate(),
-      });
+      const date = parseDateSafe(formData.launch_date);
+      if (date) {
+        setSelectedDate({
+          year: date.getFullYear(),
+          month: date.getMonth(),
+          day: date.getDate(),
+        });
+      }
     }
   }, [formData?.launch_date]);
 
@@ -824,9 +869,13 @@ const EditMobile = () => {
             apiData?.brand || apiData?.brand_name || apiData?.brandName || "",
           model: apiData?.model || "",
           // rating removed
-          launch_date: apiData?.launch_date
-            ? new Date(apiData.launch_date).toISOString().split("T")[0]
-            : "",
+          launch_date: pickFirstValidDateInput(
+            apiData?.launch_date,
+            apiData?.launchDate,
+            apiData?.created_at,
+            apiData?.createdAt,
+          ),
+          created_at: apiData?.created_at || apiData?.createdAt || "",
           images: Array.isArray(
             safeParse(apiData?.images_json ?? apiData?.images, []),
           )
@@ -2575,38 +2624,41 @@ const EditMobile = () => {
       });
     };
 
+    const launchDateObj = parseDateSafe(formData.launch_date);
+    const hasValidLaunchDate = !!launchDateObj;
+
     return (
       <div className="relative" ref={datePickerRef}>
         <button
           type="button"
           onClick={() => setShowDatePicker(!showDatePicker)}
           className={`w-full px-4 py-2.5 border-2 transition-all rounded-lg bg-white text-left flex items-center justify-between ${
-            formData.launch_date
+            hasValidLaunchDate
               ? "border-blue-400 shadow-sm"
               : "border-gray-300 hover:border-gray-400"
           } hover:shadow-md`}
         >
           <div className="flex items-center space-x-3">
             <FaCalendar
-              className={`text-lg ${formData.launch_date ? "text-blue-500" : "text-gray-400"}`}
+              className={`text-lg ${hasValidLaunchDate ? "text-blue-500" : "text-gray-400"}`}
             />
             <div>
               <span
                 className={`block font-medium ${
-                  formData.launch_date ? "text-gray-900" : "text-gray-500"
+                  hasValidLaunchDate ? "text-gray-900" : "text-gray-500"
                 }`}
               >
-                {formData.launch_date
-                  ? new Date(formData.launch_date).toLocaleDateString("en-US", {
+                {hasValidLaunchDate
+                  ? launchDateObj.toLocaleDateString("en-US", {
                       year: "numeric",
                       month: "long",
                       day: "numeric",
                     })
                   : "Select Launch Date"}
               </span>
-              {formData.launch_date && (
+              {hasValidLaunchDate && (
                 <span className="text-xs text-gray-500">
-                  {new Date(formData.launch_date).toLocaleDateString("en-US", {
+                  {launchDateObj.toLocaleDateString("en-US", {
                     weekday: "short",
                   })}
                 </span>
@@ -2952,6 +3004,18 @@ const EditMobile = () => {
                     Launch Date
                   </label>
                   <DatePicker />
+                  {parseDateSafe(formData.created_at) && (
+                    <p className="mt-2 text-xs text-gray-500">
+                      Created:{" "}
+                      {parseDateSafe(formData.created_at).toLocaleString("en-US", {
+                        year: "numeric",
+                        month: "short",
+                        day: "2-digit",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>

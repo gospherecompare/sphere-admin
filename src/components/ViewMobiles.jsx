@@ -634,6 +634,7 @@ const ViewMobiles = () => {
       }
 
       const date = new Date(dateString);
+      if (Number.isNaN(date.getTime())) return "N/A";
       return date.toLocaleDateString("en-GB", {
         day: "2-digit",
         month: "short",
@@ -648,6 +649,7 @@ const ViewMobiles = () => {
     if (!dateString) return "N/A";
     try {
       const date = new Date(dateString);
+      if (Number.isNaN(date.getTime())) return "N/A";
       return date.toLocaleString("en-GB", {
         day: "2-digit",
         month: "short",
