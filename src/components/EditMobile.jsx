@@ -5,6 +5,7 @@ import Cookies from "js-cookie";
 import { buildUrl } from "../api";
 import { uploadToCloudinary } from "../config/cloudinary";
 import DynamicForm from "./DynamicForm";
+import useFormDraft from "../hooks/useFormDraft";
 import {
   FaMobile,
   FaSave,
@@ -131,6 +132,12 @@ const EditMobile = () => {
   };
 
   const [formData, setFormData] = useState(defaultFormData);
+  const { clearDraft } = useFormDraft({
+    draftKey: `hooks-admin:edit-mobile:${id}`,
+    value: formData,
+    setValue: setFormData,
+    enabled: dataLoaded,
+  });
 
   // Months array
   const months = [
@@ -1613,6 +1620,7 @@ const EditMobile = () => {
       );
 
       // Navigate back after short delay
+      clearDraft();
       setTimeout(() => {
         navigate(-1);
       }, 1500);

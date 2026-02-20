@@ -3,6 +3,7 @@ import Cookies from "js-cookie";
 import { buildUrl } from "../api";
 import { uploadToCloudinary } from "../config/cloudinary";
 import DynamicForm from "./DynamicForm";
+import useFormDraft from "../hooks/useFormDraft";
 import {
   FaMobile,
   FaSave,
@@ -147,25 +148,27 @@ const createDefaultSmartphoneSpecs = () => ({
   },
 });
 
+const createInitialMobileFormData = () => ({
+  product: {
+    name: "",
+    brand_id: "",
+  },
+  smartphone: {
+    segment: "Smart Phone",
+    brand: "",
+    model: "",
+    launch_date: "",
+    colors: [],
+    is_foldable: false,
+    ...createDefaultSmartphoneSpecs(),
+    sensors: "",
+  },
+  images: [],
+  variants: [],
+});
+
 const CreateMobile = () => {
-  const [formData, setFormData] = useState({
-    product: {
-      name: "",
-      brand_id: "",
-    },
-    smartphone: {
-      segment: "Smart Phone",
-      brand: "",
-      model: "",
-      launch_date: "",
-      colors: [],
-      is_foldable: false,
-      ...createDefaultSmartphoneSpecs(),
-      sensors: "",
-    },
-    images: [],
-    variants: [],
-  });
+  const [formData, setFormData] = useState(createInitialMobileFormData);
 
   const [isLoading, setIsLoading] = useState(false);
   const [activeSpecTab, setActiveSpecTab] = useState("build_design");
@@ -220,6 +223,12 @@ const CreateMobile = () => {
 
   // Categories for dropdown (fetched from API)
   const [categoriesList, setCategoriesList] = useState([]);
+
+  const { clearDraft } = useFormDraft({
+    draftKey: "hooks-admin:create-mobile:draft",
+    value: formData,
+    setValue: setFormData,
+  });
 
   // Filter categories based on search
   const filteredCategories = categoriesList.filter((category) =>
@@ -1187,21 +1196,8 @@ const CreateMobile = () => {
       );
 
       // Reset form
-      setFormData({
-        product: { name: "", brand_id: "" },
-        smartphone: {
-          segment: "Smart Phone",
-          brand: "",
-          model: "",
-          launch_date: "",
-          colors: [],
-          is_foldable: false,
-          ...createDefaultSmartphoneSpecs(),
-          sensors: "",
-        },
-        images: [],
-        variants: [],
-      });
+      clearDraft();
+      setFormData(createInitialMobileFormData());
       setPublishEnabled(false);
     } catch (error) {
       console.error("Create mobile error:", error);

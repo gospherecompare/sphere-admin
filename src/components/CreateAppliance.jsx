@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef, createRef } from "react";
 import Cookies from "js-cookie";
 import { buildUrl } from "../api";
 import { uploadToCloudinary } from "../config/cloudinary";
+import useFormDraft from "../hooks/useFormDraft";
 import {
   FaSave,
   FaTimes,
@@ -36,27 +37,29 @@ import {
   FaCalendar,
 } from "react-icons/fa";
 
+const createInitialApplianceFormData = () => ({
+  product: {
+    name: "",
+    brand_id: "",
+  },
+  home_appliance: {
+    appliance_type: "",
+    model_number: "",
+    release_year: new Date().getFullYear(),
+    release_date: "",
+    country_of_origin: "",
+    specifications: {},
+    features: [],
+    performance: {},
+    physical_details: {},
+    warranty: {},
+  },
+  images: [],
+  variants: [],
+});
+
 const CreateHomeAppliance = () => {
-  const [formData, setFormData] = useState({
-    product: {
-      name: "",
-      brand_id: "",
-    },
-    home_appliance: {
-      appliance_type: "",
-      model_number: "",
-      release_year: new Date().getFullYear(),
-      release_date: "",
-      country_of_origin: "",
-      specifications: {},
-      features: [],
-      performance: {},
-      physical_details: {},
-      warranty: {},
-    },
-    images: [],
-    variants: [],
-  });
+  const [formData, setFormData] = useState(createInitialApplianceFormData);
 
   const [isLoading, setIsLoading] = useState(false);
   const [activeSpecTab, setActiveSpecTab] = useState("specifications");
@@ -112,6 +115,12 @@ const CreateHomeAppliance = () => {
   const brandDropdownRef = useRef(null);
   const applianceDropdownRef = useRef(null);
   const yearDropdownRef = useRef(null);
+
+  const { clearDraft } = useFormDraft({
+    draftKey: "hooks-admin:create-tv:draft",
+    value: formData,
+    setValue: setFormData,
+  });
 
   // Appliance types with icons
   const applianceTypes = [
@@ -809,22 +818,8 @@ const CreateHomeAppliance = () => {
       );
 
       // Reset form
-      setFormData({
-        product: { name: "", brand_id: "" },
-        home_appliance: {
-          appliance_type: "",
-          model_number: "",
-          release_year: new Date().getFullYear(),
-          country_of_origin: "",
-          specifications: {},
-          features: [],
-          performance: {},
-          physical_details: {},
-          warranty: {},
-        },
-        images: [],
-        variants: [],
-      });
+      clearDraft();
+      setFormData(createInitialApplianceFormData());
       setCustomJsonFields({});
       setPublishEnabled(false);
     } catch (error) {

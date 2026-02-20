@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef, createRef } from "react";
 import Cookies from "js-cookie";
 import { buildUrl } from "../api";
 import { uploadToCloudinary } from "../config/cloudinary";
+import useFormDraft from "../hooks/useFormDraft";
 import {
   FaLaptop,
   FaSave,
@@ -38,36 +39,38 @@ import {
   FaPercent,
 } from "react-icons/fa";
 
+const createInitialLaptopFormData = () => ({
+  product: {
+    name: "",
+    brand_id: "",
+  },
+  laptop: {
+    category: "",
+    brand: "",
+    model: "",
+    launch_date: "",
+    colors: [],
+    cpu: {},
+    display: {},
+    memory: {},
+    storage: {},
+    battery: {},
+    connectivity: {},
+    ports: {},
+    multimedia: {},
+    security: {},
+    camera: {},
+    physical: {},
+    software: {},
+    features: [],
+    warranty: {},
+  },
+  images: [],
+  variants: [],
+});
+
 const CreateLaptop = () => {
-  const [formData, setFormData] = useState({
-    product: {
-      name: "",
-      brand_id: "",
-    },
-    laptop: {
-      category: "",
-      brand: "",
-      model: "",
-      launch_date: "",
-      colors: [],
-      cpu: {},
-      display: {},
-      memory: {},
-      storage: {},
-      battery: {},
-      connectivity: {},
-      ports: {},
-      multimedia: {},
-      security: {},
-      camera: {},
-      physical: {},
-      software: {},
-      features: [],
-      warranty: {},
-    },
-    images: [],
-    variants: [],
-  });
+  const [formData, setFormData] = useState(createInitialLaptopFormData);
 
   const [isLoading, setIsLoading] = useState(false);
   const [activeSpecTab, setActiveSpecTab] = useState("cpu");
@@ -122,6 +125,12 @@ const CreateLaptop = () => {
   const brandDropdownRef = useRef(null);
   const categoryDropdownRef = useRef(null);
   const datePickerRef = useRef(null);
+
+  const { clearDraft } = useFormDraft({
+    draftKey: "hooks-admin:create-laptop:draft",
+    value: formData,
+    setValue: setFormData,
+  });
 
   // Filter categories based on search (use fetched categories only)
   const filteredCategories = (categoriesList || []).filter((category) =>
@@ -860,32 +869,8 @@ const CreateLaptop = () => {
       );
 
       // Reset form
-      setFormData({
-        product: { name: "", brand_id: "" },
-        laptop: {
-          category: "",
-          brand: "",
-          model: "",
-          launch_date: "",
-          colors: [],
-          cpu: {},
-          display: {},
-          memory: {},
-          storage: {},
-          battery: {},
-          connectivity: {},
-          ports: {},
-          multimedia: {},
-          security: {},
-          camera: {},
-          physical: {},
-          software: {},
-          features: [],
-          warranty: {},
-        },
-        images: [],
-        variants: [],
-      });
+      clearDraft();
+      setFormData(createInitialLaptopFormData());
       setCustomJsonFields({});
       setPublishEnabled(false);
     } catch (error) {

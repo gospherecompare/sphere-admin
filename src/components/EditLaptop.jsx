@@ -10,6 +10,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import Cookies from "js-cookie";
 import { buildUrl } from "../api";
 import { uploadToCloudinary } from "../config/cloudinary";
+import useFormDraft from "../hooks/useFormDraft";
 import {
   FaLaptop,
   FaSave,
@@ -83,6 +84,12 @@ const EditLaptop = () => {
   const [isLoading, setIsLoading] = useState(false);
   // UI-only mode: no API fetching
   const [isFetching, setIsFetching] = useState(false);
+  const { clearDraft } = useFormDraft({
+    draftKey: `hooks-admin:edit-laptop:${id}`,
+    value: formData,
+    setValue: setFormData,
+    enabled: Boolean(id) && !isFetching && Boolean(originalData),
+  });
   const [activeSpecTab, setActiveSpecTab] = useState("cpu");
   const [customJsonFields, setCustomJsonFields] = useState({});
   const [brandsList, setBrandsList] = useState([]);
@@ -1256,6 +1263,7 @@ const EditLaptop = () => {
       await res.json();
       // After successful update, re-fetch the persisted laptop to sync state
       await fetchLaptopData();
+      clearDraft();
       setHasChanges(false);
       showToast(
         "Success",

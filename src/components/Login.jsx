@@ -1,6 +1,6 @@
 // components/Login.js
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import Cookies from "js-cookie";
 import { buildUrl } from "../api";
 import {
@@ -19,6 +19,11 @@ import {
 } from "react-icons/fa";
 import HookLogo from "./Ui/hooklogo";
 
+const AUTH_NOTICE_STORAGE_KEY = "hooksAdminAuthNotice";
+const POST_LOGIN_REDIRECT_KEY = "hooksAdminPostLoginRedirect";
+const POST_LOGIN_REDIRECT_MAX_AGE_MS = 1000 * 60 * 30; // 30 minutes
+const SESSION_TIMEOUT_NOTICE = "Session timed out. Please log in again.";
+
 const Login = ({ onLogin }) => {
   const [formData, setFormData] = useState({
     email: "",
@@ -29,7 +34,17 @@ const Login = ({ onLogin }) => {
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [sessionNotice, setSessionNotice] = useState("");
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const normalizeRedirectPath = (candidatePath) => {
+    if (!candidatePath || typeof candidatePath !== "string") return null;
+    if (!candidatePath.startsWith("/")) return null;
+    if (candidatePath.startsWith("//")) return null;
+    if (candidatePath.startsWith("/login")) return null;
+    return candidatePath;
+  };
 
   useEffect(() => {
     try {
@@ -42,6 +57,25 @@ const Login = ({ onLogin }) => {
       /* ignore localStorage errors */
     }
   }, []);
+
+  useEffect(() => {
+    try {
+      const fromState = location.state?.reason;
+      const storedNotice = sessionStorage.getItem(AUTH_NOTICE_STORAGE_KEY);
+
+      if (fromState === "session_expired") {
+        setSessionNotice(SESSION_TIMEOUT_NOTICE);
+      } else if (storedNotice) {
+        setSessionNotice(storedNotice);
+      }
+
+      if (storedNotice) {
+        sessionStorage.removeItem(AUTH_NOTICE_STORAGE_KEY);
+      }
+    } catch (e) {
+      /* ignore sessionStorage errors */
+    }
+  }, [location.state]);
 
   const handleChange = (e) => {
     setFormData({
@@ -118,8 +152,31 @@ const Login = ({ onLogin }) => {
         } catch (e) {
           /* ignore localStorage errors */
         }
+        let redirectPath =
+          normalizeRedirectPath(location.state?.from) || "/dashboard";
 
-        navigate("/dashboard");
+        try {
+          if (redirectPath === "/dashboard") {
+            const rawRedirect = sessionStorage.getItem(POST_LOGIN_REDIRECT_KEY);
+            if (rawRedirect) {
+              const parsed = JSON.parse(rawRedirect);
+              const savedAt = Number(parsed?.savedAt || 0);
+              const isFresh =
+                !savedAt ||
+                Date.now() - savedAt <= POST_LOGIN_REDIRECT_MAX_AGE_MS;
+              const storedPath = normalizeRedirectPath(parsed?.path);
+              if (isFresh && storedPath) {
+                redirectPath = storedPath;
+              }
+            }
+          }
+          sessionStorage.removeItem(POST_LOGIN_REDIRECT_KEY);
+          sessionStorage.removeItem(AUTH_NOTICE_STORAGE_KEY);
+        } catch (e) {
+          /* ignore sessionStorage errors */
+        }
+
+        navigate(redirectPath, { replace: true });
       } else {
         setError(data.message || "Login failed. Please try again.");
       }
@@ -155,6 +212,15 @@ const Login = ({ onLogin }) => {
               </div>
 
               {/* Error Box */}
+              {sessionNotice && (
+                <div className="mb-3 sm:mb-4 md:mb-6 p-3 sm:p-4 bg-amber-50 border border-amber-200 rounded-lg sm:rounded-xl flex items-start gap-2 sm:gap-3">
+                  <FaInfoCircle className="text-amber-500 text-sm sm:text-base flex-shrink-0 mt-0.5" />
+                  <span className="text-amber-800 font-medium text-xs sm:text-sm leading-snug">
+                    {sessionNotice}
+                  </span>
+                </div>
+              )}
+
               {error && (
                 <div className="mb-3 sm:mb-4 md:mb-6 p-3 sm:p-4 bg-red-50 border border-red-200 rounded-lg sm:rounded-xl flex items-start gap-2 sm:gap-3">
                   <FaExclamationCircle className="text-red-500 text-sm sm:text-base flex-shrink-0 mt-0.5" />

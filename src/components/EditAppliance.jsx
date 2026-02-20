@@ -4,6 +4,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import Cookies from "js-cookie";
 import { buildUrl } from "../api";
 import { uploadToCloudinary } from "../config/cloudinary";
+import useFormDraft from "../hooks/useFormDraft";
 import {
   FaSave,
   FaTimes,
@@ -83,6 +84,12 @@ const EditHomeAppliance = () => {
 
   const [isLoading, setIsLoading] = useState(false);
   const [isFetching, setIsFetching] = useState(true);
+  const { clearDraft } = useFormDraft({
+    draftKey: `hooks-admin:edit-tv:${id}`,
+    value: formData,
+    setValue: setFormData,
+    enabled: Boolean(id) && !isFetching,
+  });
   const [activeSpecTab, setActiveSpecTab] = useState("key_specs_json");
   const [customJsonFields, setCustomJsonFields] = useState({});
   const [brandsList, setBrandsList] = useState([]);
@@ -1621,6 +1628,7 @@ const EditHomeAppliance = () => {
       );
 
       // Redirect after success to TV inventory view.
+      clearDraft();
       setTimeout(() => {
         navigate("/products/tvs/inventory");
       }, 1500);

@@ -5,6 +5,7 @@ import {
   Routes,
   Route,
   Navigate,
+  useLocation,
 } from "react-router-dom";
 import Sidebar from "./components/Sidebar";
 import Navbar from "./components/Navbar";
@@ -41,6 +42,10 @@ import EditLaptop from "./components/EditLaptop";
 import EditHomeAppliance from "./components/EditAppliance";
 import CompareScoring from "./components/Settings/CompareScoring";
 import Cookies from "js-cookie";
+
+const AUTH_NOTICE_STORAGE_KEY = "hooksAdminAuthNotice";
+const POST_LOGIN_REDIRECT_KEY = "hooksAdminPostLoginRedirect";
+const SESSION_TIMEOUT_NOTICE = "Session timed out. Please log in again.";
 
 function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -102,14 +107,50 @@ function App() {
   };
 
   const [isAuthenticated, setIsAuthenticated] = useState(() => isTokenValid());
+  const [authReason, setAuthReason] = useState("");
 
-  const clearAuth = () => {
+  const storePostLoginRedirect = () => {
+    if (typeof window === "undefined") return;
+    const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+    if (!currentPath || currentPath.startsWith("/login")) return;
+    try {
+      window.sessionStorage.setItem(
+        POST_LOGIN_REDIRECT_KEY,
+        JSON.stringify({ path: currentPath, savedAt: Date.now() }),
+      );
+    } catch (error) {
+      // Ignore storage failures.
+    }
+  };
+
+  const storeAuthNotice = (message) => {
+    if (typeof window === "undefined") return;
+    try {
+      window.sessionStorage.setItem(AUTH_NOTICE_STORAGE_KEY, message);
+    } catch (error) {
+      // Ignore storage failures.
+    }
+  };
+
+  const clearAuth = (reason = "logout") => {
+    if (reason === "session_expired") {
+      storeAuthNotice(SESSION_TIMEOUT_NOTICE);
+    }
+    storePostLoginRedirect();
+    setAuthReason(reason);
     Cookies.remove("authToken");
     Cookies.remove("user");
     Cookies.remove("username");
     Cookies.remove("role");
     setIsAuthenticated(false);
   };
+
+  useEffect(() => {
+    const token = Cookies.get("authToken");
+    if (token && !isTokenValid(token)) {
+      clearAuth("session_expired");
+    }
+  }, []);
 
   useEffect(() => {
     if (!isAuthenticated) return undefined;
@@ -119,18 +160,18 @@ function App() {
     const now = Date.now();
 
     if (!token || !expMs || expMs <= now) {
-      clearAuth();
+      clearAuth("session_expired");
       return undefined;
     }
 
     const timeoutId = setTimeout(() => {
-      clearAuth();
+      clearAuth("session_expired");
     }, expMs - now);
 
     const intervalId = setInterval(() => {
       const currentToken = Cookies.get("authToken");
       if (!currentToken || !isTokenValid(currentToken)) {
-        clearAuth();
+        clearAuth("session_expired");
       }
     }, 10000);
 
@@ -149,8 +190,19 @@ function App() {
 
   // Protected Route Component
   const ProtectedRoute = ({ children }) => {
+    const location = useLocation();
     if (!isAuthenticated) {
-      return <Navigate to="/login" replace />;
+      const from = `${location.pathname}${location.search}${location.hash}`;
+      return (
+        <Navigate
+          to="/login"
+          replace
+          state={{
+            from,
+            reason: authReason || undefined,
+          }}
+        />
+      );
     }
     return children;
   };
@@ -205,7 +257,7 @@ function App() {
             sidebarCollapsed={sidebarCollapsed}
             sidebarOpen={sidebarOpen}
             isMobile={isMobile}
-            onLogout={clearAuth}
+            onLogout={() => clearAuth("logout")}
           />
           <main
             className="flex-1 overflow-auto p-2 md:p-6"
@@ -380,7 +432,12 @@ function App() {
             isAuthenticated ? (
               <Navigate to="/dashboard" replace />
             ) : (
-              <Login onLogin={() => setIsAuthenticated(true)} />
+              <Login
+                onLogin={() => {
+                  setIsAuthenticated(true);
+                  setAuthReason("");
+                }}
+              />
             )
           }
         />
