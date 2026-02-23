@@ -8,7 +8,7 @@ import React, {
 } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Cookies from "js-cookie";
-import { buildUrl } from "../api";
+import { buildUrl, getAuthToken } from "../api";
 import { getSearchNavigationTarget } from "../utils/searchNavigation";
 import {
   FaSearch,
@@ -364,8 +364,16 @@ const Navbar = ({ onToggleSidebar, sidebarCollapsed, onLogout }) => {
 
     searchTimer.current = setTimeout(async () => {
       try {
+        const token = getAuthToken();
         const res = await fetch(
-          buildUrl(`/api/search?q=${encodeURIComponent(searchQuery.trim())}`),
+          buildUrl(`/api/search/admin?q=${encodeURIComponent(searchQuery.trim())}`),
+          {
+            headers: token
+              ? {
+                  Authorization: `Bearer ${token}`,
+                }
+              : {},
+          },
         );
 
         if (!res.ok)

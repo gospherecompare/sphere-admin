@@ -38,6 +38,7 @@ import RecentPublishActivity from "./components/Reports/RecentPublish";
 import TrendingManager from "./components/Reports/TrendingManager";
 import HookScoreReport from "./components/Reports/HookScoreReport";
 import FeatureClicksReport from "./components/Reports/FeatureClicksReport";
+import CareerApplications from "./components/Reports/CareerApplications";
 import EditLaptop from "./components/EditLaptop";
 import EditHomeAppliance from "./components/EditAppliance";
 import CompareScoring from "./components/Settings/CompareScoring";
@@ -414,6 +415,10 @@ function App() {
                 <Route
                   path="/reports/feature-clicks"
                   element={<FeatureClicksReport />}
+                />
+                <Route
+                  path="/reports/career-applications"
+                  element={<CareerApplications />}
                 />
               </Routes>
               <footer className="mt-8 text-center text-sm text-gray-500">

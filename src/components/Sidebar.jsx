@@ -329,6 +329,12 @@ const MENU_CONFIG = {
           path: "/reports/feature-clicks",
         },
         {
+          id: "career-applications-rep",
+          label: "Career Applications",
+          icon: <FaUsers />,
+          path: "/reports/career-applications",
+        },
+        {
           id: "import-rep",
           label: "Import",
           icon: <FaUpload />,

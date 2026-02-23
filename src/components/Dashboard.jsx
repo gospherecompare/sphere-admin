@@ -523,7 +523,7 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-full bg-gray-50 p-1 sm:p-2 md:p-2">
+    <div className="min-h-full bg-white p-1 sm:p-2 md:p-2">
       {/* Header Section */}
       <div className="mb-6 sm:mb-8">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 sm:gap-6 mb-6 sm:mb-8">
@@ -1016,7 +1016,9 @@ const Dashboard = () => {
                                   Total Cmp
                                 </span>
                                 <span className="text-xs font-bold text-gray-900">
-                                  {Number(r.compares_total ?? 0).toLocaleString()}
+                                  {Number(
+                                    r.compares_total ?? 0,
+                                  ).toLocaleString()}
                                 </span>
                               </div>
                             </div>
@@ -1251,4 +1253,3 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
-

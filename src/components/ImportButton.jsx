@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { FaArrowRight, FaBuilding, FaMobileAlt, FaSearch, FaSpinner } from "react-icons/fa";
-import { buildUrl } from "../api";
+import { buildUrl, getAuthToken } from "../api";
 import { getSearchNavigationTarget } from "../utils/searchNavigation";
 
 const formatProductType = (value) => {
@@ -40,9 +40,17 @@ const GlobalSearchResults = () => {
       try {
         setLoading(true);
         setError("");
+        const token = getAuthToken();
         const response = await fetch(
-          buildUrl(`/api/search?q=${encodeURIComponent(query)}`),
-          { signal: controller.signal },
+          buildUrl(`/api/search/admin?q=${encodeURIComponent(query)}`),
+          {
+            signal: controller.signal,
+            headers: token
+              ? {
+                  Authorization: `Bearer ${token}`,
+                }
+              : {},
+          },
         );
         if (!response.ok) {
           throw new Error(`Search failed (${response.status})`);

@@ -293,7 +293,7 @@ const Breadcrumbs = () => {
   if (!trail || trail.length === 0) return null;
 
   return (
-    <div className="border border-gray-100 rounded-xl px-3 py-2 sm:px-4 sm:py-3">
+    <div className="bg-white px-3 py-2 sm:px-4 sm:py-3">
       <nav aria-label="Breadcrumb" className="text-sm">
         <ol className="flex items-center flex-wrap gap-y-1">
           {trail.map((item, idx) => {
