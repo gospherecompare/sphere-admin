@@ -24,4 +24,3 @@ dist-ssr
 *.sw?
 
 # Blog editor (local-only)
-src/components/Content/BlogEditor.jsx
