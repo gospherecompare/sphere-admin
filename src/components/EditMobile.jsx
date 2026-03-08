@@ -783,6 +783,8 @@ const EditMobile = () => {
                 : "",
             url: sp?.url || "",
             offer_text: sp?.offer_text || "",
+            sale_start_date:
+              sp?.sale_start_date || sp?.sale_date || sp?.saleStartDate || "",
             discount: sp?.discount || "",
             offers: sp?.offers || "",
             custom_properties: sp?.custom_properties || {},
@@ -817,6 +819,11 @@ const EditMobile = () => {
                     ? String(sp.price)
                     : "",
                 url: sp?.url || "",
+                offer_text: sp?.offer_text || "",
+                sale_start_date:
+                  sp?.sale_start_date || sp?.sale_date || sp?.saleStartDate || "",
+                discount: sp?.discount || "",
+                offers: sp?.offers || "",
                 custom_properties: sp?.custom_properties || {},
               };
 
@@ -1339,6 +1346,7 @@ const EditMobile = () => {
             price: "",
             url: "",
             offer_text: "",
+            sale_start_date: "",
             discount: "",
             offers: "",
           },
@@ -1567,6 +1575,7 @@ const EditMobile = () => {
                 price: s.price ? Number(s.price) : null,
                 url: s.url || null,
                 offer_text: s.offer_text || null,
+                sale_start_date: s.sale_start_date || null,
                 discount: s.discount || null,
                 offers: s.offers || null,
                 custom_properties: s.custom_properties || {},
@@ -1587,6 +1596,7 @@ const EditMobile = () => {
             price: s.price ? Number(s.price) : null,
             url: s.url || null,
             offer_text: s.offer_text || null,
+            sale_start_date: s.sale_start_date || null,
             delivery_info: s.delivery_info || s.deliveryInfo || null,
             discount: s.discount || null,
             offers: s.offers || null,
@@ -3454,7 +3464,7 @@ const EditMobile = () => {
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-3">
                           <div>
                             <label className="block text-xs font-medium text-gray-600 mb-1">
                               Affiliate URL
@@ -3516,6 +3526,27 @@ const EditMobile = () => {
                                 <FaTrash />
                               </button>
                             </div>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">
+                              Sale Start Date
+                            </label>
+                            <input
+                              type="date"
+                              value={store.sale_start_date ?? ""}
+                              onChange={(e) => {
+                                const newVariants = [...formData.variants];
+                                newVariants[index].stores[storeIndex] = {
+                                  ...newVariants[index].stores[storeIndex],
+                                  sale_start_date: e.target.value,
+                                };
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  variants: newVariants,
+                                }));
+                              }}
+                              className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                            />
                           </div>
                         </div>
                       </div>

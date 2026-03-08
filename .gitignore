@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Blog editor (local-only)
+src/components/Content/BlogEditor.jsx

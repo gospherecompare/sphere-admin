@@ -42,6 +42,8 @@ import CareerApplications from "./components/Reports/CareerApplications";
 import EditLaptop from "./components/EditLaptop";
 import EditHomeAppliance from "./components/EditAppliance";
 import CompareScoring from "./components/Settings/CompareScoring";
+import DeviceFieldProfiles from "./components/Settings/DeviceFieldProfiles";
+import BlogEditor from "./components/Content/BlogEditor";
 import Cookies from "js-cookie";
 import GlobalSearchResults from "./components/GlobalSearchResults";
 
@@ -381,6 +383,11 @@ function App() {
                   path="/settings/compare-scoring"
                   element={<CompareScoring />}
                 />
+                <Route
+                  path="/settings/device-field-profiles"
+                  element={<DeviceFieldProfiles />}
+                />
+                <Route path="/content/blogs" element={<BlogEditor />} />
                 <Route
                   path="/specifications/store"
                   element={<OnlineStoreManagement />}

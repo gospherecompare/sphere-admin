@@ -637,6 +637,7 @@ const CreateMobile = () => {
             price: "",
             url: "",
             offer_text: "",
+            sale_start_date: "",
             discount: "",
             offers: "",
           },
@@ -1131,6 +1132,7 @@ const CreateMobile = () => {
             price: s.price ? Number(s.price) : null,
             url: s.url || null,
             offer_text: s.offer_text || null,
+            sale_start_date: s.sale_start_date || null,
             discount: s.discount || null,
             offers: s.offers || null,
           })),
@@ -1170,6 +1172,7 @@ const CreateMobile = () => {
             availability: s.availability || undefined,
             url: s.url || null,
             offer_text: s.offer_text || null,
+            sale_start_date: s.sale_start_date || null,
             discount: s.discount || null,
             offers: s.offers || null,
           })),
@@ -2331,7 +2334,7 @@ const CreateMobile = () => {
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-3">
                           <div>
                             <label className="block text-xs font-medium text-gray-600 mb-1">
                               Affiliate URL
@@ -2373,6 +2376,27 @@ const CreateMobile = () => {
                                 }));
                               }}
                               placeholder="e.g., Limited time offer"
+                              className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">
+                              Sale Start Date
+                            </label>
+                            <input
+                              type="date"
+                              value={store.sale_start_date || ""}
+                              onChange={(e) => {
+                                const newVariants = [...formData.variants];
+                                newVariants[index].stores[storeIndex] = {
+                                  ...newVariants[index].stores[storeIndex],
+                                  sale_start_date: e.target.value,
+                                };
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  variants: newVariants,
+                                }));
+                              }}
                               className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
                             />
                           </div>

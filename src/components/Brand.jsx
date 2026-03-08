@@ -49,6 +49,7 @@ const Brand = () => {
   const [statusUpdatingId, setStatusUpdatingId] = useState(null);
   const [activeFilter, setActiveFilter] = useState("all");
   const [sortBy, setSortBy] = useState("newest");
+  const [selectedBrandIds, setSelectedBrandIds] = useState([]);
 
   useEffect(() => {
     const seededSearch = location.state?.searchTerm;
@@ -93,11 +94,23 @@ const Brand = () => {
         description: brand.description || "",
         category: brand.category || "",
         status: brand.status || "active",
+        product_count:
+          Number(
+            brand.product_count ??
+              brand.products_count ??
+              brand.total_products ??
+              brand.published_products ??
+              0,
+          ) || 0,
         published_products: brand.published_products || "0",
         created_at:
           brand.created_at || brand.createdAt || new Date().toISOString(),
         updated_at:
-          brand.updated_at || brand.updatedAt || new Date().toISOString(),
+          brand.updated_at ||
+          brand.updatedAt ||
+          brand.created_at ||
+          brand.createdAt ||
+          new Date().toISOString(),
       }));
 
       setBrands(normalizedBrands);
@@ -347,6 +360,11 @@ const Brand = () => {
     setSuccess("");
   };
 
+  const handleCreateNew = () => {
+    resetForm();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   // Filter and sort brands
   const filteredAndSortedBrands = brands
     .filter((brand) => {
@@ -373,6 +391,31 @@ const Brand = () => {
       }
       return 0;
     });
+
+  const visibleBrandIds = filteredAndSortedBrands.map((brand) => brand.id);
+  const allVisibleSelected =
+    visibleBrandIds.length > 0 &&
+    visibleBrandIds.every((id) => selectedBrandIds.includes(id));
+
+  const toggleSelectBrand = (brandId) => {
+    setSelectedBrandIds((prev) =>
+      prev.includes(brandId)
+        ? prev.filter((id) => id !== brandId)
+        : [...prev, brandId],
+    );
+  };
+
+  const toggleSelectAllVisible = () => {
+    setSelectedBrandIds((prev) => {
+      if (allVisibleSelected) {
+        return prev.filter((id) => !visibleBrandIds.includes(id));
+      }
+
+      const next = new Set(prev);
+      visibleBrandIds.forEach((id) => next.add(id));
+      return Array.from(next);
+    });
+  };
 
   // Format date
   const formatDate = (dateString) => {
@@ -493,14 +536,17 @@ const Brand = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="space-y-6">
         {/* Left Side - Form */}
-        <div className="lg:col-span-1">
-          <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+        <div className="w-full">
+          <div className="max-w-4xl bg-white rounded-lg border border-gray-200 shadow-sm">
             <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
               <h2 className="font-semibold text-gray-800">
                 {isEditing ? "Edit Brand" : "Create New Brand"}
               </h2>
+              <p className="mt-1 text-sm text-gray-500">
+                Use the edit action from the table to load brand details into this form.
+              </p>
             </div>
 
             <form onSubmit={handleSubmit} className="p-4 space-y-4">
@@ -726,44 +772,54 @@ const Brand = () => {
         </div>
 
         {/* Right Side - Brands List */}
-        <div className="lg:col-span-2">
-          <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
-            <div className="px-4 py-3 border-b border-gray-200">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex items-center space-x-2">
-                  <h2 className="font-semibold text-gray-800">Brands List</h2>
-                  <span className="bg-gray-100 text-gray-600 text-sm px-2 py-1 rounded-full">
-                    <CountUp
-                      end={filteredAndSortedBrands.length}
-                      duration={0.7}
-                    />{" "}
-                    of <CountUp end={totalBrands} duration={0.9} />
-                  </span>
+        <div className="w-full">
+          <div className="overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
+            <div className="border-b border-slate-200 px-5 py-4">
+              <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+                    <FaStore className="text-sm" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-base font-semibold text-slate-900">
+                        Brands Directory
+                      </h2>
+                      <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
+                        <CountUp
+                          end={filteredAndSortedBrands.length}
+                          duration={0.7}
+                        />{" "}
+                        of <CountUp end={totalBrands} duration={0.9} />
+                      </span>
+                    </div>
+                    <p className="mt-1 text-sm text-slate-500">
+                      Clean list view for search, status control, and quick edits.
+                    </p>
+                  </div>
                 </div>
 
-                <div className="flex flex-wrap gap-2">
-                  {/* Search */}
+                <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
                   <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <FaSearch className="text-gray-400" />
+                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                      <FaSearch className="text-slate-400" />
                     </div>
                     <input
                       type="text"
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       placeholder="Search brands..."
-                      className="pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full sm:w-64"
+                      className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm text-slate-700 outline-none transition focus:border-indigo-300 focus:bg-white focus:ring-2 focus:ring-indigo-100 sm:w-64"
                     />
                   </div>
 
-                  {/* Filter & Sort */}
-                  <div className="flex space-x-2">
+                  <div className="flex flex-wrap gap-2">
                     <select
                       value={activeFilter}
                       onChange={(e) => setActiveFilter(e.target.value)}
-                      className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                      className="h-10 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700 outline-none transition focus:border-indigo-300 focus:bg-white focus:ring-2 focus:ring-indigo-100"
                     >
-                      <option value="all">All</option>
+                      <option value="all">All status</option>
                       <option value="active">Active</option>
                       <option value="inactive">Inactive</option>
                     </select>
@@ -771,149 +827,233 @@ const Brand = () => {
                     <select
                       value={sortBy}
                       onChange={(e) => setSortBy(e.target.value)}
-                      className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                      className="h-10 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700 outline-none transition focus:border-indigo-300 focus:bg-white focus:ring-2 focus:ring-indigo-100"
                     >
-                      <option value="newest">Newest</option>
+                      <option value="newest">Newest first</option>
                       <option value="oldest">Oldest</option>
                       <option value="name">Name A-Z</option>
                     </select>
+
+                    <button
+                      type="button"
+                      onClick={handleCreateNew}
+                      className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 text-sm font-medium text-white transition hover:bg-indigo-700"
+                    >
+                      <FaPlus className="text-xs" />
+                      {isEditing ? "Create New" : "Add Brand"}
+                    </button>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Brands Card Grid - Single Row */}
-            <div className="p-4">
+            {/* Brands Table */}
+            <div className="px-5 py-4">
               {isLoading ? (
                 <div className="py-12 text-center">
                   <FaSpinner className="animate-spin text-3xl text-blue-600 mx-auto mb-4" />
                   <p className="text-gray-600">Loading brands...</p>
                 </div>
               ) : filteredAndSortedBrands.length > 0 ? (
-                <div className="overflow-x-auto scrollbar-hide">
-                  <div className="flex gap-4 pb-2 min-w-min">
-                    {filteredAndSortedBrands.map((brand) => {
-                      const isActive = brand.status === "active";
+                <div className="overflow-x-auto">
+                  <table className="min-w-[1040px] w-full border-separate border-spacing-y-2">
+                    <thead>
+                      <tr>
+                        <th className="w-10 px-3 pb-2">
+                          <input
+                            type="checkbox"
+                            checked={allVisibleSelected}
+                            onChange={toggleSelectAllVisible}
+                            className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                            aria-label="Select all visible brands"
+                          />
+                        </th>
+                        <th className="px-3 pb-2 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                          Brand
+                        </th>
+                        <th className="px-3 pb-2 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                          Category
+                        </th>
+                        <th className="px-3 pb-2 text-center text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                          Products
+                        </th>
+                        <th className="px-3 pb-2 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                          Status
+                        </th>
+                        <th className="px-3 pb-2 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                          Created
+                        </th>
+                        <th className="px-3 pb-2 text-right text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredAndSortedBrands.map((brand) => {
+                        const isActive = brand.status === "active";
+                        const productCount = Number(
+                          brand.product_count ??
+                            brand.published_products ??
+                            0,
+                        );
+                        const isSelected = selectedBrandIds.includes(brand.id);
 
-                      return (
-                        <div
-                          key={brand.id}
-                          className="flex-shrink-0 w-72 bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
-                        >
-                          {/* Brand Logo and Name */}
-                          <div className="flex items-center mb-4">
-                            <div className="flex-shrink-0 h-16 w-16">
-                              <img
-                                className="h-16 w-16 rounded-md object-contain bg-gray-50 border border-gray-200 p-2"
-                                src={
-                                  brand.logo ||
-                                  "https://via.placeholder.com/64?text=Logo"
-                                }
-                                alt={brand.name}
-                                onError={(e) => {
-                                  e.target.onerror = null;
-                                  e.target.src =
-                                    "https://via.placeholder.com/64?text=Logo";
-                                }}
-                              />
-                            </div>
-                            <div className="ml-3 flex-1">
-                              <h3 className="font-semibold text-gray-900 truncate">
-                                {brand.name}
-                              </h3>
-                              <p className="text-xs text-gray-500 mt-1">
-                                {brand.category || "No category"}
-                              </p>
-                            </div>
-                          </div>
-
-                          {/* Description */}
-                          <p className="text-sm text-gray-600 mb-3 line-clamp-2">
-                            {brand.description || "No description"}
-                          </p>
-
-                          {/* Stats */}
-                          <div className="mb-4 p-2 bg-gray-50 rounded flex items-center justify-center">
-                            <div className="text-center">
-                              <p className="text-xs text-gray-500">Products</p>
-                              <p className="text-lg font-bold text-gray-900">
-                                <CountUp
-                                  end={parseInt(brand.published_products || 0)}
-                                  duration={0.5}
-                                />
-                              </p>
-                            </div>
-                          </div>
-
-                          {/* Status Badge */}
-                          <div className="mb-4">
-                            <button
-                              onClick={() => toggleStatus(brand)}
-                              disabled={statusUpdatingId === brand.id}
-                              className={`w-full inline-flex items-center justify-center px-3 py-2 rounded-md text-xs font-medium transition-colors ${
-                                isActive
-                                  ? "bg-green-100 text-green-800 hover:bg-green-200"
-                                  : "bg-gray-100 text-gray-800 hover:bg-gray-200"
-                              } disabled:opacity-50`}
-                            >
-                              {statusUpdatingId === brand.id ? (
-                                <FaSpinner className="animate-spin mr-2" />
-                              ) : isActive ? (
-                                <>
-                                  <FaEye className="mr-2" />
-                                  Active
-                                </>
-                              ) : (
-                                <>
-                                  <FaEyeSlash className="mr-2" />
-                                  Inactive
-                                </>
-                              )}
-                            </button>
-                          </div>
-
-                          {/* Created Date */}
-                          <div className="mb-4 pb-4 border-b border-gray-200">
-                            <div className="flex items-center text-xs text-gray-500">
-                              <FaCalendarAlt className="mr-2 text-gray-400" />
-                              {formatDate(brand.created_at)}
-                            </div>
-                          </div>
-
-                          {/* Actions */}
-                          <div className="flex items-center space-x-2">
-                            <button
-                              onClick={() => handleEdit(brand)}
-                              className="flex-1 flex items-center justify-center text-blue-600 hover:text-blue-900 hover:bg-blue-50 transition-colors p-2 rounded text-sm font-medium"
-                              title="Edit brand"
-                            >
-                              <FaEdit className="mr-1" />
-                              Edit
-                            </button>
-                            <button
-                              onClick={() => handleDelete(brand.id)}
-                              disabled={
-                                parseInt(brand.published_products || 0) > 0
-                              }
-                              className={`flex-1 flex items-center justify-center transition-colors p-2 rounded text-sm font-medium ${
-                                parseInt(brand.published_products || 0) > 0
-                                  ? "text-gray-300 cursor-not-allowed"
-                                  : "text-red-600 hover:text-red-900 hover:bg-red-50"
+                        return (
+                          <tr
+                            key={brand.id}
+                            className="group"
+                          >
+                            <td
+                              className={`rounded-l-2xl border border-r-0 px-3 py-3 align-middle ${
+                                isSelected
+                                  ? "border-indigo-200 bg-indigo-50/70"
+                                  : "border-slate-200 bg-white group-hover:bg-slate-50"
                               }`}
-                              title={
-                                parseInt(brand.published_products || 0) > 0
-                                  ? "Cannot delete brand with products"
-                                  : "Delete brand"
-                              }
                             >
-                              <FaTrash className="mr-1" />
-                              Delete
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => toggleSelectBrand(brand.id)}
+                                className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                                aria-label={`Select ${brand.name}`}
+                              />
+                            </td>
+                            <td
+                              className={`border border-l-0 border-r-0 px-3 py-3 align-middle ${
+                                isSelected
+                                  ? "border-indigo-200 bg-indigo-50/70"
+                                  : "border-slate-200 bg-white group-hover:bg-slate-50"
+                              }`}
+                            >
+                              <div className="flex min-w-[220px] items-center gap-3">
+                                <div className="h-11 w-11 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+                                  <img
+                                    className="h-full w-full object-contain p-2"
+                                    src={
+                                      brand.logo ||
+                                      "https://via.placeholder.com/64?text=Logo"
+                                    }
+                                    alt={brand.name}
+                                    onError={(e) => {
+                                      e.target.onerror = null;
+                                      e.target.src =
+                                        "https://via.placeholder.com/64?text=Logo";
+                                    }}
+                                  />
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="truncate text-sm font-semibold text-slate-900">
+                                    {brand.name}
+                                  </p>
+                                  <p className="mt-0.5 text-xs text-slate-400">
+                                    Brand ID: {brand.id}
+                                  </p>
+                                </div>
+                              </div>
+                            </td>
+                            <td
+                              className={`border border-l-0 border-r-0 px-3 py-3 align-middle ${
+                                isSelected
+                                  ? "border-indigo-200 bg-indigo-50/70"
+                                  : "border-slate-200 bg-white group-hover:bg-slate-50"
+                              }`}
+                            >
+                              <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
+                                {brand.category || "No category"}
+                              </span>
+                            </td>
+                            <td
+                              className={`border border-l-0 border-r-0 px-3 py-3 text-center align-middle ${
+                                isSelected
+                                  ? "border-indigo-200 bg-indigo-50/70"
+                                  : "border-slate-200 bg-white group-hover:bg-slate-50"
+                              }`}
+                            >
+                              <span className="inline-flex min-w-[64px] items-center justify-center rounded-full bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-600">
+                                <CountUp end={productCount} duration={0.5} />
+                              </span>
+                            </td>
+                            <td
+                              className={`border border-l-0 border-r-0 px-3 py-3 align-middle ${
+                                isSelected
+                                  ? "border-indigo-200 bg-indigo-50/70"
+                                  : "border-slate-200 bg-white group-hover:bg-slate-50"
+                              }`}
+                            >
+                              <button
+                                onClick={() => toggleStatus(brand)}
+                                disabled={statusUpdatingId === brand.id}
+                                className={`inline-flex min-w-[92px] items-center justify-center rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
+                                  isActive
+                                    ? "bg-indigo-600 text-white hover:bg-indigo-700"
+                                    : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                                } disabled:opacity-50`}
+                              >
+                                {statusUpdatingId === brand.id ? (
+                                  <FaSpinner className="mr-2 animate-spin" />
+                                ) : isActive ? (
+                                  <>
+                                    <FaEye className="mr-2 text-[10px]" />
+                                    Active
+                                  </>
+                                ) : (
+                                  <>
+                                    <FaEyeSlash className="mr-2 text-[10px]" />
+                                    Inactive
+                                  </>
+                                )}
+                              </button>
+                            </td>
+                            <td
+                              className={`border border-l-0 border-r-0 px-3 py-3 align-middle ${
+                                isSelected
+                                  ? "border-indigo-200 bg-indigo-50/70"
+                                  : "border-slate-200 bg-white group-hover:bg-slate-50"
+                              }`}
+                            >
+                              <div className="flex items-center text-sm text-slate-500">
+                                <FaCalendarAlt className="mr-2 text-slate-400" />
+                                {formatDate(brand.created_at)}
+                              </div>
+                            </td>
+                            <td
+                              className={`rounded-r-2xl border border-l-0 px-3 py-3 align-middle ${
+                                isSelected
+                                  ? "border-indigo-200 bg-indigo-50/70"
+                                  : "border-slate-200 bg-white group-hover:bg-slate-50"
+                              }`}
+                            >
+                              <div className="flex items-center justify-end gap-2">
+                                <button
+                                  onClick={() => handleEdit(brand)}
+                                  className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-amber-50 text-amber-500 transition hover:bg-amber-100 hover:text-amber-600"
+                                  title="Edit brand"
+                                >
+                                  <FaEdit />
+                                </button>
+                                <button
+                                  onClick={() => handleDelete(brand.id)}
+                                  disabled={productCount > 0}
+                                  className={`inline-flex h-9 w-9 items-center justify-center rounded-full transition ${
+                                    productCount > 0
+                                      ? "cursor-not-allowed bg-slate-100 text-slate-300"
+                                      : "bg-rose-50 text-rose-500 hover:bg-rose-100 hover:text-rose-600"
+                                  }`}
+                                  title={
+                                    productCount > 0
+                                      ? "Cannot delete brand with products"
+                                      : "Delete brand"
+                                  }
+                                >
+                                  <FaTrash />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               ) : (
                 <div className="py-12 text-center">
@@ -928,6 +1068,17 @@ const Brand = () => {
                   </p>
                 </div>
               )}
+
+              {!isLoading && filteredAndSortedBrands.length > 0 ? (
+                <div className="mt-4 flex flex-col gap-2 border-t border-slate-200 pt-4 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+                  <p>
+                    Selected brands: <span className="font-semibold text-slate-700">{selectedBrandIds.length}</span>
+                  </p>
+                  <p>
+                    Active brands in view: <span className="font-semibold text-slate-700">{filteredAndSortedBrands.filter((brand) => brand.status === "active").length}</span>
+                  </p>
+                </div>
+              ) : null}
             </div>
           </div>
         </div>

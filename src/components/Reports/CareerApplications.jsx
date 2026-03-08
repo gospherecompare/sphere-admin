@@ -1,12 +1,99 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  FaArrowRight,
   FaBriefcase,
+  FaCheckCircle,
   FaExclamationCircle,
+  FaFilter,
   FaSearch,
   FaSpinner,
   FaSyncAlt,
+  FaTimesCircle,
+  FaUserCheck,
+  FaUserClock,
 } from "react-icons/fa";
 import { buildUrl, getAuthToken } from "../../api";
+
+const STATUS_OPTIONS = [
+  { value: "new", label: "New" },
+  { value: "screening", label: "Screening" },
+  { value: "shortlisted", label: "Shortlisted" },
+  { value: "interview_scheduled", label: "Interview Scheduled" },
+  { value: "offered", label: "Offered" },
+  { value: "hired", label: "Hired" },
+  { value: "rejected", label: "Rejected" },
+];
+
+const STATUS_META = {
+  new: {
+    label: "New",
+    chip: "bg-slate-100 text-slate-700 border border-slate-200",
+    bar: "bg-slate-500",
+  },
+  screening: {
+    label: "Screening",
+    chip: "bg-amber-50 text-amber-700 border border-amber-200",
+    bar: "bg-amber-500",
+  },
+  shortlisted: {
+    label: "Shortlisted",
+    chip: "bg-blue-50 text-blue-700 border border-blue-200",
+    bar: "bg-blue-500",
+  },
+  interview_scheduled: {
+    label: "Interview Scheduled",
+    chip: "bg-indigo-50 text-indigo-700 border border-indigo-200",
+    bar: "bg-indigo-500",
+  },
+  offered: {
+    label: "Offered",
+    chip: "bg-violet-50 text-violet-700 border border-violet-200",
+    bar: "bg-violet-500",
+  },
+  hired: {
+    label: "Hired",
+    chip: "bg-emerald-50 text-emerald-700 border border-emerald-200",
+    bar: "bg-emerald-500",
+  },
+  rejected: {
+    label: "Rejected",
+    chip: "bg-red-50 text-red-700 border border-red-200",
+    bar: "bg-red-500",
+  },
+};
+
+const NEXT_STATUS = {
+  new: "screening",
+  screening: "shortlisted",
+  shortlisted: "interview_scheduled",
+  interview_scheduled: "offered",
+  offered: "hired",
+};
+
+const IN_PROGRESS_STATUS = new Set([
+  "screening",
+  "shortlisted",
+  "interview_scheduled",
+  "offered",
+]);
+
+const PIPELINE_STAGES = [
+  "new",
+  "screening",
+  "shortlisted",
+  "interview_scheduled",
+  "offered",
+  "hired",
+];
+
+const normalizeStatus = (value) =>
+  String(value || "new")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "_");
+
+const getStatusMeta = (value) =>
+  STATUS_META[normalizeStatus(value)] || STATUS_META.new;
 
 const formatDateTime = (value) => {
   if (!value) return "-";
@@ -25,15 +112,25 @@ const formatCurrency = (value) => {
   }).format(parsed);
 };
 
+const getProgressPercent = (statusValue) => {
+  const status = normalizeStatus(statusValue);
+  if (status === "rejected") return 0;
+  const idx = PIPELINE_STAGES.indexOf(status);
+  if (idx < 0) return 0;
+  return Math.round(((idx + 1) / PIPELINE_STAGES.length) * 100);
+};
+
 const CareerApplications = () => {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
 
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(25);
   const [total, setTotal] = useState(0);
+  const [updatingId, setUpdatingId] = useState(null);
 
   const fetchApplications = useCallback(async () => {
     setLoading(true);
@@ -73,6 +170,57 @@ const CareerApplications = () => {
     }
   }, [page, limit]);
 
+  const updateStatus = useCallback(async (id, nextStatus) => {
+    const normalized = normalizeStatus(nextStatus);
+    setUpdatingId(id);
+    setError(null);
+    try {
+      const token = getAuthToken();
+      if (!token) {
+        throw new Error("Missing admin token. Please login again.");
+      }
+
+      const response = await fetch(
+        buildUrl(`/api/admin/careers/${id}/status`),
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ status: normalized }),
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+      const updatedStatus = normalizeStatus(
+        data?.application?.status || normalized,
+      );
+      const updatedAt = data?.application?.updated_at || new Date().toISOString();
+
+      setRows((prev) =>
+        prev.map((item) =>
+          item.id === id
+            ? {
+                ...item,
+                status: updatedStatus,
+                updated_at: updatedAt,
+              }
+            : item,
+        ),
+      );
+    } catch (err) {
+      console.error("Failed to update application status:", err);
+      setError(err.message || "Failed to update application status");
+    } finally {
+      setUpdatingId(null);
+    }
+  }, []);
+
   useEffect(() => {
     fetchApplications();
   }, [fetchApplications]);
@@ -81,8 +229,12 @@ const CareerApplications = () => {
     const q = String(query || "")
       .trim()
       .toLowerCase();
-    if (!q) return rows;
+
     return rows.filter((item) => {
+      const status = normalizeStatus(item?.status);
+      if (statusFilter !== "all" && status !== statusFilter) return false;
+
+      if (!q) return true;
       const haystack = [
         item?.id,
         item?.role,
@@ -91,14 +243,30 @@ const CareerApplications = () => {
         item?.email,
         item?.phone,
         item?.preferred_location,
-        item?.status,
+        item?.experience_level,
+        item?.employment_status,
+        item?.current_company,
+        item?.current_designation,
+        status,
       ]
         .filter(Boolean)
         .join(" ")
         .toLowerCase();
       return haystack.includes(q);
     });
-  }, [rows, query]);
+  }, [rows, query, statusFilter]);
+
+  const stats = useMemo(() => {
+    const normalized = rows.map((item) => normalizeStatus(item.status));
+    return {
+      total,
+      newCount: normalized.filter((status) => status === "new").length,
+      inProcess: normalized.filter((status) => IN_PROGRESS_STATUS.has(status))
+        .length,
+      hired: normalized.filter((status) => status === "hired").length,
+      rejected: normalized.filter((status) => status === "rejected").length,
+    };
+  }, [rows, total]);
 
   const totalPages = Math.max(1, Math.ceil((Number(total) || 0) / limit));
 
@@ -111,10 +279,11 @@ const CareerApplications = () => {
               <span className="p-2 bg-blue-100 rounded-lg">
                 <FaBriefcase className="text-blue-600" />
               </span>
-              Career Applications
+              Career Hiring Pipeline
             </h1>
             <p className="text-gray-600 mt-2">
-              Review submitted applications from the careers form.
+              Manage applicants with structured hiring actions and clear stage
+              tracking.
             </p>
           </div>
           <button
@@ -123,7 +292,7 @@ const CareerApplications = () => {
             className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 ${
               loading
                 ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 shadow-sm"
+                : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
             }`}
           >
             {loading ? <FaSpinner className="animate-spin" /> : <FaSyncAlt />}
@@ -132,8 +301,46 @@ const CareerApplications = () => {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 mb-5">
+        <div className="rounded-xl border border-gray-200 bg-white p-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+            Total Applications
+          </p>
+          <p className="mt-2 text-2xl font-bold text-gray-900">{stats.total}</p>
+        </div>
+        <div className="rounded-xl border border-gray-200 bg-white p-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+            New Candidates
+          </p>
+          <p className="mt-2 text-2xl font-bold text-slate-700">
+            {stats.newCount}
+          </p>
+        </div>
+        <div className="rounded-xl border border-gray-200 bg-white p-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 flex items-center gap-2">
+            <FaUserClock className="text-amber-500" />
+            In Process
+          </p>
+          <p className="mt-2 text-2xl font-bold text-amber-700">
+            {stats.inProcess}
+          </p>
+        </div>
+        <div className="rounded-xl border border-gray-200 bg-white p-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 flex items-center gap-2">
+            <FaUserCheck className="text-emerald-500" />
+            Final Outcomes
+          </p>
+          <p className="mt-2 text-2xl font-bold text-gray-900">
+            {stats.hired + stats.rejected}
+          </p>
+          <p className="text-xs text-gray-500 mt-1">
+            Hired: {stats.hired} | Rejected: {stats.rejected}
+          </p>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
               Search
@@ -144,8 +351,29 @@ const CareerApplications = () => {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 className="w-full pl-10 pr-3 py-2 border border-gray-200 rounded-lg bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Name, role, email, status"
+                placeholder="Name, role, email, location"
               />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Status
+            </label>
+            <div className="relative">
+              <FaFilter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="w-full pl-10 pr-3 py-2 border border-gray-200 rounded-lg bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">All Stages</option>
+                {STATUS_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
@@ -170,7 +398,7 @@ const CareerApplications = () => {
 
           <div className="flex items-end">
             <div className="w-full px-3 py-2 rounded-lg bg-gray-50 border border-gray-200 text-sm text-gray-700">
-              Total Applications: <strong>{total}</strong>
+              Visible in this page: <strong>{filteredRows.length}</strong>
             </div>
           </div>
         </div>
@@ -183,16 +411,13 @@ const CareerApplications = () => {
         </div>
       ) : null}
 
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
+          <table className="min-w-[1100px] w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">
                   Candidate
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">
-                  Contact
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">
                   Role
@@ -201,10 +426,13 @@ const CareerApplications = () => {
                   Experience
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">
-                  Expected CTC
+                  CTC / Notice
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">
-                  Status
+                  Hiring Stage
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">
+                  Actions
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">
                   Applied On
@@ -216,7 +444,7 @@ const CareerApplications = () => {
                 <tr>
                   <td
                     colSpan={7}
-                    className="px-4 py-8 text-center text-sm text-gray-500"
+                    className="px-4 py-10 text-center text-sm text-gray-500"
                   >
                     <span className="inline-flex items-center gap-2">
                       <FaSpinner className="animate-spin" />
@@ -228,50 +456,159 @@ const CareerApplications = () => {
                 <tr>
                   <td
                     colSpan={7}
-                    className="px-4 py-8 text-center text-sm text-gray-500"
+                    className="px-4 py-10 text-center text-sm text-gray-500"
                   >
-                    No career applications found.
+                    No career applications found for selected filters.
                   </td>
                 </tr>
               ) : (
-                filteredRows.map((row) => (
-                  <tr key={row.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-sm text-gray-900">
-                      <div className="font-semibold">
-                        {`${row.first_name || ""} ${row.last_name || ""}`.trim() ||
-                          "-"}
-                      </div>
-                      <div className="text-xs text-gray-500">ID: {row.id}</div>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-700">
-                      <div>{row.email || "-"}</div>
-                      <div className="text-xs text-gray-500">{row.phone || "-"}</div>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-700">
-                      <div>{row.role || "-"}</div>
-                      <div className="text-xs text-gray-500">
-                        {row.preferred_location || "-"}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-700">
-                      <div>{row.experience_level || "-"}</div>
-                      <div className="text-xs text-gray-500">
-                        {row.employment_status || "-"}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-700">
-                      {formatCurrency(row.expected_ctc)}
-                    </td>
-                    <td className="px-4 py-3 text-sm">
-                      <span className="inline-flex rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
-                        {row.status || "new"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-700">
-                      {formatDateTime(row.created_at)}
-                    </td>
-                  </tr>
-                ))
+                filteredRows.map((row) => {
+                  const status = normalizeStatus(row.status);
+                  const meta = getStatusMeta(status);
+                  const nextStatus = NEXT_STATUS[status];
+                  const progress = getProgressPercent(status);
+                  const isUpdating = updatingId === row.id;
+
+                  return (
+                    <tr key={row.id} className="hover:bg-gray-50 align-top">
+                      <td className="px-4 py-3 text-sm text-gray-900">
+                        <div className="font-semibold">
+                          {`${row.first_name || ""} ${row.last_name || ""}`.trim() ||
+                            "-"}
+                        </div>
+                        <div className="text-xs text-gray-600 mt-1">
+                          {row.email || "-"}
+                        </div>
+                        <div className="text-xs text-gray-500">{row.phone || "-"}</div>
+                        <div className="text-xs text-gray-500">
+                          {row.preferred_location || "-"}
+                        </div>
+                      </td>
+
+                      <td className="px-4 py-3 text-sm text-gray-700">
+                        <div className="font-semibold text-gray-900">
+                          {row.role || "-"}
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          {row.current_designation || "-"}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {row.current_company || "-"}
+                        </div>
+                      </td>
+
+                      <td className="px-4 py-3 text-sm text-gray-700">
+                        <div>{row.experience_level || "-"}</div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          {row.employment_status || "-"}
+                        </div>
+                      </td>
+
+                      <td className="px-4 py-3 text-sm text-gray-700">
+                        <div className="font-semibold text-gray-900">
+                          {formatCurrency(row.expected_ctc)}
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          Notice: {row.notice_period || "-"}
+                        </div>
+                      </td>
+
+                      <td className="px-4 py-3 text-sm">
+                        <span
+                          className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${meta.chip}`}
+                        >
+                          {meta.label}
+                        </span>
+                        <div className="mt-2 w-36 h-1.5 rounded-full bg-gray-200 overflow-hidden">
+                          <div
+                            className={`h-full ${meta.bar}`}
+                            style={{ width: `${progress}%` }}
+                          />
+                        </div>
+                        <div className="mt-1 text-[11px] text-gray-500">
+                          {status === "rejected"
+                            ? "Pipeline closed"
+                            : `${progress}% pipeline completion`}
+                        </div>
+                      </td>
+
+                      <td className="px-4 py-3 text-sm">
+                        <div className="flex flex-col gap-2 min-w-[220px]">
+                          <select
+                            value={status}
+                            onChange={(e) => updateStatus(row.id, e.target.value)}
+                            disabled={isUpdating}
+                            className="px-3 py-1.5 border border-gray-200 rounded-md bg-white text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60"
+                          >
+                            {STATUS_OPTIONS.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                          <div className="flex flex-wrap gap-2">
+                            {nextStatus && status !== "rejected" ? (
+                              <button
+                                type="button"
+                                onClick={() => updateStatus(row.id, nextStatus)}
+                                disabled={isUpdating}
+                                className="inline-flex items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-2 py-1 text-[11px] font-semibold text-blue-700 hover:bg-blue-100 disabled:opacity-60"
+                              >
+                                <FaArrowRight className="text-[10px]" />
+                                Move to {getStatusMeta(nextStatus).label}
+                              </button>
+                            ) : null}
+                            {status !== "rejected" && status !== "hired" ? (
+                              <button
+                                type="button"
+                                onClick={() => updateStatus(row.id, "rejected")}
+                                disabled={isUpdating}
+                                className="inline-flex items-center gap-1 rounded-md border border-red-200 bg-red-50 px-2 py-1 text-[11px] font-semibold text-red-700 hover:bg-red-100 disabled:opacity-60"
+                              >
+                                <FaTimesCircle className="text-[10px]" />
+                                Reject
+                              </button>
+                            ) : null}
+                            {status === "rejected" ? (
+                              <button
+                                type="button"
+                                onClick={() => updateStatus(row.id, "screening")}
+                                disabled={isUpdating}
+                                className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-[11px] font-semibold text-gray-700 hover:bg-gray-100 disabled:opacity-60"
+                              >
+                                Reopen
+                              </button>
+                            ) : null}
+                            {status !== "hired" && status !== "rejected" ? (
+                              <button
+                                type="button"
+                                onClick={() => updateStatus(row.id, "hired")}
+                                disabled={isUpdating}
+                                className="inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-60"
+                              >
+                                <FaCheckCircle className="text-[10px]" />
+                                Mark Hired
+                              </button>
+                            ) : null}
+                            {isUpdating ? (
+                              <span className="inline-flex items-center gap-1 text-[11px] text-gray-500">
+                                <FaSpinner className="animate-spin" />
+                                Updating...
+                              </span>
+                            ) : null}
+                          </div>
+                        </div>
+                      </td>
+
+                      <td className="px-4 py-3 text-sm text-gray-700">
+                        <div>{formatDateTime(row.created_at)}</div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          Last update: {formatDateTime(row.updated_at)}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -304,4 +641,3 @@ const CareerApplications = () => {
 };
 
 export default CareerApplications;
-

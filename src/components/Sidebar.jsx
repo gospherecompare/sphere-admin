@@ -273,10 +273,30 @@ const MENU_CONFIG = {
           path: "/settings/compare-scoring",
         },
         {
+          id: "set-device-field-profiles",
+          label: "Device Field Profiles",
+          icon: <FaDatabase />,
+          path: "/settings/device-field-profiles",
+        },
+        {
           id: "set-api-tester",
           label: "API Tester",
           icon: <FaNetworkWired />,
           path: "/api-tester",
+        },
+      ],
+    },
+    {
+      id: "content",
+      label: "Content",
+      icon: <FaDatabase />,
+      type: "submenu",
+      children: [
+        {
+          id: "content-blog-studio",
+          label: "Blog Studio",
+          icon: <FaChartLine />,
+          path: "/content/blogs",
         },
       ],
     },

@@ -195,6 +195,14 @@ const ROUTE_TRAILS = [
       { label: "API Tester" },
     ],
   },
+  {
+    path: "/content/blogs",
+    trail: [
+      DASHBOARD_CRUMB,
+      { label: "Content", to: "/content/blogs" },
+      { label: "Blog Studio" },
+    ],
+  },
 
   {
     path: "/reports/productcategories",

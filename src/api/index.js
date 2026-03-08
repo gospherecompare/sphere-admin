@@ -1,7 +1,14 @@
 // Central API config — update this single value when backend URL changes.
 import Cookies from "js-cookie";
 
-const API_BASE = "https://api.apisphere.in";
+const resolvedApiBase = (() => {
+  const envBase = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_BASE;
+  if (envBase) return String(envBase);
+
+  return "https://api.apisphere.in";
+})();
+
+const API_BASE = String(resolvedApiBase).replace(/\/$/, "");
 
 // buildUrl('/path') -> 'https://api.apisphere.in/path'
 const buildUrl = (path = "") => {
