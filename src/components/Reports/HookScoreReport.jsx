@@ -16,6 +16,21 @@ const formatScore = (value) => {
 
 const formatDateTime = (value) => {
   if (!value) return "-";
+  if (typeof value === "object") {
+    const candidate =
+      value.calculated_at ??
+      value.hook_calculated_at ??
+      value.date ??
+      value.value ??
+      null;
+    if (!candidate) return "-";
+    value = candidate;
+  }
+  if (Array.isArray(value)) {
+    const first = value[0];
+    if (!first) return "-";
+    value = first;
+  }
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return String(value);
   return parsed.toLocaleString();
@@ -26,30 +41,67 @@ const HookScoreReport = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [query, setQuery] = useState("");
+  const [recomputeNote, setRecomputeNote] = useState("");
+
+  const fetchSmartphoneRows = useCallback(async () => {
+    const token = getAuthToken();
+    const res = await fetch(buildUrl("/api/smartphone"), {
+      method: "GET",
+      headers: {
+        Authorization: token ? `Bearer ${token}` : "",
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    const smartphones = Array.isArray(data?.smartphones) ? data.smartphones : [];
+    return smartphones.map((item, index) => ({
+      ...item,
+      _api_rank: index + 1,
+    }));
+  }, []);
+
+  const recomputeHookScore = useCallback(async () => {
+    const token = getAuthToken();
+    const res = await fetch(buildUrl("/api/admin/hook-score/recompute"), {
+      method: "POST",
+      headers: {
+        Authorization: token ? `Bearer ${token}` : "",
+        "Content-Type": "application/json",
+      },
+    });
+    if (!res.ok) throw new Error(`Recompute failed: HTTP ${res.status}`);
+    return res.json();
+  }, []);
+
+  const isMissingOrZeroHook = (row) => {
+    const score = Number(row?.hook_score);
+    const hasScore = Number.isFinite(score);
+    const hasCalc = Boolean(row?.hook_calculated_at);
+    if (!hasScore && !hasCalc) return true;
+    return hasScore ? score <= 0 : !hasCalc;
+  };
 
   const fetchReport = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setRecomputeNote("");
     try {
-      const token = getAuthToken();
-      const res = await fetch(buildUrl("/api/smartphones"), {
-        method: "GET",
-        headers: {
-          Authorization: token ? `Bearer ${token}` : "",
-          "Content-Type": "application/json",
-        },
-      });
+      let nextRows = await fetchSmartphoneRows();
 
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
+      const shouldRecompute =
+        nextRows.length > 0 && nextRows.every((row) => isMissingOrZeroHook(row));
 
-      const smartphones = Array.isArray(data?.smartphones) ? data.smartphones : [];
-      setRows(
-        smartphones.map((item, index) => ({
-          ...item,
-          _api_rank: index + 1,
-        })),
-      );
+      if (shouldRecompute) {
+        await recomputeHookScore();
+        setRecomputeNote(
+          "Hook score was recomputed from latest signals and report was refreshed.",
+        );
+        nextRows = await fetchSmartphoneRows();
+      }
+
+      setRows(nextRows);
     } catch (err) {
       console.error("Failed to fetch hook score report:", err);
       setError(err.message || "Failed to load hook score report");
@@ -57,7 +109,7 @@ const HookScoreReport = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [fetchSmartphoneRows, recomputeHookScore]);
 
   useEffect(() => {
     fetchReport();
@@ -100,8 +152,8 @@ const HookScoreReport = () => {
               Hook Score Report
             </h1>
             <p className="text-gray-600 mt-2">
-              Shows API order from <code>/api/smartphones</code> with product name
-              and calculated hook metrics.
+              Shows values from <code>/api/smartphone</code> with product name
+              and computed hook metrics.
             </p>
           </div>
           <button
@@ -156,6 +208,11 @@ const HookScoreReport = () => {
           </div>
         </div>
       )}
+      {!error && recomputeNote ? (
+        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-6 text-sm text-emerald-700">
+          {recomputeNote}
+        </div>
+      ) : null}
 
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
@@ -203,9 +260,6 @@ const HookScoreReport = () => {
                     </td>
                     <td className="px-4 py-3 text-gray-900 min-w-[260px]">
                       <div className="font-semibold">{row?.name || "-"}</div>
-                      <div className="text-xs text-gray-500">
-                        ID: {row?.product_id ?? "-"}
-                      </div>
                     </td>
                     <td className="px-4 py-3 text-gray-700 whitespace-nowrap">
                       {row?.brand_name || "-"}

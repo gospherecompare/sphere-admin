@@ -67,6 +67,29 @@ const Brand = () => {
     "Home Appliances",
   ];
 
+  const normalizeAssetUrl = (value) => {
+    const raw = String(value || "").trim();
+    if (!raw) return "";
+    if (/^(https?:|data:|blob:)/i.test(raw)) return raw;
+    if (raw.startsWith("//")) return `https:${raw}`;
+    if (raw.startsWith("/")) return buildUrl(raw);
+    if (/^(uploads|assets|images)\//i.test(raw)) {
+      return buildUrl(`/${raw.replace(/^\/+/, "")}`);
+    }
+    return raw;
+  };
+
+  const resolveBrandLogo = (brand) =>
+    normalizeAssetUrl(
+      brand?.logo ||
+        brand?.logo_url ||
+        brand?.logoUrl ||
+        brand?.image ||
+        brand?.brand_logo ||
+        brand?.brandLogo ||
+        "",
+    );
+
   // Fetch brands from API
   const fetchBrands = async () => {
     try {
@@ -91,7 +114,7 @@ const Brand = () => {
       const normalizedBrands = brandsArray.map((brand) => ({
         id: brand.id,
         name: brand.name || "",
-        logo: brand.logo || "",
+        logo: resolveBrandLogo(brand),
         website: brand.website || "",
         description: brand.description || "",
         category: brand.category || "",
@@ -253,7 +276,7 @@ const Brand = () => {
   const handleEdit = (brand) => {
     setFormData({
       name: brand.name || "",
-      logo: brand.logo || "",
+      logo: resolveBrandLogo(brand),
       website: brand.website || "",
       description: brand.description || "",
       category: brand.category || "",
