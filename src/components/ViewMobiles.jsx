@@ -24,6 +24,16 @@ import {
 import Cookies from "js-cookie";
 import { buildUrl } from "../api";
 
+const toScore = (value) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const formatScore = (value) => {
+  const parsed = toScore(value);
+  return parsed === null ? "N/A" : `${parsed.toFixed(1)}%`;
+};
+
 const ViewMobiles = () => {
   const [mobiles, setMobiles] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -98,6 +108,11 @@ const ViewMobiles = () => {
             name: mobile.name || mobile.product_name || "Unnamed",
             brand: mobile.brand || mobile.brand_name || "Unknown",
             model: mobile.model || mobile.model_name || "Unknown",
+            hook_score: mobile.hook_score ?? mobile.hookScore ?? null,
+            buyer_intent: mobile.buyer_intent ?? mobile.buyerIntent ?? null,
+            trend_velocity:
+              mobile.trend_velocity ?? mobile.trendVelocity ?? null,
+            freshness: mobile.freshness ?? null,
             published,
             launch_date: launchDateRaw,
             images: mobile.images || [],
@@ -178,6 +193,10 @@ const ViewMobiles = () => {
               priceList: typeof m.price === "number" ? [m.price] : [],
               storagesSet: new Set(m.storage ? [m.storage] : []),
               ramsSet: new Set(m.ram ? [m.ram] : []),
+              hook_score: toScore(m.hook_score),
+              buyer_intent: toScore(m.buyer_intent),
+              trend_velocity: toScore(m.trend_velocity),
+              freshness: toScore(m.freshness),
               raw: m.raw || {},
               created_at:
                 (m.raw && (m.raw.created_at || m.raw.createdAt)) || null,
@@ -191,6 +210,21 @@ const ViewMobiles = () => {
             if (typeof m.price === "number") g.priceList.push(m.price);
             if (m.storage) g.storagesSet.add(m.storage);
             if (m.ram) g.ramsSet.add(m.ram);
+            if (g.hook_score === null && toScore(m.hook_score) !== null) {
+              g.hook_score = toScore(m.hook_score);
+            }
+            if (g.buyer_intent === null && toScore(m.buyer_intent) !== null) {
+              g.buyer_intent = toScore(m.buyer_intent);
+            }
+            if (
+              g.trend_velocity === null &&
+              toScore(m.trend_velocity) !== null
+            ) {
+              g.trend_velocity = toScore(m.trend_velocity);
+            }
+            if (g.freshness === null && toScore(m.freshness) !== null) {
+              g.freshness = toScore(m.freshness);
+            }
             g.published = g.published || m.published;
             if (!g.launch_date && m.launch_date) g.launch_date = m.launch_date;
           }
@@ -216,6 +250,10 @@ const ViewMobiles = () => {
             price,
             storage: storages.join("/") || "",
             ram: rams.join("/") || "",
+            hook_score: g.hook_score,
+            buyer_intent: g.buyer_intent,
+            trend_velocity: g.trend_velocity,
+            freshness: g.freshness,
             raw: g.raw || {},
             created_at: g.created_at,
           };
@@ -425,6 +463,9 @@ const ViewMobiles = () => {
       }
       if (sortBy === "price-low") {
         return a.price - b.price;
+      }
+      if (sortBy === "hook-score") {
+        return (toScore(b.hook_score) ?? -1) - (toScore(a.hook_score) ?? -1);
       }
       return 0;
     });
@@ -995,6 +1036,7 @@ const ViewMobiles = () => {
                   <option value="name">Name A-Z</option>
                   <option value="price-high">Price ↓</option>
                   <option value="price-low">Price ↑</option>
+                  <option value="hook-score">Hook Score</option>
                 </select>
 
                 <button
@@ -1065,6 +1107,9 @@ const ViewMobiles = () => {
                   Model
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Hook Score
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Specs
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -1084,7 +1129,7 @@ const ViewMobiles = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {loading ? (
                 <tr>
-                  <td colSpan="7" className="px-4 py-8 text-center">
+                  <td colSpan="8" className="px-4 py-8 text-center">
                     <div className="flex justify-center">
                       <FaSpinner className="animate-spin text-2xl text-blue-600" />
                     </div>
@@ -1137,6 +1182,15 @@ const ViewMobiles = () => {
                     <td className="px-4 py-3">
                       <div className="text-sm text-gray-900">
                         {mobile.model}
+                      </div>
+                    </td>
+
+                    <td className="px-4 py-3">
+                      <div className="text-sm font-semibold text-violet-700">
+                        {formatScore(mobile.hook_score)}
+                      </div>
+                      <div className="text-[11px] text-gray-500">
+                        Intent: {formatScore(mobile.buyer_intent)}
                       </div>
                     </td>
 
@@ -1242,7 +1296,7 @@ const ViewMobiles = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="7" className="px-4 py-8 text-center">
+                  <td colSpan="8" className="px-4 py-8 text-center">
                     <div className="flex flex-col items-center">
                       <FaMobile className="text-4xl text-gray-300 mb-3" />
                       <p className="text-gray-500 font-medium">
@@ -1341,6 +1395,18 @@ const ViewMobiles = () => {
                           <p className="text-gray-500">RAM</p>
                           <p className="font-medium text-gray-900">
                             {mobile.ram || "N/A"}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-gray-500">Hook Score</p>
+                          <p className="font-medium text-violet-700">
+                            {formatScore(mobile.hook_score)}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-gray-500">Buyer Intent</p>
+                          <p className="font-medium text-violet-700">
+                            {formatScore(mobile.buyer_intent)}
                           </p>
                         </div>
                       </div>
@@ -1497,3 +1563,6 @@ const ViewMobiles = () => {
 };
 
 export default ViewMobiles;
+
+
+

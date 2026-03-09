@@ -784,8 +784,11 @@ const EditMobile = () => {
                 : "",
             url: sp?.url || "",
             offer_text: sp?.offer_text || "",
-            sale_start_date:
-              sp?.sale_start_date || sp?.sale_date || sp?.saleStartDate || "",
+            sale_start_date: pickFirstValidDateInput(
+              sp?.sale_start_date,
+              sp?.sale_date,
+              sp?.saleStartDate,
+            ),
             discount: sp?.discount || "",
             offers: sp?.offers || "",
             custom_properties: sp?.custom_properties || {},
@@ -821,8 +824,11 @@ const EditMobile = () => {
                     : "",
                 url: sp?.url || "",
                 offer_text: sp?.offer_text || "",
-                sale_start_date:
-                  sp?.sale_start_date || sp?.sale_date || sp?.saleStartDate || "",
+                sale_start_date: pickFirstValidDateInput(
+                  sp?.sale_start_date,
+                  sp?.sale_date,
+                  sp?.saleStartDate,
+                ),
                 discount: sp?.discount || "",
                 offers: sp?.offers || "",
                 custom_properties: sp?.custom_properties || {},
@@ -1581,7 +1587,7 @@ const EditMobile = () => {
                 price: s.price ? Number(s.price) : null,
                 url: s.url || null,
                 offer_text: s.offer_text || null,
-                sale_start_date: s.sale_start_date || null,
+                sale_start_date: toDateInputValue(s.sale_start_date) || null,
                 discount: s.discount || null,
                 offers: s.offers || null,
                 custom_properties: s.custom_properties || {},
@@ -1602,7 +1608,7 @@ const EditMobile = () => {
             price: s.price ? Number(s.price) : null,
             url: s.url || null,
             offer_text: s.offer_text || null,
-            sale_start_date: s.sale_start_date || null,
+            sale_start_date: toDateInputValue(s.sale_start_date) || null,
             delivery_info: s.delivery_info || s.deliveryInfo || null,
             discount: s.discount || null,
             offers: s.offers || null,
@@ -3553,7 +3559,7 @@ const EditMobile = () => {
                             </label>
                             <input
                               type="date"
-                              value={store.sale_start_date ?? ""}
+                              value={toDateInputValue(store.sale_start_date)}
                               onChange={(e) => {
                                 const newVariants = [...formData.variants];
                                 newVariants[index].stores[storeIndex] = {
