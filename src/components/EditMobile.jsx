@@ -171,6 +171,16 @@ const EditMobile = () => {
       return Number.isNaN(d.getTime()) ? null : d;
     }
 
+    // Accept day-first values like 20-02-2026 / 20/02/2026
+    const dayFirst = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+    if (dayFirst) {
+      const day = Number(dayFirst[1]);
+      const month = Number(dayFirst[2]) - 1;
+      const year = Number(dayFirst[3]);
+      const d = new Date(year, month, day);
+      return Number.isNaN(d.getTime()) ? null : d;
+    }
+
     const d = new Date(str);
     return Number.isNaN(d.getTime()) ? null : d;
   };
@@ -1052,6 +1062,8 @@ const EditMobile = () => {
         });
 
         setFormData(transformedData);
+        // Avoid stale session draft overriding freshly loaded server values.
+        clearDraft();
 
         const publishedVal =
           apiData?.published ??
@@ -2838,6 +2850,290 @@ const EditMobile = () => {
     );
   };
 
+  const StoreSaleDatePicker = ({ value, onChange }) => {
+    const pickerRef = useRef(null);
+    const normalizedValue = toDateInputValue(value);
+    const parsedValue = parseDateSafe(normalizedValue);
+    const hasValidDate = !!parsedValue;
+    const initialBaseDate = parsedValue || new Date();
+    const [showPicker, setShowPicker] = useState(false);
+    const [pickerDate, setPickerDate] = useState({
+      year: initialBaseDate.getFullYear(),
+      month: initialBaseDate.getMonth(),
+      day: initialBaseDate.getDate(),
+    });
+
+    useEffect(() => {
+      const parsed = parseDateSafe(value);
+      if (!parsed) return;
+      setPickerDate({
+        year: parsed.getFullYear(),
+        month: parsed.getMonth(),
+        day: parsed.getDate(),
+      });
+    }, [value]);
+
+    useEffect(() => {
+      if (!showPicker) return;
+      const handleOutsideClick = (event) => {
+        if (pickerRef.current && !pickerRef.current.contains(event.target)) {
+          setShowPicker(false);
+        }
+      };
+      document.addEventListener("mousedown", handleOutsideClick);
+      return () => document.removeEventListener("mousedown", handleOutsideClick);
+    }, [showPicker]);
+
+    const today = new Date();
+    const daysInMonth = getDaysInMonth(pickerDate.year, pickerDate.month);
+    const firstDay = new Date(pickerDate.year, pickerDate.month, 1).getDay();
+    const calendarDays = [];
+    for (let i = 0; i < firstDay; i++) {
+      calendarDays.push(null);
+    }
+    for (let day = 1; day <= daysInMonth; day++) {
+      calendarDays.push(day);
+    }
+
+    const isToday = (day) =>
+      day === today.getDate() &&
+      pickerDate.month === today.getMonth() &&
+      pickerDate.year === today.getFullYear();
+
+    const handlePrevMonth = () => {
+      setPickerDate((prev) => {
+        if (prev.month === 0) {
+          return { ...prev, month: 11, year: prev.year - 1 };
+        }
+        return { ...prev, month: prev.month - 1 };
+      });
+    };
+
+    const handleNextMonth = () => {
+      setPickerDate((prev) => {
+        if (prev.month === 11) {
+          return { ...prev, month: 0, year: prev.year + 1 };
+        }
+        return { ...prev, month: prev.month + 1 };
+      });
+    };
+
+    const handleApply = () => {
+      const dateStr = `${pickerDate.year}-${(pickerDate.month + 1)
+        .toString()
+        .padStart(2, "0")}-${pickerDate.day.toString().padStart(2, "0")}`;
+      onChange(dateStr);
+      setShowPicker(false);
+    };
+
+    const handleToday = () => {
+      const next = {
+        year: today.getFullYear(),
+        month: today.getMonth(),
+        day: today.getDate(),
+      };
+      setPickerDate(next);
+      const dateStr = `${next.year}-${(next.month + 1)
+        .toString()
+        .padStart(2, "0")}-${next.day.toString().padStart(2, "0")}`;
+      onChange(dateStr);
+      setShowPicker(false);
+    };
+
+    const handleClear = () => {
+      onChange("");
+      setShowPicker(false);
+    };
+
+    return (
+      <div className="relative" ref={pickerRef}>
+        <button
+          type="button"
+          onClick={() => setShowPicker((prev) => !prev)}
+          className={`w-full px-4 py-2.5 border-2 transition-all rounded-lg bg-white text-left flex items-center justify-between ${
+            hasValidDate
+              ? "border-blue-400 shadow-sm"
+              : "border-gray-300 hover:border-gray-400"
+          } hover:shadow-md`}
+        >
+          <div className="flex items-center space-x-3 min-w-0">
+            <FaCalendar
+              className={`text-base flex-shrink-0 ${hasValidDate ? "text-blue-500" : "text-gray-400"}`}
+            />
+            <div className="min-w-0">
+              <span
+                className={`block font-medium truncate ${
+                  hasValidDate ? "text-gray-900" : "text-gray-500"
+                }`}
+              >
+                {hasValidDate
+                  ? parsedValue.toLocaleDateString("en-US", {
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    })
+                  : "Select Sale Start Date"}
+              </span>
+              {hasValidDate && (
+                <span className="text-xs text-gray-500">
+                  {parsedValue.toLocaleDateString("en-US", {
+                    weekday: "short",
+                  })}
+                </span>
+              )}
+            </div>
+          </div>
+          <FaChevronDown
+            className={`text-gray-400 text-lg ${
+              showPicker ? "transform rotate-180" : ""
+            } transition-transform duration-300`}
+          />
+        </button>
+
+        {showPicker && (
+          <div className="absolute z-50 mt-2 w-full sm:w-96 bg-white border-2 border-blue-200 rounded-xl shadow-2xl p-4 sm:p-5 backdrop-blur-sm bg-opacity-95">
+            <div className="bg-gradient-to-r from-blue-600 to-blue-500 rounded-lg p-4 mb-4 text-white">
+              <h3 className="text-base sm:text-lg font-bold text-center">
+                {months[pickerDate.month]} {pickerDate.year}
+              </h3>
+              <p className="text-center text-blue-100 text-sm mt-1">
+                {pickerDate.day
+                  ? `${pickerDate.day} ${months[pickerDate.month]} ${pickerDate.year}`
+                  : "Pick a date"}
+              </p>
+            </div>
+
+            <div className="flex items-center justify-between mb-5 pb-4 border-b border-gray-200">
+              <button
+                type="button"
+                onClick={handlePrevMonth}
+                className="p-2 hover:bg-blue-100 rounded-lg transition-colors text-gray-700 font-bold"
+                title="Previous month"
+              >
+                <FaChevronDown className="transform rotate-90 text-lg" />
+              </button>
+
+              <div className="flex gap-3">
+                <select
+                  value={pickerDate.month}
+                  onChange={(e) =>
+                    setPickerDate((prev) => ({
+                      ...prev,
+                      month: parseInt(e.target.value, 10),
+                    }))
+                  }
+                  className="px-3 py-1.5 border-2 border-gray-300 rounded-lg text-sm font-semibold focus:outline-none focus:border-blue-500 bg-white hover:border-blue-400 transition-colors"
+                >
+                  {months.map((month, idx) => (
+                    <option key={month} value={idx}>
+                      {month}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  value={pickerDate.year}
+                  onChange={(e) =>
+                    setPickerDate((prev) => ({
+                      ...prev,
+                      year: parseInt(e.target.value, 10),
+                    }))
+                  }
+                  className="px-3 py-1.5 border-2 border-gray-300 rounded-lg text-sm font-semibold focus:outline-none focus:border-blue-500 bg-white hover:border-blue-400 transition-colors"
+                >
+                  {generateYears().map((year) => (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleNextMonth}
+                className="p-2 hover:bg-blue-100 rounded-lg transition-colors text-gray-700 font-bold"
+                title="Next month"
+              >
+                <FaChevronDown className="transform -rotate-90 text-lg" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-7 gap-2 mb-3">
+              {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
+                <div
+                  key={day}
+                  className="text-center text-xs font-bold text-gray-600 py-2 bg-gray-50 rounded-md"
+                >
+                  {day}
+                </div>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-7 gap-2 mb-5">
+              {calendarDays.map((day, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => day && setPickerDate((prev) => ({ ...prev, day }))}
+                  disabled={!day}
+                  className={`w-full aspect-square rounded-lg text-sm font-semibold transition-all transform ${
+                    !day
+                      ? "text-transparent cursor-default"
+                      : isToday(day)
+                        ? "bg-amber-100 text-amber-900 border-2 border-amber-400 shadow-md"
+                        : day === pickerDate.day
+                          ? "bg-blue-600 text-white shadow-lg scale-105"
+                          : "text-gray-700 bg-gray-50 hover:bg-blue-50 hover:border-2 hover:border-blue-300 hover:scale-105"
+                  } disabled:cursor-default`}
+                >
+                  {day}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex justify-between items-center gap-2 pt-3 border-t border-gray-200">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleToday}
+                  className="px-3 py-1.5 text-xs font-semibold text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors border border-blue-300"
+                >
+                  Today
+                </button>
+                {hasValidDate && (
+                  <button
+                    type="button"
+                    onClick={handleClear}
+                    className="px-3 py-1.5 text-xs font-semibold text-gray-700 bg-white rounded-lg hover:bg-gray-50 transition-colors border border-gray-300"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+              <div className="flex space-x-2">
+                <button
+                  type="button"
+                  onClick={() => setShowPicker(false)}
+                  className="px-4 py-1.5 text-sm font-semibold border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleApply}
+                  className="px-4 py-1.5 text-sm font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-md"
+                >
+                  Apply
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-full bg-gray-50 p-1 sm:p-2 md:p-2">
@@ -3536,6 +3832,7 @@ const EditMobile = () => {
                                 className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
                               />
                               <button
+                                type="button"
                                 onClick={() => {
                                   const newVariants = [...formData.variants];
                                   newVariants[index].stores = newVariants[
@@ -3557,21 +3854,19 @@ const EditMobile = () => {
                             <label className="block text-xs font-medium text-gray-600 mb-1">
                               Sale Start Date
                             </label>
-                            <input
-                              type="date"
-                              value={toDateInputValue(store.sale_start_date)}
-                              onChange={(e) => {
+                            <StoreSaleDatePicker
+                              value={store.sale_start_date}
+                              onChange={(nextValue) => {
                                 const newVariants = [...formData.variants];
                                 newVariants[index].stores[storeIndex] = {
                                   ...newVariants[index].stores[storeIndex],
-                                  sale_start_date: e.target.value,
+                                  sale_start_date: nextValue,
                                 };
                                 setFormData((prev) => ({
                                   ...prev,
                                   variants: newVariants,
                                 }));
                               }}
-                              className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
                             />
                           </div>
                         </div>
