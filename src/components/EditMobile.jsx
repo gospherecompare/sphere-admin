@@ -112,6 +112,7 @@ const EditMobile = () => {
     brand: "",
     model: "",
     launch_date: "",
+    official_preorder_url: "",
     created_at: "",
     images: [],
     colors: [],
@@ -882,6 +883,10 @@ const EditMobile = () => {
           brand:
             apiData?.brand || apiData?.brand_name || apiData?.brandName || "",
           model: apiData?.model || "",
+          official_preorder_url:
+            apiData?.official_preorder_url ||
+            apiData?.officialPreorderUrl ||
+            "",
           // rating removed
           launch_date: pickFirstValidDateInput(
             apiData?.launch_date,
@@ -1526,6 +1531,7 @@ const EditMobile = () => {
         brand_name: formData.brand || "",
         model: formData.model || "",
         launch_date: formData.launch_date || null,
+        official_preorder_url: formData.official_preorder_url || null,
         publish: publishEnabled,
         images: formData.images || [],
         images_json: formData.images || [],
@@ -3034,6 +3040,20 @@ const EditMobile = () => {
                       })}
                     </p>
                   )}
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                    Official Preorder URL
+                  </label>
+                  <input
+                    type="url"
+                    name="official_preorder_url"
+                    value={formData.official_preorder_url || ""}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="https://brand.com/product/preorder"
+                  />
                 </div>
               </div>
             </div>

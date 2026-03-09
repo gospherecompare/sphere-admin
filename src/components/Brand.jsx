@@ -31,6 +31,7 @@ const Brand = () => {
   const [formData, setFormData] = useState({
     name: "",
     logo: "",
+    website: "",
     category: "",
     description: "",
     status: "active",
@@ -91,6 +92,7 @@ const Brand = () => {
         id: brand.id,
         name: brand.name || "",
         logo: brand.logo || "",
+        website: brand.website || "",
         description: brand.description || "",
         category: brand.category || "",
         status: brand.status || "active",
@@ -189,6 +191,7 @@ const Brand = () => {
       const payload = {
         name: formData.name.trim(),
         logo: formData.logo,
+        website: formData.website.trim() || "",
         description: formData.description || "",
         category: formData.category || "",
         status: formData.status,
@@ -251,6 +254,7 @@ const Brand = () => {
     setFormData({
       name: brand.name || "",
       logo: brand.logo || "",
+      website: brand.website || "",
       description: brand.description || "",
       category: brand.category || "",
       status: brand.status || "active",
@@ -350,6 +354,7 @@ const Brand = () => {
     setFormData({
       name: "",
       logo: "",
+      website: "",
       description: "",
       category: "",
       status: "active",
@@ -578,6 +583,20 @@ const Brand = () => {
                   rows={3}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="Optional short description about the brand"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Official Website
+                </label>
+                <input
+                  type="url"
+                  name="website"
+                  value={formData.website}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="https://www.brand.com/store"
                 />
               </div>
 

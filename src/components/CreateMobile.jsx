@@ -158,6 +158,7 @@ const createInitialMobileFormData = () => ({
     brand: "",
     model: "",
     launch_date: "",
+    official_preorder_url: "",
     colors: [],
     is_foldable: false,
     ...createDefaultSmartphoneSpecs(),
@@ -1107,6 +1108,8 @@ const CreateMobile = () => {
             brand: formData.smartphone.brand,
             model: formData.smartphone.model,
             launch_date: formData.smartphone.launch_date || null,
+            official_preorder_url:
+              formData.smartphone.official_preorder_url || null,
             colors: formData.smartphone.colors.filter(
             (color) => color.name && color.code,
           ),
@@ -1146,6 +1149,8 @@ const CreateMobile = () => {
         category: formData.smartphone.segment,
         model: formData.smartphone.model,
         launch_date: formData.smartphone.launch_date || null,
+        official_preorder_url:
+          formData.smartphone.official_preorder_url || null,
         sensors: formData.smartphone.sensors || null,
         publish: publishEnabled,
         images_json: formData.images,
@@ -1774,6 +1779,20 @@ const CreateMobile = () => {
                     Launch Date
                   </label>
                   <DatePicker />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                    Official Preorder URL
+                  </label>
+                  <input
+                    type="url"
+                    name="official_preorder_url"
+                    value={formData.smartphone.official_preorder_url || ""}
+                    onChange={handleSmartphoneChange}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="https://brand.com/product/preorder"
+                  />
                 </div>
               </div>
             </div>
