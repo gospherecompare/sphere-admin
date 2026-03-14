@@ -249,6 +249,12 @@ const MENU_CONFIG = {
           icon: <FaDatabase />,
           path: "/settings/device-field-profiles",
         },
+        {
+          id: "set-api-tester",
+          label: "API Tester",
+          icon: <FaCogs />,
+          path: "/api-tester",
+        },
       ],
     },
     {
