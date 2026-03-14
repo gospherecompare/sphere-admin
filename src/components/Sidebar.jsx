@@ -36,6 +36,7 @@ import {
   FaUpload,
   FaDownload,
   FaTv,
+  FaBullhorn,
 } from "react-icons/fa";
 import HookLogo from "./Ui/hooklogo";
 
@@ -72,18 +73,6 @@ const MENU_CONFIG = {
               label: "Inventory",
               icon: <FaBox />,
               path: "/products/smartphones/inventory",
-            },
-            {
-              id: "sp-variants",
-              label: "Variants & Pricing",
-              icon: <FaTags />,
-              path: "/products/smartphones/variants-pricing",
-            },
-            {
-              id: "sp-reviews",
-              label: "Ratings & Reviews",
-              icon: <FaStar />,
-              path: "/products/smartphones/ratings-reviews",
             },
           ],
         },
@@ -249,24 +238,6 @@ const MENU_CONFIG = {
       type: "submenu",
       children: [
         {
-          id: "set-general",
-          label: "General",
-          icon: <FaCog />,
-          path: "/settings/general",
-        },
-        {
-          id: "set-tax",
-          label: "Tax & Pricing",
-          icon: <FaTags />,
-          path: "/settings/tax-pricing",
-        },
-        {
-          id: "set-api",
-          label: "API Settings",
-          icon: <FaNetworkWired />,
-          path: "/settings/api",
-        },
-        {
           id: "set-compare-scoring",
           label: "Compare Scoring",
           icon: <FaChartLine />,
@@ -278,11 +249,19 @@ const MENU_CONFIG = {
           icon: <FaDatabase />,
           path: "/settings/device-field-profiles",
         },
+      ],
+    },
+    {
+      id: "marketing",
+      label: "Marketing",
+      icon: <FaBullhorn />,
+      type: "submenu",
+      children: [
         {
-          id: "set-api-tester",
-          label: "API Tester",
-          icon: <FaNetworkWired />,
-          path: "/api-tester",
+          id: "marketing-banners",
+          label: "Banners",
+          icon: <FaBullhorn />,
+          path: "/marketing/banners",
         },
       ],
     },
@@ -728,7 +707,10 @@ const Sidebar = ({
               className="mx-auto hover:scale-110 transition-transform flex-shrink-0"
             >
               <div className="h-8 w-8 overflow-hidden rounded-lg sm:h-10 sm:w-10">
-                <HookLogo showText={false} className="h-8 w-8 sm:h-10 sm:w-10" />
+                <HookLogo
+                  showText={false}
+                  className="h-8 w-8 sm:h-10 sm:w-10"
+                />
               </div>
             </Link>
           )}

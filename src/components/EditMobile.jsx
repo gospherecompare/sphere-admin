@@ -44,6 +44,30 @@ import {
   FaSimCard,
 } from "react-icons/fa";
 
+const getLaunchStatus = (launchDate, preorderUrl) => {
+  const hasPreorder = Boolean(String(preorderUrl || "").trim());
+  const date = launchDate ? new Date(launchDate) : null;
+  const dateValid = date && !Number.isNaN(date.getTime());
+  if (hasPreorder) return "preorder";
+  if (dateValid) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return date > today ? "upcoming" : "released";
+  }
+  return "released";
+};
+
+const formatLaunchStatusLabel = (status) => {
+  if (!status) return "";
+  return status.charAt(0).toUpperCase() + status.slice(1);
+};
+
+const stripSphereFields = (section, disableSphere) => {
+  if (!disableSphere || !section || typeof section !== "object") return section;
+  const { sphere_score, sphere_description, sphere_images, ...rest } = section;
+  return rest;
+};
+
 const EditMobile = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -113,6 +137,7 @@ const EditMobile = () => {
     model: "",
     launch_date: "",
     official_preorder_url: "",
+    launch_status_override: "",
     created_at: "",
     images: [],
     colors: [],
@@ -139,6 +164,19 @@ const EditMobile = () => {
     setValue: setFormData,
     enabled: dataLoaded,
   });
+
+  const launchStatusAuto = getLaunchStatus(
+    formData.launch_date,
+    formData.official_preorder_url,
+  );
+  const launchStatusOverride = String(
+    formData.launch_status_override || "",
+  ).trim();
+  const effectiveLaunchStatus = launchStatusOverride || launchStatusAuto;
+  const isUpcomingDevice = effectiveLaunchStatus === "upcoming";
+  const specEditorHiddenKeys = isUpcomingDevice
+    ? ["sphere_score", "sphere_description", "sphere_images"]
+    : [];
 
   // Months array
   const months = [
@@ -1061,7 +1099,10 @@ const EditMobile = () => {
           transformedData[field] = merged;
         });
 
-        setFormData(transformedData);
+        setFormData({
+          ...transformedData,
+          launch_status_override: transformedData.launch_status_override || "",
+        });
         // Avoid stale session draft overriding freshly loaded server values.
         clearDraft();
 
@@ -1156,6 +1197,14 @@ const EditMobile = () => {
     setFormData((prev) => ({
       ...prev,
       [name]: value,
+    }));
+  };
+
+  const handleLaunchStatusOverride = (value) => {
+    const nextValue = value === "auto" ? "" : value;
+    setFormData((prev) => ({
+      ...prev,
+      launch_status_override: nextValue,
     }));
   };
 
@@ -1538,6 +1587,19 @@ const EditMobile = () => {
     }
 
     try {
+      const sanitizeSpec = (section) =>
+        stripSphereFields(section, isUpcomingDevice);
+      const buildDesign = sanitizeSpec(formData.build_design);
+      const display = sanitizeSpec(formData.display);
+      const performance = sanitizeSpec(formData.performance);
+      const camera = sanitizeSpec(formData.camera);
+      const battery = sanitizeSpec(formData.battery);
+      const connectivity = sanitizeSpec(formData.connectivity);
+      const network = sanitizeSpec(formData.network);
+      const ports = sanitizeSpec(formData.ports);
+      const audio = sanitizeSpec(formData.audio);
+      const multimedia = sanitizeSpec(formData.multimedia);
+
       const submitData = {
         id,
         name: formData.name || "",
@@ -1550,32 +1612,33 @@ const EditMobile = () => {
         model: formData.model || "",
         launch_date: formData.launch_date || null,
         official_preorder_url: formData.official_preorder_url || null,
+        launch_status_override: launchStatusOverride || null,
         publish: publishEnabled,
         images: formData.images || [],
         images_json: formData.images || [],
         colors: formData.colors.filter((color) => color.name && color.code),
-        build_design: formData.build_design,
-        build_design_json: formData.build_design,
-        display: formData.display,
-        display_json: formData.display,
-        performance: formData.performance,
-        performance_json: formData.performance,
-        camera: formData.camera,
-        camera_json: formData.camera,
-        battery: formData.battery,
-        battery_json: formData.battery,
-        connectivity: formData.connectivity,
-        connectivity_json: formData.connectivity,
-        network: formData.network,
-        network_json: formData.network,
+        build_design: buildDesign,
+        build_design_json: buildDesign,
+        display,
+        display_json: display,
+        performance,
+        performance_json: performance,
+        camera,
+        camera_json: camera,
+        battery,
+        battery_json: battery,
+        connectivity,
+        connectivity_json: connectivity,
+        network,
+        network_json: network,
         sensors: formData.sensors || null,
-        ports: formData.ports,
-        ports_json: formData.ports,
-        port_json: formData.ports,
-        audio: formData.audio,
-        audio_json: formData.audio,
-        multimedia: formData.multimedia,
-        multimedia_json: formData.multimedia,
+        ports,
+        ports_json: ports,
+        port_json: ports,
+        audio,
+        audio_json: audio,
+        multimedia,
+        multimedia_json: multimedia,
         is_foldable: formData.is_foldable || false,
         published: publishEnabled,
         // include variants and per-variant store prices so edits persist
@@ -3357,6 +3420,29 @@ const EditMobile = () => {
                     placeholder="https://brand.com/product/preorder"
                   />
                 </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                    Launch Status
+                  </label>
+                  <select
+                    value={launchStatusOverride || "auto"}
+                    onChange={(e) => handleLaunchStatusOverride(e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                  >
+                    <option value="auto">
+                      Auto (detected: {formatLaunchStatusLabel(launchStatusAuto)})
+                    </option>
+                    <option value="upcoming">Upcoming</option>
+                    <option value="preorder">Preorder</option>
+                    <option value="released">Released</option>
+                  </select>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Effective status:{" "}
+                    {formatLaunchStatusLabel(effectiveLaunchStatus)}{" "}
+                    {launchStatusOverride ? "(manual override)" : "(auto)"}
+                  </p>
+                </div>
               </div>
             </div>
           )}
@@ -3974,6 +4060,14 @@ const EditMobile = () => {
                   </label>
                 </div>
 
+                {isUpcomingDevice ? (
+                  <div className="mb-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                    Spec score fields are hidden for upcoming devices (status:{" "}
+                    {formatLaunchStatusLabel(effectiveLaunchStatus)}). Add
+                    scores after launch or pre-order.
+                  </div>
+                ) : null}
+
                 {activeSpecTab === "network" && (
                   <div className="mb-3 p-3 bg-blue-50 rounded-md border border-blue-100">
                     <div className="flex items-center space-x-2">
@@ -3995,6 +4089,7 @@ const EditMobile = () => {
                         onChange={(next) =>
                           setFoldableSpecSectionSide(activeSpecTab, "fold", next)
                         }
+                        hiddenKeys={specEditorHiddenKeys}
                         labelOverrides={specUi.labelOverrides}
                         helpText={specUi.helpText}
                         placeholderOverrides={specUi.placeholderOverrides}
@@ -4011,6 +4106,7 @@ const EditMobile = () => {
                         onChange={(next) =>
                           setFoldableSpecSectionSide(activeSpecTab, "flip", next)
                         }
+                        hiddenKeys={specEditorHiddenKeys}
                         labelOverrides={specUi.labelOverrides}
                         helpText={specUi.helpText}
                         placeholderOverrides={specUi.placeholderOverrides}
@@ -4024,6 +4120,7 @@ const EditMobile = () => {
                   <DynamicForm
                     data={formData[activeSpecTab] || {}}
                     onChange={(next) => setSpecSection(activeSpecTab, next)}
+                    hiddenKeys={specEditorHiddenKeys}
                     labelOverrides={specUi.labelOverrides}
                     helpText={specUi.helpText}
                     placeholderOverrides={specUi.placeholderOverrides}

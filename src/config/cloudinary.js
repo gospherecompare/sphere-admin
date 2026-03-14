@@ -4,9 +4,10 @@ const presets = {
   appliances: "sphere_appliance",
   brands: "sphere_brands",
   networking: "sphere_networking",
+  banners: "sphere_banners",
 };
 
-async function uploadToCloudinary(file, type) {
+async function uploadToCloudinary(file, type, options = {}) {
   const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
   if (!cloudName) {
     throw new Error("VITE_CLOUDINARY_CLOUD_NAME is not defined in .env");
@@ -17,7 +18,8 @@ async function uploadToCloudinary(file, type) {
     throw new Error(`No upload preset configured for type: ${type}`);
   }
 
-  const url = `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`;
+  const resourceType = options?.resourceType || "image";
+  const url = `https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`;
 
   const formData = new FormData();
   formData.append("file", file);

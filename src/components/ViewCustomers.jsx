@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
   FaUsers,
   FaEdit,
@@ -27,18 +27,25 @@ const ViewCustomers = () => {
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState("newest");
+  const [filterBy, setFilterBy] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [toasts, setToasts] = useState([]);
   const [activeDropdown, setActiveDropdown] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
   const [showModal, setShowModal] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(new Set());
   const itemsPerPage = 10;
+  const selectAllRef = useRef(null);
 
   // Fetch customers from API
   useEffect(() => {
     fetchCustomers();
   }, []);
+
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [customers]);
 
   const fetchCustomers = async () => {
     setLoading(true);
@@ -85,31 +92,42 @@ const ViewCustomers = () => {
   };
 
   // Filter and sort customers
-  const filteredAndSortedCustomers = customers
-    .filter(
-      (customer) =>
-        customer.f_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        customer.l_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        customer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (customer.phone && customer.phone.includes(searchTerm)),
-    )
-    .sort((a, b) => {
-      if (sortBy === "newest") {
-        return new Date(b.created_at) - new Date(a.created_at);
-      }
-      if (sortBy === "oldest") {
-        return new Date(a.created_at) - new Date(b.created_at);
-      }
-      if (sortBy === "name") {
-        return `${a.f_name} ${a.l_name}`.localeCompare(
-          `${b.f_name} ${b.l_name}`,
-        );
-      }
-      if (sortBy === "email") {
-        return a.email.localeCompare(b.email);
-      }
-      return 0;
-    });
+  const filteredAndSortedCustomers = useMemo(() => {
+    const query = String(searchTerm || "").trim().toLowerCase();
+    const normalize = (value) => String(value || "").toLowerCase();
+
+    return customers
+      .filter((customer) => {
+        const matchesSearch =
+          normalize(customer.f_name).includes(query) ||
+          normalize(customer.l_name).includes(query) ||
+          normalize(customer.email).includes(query) ||
+          normalize(customer.phone).includes(query);
+
+        if (!matchesSearch) return false;
+
+        if (filterBy === "hasEmail") return Boolean(customer.email);
+        if (filterBy === "noEmail") return !customer.email;
+        return true;
+      })
+      .sort((a, b) => {
+        if (sortBy === "newest") {
+          return new Date(b.created_at) - new Date(a.created_at);
+        }
+        if (sortBy === "oldest") {
+          return new Date(a.created_at) - new Date(b.created_at);
+        }
+        if (sortBy === "name") {
+          return `${a.f_name || ""} ${a.l_name || ""}`.localeCompare(
+            `${b.f_name || ""} ${b.l_name || ""}`,
+          );
+        }
+        if (sortBy === "email") {
+          return String(a.email || "").localeCompare(String(b.email || ""));
+        }
+        return 0;
+      });
+  }, [customers, searchTerm, sortBy, filterBy]);
 
   // Pagination
   const totalPages = Math.ceil(
@@ -120,6 +138,100 @@ const ViewCustomers = () => {
     startIndex,
     startIndex + itemsPerPage,
   );
+
+  const pageIds = useMemo(
+    () => paginatedCustomers.map((customer) => customer.id),
+    [paginatedCustomers],
+  );
+  const selectedOnPage = useMemo(
+    () => pageIds.filter((id) => selectedIds.has(id)),
+    [pageIds, selectedIds],
+  );
+  const allOnPageSelected =
+    pageIds.length > 0 && selectedOnPage.length === pageIds.length;
+  const someOnPageSelected =
+    selectedOnPage.length > 0 && !allOnPageSelected;
+
+  useEffect(() => {
+    if (selectAllRef.current) {
+      selectAllRef.current.indeterminate = someOnPageSelected;
+    }
+  }, [someOnPageSelected]);
+
+  const updateSelected = (updater) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      updater(next);
+      return next;
+    });
+  };
+
+  const toggleSelectAllOnPage = (checked) => {
+    updateSelected((set) => {
+      if (checked) {
+        pageIds.forEach((id) => set.add(id));
+      } else {
+        pageIds.forEach((id) => set.delete(id));
+      }
+    });
+  };
+
+  const toggleSelectOne = (id) => {
+    updateSelected((set) => {
+      if (set.has(id)) set.delete(id);
+      else set.add(id);
+    });
+  };
+
+  const buildEmailCsv = (rows) => {
+    const emails = new Set();
+    rows.forEach((customer) => {
+      const email = String(customer.email || "").trim();
+      if (email) emails.add(email);
+    });
+
+    if (!emails.size) return null;
+
+    const header = "email";
+    const body = Array.from(emails)
+      .map((email) => `"${email.replace(/"/g, '""')}"`)
+      .join("\n");
+    return `${header}\n${body}\n`;
+  };
+
+  const downloadCsv = (csv, filename) => {
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportEmails = (mode) => {
+    const dateStamp = new Date().toISOString().slice(0, 10);
+    const rows =
+      mode === "selected"
+        ? customers.filter((c) => selectedIds.has(c.id))
+        : filteredAndSortedCustomers;
+
+    const csv = buildEmailCsv(rows);
+    if (!csv) {
+      showToast("Error", "No emails available to export", "error");
+      return;
+    }
+
+    const label = mode === "selected" ? "selected" : "filtered";
+    downloadCsv(csv, `customer-emails-${label}-${dateStamp}.csv`);
+    showToast(
+      "Success",
+      `Exported ${mode === "selected" ? "selected" : "filtered"} emails`,
+      "success",
+    );
+  };
 
   // Handle delete
   const handleDelete = async (customerId, customerName) => {
@@ -321,7 +433,7 @@ const ViewCustomers = () => {
 
       {/* Search and Filter */}
       <div className="bg-white rounded-lg shadow p-6 space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {/* Search */}
           <div className="md:col-span-2">
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -360,6 +472,47 @@ const ViewCustomers = () => {
               <option value="email">Email (A-Z)</option>
             </select>
           </div>
+
+          {/* Filter */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              <FaFilter className="inline mr-2" />
+              Filter By
+            </label>
+            <select
+              value={filterBy}
+              onChange={(e) => {
+                setFilterBy(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="all">All Customers</option>
+              <option value="hasEmail">Has Email</option>
+              <option value="noEmail">No Email</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div className="text-sm text-gray-600">
+            Selected: <span className="font-semibold">{selectedIds.size}</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => handleExportEmails("filtered")}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+            >
+              Export Emails
+            </button>
+            <button
+              onClick={() => handleExportEmails("selected")}
+              disabled={selectedIds.size === 0}
+              className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 disabled:opacity-50 text-sm font-medium"
+            >
+              Export Selected
+            </button>
+          </div>
         </div>
       </div>
 
@@ -371,6 +524,16 @@ const ViewCustomers = () => {
               <table className="w-full">
                 <thead className="bg-gray-100 border-b border-gray-200">
                   <tr>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
+                      <input
+                        ref={selectAllRef}
+                        type="checkbox"
+                        checked={allOnPageSelected}
+                        onChange={(e) => toggleSelectAllOnPage(e.target.checked)}
+                        aria-label="Select all on page"
+                        className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                    </th>
                     <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
                       Name
                     </th>
@@ -397,6 +560,15 @@ const ViewCustomers = () => {
                       key={customer.id}
                       className="hover:bg-gray-50 transition-colors"
                     >
+                      <td className="px-6 py-4 text-sm text-gray-900 font-medium">
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(customer.id)}
+                          onChange={() => toggleSelectOne(customer.id)}
+                          aria-label={`Select ${customer.f_name || "customer"}`}
+                          className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                      </td>
                       <td className="px-6 py-4 text-sm text-gray-900 font-medium">
                         {customer.f_name} {customer.l_name}
                       </td>

@@ -159,6 +159,7 @@ const createInitialMobileFormData = () => ({
     model: "",
     launch_date: "",
     official_preorder_url: "",
+    launch_status_override: "",
     colors: [],
     is_foldable: false,
     ...createDefaultSmartphoneSpecs(),
@@ -167,6 +168,30 @@ const createInitialMobileFormData = () => ({
   images: [],
   variants: [],
 });
+
+const getLaunchStatus = (launchDate, preorderUrl) => {
+  const hasPreorder = Boolean(String(preorderUrl || "").trim());
+  const date = launchDate ? new Date(launchDate) : null;
+  const dateValid = date && !Number.isNaN(date.getTime());
+  if (hasPreorder) return "preorder";
+  if (dateValid) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return date > today ? "upcoming" : "released";
+  }
+  return "released";
+};
+
+const formatLaunchStatusLabel = (status) => {
+  if (!status) return "";
+  return status.charAt(0).toUpperCase() + status.slice(1);
+};
+
+const stripSphereFields = (section, disableSphere) => {
+  if (!disableSphere || !section || typeof section !== "object") return section;
+  const { sphere_score, sphere_description, sphere_images, ...rest } = section;
+  return rest;
+};
 
 const CreateMobile = () => {
   const [formData, setFormData] = useState(createInitialMobileFormData);
@@ -216,6 +241,16 @@ const CreateMobile = () => {
     month: new Date().getMonth(),
     day: new Date().getDate(),
   });
+
+  const launchStatusAuto = getLaunchStatus(
+    formData.smartphone.launch_date,
+    formData.smartphone.official_preorder_url,
+  );
+  const launchStatusOverride = String(
+    formData.smartphone.launch_status_override || "",
+  ).trim();
+  const effectiveLaunchStatus = launchStatusOverride || launchStatusAuto;
+  const isUpcomingDevice = effectiveLaunchStatus === "upcoming";
 
   // Refs for dropdown closing
   const brandDropdownRef = useRef(null);
@@ -462,6 +497,17 @@ const CreateMobile = () => {
       smartphone: {
         ...prev.smartphone,
         [name]: value,
+      },
+    }));
+  };
+
+  const handleLaunchStatusOverride = (value) => {
+    const nextValue = value === "auto" ? "" : value;
+    setFormData((prev) => ({
+      ...prev,
+      smartphone: {
+        ...prev.smartphone,
+        launch_status_override: nextValue,
       },
     }));
   };
@@ -1096,8 +1142,21 @@ const CreateMobile = () => {
     }
 
     try {
+      const sanitizeSpec = (section) =>
+        stripSphereFields(section, isUpcomingDevice);
+      const buildDesign = sanitizeSpec(formData.smartphone.build_design);
+      const display = sanitizeSpec(formData.smartphone.display);
+      const performance = sanitizeSpec(formData.smartphone.performance);
+      const camera = sanitizeSpec(formData.smartphone.camera);
+      const battery = sanitizeSpec(formData.smartphone.battery);
+      const connectivity = sanitizeSpec(formData.smartphone.connectivity);
+      const network = sanitizeSpec(formData.smartphone.network);
+      const ports = sanitizeSpec(formData.smartphone.ports);
+      const audio = sanitizeSpec(formData.smartphone.audio);
+      const multimedia = sanitizeSpec(formData.smartphone.multimedia);
+
       const token = Cookies.get("authToken");
-        const submitData = {
+      const submitData = {
           product: {
             name: formData.product.name,
             brand_id: Number(formData.product.brand_id),
@@ -1110,19 +1169,20 @@ const CreateMobile = () => {
             launch_date: formData.smartphone.launch_date || null,
             official_preorder_url:
               formData.smartphone.official_preorder_url || null,
+            launch_status_override: launchStatusOverride || null,
             colors: formData.smartphone.colors.filter(
-            (color) => color.name && color.code,
-          ),
-          build_design: formData.smartphone.build_design,
-          display: formData.smartphone.display,
-          performance: formData.smartphone.performance,
-          camera: formData.smartphone.camera,
-          battery: formData.smartphone.battery,
-          connectivity: formData.smartphone.connectivity,
-          network: formData.smartphone.network,
-          ports: formData.smartphone.ports,
-          audio: formData.smartphone.audio,
-          multimedia: formData.smartphone.multimedia,
+              (color) => color.name && color.code,
+            ),
+          build_design: buildDesign,
+          display,
+          performance,
+          camera,
+          battery,
+          connectivity,
+          network,
+          ports,
+          audio,
+          multimedia,
           sensors: formData.smartphone.sensors || null,
         },
         images: formData.images,
@@ -1151,19 +1211,20 @@ const CreateMobile = () => {
         launch_date: formData.smartphone.launch_date || null,
         official_preorder_url:
           formData.smartphone.official_preorder_url || null,
+        launch_status_override: launchStatusOverride || null,
         sensors: formData.smartphone.sensors || null,
         publish: publishEnabled,
         images_json: formData.images,
-        build_design_json: formData.smartphone.build_design,
-        display_json: formData.smartphone.display,
-        performance_json: formData.smartphone.performance,
-        camera_json: formData.smartphone.camera,
-        battery_json: formData.smartphone.battery,
-        connectivity_json: formData.smartphone.connectivity,
-        network_json: formData.smartphone.network,
-        ports_json: formData.smartphone.ports,
-        audio_json: formData.smartphone.audio,
-        multimedia_json: formData.smartphone.multimedia,
+        build_design_json: buildDesign,
+        display_json: display,
+        performance_json: performance,
+        camera_json: camera,
+        battery_json: battery,
+        connectivity_json: connectivity,
+        network_json: network,
+        ports_json: ports,
+        audio_json: audio,
+        multimedia_json: multimedia,
         variants_json: formData.variants.map((v) => ({
           ram: v.ram || null,
           storage: v.storage || null,
@@ -1793,6 +1854,29 @@ const CreateMobile = () => {
                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="https://brand.com/product/preorder"
                   />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                    Launch Status
+                  </label>
+                  <select
+                    value={launchStatusOverride || "auto"}
+                    onChange={(e) => handleLaunchStatusOverride(e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                  >
+                    <option value="auto">
+                      Auto (detected: {formatLaunchStatusLabel(launchStatusAuto)})
+                    </option>
+                    <option value="upcoming">Upcoming</option>
+                    <option value="preorder">Preorder</option>
+                    <option value="released">Released</option>
+                  </select>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Effective status:{" "}
+                    {formatLaunchStatusLabel(effectiveLaunchStatus)}{" "}
+                    {launchStatusOverride ? "(manual override)" : "(auto)"}
+                  </p>
                 </div>
               </div>
             </div>
@@ -2589,102 +2673,112 @@ const CreateMobile = () => {
                 )}
 
                 {/* Sphere rating inputs for active spec tab */}
-                <div className="mt-6">
-                  <h4 className="text-sm font-semibold mb-3">Sphere Rating</h4>
-
-                  <div className="mb-3">
-                    <label className="block text-xs font-medium text-gray-600 mb-1">
-                      Score (0-100)
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      step="1"
-                      placeholder="0-100"
-                      title="Enter a score between 0 and 100"
-                      aria-label="Sphere score (0 to 100)"
-                      value={
-                        formData.smartphone[activeSpecTab]?.sphere_score ?? ""
-                      }
-                      onChange={(e) =>
-                        handleJsonbChange(
-                          activeSpecTab,
-                          "sphere_score",
-                          e.target.value === "" ? "" : Number(e.target.value),
-                        )
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
-                    />
+                {isUpcomingDevice ? (
+                  <div className="mt-6 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                    Spec score is disabled for upcoming devices (status:{" "}
+                    {formatLaunchStatusLabel(effectiveLaunchStatus)}). Add
+                    scores after launch or pre-order.
                   </div>
+                ) : (
+                  <div className="mt-6">
+                    <h4 className="text-sm font-semibold mb-3">Sphere Rating</h4>
 
-                  <div className="mb-3">
-                    <label className="block text-xs font-medium text-gray-600 mb-1">
-                      Description
-                    </label>
-                    <textarea
-                      value={
-                        formData.smartphone[activeSpecTab]?.sphere_description ||
-                        ""
-                      }
-                      onChange={(e) =>
-                        handleJsonbChange(
-                          activeSpecTab,
-                          "sphere_description",
-                          e.target.value,
-                        )
-                      }
-                      placeholder="Write a short summary for this section (optional)"
-                      className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm h-20"
-                    />
-                  </div>
+                    <div className="mb-3">
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Score (0-100)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="1"
+                        placeholder="0-100"
+                        title="Enter a score between 0 and 100"
+                        aria-label="Sphere score (0 to 100)"
+                        value={
+                          formData.smartphone[activeSpecTab]?.sphere_score ?? ""
+                        }
+                        onChange={(e) =>
+                          handleJsonbChange(
+                            activeSpecTab,
+                            "sphere_score",
+                            e.target.value === "" ? "" : Number(e.target.value),
+                          )
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
+                      />
+                    </div>
 
-                  <div className="mb-3">
-                    <label className="block text-xs font-medium text-gray-600 mb-1">
-                      Images
-                    </label>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      title="Upload sphere rating images"
-                      aria-label="Upload sphere rating images"
-                      onChange={(e) =>
-                        handleSphereImagesUpload(activeSpecTab, e.target.files)
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">
-                      Upload 1+ images for this section (optional).
-                    </p>
+                    <div className="mb-3">
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Description
+                      </label>
+                      <textarea
+                        value={
+                          formData.smartphone[activeSpecTab]
+                            ?.sphere_description || ""
+                        }
+                        onChange={(e) =>
+                          handleJsonbChange(
+                            activeSpecTab,
+                            "sphere_description",
+                            e.target.value,
+                          )
+                        }
+                        placeholder="Write a short summary for this section (optional)"
+                        className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm h-20"
+                      />
+                    </div>
 
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {(
-                        formData.smartphone[activeSpecTab]?.sphere_images || []
-                      ).map((url, idx) => (
-                        <div key={idx} className="relative w-20 h-20">
-                          <img
-                            src={url}
-                            alt={`sphere-${idx}`}
-                            className="w-20 h-20 object-cover rounded"
-                            onError={(e) => {
-                              e.target.onerror = null;
-                              e.target.src =
-                                "https://via.placeholder.com/80?text=Image";
-                            }}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => removeSphereImage(activeSpecTab, idx)}
-                            className="absolute top-0 right-0 bg-white rounded-full p-1 text-red-500 border"
-                          >
-                            <FaTimes className="text-xs" />
-                          </button>
-                        </div>
-                      ))}
+                    <div className="mb-3">
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Images
+                      </label>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        title="Upload sphere rating images"
+                        aria-label="Upload sphere rating images"
+                        onChange={(e) =>
+                          handleSphereImagesUpload(activeSpecTab, e.target.files)
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Upload 1+ images for this section (optional).
+                      </p>
+
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {(
+                          formData.smartphone[activeSpecTab]?.sphere_images || []
+                        ).map((url, idx) => (
+                          <div key={idx} className="relative w-20 h-20">
+                            <img
+                              src={url}
+                              alt={`sphere-${idx}`}
+                              className="w-20 h-20 object-cover rounded"
+                              onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.src =
+                                  "https://via.placeholder.com/80?text=Image";
+                              }}
+                            />
+                            <button
+                              type="button"
+                              onClick={() =>
+                                removeSphereImage(activeSpecTab, idx)
+                              }
+                              className="absolute top-0 right-0 bg-white rounded-full p-1 text-red-500 border"
+                            >
+                              <FaTimes className="text-xs" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
               </div>
             </div>
           )}

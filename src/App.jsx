@@ -39,6 +39,7 @@ import TrendingManager from "./components/Reports/TrendingManager";
 import HookScoreReport from "./components/Reports/HookScoreReport";
 import FeatureClicksReport from "./components/Reports/FeatureClicksReport";
 import CareerApplications from "./components/Reports/CareerApplications";
+import BannerManager from "./components/BannerManager";
 import EditLaptop from "./components/EditLaptop";
 import EditHomeAppliance from "./components/EditAppliance";
 import CompareScoring from "./components/Settings/CompareScoring";
@@ -392,6 +393,7 @@ function App() {
                   path="/specifications/store"
                   element={<OnlineStoreManagement />}
                 />
+                <Route path="/marketing/banners" element={<BannerManager />} />
                 <Route
                   path="/reports/productcategories"
                   element={<ProductCategoryReport />}
