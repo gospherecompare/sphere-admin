@@ -37,6 +37,7 @@ import {
   FaDownload,
   FaTv,
   FaBullhorn,
+  FaCalendarAlt,
 } from "react-icons/fa";
 import HookLogo from "./Ui/hooklogo";
 
@@ -73,6 +74,12 @@ const MENU_CONFIG = {
               label: "Inventory",
               icon: <FaBox />,
               path: "/products/smartphones/inventory",
+            },
+            {
+              id: "sp-upcoming",
+              label: "Upcoming Mobiles",
+              icon: <FaCalendarAlt />,
+              path: "/products/smartphones/upcoming",
             },
           ],
         },

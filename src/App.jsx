@@ -13,6 +13,7 @@ import Breadcrumbs from "./components/Breadcrumbs";
 import Dashboard from "./components/Dashboard";
 import CreateMobile from "./components/CreateMobile";
 import ViewMobiles from "./components/ViewMobiles";
+import ViewUpcomingMobiles from "./components/ViewUpcomingMobiles";
 import Login from "./components/Login";
 import EditMobile from "./components/EditMobile";
 import ApiTester from "./components/ApiTester";
@@ -308,6 +309,10 @@ function App() {
                 <Route
                   path="/products/smartphones/inventory"
                   element={<ViewMobiles />}
+                />
+                <Route
+                  path="/products/smartphones/upcoming"
+                  element={<ViewUpcomingMobiles />}
                 />
 
                 <Route

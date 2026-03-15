@@ -43,7 +43,7 @@ const presetEndpoints = [
     method: "POST",
     url: "/api/smartphones/req",
   },
-  { name: "Update Smartphone", method: "PUT", url: "/api/smartphones/:id" },
+  { name: "Update Smartphone", method: "PUT", url: "/api/smartphone/:id" },
   { name: "Categories", method: "GET", url: "/api/categories" },
   { name: "Brands", method: "GET", url: "/api/brands" },
   { name: "Create Laptop", method: "POST", url: "/api/laptops" },
@@ -146,8 +146,46 @@ export default function ApiTester() {
   const [copied, setCopied] = useState(false);
   const [postResponsePath, setPostResponsePath] = useState("/api/smartphones/req");
   const [postResponseLoading, setPostResponseLoading] = useState(false);
+  const [smartphoneOptions, setSmartphoneOptions] = useState([]);
+  const [smartphoneLoading, setSmartphoneLoading] = useState(false);
+  const [smartphoneError, setSmartphoneError] = useState(null);
+  const [selectedSmartphoneId, setSelectedSmartphoneId] = useState("");
+  const [smartphoneQuery, setSmartphoneQuery] = useState("");
+  const [smartphoneDropdownOpen, setSmartphoneDropdownOpen] = useState(false);
 
   const responseRef = useRef(null);
+  const smartphoneDropdownRef = useRef(null);
+  const showSmartphoneSelector =
+    method === "PUT" && /\/api\/smartphones?/i.test(url);
+  const filteredSmartphoneOptions = smartphoneQuery.trim()
+    ? smartphoneOptions.filter((option) => {
+        const q = smartphoneQuery.trim().toLowerCase();
+        return (
+          option.name.toLowerCase().includes(q) ||
+          String(option.model || "").toLowerCase().includes(q)
+        );
+      })
+    : smartphoneOptions;
+  const selectedSmartphoneOption = smartphoneOptions.find(
+    (option) => option.id === selectedSmartphoneId,
+  );
+  const selectedSmartphoneLabel = selectedSmartphoneOption
+    ? selectedSmartphoneOption.name
+    : "Select smartphone...";
+
+  useEffect(() => {
+    if (!smartphoneDropdownOpen) return;
+    const handleClickOutside = (event) => {
+      if (
+        smartphoneDropdownRef.current &&
+        !smartphoneDropdownRef.current.contains(event.target)
+      ) {
+        setSmartphoneDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [smartphoneDropdownOpen]);
 
   const toObject = (value) =>
     value && typeof value === "object" && !Array.isArray(value) ? value : {};
@@ -155,11 +193,95 @@ export default function ApiTester() {
   const resolveRequestUrl = (input, queryString = "") => {
     const inputUrl =
       input && String(input).trim() ? String(input).trim() : "/api/smartphone";
-    if (/^https?:\/\//i.test(inputUrl)) {
-      return inputUrl + (queryString ? `?${queryString}` : "");
+    const resolvedUrl =
+      inputUrl.includes(":id") && selectedSmartphoneId
+        ? inputUrl.replace(":id", String(selectedSmartphoneId))
+        : inputUrl;
+    if (/^https?:\/\//i.test(resolvedUrl)) {
+      return resolvedUrl + (queryString ? `?${queryString}` : "");
     }
-    const path = inputUrl.startsWith("/") ? inputUrl : `/${inputUrl}`;
+    const path = resolvedUrl.startsWith("/") ? resolvedUrl : `/${resolvedUrl}`;
     return buildUrl(path) + (queryString ? `?${queryString}` : "");
+  };
+
+  const normalizeSmartphoneOption = (row) => {
+    if (!row) return null;
+    const id =
+      row.product_id ??
+      row.productId ??
+      row.id ??
+      row.smartphone_id ??
+      row.smartphoneId ??
+      null;
+    const name =
+      row.name || row.product_name || row.productName || row.model || "";
+    const brand = row.brand_name || row.brand || row.brandName || "";
+    if (!id || !name) return null;
+    return {
+      id: String(id),
+      name: String(name),
+      model: row.model || "",
+      brand: String(brand || ""),
+    };
+  };
+
+  const loadSmartphones = async () => {
+    setSmartphoneLoading(true);
+    setSmartphoneError(null);
+    try {
+      const res = await fetch(buildUrl("/api/smartphones"));
+      if (!res.ok) throw new Error("Failed to fetch smartphones list");
+      const data = await res.json();
+      const rows = Array.isArray(data?.smartphones)
+        ? data.smartphones
+        : Array.isArray(data)
+          ? data
+          : [];
+      const options = rows
+        .map(normalizeSmartphoneOption)
+        .filter(Boolean)
+        .sort((a, b) => a.name.localeCompare(b.name));
+      setSmartphoneOptions(options);
+    } catch (err) {
+      setSmartphoneError(err.message || "Failed to load smartphones");
+      setSmartphoneOptions([]);
+    } finally {
+      setSmartphoneLoading(false);
+    }
+  };
+
+  const applySmartphoneSelection = (option) => {
+    if (!option || !option.id) return;
+    setSelectedSmartphoneId(option.id);
+    setMethod("PUT");
+    setUrl(`/api/smartphone/${option.id}`);
+
+    try {
+      const currentBody = body && body.trim() ? JSON.parse(body) : {};
+      const nextBody = { ...currentBody };
+      if (!nextBody.name && !nextBody.product_name) {
+        nextBody.name = option.name;
+      }
+      if (!nextBody.product_name) {
+        nextBody.product_name = option.name;
+      }
+      if (option.model && !nextBody.model) {
+        nextBody.model = option.model;
+      }
+      setBody(JSON.stringify(nextBody, null, 2));
+    } catch {
+      setBody(
+        JSON.stringify(
+          {
+            name: option.name,
+            product_name: option.name,
+            model: option.model || "",
+          },
+          null,
+          2,
+        ),
+      );
+    }
   };
 
   const normalizeDirectPostPayload = (targetPath, payload) => {
@@ -713,6 +835,10 @@ export default function ApiTester() {
     }
   }, []);
 
+  useEffect(() => {
+    loadSmartphones();
+  }, []);
+
   const persistPresets = (presets) => {
     try {
       localStorage.setItem("apiTester.presets", JSON.stringify(presets));
@@ -983,6 +1109,127 @@ export default function ApiTester() {
                   </button>
                 </div>
               </div>
+              {showSmartphoneSelector && (
+                <div className="px-4 pb-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-sm font-medium text-gray-700">
+                      Update Smartphone (select to fill URL + name)
+                    </label>
+                    <button
+                      onClick={loadSmartphones}
+                      className="text-xs text-blue-600 hover:text-blue-700"
+                      disabled={smartphoneLoading}
+                    >
+                      {smartphoneLoading ? "Loading..." : "Refresh list"}
+                    </button>
+                  </div>
+                  <div
+                    className="relative flex flex-col gap-2"
+                    ref={smartphoneDropdownRef}
+                  >
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSmartphoneDropdownOpen((prev) => !prev)
+                      }
+                      className="flex items-center justify-between rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <span className="truncate">{selectedSmartphoneLabel}</span>
+                      <FaChevronDown
+                        className={`text-gray-400 transition-transform ${
+                          smartphoneDropdownOpen ? "rotate-180" : ""
+                        }`}
+                      />
+                    </button>
+
+                    {smartphoneDropdownOpen && (
+                      <div className="absolute left-0 right-0 z-20 mt-2 rounded-xl border border-gray-200 bg-white shadow-xl">
+                        <div className="p-2 border-b border-gray-100">
+                          <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
+                            <FaSearch className="text-gray-400" />
+                            <input
+                              type="text"
+                              value={smartphoneQuery}
+                              onChange={(e) => setSmartphoneQuery(e.target.value)}
+                              placeholder="Search by name or model"
+                              className="flex-1 bg-transparent outline-none"
+                              autoFocus
+                            />
+                            {smartphoneQuery ? (
+                              <button
+                                onClick={() => setSmartphoneQuery("")}
+                                className="text-xs text-gray-500 hover:text-gray-700"
+                              >
+                                Clear
+                              </button>
+                            ) : null}
+                          </div>
+                          <div className="mt-2 text-xs text-gray-500">
+                            Showing {filteredSmartphoneOptions.length} of{" "}
+                            {smartphoneOptions.length}
+                          </div>
+                        </div>
+                        <div className="max-h-60 overflow-y-auto">
+                          {filteredSmartphoneOptions.length === 0 ? (
+                            <div className="px-3 py-3 text-sm text-gray-500">
+                              No matches found
+                            </div>
+                          ) : (
+                            filteredSmartphoneOptions.map((option) => (
+                              <button
+                                key={option.id}
+                                onClick={() => {
+                                  applySmartphoneSelection(option);
+                                  setSmartphoneDropdownOpen(false);
+                                  setSmartphoneQuery("");
+                                }}
+                                className={`w-full px-3 py-2 text-sm hover:bg-blue-50 ${
+                                  option.id === selectedSmartphoneId
+                                    ? "bg-blue-100"
+                                    : ""
+                                }`}
+                              >
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="min-w-0 text-left">
+                                    <div className="font-medium text-gray-900 truncate">
+                                      {option.name}
+                                    </div>
+                                    {option.model ? (
+                                      <div className="text-xs text-gray-500">
+                                        {option.model}
+                                      </div>
+                                    ) : null}
+                                  </div>
+                                  <div className="shrink-0 text-right">
+                                    {option.brand ? (
+                                      <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
+                                        {option.brand}
+                                      </div>
+                                    ) : null}
+                                    <div className="mt-1 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-gray-600">
+                                      {option.id}
+                                    </div>
+                                  </div>
+                                </div>
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  {smartphoneError ? (
+                    <div className="mt-2 text-xs text-red-600">
+                      {smartphoneError}
+                    </div>
+                  ) : (
+                    <div className="mt-2 text-xs text-gray-500">
+                      ID stays in the URL. JSON body only needs
+                      `name` or `product_name`.
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Tabs */}
               <div className="border-b border-gray-200 px-4">

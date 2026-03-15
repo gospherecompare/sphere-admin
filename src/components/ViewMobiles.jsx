@@ -23,8 +23,10 @@ import {
 } from "react-icons/fa";
 import Cookies from "js-cookie";
 import { buildUrl } from "../api";
+import { isUpcomingOrPreorder } from "../utils/mobileStatus";
 
 const toScore = (value) => {
+  if (value === null || value === undefined || value === "") return null;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
 };
@@ -34,7 +36,14 @@ const formatScore = (value) => {
   return parsed === null ? "N/A" : `${parsed.toFixed(1)}%`;
 };
 
-const ViewMobiles = () => {
+const ViewMobiles = ({
+  title = "Mobile Management",
+  subtitle = "Manage your smartphone inventory and details",
+  listTitle = "Mobiles List",
+  totalLabel = "Total Mobiles",
+  filterFn = null,
+  excludeUpcoming = true,
+} = {}) => {
   const [mobiles, setMobiles] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -199,7 +208,17 @@ const ViewMobiles = () => {
               freshness: toScore(m.freshness),
               raw: m.raw || {},
               created_at:
-                (m.raw && (m.raw.created_at || m.raw.createdAt)) || null,
+                (m.raw &&
+                  (m.raw.created_at ||
+                    m.raw.createdAt ||
+                    m.raw.created_on ||
+                    m.raw.createdOn ||
+                    m.raw.created ||
+                    m.raw.updated_at ||
+                    m.raw.updatedAt ||
+                    m.raw.last_updated ||
+                    m.raw.lastUpdated)) ||
+                null,
             });
           } else {
             const g = groupedMap.get(pid);
@@ -259,7 +278,16 @@ const ViewMobiles = () => {
           };
         });
 
-        setMobiles(groupedMobiles);
+        let nextMobiles = groupedMobiles;
+        if (excludeUpcoming) {
+          nextMobiles = nextMobiles.filter(
+            (mobile) => !isUpcomingOrPreorder(mobile),
+          );
+        }
+        if (typeof filterFn === "function") {
+          nextMobiles = nextMobiles.filter(filterFn);
+        }
+        setMobiles(nextMobiles);
         showToast("Success", "Mobiles loaded successfully", "success");
       } catch (err) {
         console.error("Failed to fetch mobiles:", err);
@@ -667,6 +695,15 @@ const ViewMobiles = () => {
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
     try {
+      if (dateString instanceof Date) {
+        if (Number.isNaN(dateString.getTime())) return "N/A";
+        return dateString.toLocaleDateString("en-GB", {
+          timeZone: "UTC",
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        });
+      }
       // Handle date-only values without timezone shifting (e.g. "2026-02-08")
       const s = String(dateString).trim();
       const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
@@ -698,6 +735,16 @@ const ViewMobiles = () => {
   const formatDateTime = (dateString) => {
     if (!dateString) return "N/A";
     try {
+      if (dateString instanceof Date) {
+        if (Number.isNaN(dateString.getTime())) return "N/A";
+        return dateString.toLocaleString("en-GB", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+      }
       const date = new Date(dateString);
       if (Number.isNaN(date.getTime())) return "N/A";
       return date.toLocaleString("en-GB", {
@@ -868,10 +915,10 @@ const ViewMobiles = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
           <div>
             <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900">
-              Mobile Management
+              {title}
             </h1>
             <p className="text-xs sm:text-sm text-gray-600 mt-1">
-              Manage your smartphone inventory and details
+              {subtitle}
             </p>
           </div>
 
@@ -891,7 +938,7 @@ const ViewMobiles = () => {
           <div className="bg-white rounded-lg shadow-md p-3 sm:p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500">Total Mobiles</p>
+                <p className="text-sm text-gray-500">{totalLabel}</p>
                 <p className="text-2xl font-bold text-gray-900">
                   <CountUp end={totalMobiles} duration={1.0} />
                 </p>
@@ -945,7 +992,7 @@ const ViewMobiles = () => {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3 sm:mb-0">
             <div className="flex items-center gap-2">
               <h2 className="font-semibold text-sm sm:text-base text-gray-800">
-                Mobiles List
+                {listTitle}
               </h2>
               <span className="bg-gray-100 text-gray-600 text-xs sm:text-sm px-2 py-1 rounded-full">
                 {filteredAndSortedMobiles.length}
