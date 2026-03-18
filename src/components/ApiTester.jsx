@@ -229,7 +229,19 @@ export default function ApiTester() {
     setSmartphoneLoading(true);
     setSmartphoneError(null);
     try {
-      const res = await fetch(buildUrl("/api/smartphones"));
+      const authToken = getAuthToken() || Cookies.get("authToken");
+      const headers = {
+        "Content-Type": "application/json",
+      };
+      if (authToken) {
+        headers.Authorization = `Bearer ${authToken}`;
+      }
+      
+      // Fetch from /api/smartphone (authenticated endpoint that returns ALL smartphones including unreleased)
+      const res = await fetch(buildUrl("/api/smartphone"), {
+        method: "GET",
+        headers,
+      });
       if (!res.ok) throw new Error("Failed to fetch smartphones list");
       const data = await res.json();
       const rows = Array.isArray(data?.smartphones)
