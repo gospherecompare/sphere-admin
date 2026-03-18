@@ -44,11 +44,62 @@ import {
   FaSimCard,
 } from "react-icons/fa";
 
-const getLaunchStatus = (launchDate, preorderUrl) => {
+const getEarliestSaleStartDate = (variants = []) => {
+  const dates = [];
+  const parseDate = (value) => {
+    if (!value) return null;
+    const isoMatch = String(value).trim().match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (isoMatch) {
+      const d = new Date(`${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}T00:00:00`);
+      return Number.isNaN(d.getTime()) ? null : d;
+    }
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  };
+
+  (Array.isArray(variants) ? variants : []).forEach((variant) => {
+    const direct = parseDate(
+      variant?.sale_start_date ||
+        variant?.saleStartDate ||
+        variant?.sale_date ||
+        variant?.saleDate ||
+        null,
+    );
+    if (direct) dates.push(direct);
+    const stores = Array.isArray(variant?.stores)
+      ? variant.stores
+      : Array.isArray(variant?.store_prices)
+        ? variant.store_prices
+        : [];
+    stores.forEach((store) => {
+      const storeDate = parseDate(
+        store?.sale_start_date ||
+          store?.saleStartDate ||
+          store?.sale_date ||
+          store?.saleDate ||
+          store?.available_from ||
+          store?.availableFrom ||
+          null,
+      );
+      if (storeDate) dates.push(storeDate);
+    });
+  });
+
+  if (!dates.length) return null;
+  return dates.sort((a, b) => a - b)[0];
+};
+
+const getLaunchStatus = (launchDate, preorderUrl, variants = []) => {
   const hasPreorder = Boolean(String(preorderUrl || "").trim());
+  const saleStart = getEarliestSaleStartDate(variants);
+  if (saleStart) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return saleStart > today ? "upcoming" : "available";
+  }
   const date = launchDate ? new Date(launchDate) : null;
   const dateValid = date && !Number.isNaN(date.getTime());
-  if (hasPreorder) return "preorder";
+  if (hasPreorder) return "upcoming";
   if (dateValid) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -168,12 +219,19 @@ const EditMobile = () => {
   const launchStatusAuto = getLaunchStatus(
     formData.launch_date,
     formData.official_preorder_url,
+    formData.variants,
   );
-  const launchStatusOverride = String(
+  const launchStatusOverrideRaw = String(
     formData.launch_status_override || "",
   ).trim();
+  const launchStatusOverride =
+    launchStatusOverrideRaw === "preorder"
+      ? "upcoming"
+      : launchStatusOverrideRaw;
   const effectiveLaunchStatus = launchStatusOverride || launchStatusAuto;
-  const isUpcomingDevice = effectiveLaunchStatus === "upcoming";
+  const isUpcomingDevice = ["rumored", "announced", "upcoming"].includes(
+    effectiveLaunchStatus,
+  );
   const specEditorHiddenKeys = isUpcomingDevice
     ? ["sphere_score", "sphere_description", "sphere_images"]
     : [];
@@ -3433,9 +3491,11 @@ const EditMobile = () => {
                     <option value="auto">
                       Auto (detected: {formatLaunchStatusLabel(launchStatusAuto)})
                     </option>
+                    <option value="rumored">Rumored</option>
+                    <option value="announced">Announced</option>
                     <option value="upcoming">Upcoming</option>
-                    <option value="preorder">Preorder</option>
                     <option value="released">Released</option>
+                    <option value="available">Available</option>
                   </select>
                   <p className="mt-1 text-xs text-gray-500">
                     Effective status:{" "}
