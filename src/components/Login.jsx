@@ -23,6 +23,36 @@ const AUTH_NOTICE_STORAGE_KEY = "hooksAdminAuthNotice";
 const POST_LOGIN_REDIRECT_KEY = "hooksAdminPostLoginRedirect";
 const POST_LOGIN_REDIRECT_MAX_AGE_MS = 1000 * 60 * 30; // 30 minutes
 const SESSION_TIMEOUT_NOTICE = "Session timed out. Please log in again.";
+const PENDING_OTP_STORAGE_KEY = "hooksAdminPendingLoginOtp";
+
+const formatCountdown = (ms) => {
+  const totalSeconds = Math.max(0, Math.ceil(Number(ms || 0) / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(
+    2,
+    "0",
+  )}`;
+};
+
+const formatOtpDeliveryMessage = (channels = []) => {
+  const normalized = Array.isArray(channels)
+    ? channels.map((channel) => String(channel).toLowerCase())
+    : [];
+  const hasEmail = normalized.includes("email");
+  const hasSms = normalized.includes("sms");
+
+  if (hasEmail && hasSms) {
+    return "We sent a 6-digit code to your registered email and mobile number.";
+  }
+  if (hasSms) {
+    return "We sent a 6-digit code to your registered mobile number.";
+  }
+  if (hasEmail) {
+    return "We sent a 6-digit code to your registered email address.";
+  }
+  return "We sent a 6-digit code to your registered contact method.";
+};
 
 const Login = ({ onLogin }) => {
   const [formData, setFormData] = useState({
@@ -30,11 +60,20 @@ const Login = ({ onLogin }) => {
     password: "",
   });
 
+  const [authStep, setAuthStep] = useState("credentials");
+  const [otp, setOtp] = useState("");
+  const [challengeId, setChallengeId] = useState("");
+  const [otpExpiresAt, setOtpExpiresAt] = useState(0);
+  const [otpResendAvailableAt, setOtpResendAvailableAt] = useState(0);
+  const [otpDeliveryChannels, setOtpDeliveryChannels] = useState([]);
+
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isResendingOtp, setIsResendingOtp] = useState(false);
   const [error, setError] = useState("");
   const [sessionNotice, setSessionNotice] = useState("");
+  const [clockTick, setClockTick] = useState(() => Date.now());
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -52,6 +91,38 @@ const Login = ({ onLogin }) => {
       if (savedEmail) {
         setFormData((f) => ({ ...f, email: savedEmail }));
         setRememberMe(true);
+      }
+
+      const pendingOtpRaw = sessionStorage.getItem(PENDING_OTP_STORAGE_KEY);
+      if (pendingOtpRaw) {
+        const pendingOtp = JSON.parse(pendingOtpRaw);
+        const pendingExpiresAt = Number(pendingOtp?.expiresAt || 0);
+        if (
+          pendingOtp?.challengeId &&
+          pendingOtp?.email &&
+          (!pendingExpiresAt || pendingExpiresAt > Date.now())
+        ) {
+          setFormData((f) => ({ ...f, email: pendingOtp.email, password: "" }));
+          setRememberMe(Boolean(pendingOtp?.rememberMe));
+          setAuthStep("otp");
+          setChallengeId(String(pendingOtp.challengeId));
+          setOtp("");
+          setOtpExpiresAt(pendingExpiresAt || Date.now() + 5 * 60 * 1000);
+          setOtpResendAvailableAt(Number(pendingOtp?.resendAvailableAt || 0));
+          setOtpDeliveryChannels(
+            Array.isArray(pendingOtp?.deliveryChannels)
+              ? pendingOtp.deliveryChannels
+              : [],
+          );
+          setSessionNotice(
+            formatOtpDeliveryMessage(pendingOtp?.deliveryChannels || []),
+          );
+        } else {
+          sessionStorage.removeItem(PENDING_OTP_STORAGE_KEY);
+          if (pendingOtpRaw) {
+            setSessionNotice("Your login code expired. Please sign in again.");
+          }
+        }
       }
     } catch (e) {
       /* ignore localStorage errors */
@@ -77,6 +148,183 @@ const Login = ({ onLogin }) => {
     }
   }, [location.state]);
 
+  useEffect(() => {
+    const timerId = window.setInterval(() => {
+      setClockTick(Date.now());
+    }, 1000);
+
+    return () => window.clearInterval(timerId);
+  }, []);
+
+  const otpRemainingMs = Math.max(0, Number(otpExpiresAt || 0) - clockTick);
+  const otpResendRemainingMs = Math.max(
+    0,
+    Number(otpResendAvailableAt || 0) - clockTick,
+  );
+
+  const clearOtpState = ({ keepEmail = true } = {}) => {
+    setAuthStep("credentials");
+    setOtp("");
+    setChallengeId("");
+    setOtpExpiresAt(0);
+    setOtpResendAvailableAt(0);
+    setOtpDeliveryChannels([]);
+    setIsResendingOtp(false);
+    sessionStorage.removeItem(PENDING_OTP_STORAGE_KEY);
+
+    if (keepEmail) {
+      setFormData((current) => ({ ...current, password: "" }));
+    } else {
+      setFormData({ email: "", password: "" });
+    }
+  };
+
+  const persistOtpState = (nextState) => {
+    try {
+      sessionStorage.setItem(
+        PENDING_OTP_STORAGE_KEY,
+        JSON.stringify(nextState),
+      );
+    } catch (e) {
+      /* ignore sessionStorage errors */
+    }
+  };
+
+  const completeLogin = (data) => {
+    const safeUser = data?.user || {};
+    const normalizedEmail = String(formData.email || "").trim();
+
+    if (data?.token) {
+      Cookies.set("authToken", data.token, {
+        expires: rememberMe ? 7 : 1,
+        secure: false,
+        sameSite: "strict",
+        path: "/",
+      });
+
+      if (safeUser.username) {
+        Cookies.set("username", safeUser.username, {
+          expires: rememberMe ? 7 : 1,
+          secure: false,
+          sameSite: "strict",
+          path: "/",
+        });
+      }
+
+      if (safeUser.role) {
+        Cookies.set("role", safeUser.role, {
+          expires: rememberMe ? 7 : 1,
+          secure: false,
+          sameSite: "strict",
+          path: "/",
+        });
+      }
+
+      Cookies.set("loginAt", new Date().toISOString(), {
+        expires: rememberMe ? 7 : 1,
+        secure: false,
+        sameSite: "strict",
+        path: "/",
+      });
+    }
+
+    if (data?.user) {
+      Cookies.set("user", JSON.stringify(data.user), {
+        expires: rememberMe ? 7 : 1,
+        secure: false,
+        sameSite: "strict",
+        path: "/",
+      });
+    }
+
+    if (typeof onLogin === "function") {
+      onLogin(data);
+    }
+
+    try {
+      if (rememberMe) {
+        localStorage.setItem("savedEmail", normalizedEmail);
+      } else {
+        localStorage.removeItem("savedEmail");
+      }
+    } catch (e) {
+      /* ignore localStorage errors */
+    }
+
+    let redirectPath = normalizeRedirectPath(location.state?.from) || "/dashboard";
+
+    try {
+      if (redirectPath === "/dashboard") {
+        const rawRedirect = sessionStorage.getItem(POST_LOGIN_REDIRECT_KEY);
+        if (rawRedirect) {
+          const parsed = JSON.parse(rawRedirect);
+          const savedAt = Number(parsed?.savedAt || 0);
+          const isFresh =
+            !savedAt || Date.now() - savedAt <= POST_LOGIN_REDIRECT_MAX_AGE_MS;
+          const storedPath = normalizeRedirectPath(parsed?.path);
+          if (isFresh && storedPath) {
+            redirectPath = storedPath;
+          }
+        }
+      }
+    } catch (e) {
+      /* ignore sessionStorage errors */
+    }
+
+    try {
+      sessionStorage.removeItem(PENDING_OTP_STORAGE_KEY);
+      sessionStorage.removeItem(POST_LOGIN_REDIRECT_KEY);
+      sessionStorage.removeItem(AUTH_NOTICE_STORAGE_KEY);
+    } catch (e) {
+      /* ignore sessionStorage errors */
+    }
+
+    setAuthStep("credentials");
+    setOtp("");
+    setChallengeId("");
+    setOtpExpiresAt(0);
+    setOtpResendAvailableAt(0);
+    setOtpDeliveryChannels([]);
+    setSessionNotice("");
+    setError("");
+    setShowPassword(false);
+
+    navigate(redirectPath, { replace: true });
+  };
+
+  const startOtpFlow = (data) => {
+    const now = Date.now();
+    const expiresInMs = Math.max(0, Number(data?.expiresIn || 300) * 1000);
+    const resendAfterMs = Math.max(
+      0,
+      Number(data?.resendAfterMs || 30 * 1000),
+    );
+    const nextChallengeId = String(data?.challengeId || "").trim();
+    const nextDeliveryChannels = Array.isArray(data?.deliveryChannels)
+      ? data.deliveryChannels
+      : [];
+
+    setAuthStep("otp");
+    setChallengeId(nextChallengeId);
+    setOtp("");
+    setOtpExpiresAt(now + expiresInMs);
+    setOtpResendAvailableAt(now + resendAfterMs);
+    setOtpDeliveryChannels(nextDeliveryChannels);
+    setSessionNotice(formatOtpDeliveryMessage(nextDeliveryChannels));
+    setError("");
+    setShowPassword(false);
+    setFormData((current) => ({ ...current, password: "" }));
+
+    persistOtpState({
+      challengeId: nextChallengeId,
+      email: String(formData.email || "").trim(),
+      rememberMe,
+      expiresAt: now + expiresInMs,
+      resendAvailableAt: now + resendAfterMs,
+      deliveryChannels: nextDeliveryChannels,
+    });
+  };
+
   const handleChange = (e) => {
     setFormData({
       ...formData,
@@ -85,10 +333,91 @@ const Login = ({ onLogin }) => {
     if (error) setError("");
   };
 
+  const handleOtpChange = (e) => {
+    const nextValue = String(e.target.value || "")
+      .replace(/\D/g, "")
+      .slice(0, 6);
+    setOtp(nextValue);
+    if (error) setError("");
+  };
+
+  const handleReturnToCredentials = (clearEmail = false) => {
+    clearOtpState({ keepEmail: !clearEmail });
+    if (clearEmail) {
+      setFormData({ email: "", password: "" });
+      setRememberMe(false);
+    }
+    setSessionNotice("");
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setIsLoading(true);
     setError("");
+    const normalizedEmail = String(formData.email || "").trim();
+
+    if (authStep === "otp") {
+      const normalizedOtp = String(otp || "")
+        .replace(/\D/g, "")
+        .slice(0, 6);
+
+      if (normalizedOtp.length !== 6) {
+        setError("Enter the 6-digit verification code.");
+        return;
+      }
+
+      if (!challengeId) {
+        setError("OTP session expired. Please log in again.");
+        setSessionNotice("");
+        handleReturnToCredentials();
+        return;
+      }
+
+      setIsLoading(true);
+      try {
+        const response = await fetch(buildUrl("/api/auth/login/verify-otp"), {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email: normalizedEmail,
+            challengeId,
+            otp: normalizedOtp,
+          }),
+        });
+
+        const data = await response.json().catch(() => ({}));
+
+        if (response.ok && data.token) {
+          completeLogin(data);
+          return;
+        }
+
+        if (response.status === 410 || response.status === 429) {
+          setError(data.message || "OTP expired. Please log in again.");
+          setSessionNotice("");
+          handleReturnToCredentials();
+          return;
+        }
+
+        if (response.status === 401 && typeof data.attemptsRemaining === "number") {
+          setError(
+            `${data.message || "Invalid OTP"}. ${data.attemptsRemaining} attempts remaining.`,
+          );
+          return;
+        }
+
+        setError(data.message || "Invalid OTP. Please try again.");
+      } catch (requestError) {
+        console.error("OTP verification error:", requestError);
+        setError("Network error. Please try again.");
+      } finally {
+        setIsLoading(false);
+      }
+      return;
+    }
+
+    setIsLoading(true);
 
     try {
       const response = await fetch(buildUrl("/api/auth/login"), {
@@ -97,101 +426,117 @@ const Login = ({ onLogin }) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          email: formData.email,
+          email: normalizedEmail,
           password: formData.password,
         }),
       });
 
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
 
-      if (response.ok) {
-        // Store token using cookies
-        if (data.token) {
-          Cookies.set("authToken", data.token, {
-            expires: rememberMe ? 7 : 1,
-            secure: false,
-            sameSite: "strict",
-            path: "/",
-          });
-
-          Cookies.set("username", data.user.username, {
-            expires: rememberMe ? 7 : 1,
-            secure: false,
-            sameSite: "strict",
-            path: "/",
-          });
-
-          Cookies.set("role", data.user.role, {
-            expires: rememberMe ? 7 : 1,
-            secure: false,
-            sameSite: "strict",
-            path: "/",
-          });
-
-          Cookies.set("loginAt", new Date().toISOString(), {
-            expires: rememberMe ? 7 : 1,
-            secure: false,
-            sameSite: "strict",
-            path: "/",
-          });
+      if (response.ok && data.otpRequired) {
+        if (!data.challengeId) {
+          setError("OTP could not be started. Please try again.");
+          return;
         }
-
-        // Store user info using cookies
-        if (data.user) {
-          Cookies.set("user", JSON.stringify(data.user), {
-            expires: rememberMe ? 7 : 1,
-            secure: false,
-            sameSite: "strict",
-            path: "/",
-          });
-        }
-
-        if (onLogin) {
-          onLogin(data);
-        }
-        // Persist email when 'Remember me' is checked
-        try {
-          if (rememberMe) {
-            localStorage.setItem("savedEmail", formData.email || "");
-          } else {
-            localStorage.removeItem("savedEmail");
-          }
-        } catch (e) {
-          /* ignore localStorage errors */
-        }
-        let redirectPath =
-          normalizeRedirectPath(location.state?.from) || "/dashboard";
-
-        try {
-          if (redirectPath === "/dashboard") {
-            const rawRedirect = sessionStorage.getItem(POST_LOGIN_REDIRECT_KEY);
-            if (rawRedirect) {
-              const parsed = JSON.parse(rawRedirect);
-              const savedAt = Number(parsed?.savedAt || 0);
-              const isFresh =
-                !savedAt ||
-                Date.now() - savedAt <= POST_LOGIN_REDIRECT_MAX_AGE_MS;
-              const storedPath = normalizeRedirectPath(parsed?.path);
-              if (isFresh && storedPath) {
-                redirectPath = storedPath;
-              }
-            }
-          }
-          sessionStorage.removeItem(POST_LOGIN_REDIRECT_KEY);
-          sessionStorage.removeItem(AUTH_NOTICE_STORAGE_KEY);
-        } catch (e) {
-          /* ignore sessionStorage errors */
-        }
-
-        navigate(redirectPath, { replace: true });
-      } else {
-        setError(data.message || "Login failed. Please try again.");
+        startOtpFlow(data);
+        return;
       }
-    } catch (error) {
-      console.error("Login error:", error);
+
+      if (response.ok && data.token) {
+        clearOtpState({ keepEmail: true });
+        completeLogin(data);
+        return;
+      }
+
+      setError(data.message || "Login failed. Please try again.");
+    } catch (requestError) {
+      console.error("Login error:", requestError);
       setError("Network error. Please try again.");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    if (!challengeId) {
+      setError("OTP session expired. Please log in again.");
+      setSessionNotice("");
+      handleReturnToCredentials();
+      return;
+    }
+
+    if (otpResendRemainingMs > 0) {
+      return;
+    }
+
+    setIsResendingOtp(true);
+    setError("");
+
+    try {
+      const response = await fetch(buildUrl("/api/auth/login/resend-otp"), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: normalizedEmail,
+          challengeId,
+        }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (response.ok) {
+        const now = Date.now();
+        const nextExpiresAt =
+          now + Math.max(0, Number(data.expiresIn || 300) * 1000);
+        const nextResendAt =
+          now + Math.max(0, Number(data.resendAfterMs || 30 * 1000));
+        const nextChannels = Array.isArray(data.deliveryChannels)
+          ? data.deliveryChannels
+          : otpDeliveryChannels;
+
+        setOtpExpiresAt(nextExpiresAt);
+        setOtpResendAvailableAt(nextResendAt);
+        setOtpDeliveryChannels(nextChannels);
+        setSessionNotice(formatOtpDeliveryMessage(nextChannels));
+        persistOtpState({
+          challengeId,
+          email: normalizedEmail,
+          rememberMe,
+          expiresAt: nextExpiresAt,
+          resendAvailableAt: nextResendAt,
+          deliveryChannels: nextChannels,
+        });
+        return;
+      }
+
+      if (response.status === 410 || response.status === 429) {
+        if (typeof data.retryAfterMs === "number") {
+          const nextRetryAt = Date.now() + Number(data.retryAfterMs || 0);
+          setOtpResendAvailableAt(nextRetryAt);
+          persistOtpState({
+            challengeId,
+            email: normalizedEmail,
+            rememberMe,
+            expiresAt: otpExpiresAt,
+            resendAvailableAt: nextRetryAt,
+            deliveryChannels: otpDeliveryChannels,
+          });
+        } else {
+          setSessionNotice("");
+          handleReturnToCredentials();
+        }
+        setError(data.message || "Please wait before requesting another OTP.");
+        return;
+      }
+
+      setError(data.message || "Unable to resend OTP. Please try again.");
+    } catch (requestError) {
+      console.error("OTP resend error:", requestError);
+      setError("Network error. Please try again.");
+    } finally {
+      setIsResendingOtp(false);
     }
   };
 
@@ -242,92 +587,194 @@ const Login = ({ onLogin }) => {
                 onSubmit={handleSubmit}
                 className="space-y-3 sm:space-y-4 md:space-y-5 lg:space-y-6"
               >
-                {/* Email */}
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-2.5 sm:pl-3 md:pl-4 flex items-center pointer-events-none">
-                    <FaEnvelope className="text-gray-400 text-xs sm:text-sm md:text-base" />
-                  </div>
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    placeholder="Enter your email"
-                    required
-                    disabled={isLoading}
-                    className="w-full pl-8 sm:pl-10 md:pl-12 pr-3 sm:pr-4 py-2 sm:py-2.5 md:py-3 
-                             bg-gray-50 border border-gray-200 
-                             rounded-lg sm:rounded-lg 
-                             focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent
-                             text-xs sm:text-sm md:text-base
-                             disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                  />
-                </div>
+                {authStep === "otp" ? (
+                  <>
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => handleReturnToCredentials(true)}
+                        className="text-purple-600 hover:text-purple-700 text-xs sm:text-sm md:text-base font-medium transition-colors"
+                        disabled={isLoading || isResendingOtp}
+                      >
+                        Use another account
+                      </button>
+                    </div>
 
-                {/* Password */}
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-2.5 sm:pl-3 md:pl-4 flex items-center pointer-events-none">
-                    <FaLock className="text-gray-400 text-xs sm:text-sm md:text-base" />
-                  </div>
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    name="password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    placeholder="Enter your password"
-                    required
-                    disabled={isLoading}
-                    className="w-full pl-8 sm:pl-10 md:pl-12 pr-9 sm:pr-11 md:pr-12 py-2 sm:py-2.5 md:py-3 
-                             bg-gray-50 border border-gray-200 
-                             rounded-lg sm:rounded-lg 
-                             focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent
-                             text-xs sm:text-sm md:text-base
-                             disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                  />
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-2.5 sm:pl-3 md:pl-4 flex items-center pointer-events-none">
+                        <FaEnvelope className="text-gray-400 text-xs sm:text-sm md:text-base" />
+                      </div>
+                      <input
+                        type="email"
+                        name="email"
+                        value={formData.email}
+                        onChange={handleChange}
+                        placeholder="Enter your email"
+                        required
+                        disabled
+                        className="w-full pl-8 sm:pl-10 md:pl-12 pr-3 sm:pr-4 py-2 sm:py-2.5 md:py-3 
+                                 bg-gray-50 border border-gray-200 
+                                 rounded-lg sm:rounded-lg 
+                                 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent
+                                 text-xs sm:text-sm md:text-base
+                                 disabled:opacity-70 disabled:cursor-not-allowed transition-all"
+                      />
+                    </div>
 
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-2.5 sm:pr-3 md:pr-4 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
-                    disabled={isLoading}
-                  >
-                    {showPassword ? (
-                      <FaEyeSlash className="text-xs sm:text-sm md:text-base" />
-                    ) : (
-                      <FaEye className="text-xs sm:text-sm md:text-base" />
-                    )}
-                  </button>
-                </div>
+                    <div className="rounded-xl border border-purple-100 bg-purple-50/70 p-3 sm:p-4 flex items-start gap-3">
+                      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-purple-100 text-purple-700">
+                        <FaShieldAlt className="text-sm sm:text-base" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-sm sm:text-base font-semibold text-gray-900">
+                          Verification code sent
+                        </div>
+                        <div className="text-xs sm:text-sm text-gray-600 leading-snug">
+                          {formatOtpDeliveryMessage(otpDeliveryChannels)}
+                        </div>
+                        <div className="mt-1 text-xs text-gray-500">
+                          Code expires in {formatCountdown(otpRemainingMs)}.
+                        </div>
+                      </div>
+                    </div>
 
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3">
-                  <label className="flex items-center gap-2 sm:gap-2.5 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={rememberMe}
-                      onChange={(e) => setRememberMe(e.target.checked)}
-                      disabled={isLoading}
-                      className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500 transition-colors"
-                    />
-                    <span className="text-gray-700 text-xs sm:text-sm md:text-base">
-                      Remember me
-                    </span>
-                  </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-2.5 sm:pl-3 md:pl-4 flex items-center pointer-events-none">
+                        <FaMobileAlt className="text-gray-400 text-xs sm:text-sm md:text-base" />
+                      </div>
+                      <input
+                        type="text"
+                        name="otp"
+                        value={otp}
+                        onChange={handleOtpChange}
+                        placeholder="Enter 6-digit OTP"
+                        autoComplete="one-time-code"
+                        inputMode="numeric"
+                        maxLength={6}
+                        required
+                        disabled={isLoading || isResendingOtp}
+                        className="w-full pl-8 sm:pl-10 md:pl-12 pr-3 sm:pr-4 py-2 sm:py-2.5 md:py-3 
+                                 bg-gray-50 border border-gray-200 
+                                 rounded-lg sm:rounded-lg 
+                                 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent
+                                 text-xs sm:text-sm md:text-base tracking-[0.3em] text-center
+                                 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                      />
+                    </div>
 
-                  <button
-                    type="button"
-                    className="text-purple-600 hover:text-purple-700 text-xs sm:text-sm md:text-base font-medium transition-colors"
-                    onClick={() => {
-                      /* Add forgot password logic */
-                    }}
-                  >
-                    Forgot password?
-                  </button>
-                </div>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3">
+                      <button
+                        type="button"
+                        onClick={handleResendOtp}
+                        disabled={
+                          isLoading ||
+                          isResendingOtp ||
+                          otpResendRemainingMs > 0
+                        }
+                        className="text-purple-600 hover:text-purple-700 text-xs sm:text-sm md:text-base font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isResendingOtp
+                          ? "Sending code..."
+                          : otpResendRemainingMs > 0
+                          ? `Resend in ${formatCountdown(otpResendRemainingMs)}`
+                          : "Resend code"}
+                      </button>
 
-                {/* Login Button */}
+                      <div className="text-xs sm:text-sm text-gray-500 leading-snug">
+                        Keep this tab open while you verify the code.
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {/* Email */}
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-2.5 sm:pl-3 md:pl-4 flex items-center pointer-events-none">
+                        <FaEnvelope className="text-gray-400 text-xs sm:text-sm md:text-base" />
+                      </div>
+                      <input
+                        type="email"
+                        name="email"
+                        value={formData.email}
+                        onChange={handleChange}
+                        placeholder="Enter your email"
+                        required
+                        disabled={isLoading}
+                        className="w-full pl-8 sm:pl-10 md:pl-12 pr-3 sm:pr-4 py-2 sm:py-2.5 md:py-3 
+                                 bg-gray-50 border border-gray-200 
+                                 rounded-lg sm:rounded-lg 
+                                 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent
+                                 text-xs sm:text-sm md:text-base
+                                 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                      />
+                    </div>
+
+                    {/* Password */}
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-2.5 sm:pl-3 md:pl-4 flex items-center pointer-events-none">
+                        <FaLock className="text-gray-400 text-xs sm:text-sm md:text-base" />
+                      </div>
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        name="password"
+                        value={formData.password}
+                        onChange={handleChange}
+                        placeholder="Enter your password"
+                        required
+                        disabled={isLoading}
+                        className="w-full pl-8 sm:pl-10 md:pl-12 pr-9 sm:pr-11 md:pr-12 py-2 sm:py-2.5 md:py-3 
+                                 bg-gray-50 border border-gray-200 
+                                 rounded-lg sm:rounded-lg 
+                                 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent
+                                 text-xs sm:text-sm md:text-base
+                                 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                      />
+
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute inset-y-0 right-0 pr-2.5 sm:pr-3 md:pr-4 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
+                        disabled={isLoading}
+                      >
+                        {showPassword ? (
+                          <FaEyeSlash className="text-xs sm:text-sm md:text-base" />
+                        ) : (
+                          <FaEye className="text-xs sm:text-sm md:text-base" />
+                        )}
+                      </button>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3">
+                      <label className="flex items-center gap-2 sm:gap-2.5 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={rememberMe}
+                          onChange={(e) => setRememberMe(e.target.checked)}
+                          disabled={isLoading}
+                          className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500 transition-colors"
+                        />
+                        <span className="text-gray-700 text-xs sm:text-sm md:text-base">
+                          Remember me
+                        </span>
+                      </label>
+
+                      <button
+                        type="button"
+                        className="text-purple-600 hover:text-purple-700 text-xs sm:text-sm md:text-base font-medium transition-colors"
+                        onClick={() => {
+                          /* Add forgot password logic */
+                        }}
+                      >
+                        Forgot password?
+                      </button>
+                    </div>
+                  </>
+                )}
+
+                {/* Login / Verify Button */}
                 <button
                   type="submit"
-                  disabled={isLoading}
+                  disabled={isLoading || isResendingOtp}
                   className="w-full bg-gradient-to-r from-purple-500 to-indigo-600 
                            text-white py-2.5 sm:py-3 md:py-4 rounded-lg sm:rounded-lg 
                            font-semibold text-xs sm:text-sm md:text-base
@@ -340,12 +787,16 @@ const Login = ({ onLogin }) => {
                   {isLoading ? (
                     <>
                       <FaSpinner className="animate-spin text-xs sm:text-sm md:text-base" />
-                      <span>Logging in...</span>
+                      <span>{authStep === "otp" ? "Verifying..." : "Logging in..."}</span>
                     </>
                   ) : (
                     <>
-                      <FaSignInAlt className="text-xs sm:text-sm md:text-base" />
-                      <span>Login Now</span>
+                      {authStep === "otp" ? (
+                        <FaShieldAlt className="text-xs sm:text-sm md:text-base" />
+                      ) : (
+                        <FaSignInAlt className="text-xs sm:text-sm md:text-base" />
+                      )}
+                      <span>{authStep === "otp" ? "Verify OTP" : "Login Now"}</span>
                     </>
                   )}
                 </button>
