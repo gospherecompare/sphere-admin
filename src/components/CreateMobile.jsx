@@ -1,9 +1,16 @@
 import React, { useState, useEffect, useRef, createRef } from "react";
+import { useNavigate } from "react-router-dom";
 import Cookies from "js-cookie";
 import { buildUrl } from "../api";
 import { uploadToCloudinary } from "../config/cloudinary";
 import DynamicForm from "./DynamicForm";
 import useFormDraft from "../hooks/useFormDraft";
+import {
+  clearSmartphonePreviewSnapshot,
+  getSmartphonePreviewPath,
+  readSmartphonePreviewState,
+  saveSmartphonePreviewSnapshot,
+} from "../utils/smartphonePreview";
 import {
   FaMobile,
   FaSave,
@@ -26,6 +33,7 @@ import {
   FaChevronDown,
   FaChevronRight,
   FaStar,
+  FaEye,
   FaSearch,
   FaCalendar,
   FaTag,
@@ -245,6 +253,7 @@ const stripSphereFields = (section, disableSphere) => {
 };
 
 const CreateMobile = () => {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState(createInitialMobileFormData);
 
   const [isLoading, setIsLoading] = useState(false);
@@ -323,6 +332,13 @@ const CreateMobile = () => {
     value: formData,
     setValue: setFormData,
   });
+
+  useEffect(() => {
+    const previewState = readSmartphonePreviewState();
+    if (previewState && typeof previewState.publishEnabled === "boolean") {
+      setPublishEnabled(previewState.publishEnabled);
+    }
+  }, []);
 
   // Filter categories based on search
   const filteredCategories = categoriesList.filter((category) =>
@@ -1324,6 +1340,7 @@ const CreateMobile = () => {
 
       // Reset form
       clearDraft();
+      clearSmartphonePreviewSnapshot();
       setFormData(createInitialMobileFormData());
       setPublishEnabled(false);
     } catch (error) {
@@ -1336,6 +1353,16 @@ const CreateMobile = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handlePreview = () => {
+    const previewState = saveSmartphonePreviewSnapshot({
+      formData,
+      publishEnabled,
+    });
+    navigate(getSmartphonePreviewPath(previewState || formData), {
+      state: { previewState },
+    });
   };
 
   // Toast Component
@@ -2936,9 +2963,18 @@ const CreateMobile = () => {
             ) : (
               <>
                 <FaSave />
-                <span>Create Mobile</span>
+              <span>Create Mobile</span>
               </>
             )}
+          </button>
+
+          <button
+            onClick={handlePreview}
+            disabled={isLoading}
+            className="flex-1 border border-violet-300 text-violet-700 hover:bg-violet-50 px-6 py-3 rounded-md font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            <FaEye />
+            <span>Preview</span>
           </button>
 
           <button

@@ -12,6 +12,7 @@ import Navbar from "./components/Navbar";
 import Breadcrumbs from "./components/Breadcrumbs";
 import Dashboard from "./components/Dashboard";
 import CreateMobile from "./components/CreateMobile";
+import SmartphonePreview from "./components/SmartphonePreview";
 import ViewMobiles from "./components/ViewMobiles";
 import ViewUpcomingMobiles from "./components/ViewUpcomingMobiles";
 import Login from "./components/Login";
@@ -39,6 +40,7 @@ import RecentPublishActivity from "./components/Reports/RecentPublish";
 import TrendingManager from "./components/Reports/TrendingManager";
 import HookScoreReport from "./components/Reports/HookScoreReport";
 import FeatureClicksReport from "./components/Reports/FeatureClicksReport";
+import SearchPopularityReport from "./components/Reports/SearchPopularityReport";
 import CareerApplications from "./components/Reports/CareerApplications";
 import BannerManager from "./components/BannerManager";
 import EditLaptop from "./components/EditLaptop";
@@ -307,6 +309,14 @@ function App() {
                   element={<CreateMobile />}
                 />
                 <Route
+                  path="/products/smartphones/preview"
+                  element={<SmartphonePreview />}
+                />
+                <Route
+                  path="/products/smartphones/preview/:slug"
+                  element={<SmartphonePreview />}
+                />
+                <Route
                   path="/products/smartphones/inventory"
                   element={<ViewMobiles />}
                 />
@@ -329,10 +339,7 @@ function App() {
                   path="/products/homeappliances/inventory"
                   element={<ViewTVs />}
                 />
-                <Route
-                  path="/products/tvs/inventory"
-                  element={<ViewTVs />}
-                />
+                <Route path="/products/tvs/inventory" element={<ViewTVs />} />
                 <Route
                   path="/products/laptops/create"
                   element={<CreateLaptop />}
@@ -429,6 +436,10 @@ function App() {
                 <Route
                   path="/reports/feature-clicks"
                   element={<FeatureClicksReport />}
+                />
+                <Route
+                  path="/reports/search-popularity"
+                  element={<SearchPopularityReport />}
                 />
                 <Route
                   path="/reports/career-applications"

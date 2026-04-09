@@ -26,6 +26,24 @@ const ROUTE_TRAILS = [
     ],
   },
   {
+    path: "/products/smartphones/preview",
+    trail: [
+      DASHBOARD_CRUMB,
+      { label: "Products", to: "/products" },
+      { label: "Smartphones", to: "/products/smartphones/inventory" },
+      { label: "Preview" },
+    ],
+  },
+  {
+    path: "/products/smartphones/preview/:slug",
+    trail: [
+      DASHBOARD_CRUMB,
+      { label: "Products", to: "/products" },
+      { label: "Smartphones", to: "/products/smartphones/inventory" },
+      { label: "Preview" },
+    ],
+  },
+  {
     path: "/edit-mobile/:id",
     trail: [
       DASHBOARD_CRUMB,
@@ -258,6 +276,14 @@ const ROUTE_TRAILS = [
       DASHBOARD_CRUMB,
       { label: "Reports", to: "/reports/productpublishstatus" },
       { label: "Feature Clicks" },
+    ],
+  },
+  {
+    path: "/reports/search-popularity",
+    trail: [
+      DASHBOARD_CRUMB,
+      { label: "Reports", to: "/reports/productpublishstatus" },
+      { label: "Search Popularity" },
     ],
   },
 ];

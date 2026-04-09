@@ -335,6 +335,12 @@ const MENU_CONFIG = {
           path: "/reports/hook-score",
         },
         {
+          id: "search-popularity-rep",
+          label: "Search Popularity",
+          icon: <FaChartLine />,
+          path: "/reports/search-popularity",
+        },
+        {
           id: "feature-click-rep",
           label: "Feature Clicks",
           icon: <FaChartLine />,

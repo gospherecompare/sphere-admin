@@ -2,7 +2,8 @@
 import Cookies from "js-cookie";
 
 const resolvedApiBase = (() => {
-  const envBase = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_BASE;
+  const envBase =
+    import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_BASE;
   if (envBase) return String(envBase);
 
   return "https://api.apisphere.in";

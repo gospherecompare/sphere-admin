@@ -4,7 +4,7 @@ const DRAFT_VERSION = 1;
 const DRAFT_TTL_MS = 1000 * 60 * 60 * 24; // 24 hours
 const DEFAULT_DEBOUNCE_MS = 300;
 
-const readDraftValue = (draftKey) => {
+export const readDraftValue = (draftKey) => {
   if (typeof window === "undefined") return null;
   try {
     const raw = window.sessionStorage.getItem(draftKey);
