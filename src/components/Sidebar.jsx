@@ -286,9 +286,9 @@ const MENU_CONFIG = {
       children: [
         {
           id: "content-blog-studio",
-          label: "Blog Studio",
+          label: "News & Articles",
           icon: <FaChartLine />,
-          path: "/content/blogs",
+          path: "/content/news-articles",
         },
       ],
     },

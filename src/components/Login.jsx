@@ -1,12 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Cookies from "js-cookie";
-import {
-  browserSupportsWebAuthn,
-  platformAuthenticatorIsAvailable,
-  startAuthentication,
-  startRegistration,
-} from "@simplewebauthn/browser";
 import { buildUrl } from "../api";
 import {
   FaEye,
@@ -29,8 +23,8 @@ const POST_LOGIN_REDIRECT_MAX_AGE_MS = 1000 * 60 * 30;
 
 const STEPS = {
   credentials: "credentials",
-  deviceAuth: "device_auth",
-  deviceSetup: "device_setup",
+  pin: "pin",
+  pinSetup: "pin_setup",
 };
 
 const FIELD =
@@ -39,44 +33,28 @@ const PRIMARY =
   "w-full rounded-lg bg-gradient-to-r from-purple-500 to-indigo-600 py-3 text-sm font-semibold text-white hover:from-purple-600 hover:to-indigo-700 disabled:opacity-50";
 
 const formatCountdown = (ms) => {
-  const s = Math.max(0, Math.ceil(Number(ms || 0) / 1000));
-  return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(
-    s % 60,
+  const seconds = Math.max(0, Math.ceil(Number(ms || 0) / 1000));
+  return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(
+    seconds % 60,
   ).padStart(2, "0")}`;
 };
 
-const deviceError = (error, fallback) => {
-  const name = String(error?.name || "");
-  if (name === "NotAllowedError") {
-    return "The device prompt was cancelled or timed out.";
-  }
-  if (name === "InvalidStateError") {
-    return "This device credential is already registered.";
-  }
-  if (name === "NotSupportedError") {
-    return "This browser cannot use device verification here.";
-  }
-  if (name === "SecurityError") {
-    return "Device verification requires HTTPS or localhost.";
-  }
-  return fallback;
-};
-
-const DEVICE_REQUIRED_MESSAGE =
-  "This login requires device verification. Use a browser and device that supports passkeys, Face ID, fingerprint, Windows Hello, or screen lock.";
-
 const Login = ({ onLogin }) => {
-  const [form, setForm] = useState({ email: "", password: "" });
+  const [form, setForm] = useState({
+    email: "",
+    password: "",
+    pin: "",
+    newPin: "",
+    confirmPin: "",
+  });
   const [step, setStep] = useState(STEPS.credentials);
   const [loginTicket, setLoginTicket] = useState("");
   const [loginTicketExpiresAt, setLoginTicketExpiresAt] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
+  const [showPin, setShowPin] = useState(false);
+  const [showSetupPin, setShowSetupPin] = useState(false);
+  const [showSetupConfirmPin, setShowSetupConfirmPin] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
-  const [deviceSupport, setDeviceSupport] = useState({
-    checked: false,
-    supported: false,
-    message: DEVICE_REQUIRED_MESSAGE,
-  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -85,31 +63,6 @@ const Login = ({ onLogin }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const loginTicketRemaining = Math.max(0, loginTicketExpiresAt - tick);
-
-  useEffect(() => {
-    let active = true;
-
-    (async () => {
-      let supported = false;
-      if (browserSupportsWebAuthn()) {
-        try {
-          supported = await platformAuthenticatorIsAvailable();
-        } catch {}
-      }
-
-      if (active) {
-        setDeviceSupport({
-          checked: true,
-          supported,
-          message: supported ? "" : DEVICE_REQUIRED_MESSAGE,
-        });
-      }
-    })();
-
-    return () => {
-      active = false;
-    };
-  }, []);
 
   useEffect(() => {
     const timer = window.setInterval(() => setTick(Date.now()), 1000);
@@ -134,27 +87,10 @@ const Login = ({ onLogin }) => {
       if (storedNotice) {
         sessionStorage.removeItem(AUTH_NOTICE_STORAGE_KEY);
       }
-    } catch {}
-  }, [location.state]);
-
-  const support = async () => {
-    if (deviceSupport.checked) return deviceSupport;
-
-    let supported = false;
-    if (browserSupportsWebAuthn()) {
-      try {
-        supported = await platformAuthenticatorIsAvailable();
-      } catch {}
+    } catch {
+      // Ignore storage access issues and continue with the login form.
     }
-
-    const resolved = {
-      checked: true,
-      supported,
-      message: supported ? "" : DEVICE_REQUIRED_MESSAGE,
-    };
-    setDeviceSupport(resolved);
-    return resolved;
-  };
+  }, [location.state]);
 
   const normalizeRedirect = (path) =>
     path &&
@@ -164,17 +100,47 @@ const Login = ({ onLogin }) => {
       ? path
       : null;
 
+  const validatePinSetup = () => {
+    const newPin = String(form.newPin || "").trim();
+    const confirmPin = String(form.confirmPin || "").trim();
+
+    if (!/^\d{4,10}$/.test(newPin)) {
+      return "Organization PIN must be 4 to 10 digits.";
+    }
+
+    if (newPin !== confirmPin) {
+      return "Organization PIN confirmation does not match.";
+    }
+
+    return "";
+  };
+
   const clearAll = (keepEmail = true) => {
     setStep(STEPS.credentials);
     setLoginTicket("");
     setLoginTicketExpiresAt(0);
     setShowPassword(false);
+    setShowPin(false);
+    setShowSetupPin(false);
+    setShowSetupConfirmPin(false);
     setError("");
 
     if (keepEmail) {
-      setForm((value) => ({ ...value, password: "" }));
+      setForm((value) => ({
+        ...value,
+        password: "",
+        pin: "",
+        newPin: "",
+        confirmPin: "",
+      }));
     } else {
-      setForm({ email: "", password: "" });
+      setForm({
+        email: "",
+        password: "",
+        pin: "",
+        newPin: "",
+        confirmPin: "",
+      });
       setRememberMe(false);
     }
   };
@@ -188,11 +154,17 @@ const Login = ({ onLogin }) => {
     );
     setNotice(
       String(data?.message || "").trim() ||
-        (nextStep === STEPS.deviceSetup
-          ? "Set up device verification to finish signing in."
-          : "Use your device verification to finish signing in."),
+        (nextStep === STEPS.pinSetup
+          ? "Create the organization PIN to finish signing in."
+          : "Enter your organization PIN to finish signing in."),
     );
-    setForm((value) => ({ ...value, password: "" }));
+    setForm((value) => ({
+      ...value,
+      password: "",
+      pin: "",
+      newPin: "",
+      confirmPin: "",
+    }));
   };
 
   const finish = (data) => {
@@ -251,7 +223,9 @@ const Login = ({ onLogin }) => {
       } else {
         localStorage.removeItem("savedEmail");
       }
-    } catch {}
+    } catch {
+      // Ignore storage access issues and fall back to the default redirect.
+    }
 
     let redirect = normalizeRedirect(location.state?.from) || "/dashboard";
 
@@ -268,135 +242,99 @@ const Login = ({ onLogin }) => {
       }
       sessionStorage.removeItem(POST_LOGIN_REDIRECT_KEY);
       sessionStorage.removeItem(AUTH_NOTICE_STORAGE_KEY);
-    } catch {}
+    } catch {
+      // Ignore invalid stored redirect data and continue to the default route.
+    }
 
     clearAll(true);
     setNotice("");
     navigate(redirect, { replace: true });
   };
 
-  const verifyDevice = async () => {
+  const submitCredentials = async () => {
+    const res = await fetch(buildUrl("/api/auth/login"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: String(form.email || "").trim(),
+        password: form.password,
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+
+    if (
+      res.ok &&
+      (data?.nextStep === STEPS.pin || data?.nextStep === STEPS.pinSetup)
+    ) {
+      startPending(data);
+      return;
+    }
+
+    if (res.ok && data?.token) {
+      finish(data);
+      return;
+    }
+
+    setError(data.message || "Login failed. Please try again.");
+  };
+
+  const submitPin = async () => {
     if (!loginTicket) {
-      return setError("Your sign-in session expired. Please log in again.");
+      setError("Your sign-in session expired. Please log in again.");
+      return;
     }
 
-    const resolvedSupport = await support();
-    if (!resolvedSupport.supported) {
-      return setError(
-        resolvedSupport.message || "Device verification is unavailable.",
-      );
+    const res = await fetch(buildUrl("/api/auth/login/pin"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        loginTicket,
+        pin: String(form.pin || "").trim(),
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+
+    if (res.ok && data?.token) {
+      finish(data);
+      return;
     }
 
-    setLoading(true);
-    setError("");
-
-    try {
-      const optionsRes = await fetch(buildUrl("/api/auth/login/webauthn/options"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ loginTicket }),
-      });
-      const optionsData = await optionsRes.json().catch(() => ({}));
-
-      if (!optionsRes.ok || !optionsData?.options) {
-        setError(
-          optionsData.message ||
-            "Unable to start device verification. Please try again.",
-        );
-        if (optionsRes.status === 401 || optionsRes.status === 410) {
-          clearAll(true);
-        }
-        return;
-      }
-
-      const credential = await startAuthentication({
-        optionsJSON: optionsData.options,
-      });
-
-      const verifyRes = await fetch(buildUrl("/api/auth/login/webauthn/verify"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ loginTicket, response: credential }),
-      });
-      const verifyData = await verifyRes.json().catch(() => ({}));
-
-      if (verifyRes.ok && verifyData?.token) {
-        return finish(verifyData);
-      }
-
-      setError(
-        verifyData.message || "Device verification failed. Please try again.",
-      );
-      if (verifyRes.status === 401 || verifyRes.status === 410) {
-        clearAll(true);
-      }
-    } catch (err) {
-      setError(deviceError(err, "Device verification failed. Please try again."));
-    } finally {
-      setLoading(false);
+    setError(data.message || "Organization PIN verification failed.");
+    if (res.status === 401 || res.status === 410) {
+      clearAll(true);
     }
   };
 
-  const setupDevice = async () => {
+  const submitPinSetup = async () => {
     if (!loginTicket) {
-      return setError("Your sign-in session expired. Please log in again.");
+      setError("Your sign-in session expired. Please log in again.");
+      return;
     }
 
-    const resolvedSupport = await support();
-    if (!resolvedSupport.supported) {
-      return setError(resolvedSupport.message || "Device setup is unavailable.");
+    const validationError = validatePinSetup();
+    if (validationError) {
+      setError(validationError);
+      return;
     }
 
-    setLoading(true);
-    setError("");
+    const res = await fetch(buildUrl("/api/auth/login/pin/setup/verify"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        loginTicket,
+        newPin: String(form.newPin || "").trim(),
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
 
-    try {
-      const optionsRes = await fetch(
-        buildUrl("/api/auth/login/webauthn/register/options"),
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ loginTicket }),
-        },
-      );
-      const optionsData = await optionsRes.json().catch(() => ({}));
+    if (res.ok && data?.token) {
+      finish(data);
+      return;
+    }
 
-      if (!optionsRes.ok || !optionsData?.options) {
-        setError(
-          optionsData.message || "Unable to start device setup. Please try again.",
-        );
-        if (optionsRes.status === 401 || optionsRes.status === 410) {
-          clearAll(true);
-        }
-        return;
-      }
-
-      const registration = await startRegistration({
-        optionsJSON: optionsData.options,
-      });
-
-      const verifyRes = await fetch(
-        buildUrl("/api/auth/login/webauthn/register/verify"),
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ loginTicket, response: registration }),
-        },
-      );
-      const verifyData = await verifyRes.json().catch(() => ({}));
-
-      if (verifyRes.ok && verifyData?.token) {
-        return finish(verifyData);
-      }
-
-      setError(verifyData.message || "Device setup failed. Please try again.");
-      if (verifyRes.status === 401 || verifyRes.status === 410) {
-        clearAll(true);
-      }
-    } catch (err) {
-      setError(deviceError(err, "Device setup failed. Please try again."));
-    } finally {
-      setLoading(false);
+    setError(data.message || "Unable to create the organization PIN.");
+    if (res.status === 401 || res.status === 410) {
+      clearAll(true);
     }
   };
 
@@ -404,56 +342,23 @@ const Login = ({ onLogin }) => {
     event.preventDefault();
     setError("");
 
-    if (step === STEPS.deviceAuth) return verifyDevice();
-    if (step === STEPS.deviceSetup) return setupDevice();
-
     setLoading(true);
     try {
-      const resolvedSupport = await support();
-      if (!resolvedSupport.supported) {
-        setError(resolvedSupport.message || DEVICE_REQUIRED_MESSAGE);
-        return;
+      if (step === STEPS.pin) {
+        await submitPin();
+      } else if (step === STEPS.pinSetup) {
+        await submitPinSetup();
+      } else {
+        await submitCredentials();
       }
-
-      const res = await fetch(buildUrl("/api/auth/login"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: String(form.email || "").trim(),
-          password: form.password,
-          deviceAuthSupported: resolvedSupport.supported,
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-
-      if (
-        res.ok &&
-        (data?.nextStep === STEPS.deviceAuth ||
-          data?.nextStep === STEPS.deviceSetup)
-      ) {
-        return startPending(data);
-      }
-
-      if (res.ok && data?.token) {
-        return finish(data);
-      }
-
-      setError(data.message || "Login failed. Please try again.");
     } catch {
+      // Ignore network response parsing failures and show the fallback message.
       setError("Network error. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
-  const cardTitle =
-    step === STEPS.deviceAuth
-      ? "Confirm on this device"
-      : "Set up device verification";
-  const cardBody =
-    step === STEPS.deviceAuth
-      ? "Use Face ID, fingerprint, Windows Hello, or your device screen lock to finish signing in."
-      : "Create a passkey on this device to finish signing in and use MFA on every future login.";
   const cardFooter = `Session expires in ${formatCountdown(loginTicketRemaining)}.`;
 
   return (
@@ -483,15 +388,6 @@ const Login = ({ onLogin }) => {
               <span>{error}</span>
             </div>
           )}
-
-          {step === STEPS.credentials &&
-            deviceSupport.checked &&
-            !deviceSupport.supported && (
-              <div className="mb-4 flex gap-3 rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
-                <FaInfoCircle className="mt-0.5 shrink-0 text-blue-500" />
-                <span>{deviceSupport.message}</span>
-              </div>
-            )}
 
           <form onSubmit={submit} className="space-y-4">
             {step !== STEPS.credentials && (
@@ -575,6 +471,75 @@ const Login = ({ onLogin }) => {
                   </button>
                 </div>
               </>
+            ) : step === STEPS.pin ? (
+              <>
+                <div className="relative">
+                  <FaEnvelope className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="email"
+                    value={form.email}
+                    disabled
+                    className={`${FIELD} pl-11 pr-4`}
+                  />
+                </div>
+
+                <div className="rounded-xl border border-purple-100 bg-purple-50/70 p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-purple-100 text-purple-700">
+                      <FaShieldAlt />
+                    </div>
+                    <div>
+                      <div className="text-sm font-semibold text-gray-900">
+                        Enter organization PIN
+                      </div>
+                      <div className="mt-1 text-sm text-gray-600">
+                        Password is already verified. Enter the organization PIN
+                        to complete admin sign-in.
+                      </div>
+                      <div className="mt-2 text-xs text-gray-500">
+                        {cardFooter}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="relative">
+                  <FaLock className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input
+                    type={showPin ? "text" : "password"}
+                    value={form.pin}
+                    onChange={(event) => {
+                      setForm((value) => ({
+                        ...value,
+                        pin: event.target.value.replace(/\D/g, "").slice(0, 10),
+                      }));
+                      setError("");
+                    }}
+                    placeholder="Enter organization PIN"
+                    autoComplete="one-time-code"
+                    inputMode="numeric"
+                    pattern="[0-9]{4,10}"
+                    minLength={4}
+                    maxLength={10}
+                    required
+                    disabled={loading}
+                    className={`${FIELD} pl-11 pr-12`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPin((value) => !value)}
+                    disabled={loading}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    {showPin ? <FaEyeSlash /> : <FaEye />}
+                  </button>
+                </div>
+
+                <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
+                  The organization PIN is shared by your admin team and is stored
+                  securely on the server.
+                </div>
+              </>
             ) : (
               <>
                 <div className="relative">
@@ -594,10 +559,11 @@ const Login = ({ onLogin }) => {
                     </div>
                     <div>
                       <div className="text-sm font-semibold text-gray-900">
-                        {cardTitle}
+                        Create organization PIN
                       </div>
                       <div className="mt-1 text-sm text-gray-600">
-                        {cardBody}
+                        No organization PIN is configured yet. Create it now to
+                        complete admin sign-in.
                       </div>
                       <div className="mt-2 text-xs text-gray-500">
                         {cardFooter}
@@ -606,10 +572,70 @@ const Login = ({ onLogin }) => {
                   </div>
                 </div>
 
+                <div className="relative">
+                  <FaLock className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input
+                    type={showSetupPin ? "text" : "password"}
+                    value={form.newPin}
+                    onChange={(event) => {
+                      setForm((value) => ({
+                        ...value,
+                        newPin: event.target.value.replace(/\D/g, "").slice(0, 10),
+                      }));
+                      setError("");
+                    }}
+                    placeholder="Create organization PIN"
+                    inputMode="numeric"
+                    pattern="[0-9]{4,10}"
+                    minLength={4}
+                    maxLength={10}
+                    required
+                    disabled={loading}
+                    className={`${FIELD} pl-11 pr-12`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowSetupPin((value) => !value)}
+                    disabled={loading}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    {showSetupPin ? <FaEyeSlash /> : <FaEye />}
+                  </button>
+                </div>
+
+                <div className="relative">
+                  <FaLock className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input
+                    type={showSetupConfirmPin ? "text" : "password"}
+                    value={form.confirmPin}
+                    onChange={(event) => {
+                      setForm((value) => ({
+                        ...value,
+                        confirmPin: event.target.value.replace(/\D/g, "").slice(0, 10),
+                      }));
+                      setError("");
+                    }}
+                    placeholder="Confirm organization PIN"
+                    inputMode="numeric"
+                    pattern="[0-9]{4,10}"
+                    minLength={4}
+                    maxLength={10}
+                    required
+                    disabled={loading}
+                    className={`${FIELD} pl-11 pr-12`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowSetupConfirmPin((value) => !value)}
+                    disabled={loading}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    {showSetupConfirmPin ? <FaEyeSlash /> : <FaEye />}
+                  </button>
+                </div>
+
                 <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
-                  {step === STEPS.deviceAuth
-                    ? "This account uses MFA on every login. Approve the device prompt to continue."
-                    : "This account must register a device credential before sign-in can finish."}
+                  Create a 4 to 10 digit organization PIN to secure admin access.
                 </div>
               </>
             )}
@@ -620,11 +646,11 @@ const Login = ({ onLogin }) => {
                   <>
                     <FaSpinner className="animate-spin" />
                     <span>
-                      {step === STEPS.deviceAuth
-                        ? "Checking device..."
-                        : step === STEPS.deviceSetup
-                          ? "Enabling device..."
-                          : "Starting MFA..."}
+                      {step === STEPS.pin
+                        ? "Verifying organization PIN..."
+                        : step === STEPS.pinSetup
+                          ? "Creating organization PIN..."
+                          : "Checking credentials..."}
                     </span>
                   </>
                 ) : (
@@ -635,11 +661,11 @@ const Login = ({ onLogin }) => {
                       <FaShieldAlt />
                     )}
                     <span>
-                      {step === STEPS.deviceAuth
-                        ? "Verify with Device"
-                        : step === STEPS.deviceSetup
-                          ? "Enable Device Verification"
-                          : "Continue with MFA"}
+                      {step === STEPS.pin
+                        ? "Verify Organization PIN"
+                        : step === STEPS.pinSetup
+                          ? "Create PIN and Sign In"
+                          : "Continue"}
                     </span>
                   </>
                 )}
@@ -672,20 +698,23 @@ const Login = ({ onLogin }) => {
             <div className="mt-8 space-y-4 text-sm text-purple-50">
               <div className="flex gap-3">
                 <FaRocket className="mt-0.5 shrink-0" />
-                <span>Password is step one, then device verification completes every login.</span>
+                <span>
+                  Password is step one, and the organization PIN completes
+                  access to the admin workspace.
+                </span>
               </div>
               <div className="flex gap-3">
                 <FaShieldAlt className="mt-0.5 shrink-0" />
                 <span>
-                  Supported browsers use Face ID, fingerprint, Windows Hello, or
-                  device screen lock through passkeys.
+                  The PIN is centrally managed so admins can update it whenever
+                  the team needs to rotate access.
                 </span>
               </div>
               <div className="flex gap-3">
                 <FaUser className="mt-0.5 shrink-0" />
                 <span>
-                  New admin devices are enrolled during sign-in before access is
-                  granted.
+                  Email login stays the same while the second step is now a
+                  simple admin PIN instead of device-based MFA.
                 </span>
               </div>
             </div>

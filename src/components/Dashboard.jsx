@@ -34,6 +34,7 @@ import {
   FaBolt, // Added FaBolt
   FaExclamationCircle, // Already imported but confirming
   FaMinus,
+  FaNewspaper,
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { buildUrl } from "../api";
@@ -205,6 +206,13 @@ const Dashboard = () => {
         color: "indigo",
         path: "/reports/productpublishstatus",
         description: "View reports",
+      },
+      {
+        icon: FaNewspaper,
+        label: "News Desk",
+        color: "gray",
+        path: "/content/news-articles",
+        description: "Manage articles",
       },
     ],
     [],

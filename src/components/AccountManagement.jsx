@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Cookies from "js-cookie";
 import axios from "axios";
@@ -7,7 +7,6 @@ import {
   FaUser,
   FaEnvelope,
   FaPhone,
-  FaMapMarkerAlt,
   FaLock,
   FaEdit,
   FaSave,
@@ -16,19 +15,22 @@ import {
   FaEyeSlash,
   FaCheck,
   FaExclamationCircle,
-  FaArrowLeft,
   FaSpinner,
+  FaShieldAlt,
 } from "react-icons/fa";
 
+const PIN_PATTERN = /^\d{4,10}$/;
 const AccountManagement = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("profile");
-  const [isLoading, setIsLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(false);
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [pinSaving, setPinSaving] = useState(false);
   const [userData, setUserData] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [message, setMessage] = useState({ type: "", text: "" });
 
-  // Profile form state
   const [profileForm, setProfileForm] = useState({
     username: "",
     email: "",
@@ -41,7 +43,6 @@ const AccountManagement = () => {
   const [profileErrors, setProfileErrors] = useState({});
   const [profileTouched, setProfileTouched] = useState({});
 
-  // Password form state
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: "",
     newPassword: "",
@@ -57,49 +58,90 @@ const AccountManagement = () => {
   });
   const [passwordStrength, setPasswordStrength] = useState(0);
 
-  // Fetch user data on mount
+  const [pinStatus, setPinStatus] = useState({
+    isConfigured: false,
+    updated_at: null,
+    updated_by: null,
+  });
+  const [pinForm, setPinForm] = useState({
+    currentPin: "",
+    newPin: "",
+    confirmPin: "",
+  });
+  const [pinErrors, setPinErrors] = useState({});
+  const [pinTouched, setPinTouched] = useState({});
+  const [showPins, setShowPins] = useState({
+    current: false,
+    new: false,
+    confirm: false,
+  });
+
   useEffect(() => {
-    fetchUserData();
+    loadAccountData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const fetchUserData = async () => {
+  const getToken = () => Cookies.get("authToken");
+
+  const getAuthHeaders = (token) => ({
+    Authorization: `Bearer ${token}`,
+  });
+
+  const populateProfileForm = (user) => {
+    setProfileForm({
+      username: user.username || "",
+      email: user.email || "",
+      phone: user.phone || "",
+      first_name: user.first_name || "",
+      last_name: user.last_name || "",
+      gender: user.gender || "",
+    });
+  };
+
+  const loadAccountData = async () => {
+    const token = getToken();
+    if (!token) {
+      navigate("/login");
+      return;
+    }
+
     try {
-      setIsLoading(true);
-      const token = Cookies.get("authToken");
+      setInitialLoading(true);
+      const [profileResponse, pinStatusResponse] = await Promise.all([
+        axios.get(buildUrl("/api/auth/profile"), {
+          headers: getAuthHeaders(token),
+        }),
+        axios.get(buildUrl("/api/auth/organization-pin/status"), {
+          headers: getAuthHeaders(token),
+        }),
+      ]);
 
-      if (!token) {
-        navigate("/login");
-        return;
-      }
-      const response = await axios.get(buildUrl("/api/auth/profile"), {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (response.data.success) {
-        const user = response.data.user;
+      if (profileResponse.data.success) {
+        const user = profileResponse.data.user;
         setUserData(user);
-        setProfileForm({
-          username: user.username || "",
-          email: user.email || "",
-          phone: user.phone || "",
-          first_name: user.first_name || "",
-          last_name: user.last_name || "",
-          gender: user.gender || "",
-        });
-        setMessage({ type: "", text: "" });
+        populateProfileForm(user);
       }
+
+      if (pinStatusResponse.data.success) {
+        setPinStatus({
+          isConfigured: Boolean(pinStatusResponse.data.isConfigured),
+          updated_at: pinStatusResponse.data.updated_at || null,
+          updated_by: pinStatusResponse.data.updated_by || null,
+        });
+      }
+
+      setMessage({ type: "", text: "" });
     } catch (err) {
-      console.error("Error fetching user data:", err);
+      console.error("Error loading account management data:", err);
       setMessage({
         type: "error",
-        text: "Failed to load profile",
+        text: "Failed to load account details",
       });
     } finally {
-      setIsLoading(false);
+      setInitialLoading(false);
     }
   };
 
-  // Validation for profile fields
   const validateProfileField = (name, value) => {
     if (name === "email") {
       if (!value.trim()) return "Email is required";
@@ -108,19 +150,18 @@ const AccountManagement = () => {
     }
 
     if (name === "phone") {
-      if (value && !/^[\d\s\-\+()]+$/.test(value))
+      if (value && !/^[\d\s+()-]+$/.test(value))
         return "Invalid phone number";
     }
 
     if (name === "first_name" || name === "last_name") {
-      if (value && !/^[A-Za-z\s\-]+$/.test(value))
+      if (value && !/^[A-Za-z\s-]+$/.test(value))
         return "Only letters allowed";
     }
 
     return "";
   };
 
-  // Validation for password fields
   const validatePasswordField = (name, value) => {
     if (name === "currentPassword") {
       if (!value) return "Current password is required";
@@ -139,6 +180,32 @@ const AccountManagement = () => {
     if (name === "confirmPassword") {
       if (!value) return "Please confirm your password";
       if (value !== passwordForm.newPassword) return "Passwords do not match";
+    }
+
+    return "";
+  };
+
+  const validatePinField = (name, value, nextForm = pinForm) => {
+    if (name === "currentPin") {
+      if (pinStatus.isConfigured && !value) {
+        return "Current organization PIN is required";
+      }
+      if (value && !PIN_PATTERN.test(value)) {
+        return "PIN must be 4 to 10 digits";
+      }
+    }
+
+    if (name === "newPin") {
+      if (!value) return "New organization PIN is required";
+      if (!PIN_PATTERN.test(value)) return "PIN must be 4 to 10 digits";
+      if (pinStatus.isConfigured && value === nextForm.currentPin) {
+        return "New PIN must be different from current PIN";
+      }
+    }
+
+    if (name === "confirmPin") {
+      if (!value) return "Please confirm the organization PIN";
+      if (value !== nextForm.newPin) return "PINs do not match";
     }
 
     return "";
@@ -172,6 +239,15 @@ const AccountManagement = () => {
 
     if (name === "newPassword") {
       checkPasswordStrength(value);
+      if (passwordTouched.confirmPassword) {
+        setPasswordErrors((prev) => ({
+          ...prev,
+          confirmPassword: validatePasswordField(
+            "confirmPassword",
+            passwordForm.confirmPassword,
+          ),
+        }));
+      }
     }
   };
 
@@ -196,6 +272,48 @@ const AccountManagement = () => {
     setShowPasswords((prev) => ({ ...prev, [field]: !prev[field] }));
   };
 
+  const handlePinChange = (e) => {
+    const { name, value } = e.target;
+    const normalizedValue = value.replace(/\D/g, "").slice(0, 10);
+    const nextForm = { ...pinForm, [name]: normalizedValue };
+
+    setPinForm(nextForm);
+
+    if (pinTouched[name]) {
+      setPinErrors((prev) => ({
+        ...prev,
+        [name]: validatePinField(name, normalizedValue, nextForm),
+      }));
+    }
+
+    if (name === "newPin" && pinTouched.confirmPin) {
+      setPinErrors((prev) => ({
+        ...prev,
+        confirmPin: validatePinField(
+          "confirmPin",
+          nextForm.confirmPin,
+          nextForm,
+        ),
+      }));
+    }
+  };
+
+  const handlePinBlur = (e) => {
+    const { name, value } = e.target;
+    const normalizedValue = value.replace(/\D/g, "").slice(0, 10);
+    const nextForm = { ...pinForm, [name]: normalizedValue };
+
+    setPinTouched((prev) => ({ ...prev, [name]: true }));
+    setPinErrors((prev) => ({
+      ...prev,
+      [name]: validatePinField(name, normalizedValue, nextForm),
+    }));
+  };
+
+  const togglePinVisibility = (field) => {
+    setShowPins((prev) => ({ ...prev, [field]: !prev[field] }));
+  };
+
   const validateProfileForm = () => {
     const errors = {};
     ["email"].forEach((field) => {
@@ -214,6 +332,19 @@ const AccountManagement = () => {
     return errors;
   };
 
+  const validatePinForm = () => {
+    const errors = {};
+    Object.keys(pinForm).forEach((field) => {
+      if (!pinStatus.isConfigured && field === "currentPin") {
+        return;
+      }
+
+      const error = validatePinField(field, pinForm[field], pinForm);
+      if (error) errors[field] = error;
+    });
+    return errors;
+  };
+
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
     const errors = validateProfileForm();
@@ -225,8 +356,8 @@ const AccountManagement = () => {
     }
 
     try {
-      setIsLoading(true);
-      const token = Cookies.get("authToken");
+      setProfileSaving(true);
+      const token = getToken();
 
       const response = await axios.put(
         buildUrl("/api/auth/profile"),
@@ -237,11 +368,12 @@ const AccountManagement = () => {
           last_name: profileForm.last_name,
           gender: profileForm.gender,
         },
-        { headers: { Authorization: `Bearer ${token}` } },
+        { headers: getAuthHeaders(token) },
       );
 
       if (response.data.success) {
         setUserData(response.data.user);
+        populateProfileForm(response.data.user);
         setIsEditing(false);
         setMessage({ type: "success", text: "Profile updated successfully" });
         setTimeout(() => setMessage({ type: "", text: "" }), 3000);
@@ -253,7 +385,7 @@ const AccountManagement = () => {
         text: err.response?.data?.message || "Failed to update profile",
       });
     } finally {
-      setIsLoading(false);
+      setProfileSaving(false);
     }
   };
 
@@ -268,8 +400,8 @@ const AccountManagement = () => {
     }
 
     try {
-      setIsLoading(true);
-      const token = Cookies.get("authToken");
+      setPasswordSaving(true);
+      const token = getToken();
 
       const response = await axios.post(
         buildUrl("/api/auth/change-password"),
@@ -277,7 +409,7 @@ const AccountManagement = () => {
           currentPassword: passwordForm.currentPassword,
           newPassword: passwordForm.newPassword,
         },
-        { headers: { Authorization: `Bearer ${token}` } },
+        { headers: getAuthHeaders(token) },
       );
 
       if (response.data.success || response.status === 200) {
@@ -288,6 +420,7 @@ const AccountManagement = () => {
         });
         setPasswordErrors({});
         setPasswordTouched({});
+        setPasswordStrength(0);
         setMessage({ type: "success", text: "Password changed successfully" });
         setTimeout(() => setMessage({ type: "", text: "" }), 3000);
       }
@@ -298,7 +431,61 @@ const AccountManagement = () => {
         text: err.response?.data?.message || "Failed to change password",
       });
     } finally {
-      setIsLoading(false);
+      setPasswordSaving(false);
+    }
+  };
+
+  const handleUpdateOrganizationPin = async (e) => {
+    e.preventDefault();
+    const errors = validatePinForm();
+
+    if (Object.keys(errors).length > 0) {
+      setPinErrors(errors);
+      setMessage({ type: "error", text: "Please fix all errors" });
+      return;
+    }
+
+    try {
+      setPinSaving(true);
+      const token = getToken();
+      const response = await axios.put(
+        buildUrl("/api/auth/organization-pin"),
+        {
+          currentPin: pinStatus.isConfigured ? pinForm.currentPin : "",
+          newPin: pinForm.newPin,
+        },
+        { headers: getAuthHeaders(token) },
+      );
+
+      if (response.data.success) {
+        setPinForm({
+          currentPin: "",
+          newPin: "",
+          confirmPin: "",
+        });
+        setPinErrors({});
+        setPinTouched({});
+        setPinStatus({
+          isConfigured: Boolean(response.data.isConfigured),
+          updated_at: response.data.updated_at || null,
+          updated_by: response.data.updated_by || null,
+        });
+        setMessage({
+          type: "success",
+          text:
+            response.data.message || "Organization PIN updated successfully",
+        });
+        setTimeout(() => setMessage({ type: "", text: "" }), 3000);
+      }
+    } catch (err) {
+      console.error("Error updating organization PIN:", err);
+      setMessage({
+        type: "error",
+        text:
+          err.response?.data?.message || "Failed to update organization PIN",
+      });
+    } finally {
+      setPinSaving(false);
     }
   };
 
@@ -316,7 +503,20 @@ const AccountManagement = () => {
     return "Strong";
   };
 
-  if (isLoading && !userData) {
+  const formatPinUpdatedAt = (value) => {
+    if (!value) return "Not updated yet";
+
+    try {
+      return new Date(value).toLocaleString("en-IN", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      });
+    } catch {
+      return "Recently updated";
+    }
+  };
+
+  if (initialLoading && !userData) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
@@ -538,10 +738,10 @@ const AccountManagement = () => {
                     <div className="flex space-x-3 pt-4">
                       <button
                         type="submit"
-                        disabled={isLoading}
+                        disabled={profileSaving}
                         className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center justify-center space-x-2"
                       >
-                        {isLoading ? (
+                        {profileSaving ? (
                           <FaSpinner className="animate-spin" />
                         ) : (
                           <FaSave />
@@ -554,6 +754,9 @@ const AccountManagement = () => {
                           setIsEditing(false);
                           setProfileErrors({});
                           setProfileTouched({});
+                          if (userData) {
+                            populateProfileForm(userData);
+                          }
                         }}
                         className="flex-1 bg-gray-200 text-gray-900 py-2 rounded-lg hover:bg-gray-300 transition-colors flex items-center justify-center space-x-2"
                       >
@@ -570,7 +773,7 @@ const AccountManagement = () => {
 
         {/* Password Tab */}
         {activeTab === "password" && (
-          <div className="max-w-2xl mx-auto">
+          <div className="max-w-2xl mx-auto space-y-6">
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-4 md:p-6">
               <h3 className="text-lg font-bold text-gray-900 mb-6">
                 Change Password
@@ -744,10 +947,10 @@ const AccountManagement = () => {
                 <div className="pt-4">
                   <button
                     type="submit"
-                    disabled={isLoading}
+                    disabled={passwordSaving}
                     className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center justify-center space-x-2"
                   >
-                    {isLoading ? (
+                    {passwordSaving ? (
                       <FaSpinner className="animate-spin" />
                     ) : (
                       <FaLock />
@@ -772,6 +975,169 @@ const AccountManagement = () => {
                   <li>• Use a unique password for this account</li>
                 </ul>
               </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-4 md:p-6">
+              <div className="flex items-start justify-between gap-4 mb-6">
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900">
+                    Organization PIN
+                  </h3>
+                  <p className="mt-1 text-sm text-gray-600">
+                    This PIN is required after password verification during admin
+                    login.
+                  </p>
+                </div>
+                <span
+                  className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${
+                    pinStatus.isConfigured
+                      ? "bg-green-100 text-green-700"
+                      : "bg-amber-100 text-amber-700"
+                  }`}
+                >
+                  <FaShieldAlt />
+                  {pinStatus.isConfigured ? "Configured" : "Not Set"}
+                </span>
+              </div>
+
+              <div className="mb-5 rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
+                <div>Last updated: {formatPinUpdatedAt(pinStatus.updated_at)}</div>
+                <div className="mt-1">
+                  Stored securely on the server using one-way hashing.
+                </div>
+              </div>
+
+              <form onSubmit={handleUpdateOrganizationPin} className="space-y-4">
+                {pinStatus.isConfigured && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Current Organization PIN
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showPins.current ? "text" : "password"}
+                        name="currentPin"
+                        value={pinForm.currentPin}
+                        onChange={handlePinChange}
+                        onBlur={handlePinBlur}
+                        inputMode="numeric"
+                        maxLength={10}
+                        className={`w-full px-4 py-2 rounded-lg border transition-colors pr-10 ${
+                          pinErrors.currentPin && pinTouched.currentPin
+                            ? "border-red-300 focus:border-red-500 focus:ring-red-200"
+                            : "border-gray-300 focus:border-blue-500 focus:ring-blue-200"
+                        } focus:outline-none focus:ring-2`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => togglePinVisibility("current")}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                      >
+                        {showPins.current ? <FaEyeSlash /> : <FaEye />}
+                      </button>
+                    </div>
+                    {pinErrors.currentPin && pinTouched.currentPin && (
+                      <p className="mt-1 text-sm text-red-600">
+                        {pinErrors.currentPin}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    {pinStatus.isConfigured
+                      ? "New Organization PIN"
+                      : "Organization PIN"}
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showPins.new ? "text" : "password"}
+                      name="newPin"
+                      value={pinForm.newPin}
+                      onChange={handlePinChange}
+                      onBlur={handlePinBlur}
+                      inputMode="numeric"
+                      maxLength={10}
+                      className={`w-full px-4 py-2 rounded-lg border transition-colors pr-10 ${
+                        pinErrors.newPin && pinTouched.newPin
+                          ? "border-red-300 focus:border-red-500 focus:ring-red-200"
+                          : "border-gray-300 focus:border-blue-500 focus:ring-blue-200"
+                      } focus:outline-none focus:ring-2`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => togglePinVisibility("new")}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                    >
+                      {showPins.new ? <FaEyeSlash /> : <FaEye />}
+                    </button>
+                  </div>
+                  {pinErrors.newPin && pinTouched.newPin && (
+                    <p className="mt-1 text-sm text-red-600">
+                      {pinErrors.newPin}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Confirm Organization PIN
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showPins.confirm ? "text" : "password"}
+                      name="confirmPin"
+                      value={pinForm.confirmPin}
+                      onChange={handlePinChange}
+                      onBlur={handlePinBlur}
+                      inputMode="numeric"
+                      maxLength={10}
+                      className={`w-full px-4 py-2 rounded-lg border transition-colors pr-10 ${
+                        pinErrors.confirmPin && pinTouched.confirmPin
+                          ? "border-red-300 focus:border-red-500 focus:ring-red-200"
+                          : "border-gray-300 focus:border-blue-500 focus:ring-blue-200"
+                      } focus:outline-none focus:ring-2`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => togglePinVisibility("confirm")}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                    >
+                      {showPins.confirm ? <FaEyeSlash /> : <FaEye />}
+                    </button>
+                  </div>
+                  {pinErrors.confirmPin && pinTouched.confirmPin && (
+                    <p className="mt-1 text-sm text-red-600">
+                      {pinErrors.confirmPin}
+                    </p>
+                  )}
+                </div>
+
+                <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
+                  Use a 4 to 10 digit PIN for your admin team. You can rotate it
+                  here whenever access needs to change.
+                </div>
+
+                <div className="pt-2">
+                  <button
+                    type="submit"
+                    disabled={pinSaving}
+                    className="w-full bg-gray-900 text-white py-2 rounded-lg hover:bg-gray-800 disabled:opacity-50 transition-colors flex items-center justify-center space-x-2"
+                  >
+                    {pinSaving ? (
+                      <FaSpinner className="animate-spin" />
+                    ) : (
+                      <FaShieldAlt />
+                    )}
+                    <span>
+                      {pinStatus.isConfigured
+                        ? "Update Organization PIN"
+                        : "Create Organization PIN"}
+                    </span>
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}

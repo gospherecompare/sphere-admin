@@ -214,11 +214,19 @@ const ROUTE_TRAILS = [
     ],
   },
   {
+    path: "/content/news-articles",
+    trail: [
+      DASHBOARD_CRUMB,
+      { label: "Content", to: "/content/news-articles" },
+      { label: "News & Articles" },
+    ],
+  },
+  {
     path: "/content/blogs",
     trail: [
       DASHBOARD_CRUMB,
-      { label: "Content", to: "/content/blogs" },
-      { label: "Blog Studio" },
+      { label: "Content", to: "/content/news-articles" },
+      { label: "News & Articles" },
     ],
   },
 

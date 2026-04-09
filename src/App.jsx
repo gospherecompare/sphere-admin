@@ -400,7 +400,14 @@ function App() {
                   path="/settings/device-field-profiles"
                   element={<DeviceFieldProfiles />}
                 />
-                <Route path="/content/blogs" element={<BlogEditor />} />
+                <Route
+                  path="/content/news-articles"
+                  element={<BlogEditor />}
+                />
+                <Route
+                  path="/content/blogs"
+                  element={<Navigate to="/content/news-articles" replace />}
+                />
                 <Route
                   path="/specifications/store"
                   element={<OnlineStoreManagement />}
