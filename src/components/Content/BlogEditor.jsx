@@ -61,6 +61,47 @@ const toPlainObject = (value) => {
   return {};
 };
 
+const normalizeImageSource = (value) => {
+  if (!value) return "";
+
+  if (typeof value === "string") return value.trim();
+
+  if (typeof value === "object") {
+    const candidate = [
+      value.url,
+      value.src,
+      value.image_url,
+      value.image,
+      value.cover_image,
+      value.thumbnail,
+      value.href,
+    ].find((entry) => typeof entry === "string" && entry.trim());
+
+    return candidate ? String(candidate).trim() : "";
+  }
+
+  return "";
+};
+
+const collectImageCandidates = (...inputs) => {
+  const seen = new Set();
+  const images = [];
+
+  inputs.forEach((input) => {
+    const values = Array.isArray(input) ? input : [input];
+    values.forEach((value) => {
+      const normalized = normalizeImageSource(value);
+      if (!normalized || seen.has(normalized)) return;
+      seen.add(normalized);
+      images.push(normalized);
+    });
+  });
+
+  return images;
+};
+
+const getFirstImageCandidate = (...inputs) => collectImageCandidates(...inputs)[0] || "";
+
 const formatDateLabel = (value) => {
   if (!value) return "Not updated yet";
 
@@ -74,13 +115,6 @@ const formatDateLabel = (value) => {
     hour: "2-digit",
     minute: "2-digit",
   }).format(date);
-};
-
-const getDefaultCategoryForMode = (mode, type) => {
-  if (mode === "general") return "news";
-  if (type === "smartphone") return "mobiles";
-  if (type === "laptop" || type === "tv") return "gadgets";
-  return "news";
 };
 
 const BlogEditor = () => {
@@ -97,9 +131,6 @@ const BlogEditor = () => {
   const [title, setTitle] = useState("");
   const [slug, setSlug] = useState("");
   const [excerpt, setExcerpt] = useState("");
-  const [storyCategory, setStoryCategory] = useState(
-    getDefaultCategoryForMode("product", "smartphone"),
-  );
   const [metaTitle, setMetaTitle] = useState("");
   const [metaDescription, setMetaDescription] = useState("");
   const [heroImage, setHeroImage] = useState("");
@@ -321,15 +352,25 @@ const BlogEditor = () => {
       if (existing) {
         setBlogId(existing.id || null);
         setSelectedLibraryId(existing.id || null);
-        setTitle(existing.title || "");
-        setSlug(existing.slug || "");
-        setExcerpt(existing.excerpt || "");
-        setMetaTitle(existing.meta_title || "");
-        setMetaDescription(existing.meta_description || "");
-        setHeroImage(existing.hero_image || product?.image || "");
-        setStatus(existing.status === "published" ? "published" : "draft");
-        setContentTemplate(
-          existing.content_template || DEFAULT_PRODUCT_TEMPLATE,
+      setTitle(existing.title || "");
+      setSlug(existing.slug || "");
+      setExcerpt(existing.excerpt || "");
+      setMetaTitle(existing.meta_title || "");
+      setMetaDescription(existing.meta_description || "");
+      setHeroImage(
+        existing.hero_image ||
+          getFirstImageCandidate(
+            product?.hero_image,
+            product?.image,
+            product?.image_url,
+            product?.cover_image,
+            product?.thumbnail,
+            product?.images,
+          ),
+      );
+      setStatus(existing.status === "published" ? "published" : "draft");
+      setContentTemplate(
+        existing.content_template || DEFAULT_PRODUCT_TEMPLATE,
         );
         setRenderedContent(existing.content_rendered || "");
         setMessage("Loaded saved product-linked story.");
@@ -344,7 +385,16 @@ const BlogEditor = () => {
         setExcerpt("");
         setMetaTitle("");
         setMetaDescription("");
-        setHeroImage(product?.image || "");
+        setHeroImage(
+          getFirstImageCandidate(
+            product?.hero_image,
+            product?.image,
+            product?.image_url,
+            product?.cover_image,
+            product?.thumbnail,
+            product?.images,
+          ),
+        );
         setStatus("draft");
         setContentTemplate(DEFAULT_PRODUCT_TEMPLATE);
         setRenderedContent("");
@@ -652,9 +702,27 @@ const BlogEditor = () => {
     void loadGeneralArticle(Number(row.id));
   };
 
-  const productImages = Array.isArray(selectedProduct?.images)
-    ? selectedProduct.images.filter(Boolean)
-    : [];
+  const productImages = useMemo(
+    () =>
+      collectImageCandidates(
+        selectedProduct?.hero_image,
+        selectedProduct?.image,
+        selectedProduct?.image_url,
+        selectedProduct?.cover_image,
+        selectedProduct?.thumbnail,
+        selectedProduct?.images,
+      ),
+    [selectedProduct],
+  );
+  const heroImageChoices = useMemo(
+    () =>
+      blogMode === "product"
+        ? collectImageCandidates(productImages, heroImage)
+        : heroImage
+          ? [heroImage]
+          : [],
+    [blogMode, heroImage, productImages],
+  );
 
   const currentModeLabel =
     blogMode === "product" ? "Product-linked story" : "General article";
@@ -1239,37 +1307,84 @@ const BlogEditor = () => {
               <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
                 Hero Image
               </label>
-              <input
-                value={heroImage}
-                onChange={(event) => setHeroImage(event.target.value)}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800"
-                placeholder="https://..."
-              />
-            </div>
+              <p className="mt-1 text-xs text-slate-500">
+                Select from the images already attached to the product. Manual
+                image URLs are disabled here.
+              </p>
+              {heroImage ? (
+                <div className="mt-3 overflow-hidden rounded-md border border-slate-200 bg-slate-50">
+                  <img
+                    src={heroImage}
+                    alt="Selected hero"
+                    className="h-36 w-full object-cover"
+                  />
+                  <div className="flex items-center justify-between gap-3 border-t border-slate-200 px-3 py-2 text-xs text-slate-600">
+                    <span>Current hero image</span>
+                    {blogMode === "product" ? (
+                      <button
+                        type="button"
+                        onClick={() => setHeroImage("")}
+                        className="font-semibold text-slate-500 hover:text-slate-900"
+                      >
+                        Clear
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-3 rounded-md border border-dashed border-slate-300 bg-slate-50 px-3 py-3 text-xs text-slate-500">
+                  No hero image selected yet.
+                </div>
+              )}
 
-            {blogMode === "product" && productImages.length > 0 ? (
-              <div className="mt-4">
-                <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                  Quick Hero Picks
+              {blogMode === "product" ? (
+                heroImageChoices.length > 0 ? (
+                  <div className="mt-4">
+                    <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                      Select from product images
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                      {heroImageChoices.map((img, idx) => {
+                        const selected = heroImage === img;
+                        return (
+                          <button
+                            key={`${img}-${idx}`}
+                            type="button"
+                            onClick={() => setHeroImage(img)}
+                            className={`overflow-hidden rounded-md border text-left transition ${
+                              selected
+                                ? "border-slate-900 ring-1 ring-slate-900"
+                                : "border-slate-200 hover:border-slate-400"
+                            }`}
+                          >
+                            <img
+                              src={img}
+                              alt={`product-${idx + 1}`}
+                              className="h-20 w-full object-cover"
+                            />
+                            <div className="flex items-center justify-between gap-2 border-t border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-600">
+                              <span>{selected ? "Selected" : "Use image"}</span>
+                              <span>#{idx + 1}</span>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-4 rounded-md border border-dashed border-slate-300 bg-slate-50 px-3 py-3 text-xs text-slate-500">
+                    No product images are attached yet. Add images to the
+                    product first, then select one here.
+                  </div>
+                )
+              ) : (
+                <div className="mt-4 rounded-md border border-slate-200 bg-slate-50 px-3 py-3 text-xs text-slate-600">
+                  General articles keep the hero image from the saved entry or
+                  use the fallback artwork. Switch to a product-linked story to
+                  choose from product images.
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  {productImages.slice(0, 6).map((img, idx) => (
-                    <button
-                      key={`${img}-${idx}`}
-                      type="button"
-                      onClick={() => setHeroImage(img)}
-                      className="overflow-hidden rounded-md border border-slate-200 hover:border-slate-400"
-                    >
-                      <img
-                        src={img}
-                        alt={`product-${idx + 1}`}
-                        className="h-10 w-16 object-cover"
-                      />
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ) : null}
+              )}
+            </div>
           </div>
 
           <div className="rounded-xl border border-slate-200 bg-white p-3">
