@@ -10,9 +10,11 @@ import {
   FaNewspaper,
   FaSearch,
   FaSyncAlt,
+  FaUpload,
   FaTrashAlt,
 } from "react-icons/fa";
 import { buildUrl, getAuthToken } from "../../api";
+import { uploadToCloudinary } from "../../config/cloudinary";
 
 const DEFAULT_PRODUCT_TEMPLATE = [
   "{{product_name}} is powered by {{processor}} and features {{display}}.",
@@ -42,6 +44,28 @@ const STORY_CATEGORY_OPTIONS = [
 const STATUS_BADGES = {
   draft: "border border-amber-200 bg-amber-50 text-amber-800",
   published: "border border-emerald-200 bg-emerald-50 text-emerald-800",
+};
+
+const HERO_IMAGE_SOURCE = {
+  ASSET: "asset",
+  URL: "url",
+};
+
+const normalizeHeroImageSource = (value) => {
+  const text = String(value || "").trim().toLowerCase();
+  if (!text) return "";
+  if (text === "asset" || text === "product" || text === "product_asset")
+    return HERO_IMAGE_SOURCE.ASSET;
+  if (text === "url" || text === "upload" || text === "custom")
+    return HERO_IMAGE_SOURCE.URL;
+  return "";
+};
+
+const inferHeroImageSource = (heroImage, productImages = []) => {
+  if (!heroImage) return HERO_IMAGE_SOURCE.URL;
+  return Array.isArray(productImages) && productImages.includes(heroImage)
+    ? HERO_IMAGE_SOURCE.ASSET
+    : HERO_IMAGE_SOURCE.URL;
 };
 
 const toPlainObject = (value) => {
@@ -100,7 +124,8 @@ const collectImageCandidates = (...inputs) => {
   return images;
 };
 
-const getFirstImageCandidate = (...inputs) => collectImageCandidates(...inputs)[0] || "";
+const getFirstImageCandidate = (...inputs) =>
+  collectImageCandidates(...inputs)[0] || "";
 
 const formatDateLabel = (value) => {
   if (!value) return "Not updated yet";
@@ -134,6 +159,10 @@ const BlogEditor = () => {
   const [metaTitle, setMetaTitle] = useState("");
   const [metaDescription, setMetaDescription] = useState("");
   const [heroImage, setHeroImage] = useState("");
+  const [heroImageSource, setHeroImageSource] = useState(
+    HERO_IMAGE_SOURCE.ASSET,
+  );
+  const [uploadingHeroImage, setUploadingHeroImage] = useState(false);
   const [status, setStatus] = useState("draft");
   const [contentTemplate, setContentTemplate] = useState(
     DEFAULT_PRODUCT_TEMPLATE,
@@ -153,6 +182,7 @@ const BlogEditor = () => {
   const [loadingEntryId, setLoadingEntryId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
   const contentRef = useRef(null);
+  const heroImageInputRef = useRef(null);
   const deferredLibraryQuery = useDeferredValue(libraryQuery);
   const deferredContentTemplate = useDeferredValue(contentTemplate);
 
@@ -219,6 +249,8 @@ const BlogEditor = () => {
     setMetaTitle("");
     setMetaDescription("");
     setHeroImage("");
+    setHeroImageSource(HERO_IMAGE_SOURCE.ASSET);
+    setUploadingHeroImage(false);
     setStatus("draft");
     setContentTemplate(DEFAULT_PRODUCT_TEMPLATE);
     setRenderedContent("");
@@ -242,6 +274,8 @@ const BlogEditor = () => {
     setMetaTitle("");
     setMetaDescription("");
     setHeroImage("");
+    setHeroImageSource(HERO_IMAGE_SOURCE.URL);
+    setUploadingHeroImage(false);
     setStatus("draft");
     setContentTemplate(DEFAULT_CUSTOM_TEMPLATE);
     setRenderedContent("");
@@ -352,13 +386,13 @@ const BlogEditor = () => {
       if (existing) {
         setBlogId(existing.id || null);
         setSelectedLibraryId(existing.id || null);
-      setTitle(existing.title || "");
-      setSlug(existing.slug || "");
-      setExcerpt(existing.excerpt || "");
-      setMetaTitle(existing.meta_title || "");
-      setMetaDescription(existing.meta_description || "");
-      setHeroImage(
-        existing.hero_image ||
+        setTitle(existing.title || "");
+        setSlug(existing.slug || "");
+        setExcerpt(existing.excerpt || "");
+        setMetaTitle(existing.meta_title || "");
+        setMetaDescription(existing.meta_description || "");
+        const heroChoice =
+          existing.hero_image ||
           getFirstImageCandidate(
             product?.hero_image,
             product?.image,
@@ -366,11 +400,23 @@ const BlogEditor = () => {
             product?.cover_image,
             product?.thumbnail,
             product?.images,
-          ),
-      );
-      setStatus(existing.status === "published" ? "published" : "draft");
-      setContentTemplate(
-        existing.content_template || DEFAULT_PRODUCT_TEMPLATE,
+          );
+        const productImageChoices = collectImageCandidates(
+          product?.hero_image,
+          product?.image,
+          product?.image_url,
+          product?.cover_image,
+          product?.thumbnail,
+          product?.images,
+        );
+        setHeroImage(heroChoice);
+        setHeroImageSource(
+          normalizeHeroImageSource(existing.hero_image_source) ||
+            inferHeroImageSource(heroChoice, productImageChoices),
+        );
+        setStatus(existing.status === "published" ? "published" : "draft");
+        setContentTemplate(
+          existing.content_template || DEFAULT_PRODUCT_TEMPLATE,
         );
         setRenderedContent(existing.content_rendered || "");
         setMessage("Loaded saved product-linked story.");
@@ -385,14 +431,26 @@ const BlogEditor = () => {
         setExcerpt("");
         setMetaTitle("");
         setMetaDescription("");
-        setHeroImage(
-          getFirstImageCandidate(
-            product?.hero_image,
-            product?.image,
-            product?.image_url,
-            product?.cover_image,
-            product?.thumbnail,
-            product?.images,
+        const heroChoice = getFirstImageCandidate(
+          product?.hero_image,
+          product?.image,
+          product?.image_url,
+          product?.cover_image,
+          product?.thumbnail,
+          product?.images,
+        );
+        setHeroImage(heroChoice);
+        setHeroImageSource(
+          inferHeroImageSource(
+            heroChoice,
+            collectImageCandidates(
+              product?.hero_image,
+              product?.image,
+              product?.image_url,
+              product?.cover_image,
+              product?.thumbnail,
+              product?.images,
+            ),
           ),
         );
         setStatus("draft");
@@ -409,6 +467,31 @@ const BlogEditor = () => {
       setTokenKeys([]);
       setTemplates([]);
       setHeroImage("");
+    }
+  };
+
+  const handleHeroImageUpload = async (file) => {
+    if (!file) return;
+
+    setUploadingHeroImage(true);
+    setError("");
+
+    try {
+      const data = await uploadToCloudinary(file, "banners", {
+        resourceType: "image",
+      });
+
+      if (!data?.secure_url) {
+        throw new Error("No secure_url returned from upload");
+      }
+
+      setHeroImage(data.secure_url);
+      setHeroImageSource(HERO_IMAGE_SOURCE.URL);
+      setMessage("Hero image uploaded successfully.");
+    } catch (err) {
+      setError(err?.message || "Failed to upload hero image");
+    } finally {
+      setUploadingHeroImage(false);
     }
   };
 
@@ -447,6 +530,10 @@ const BlogEditor = () => {
       setMetaTitle(article.meta_title || "");
       setMetaDescription(article.meta_description || "");
       setHeroImage(article.hero_image || "");
+      setHeroImageSource(
+        normalizeHeroImageSource(article.hero_image_source) ||
+          HERO_IMAGE_SOURCE.URL,
+      );
       setStatus(article.status === "published" ? "published" : "draft");
       setContentTemplate(article.content_template || DEFAULT_CUSTOM_TEMPLATE);
       setRenderedContent(article.content_rendered || "");
@@ -559,6 +646,22 @@ const BlogEditor = () => {
 
   const saveBlog = async () => {
     const productIdForSave = blogMode === "product" ? selectedProductId : null;
+    const productImageChoices =
+      blogMode === "product"
+        ? collectImageCandidates(
+            selectedProduct?.hero_image,
+            selectedProduct?.image,
+            selectedProduct?.image_url,
+            selectedProduct?.cover_image,
+            selectedProduct?.thumbnail,
+            selectedProduct?.images,
+          )
+        : [];
+    const effectiveHeroImageSource =
+      blogMode === "product"
+        ? normalizeHeroImageSource(heroImageSource) ||
+          inferHeroImageSource(heroImage, productImageChoices)
+        : HERO_IMAGE_SOURCE.URL;
 
     if (blogMode === "product" && !productIdForSave) {
       setError("Select a product first");
@@ -590,6 +693,7 @@ const BlogEditor = () => {
           meta_title: metaTitle,
           meta_description: metaDescription,
           hero_image: heroImage || null,
+          hero_image_source: effectiveHeroImageSource,
           status,
           content_template: contentTemplate,
           token_map: tokenMap,
@@ -612,6 +716,9 @@ const BlogEditor = () => {
       }
       if (data?.blog?.slug) setSlug(data.blog.slug);
       if (data?.blog?.hero_image) setHeroImage(data.blog.hero_image);
+      if (data?.blog?.hero_image_source) {
+        setHeroImageSource(normalizeHeroImageSource(data.blog.hero_image_source));
+      }
       if (data?.blog?.content_rendered)
         setRenderedContent(data.blog.content_rendered);
       if (Array.isArray(data?.unresolved_tokens)) {
@@ -716,12 +823,11 @@ const BlogEditor = () => {
   );
   const heroImageChoices = useMemo(
     () =>
-      blogMode === "product"
+      blogMode === "product" &&
+      heroImageSource === HERO_IMAGE_SOURCE.ASSET
         ? collectImageCandidates(productImages, heroImage)
-        : heroImage
-          ? [heroImage]
-          : [],
-    [blogMode, heroImage, productImages],
+        : [],
+    [blogMode, heroImage, heroImageSource, productImages],
   );
 
   const currentModeLabel =
@@ -1308,9 +1414,37 @@ const BlogEditor = () => {
                 Hero Image
               </label>
               <p className="mt-1 text-xs text-slate-500">
-                Select from the images already attached to the product. Manual
-                image URLs are disabled here.
+                Choose an attached product image or switch to a custom URL for
+                a fresh cover. We store the source with the blog.
               </p>
+
+              {blogMode === "product" ? (
+                <div className="mt-3 inline-flex overflow-hidden rounded-md border border-slate-200 bg-white text-xs font-semibold text-slate-600">
+                  <button
+                    type="button"
+                    onClick={() => setHeroImageSource(HERO_IMAGE_SOURCE.ASSET)}
+                    className={`px-3 py-2 ${
+                      heroImageSource === HERO_IMAGE_SOURCE.ASSET
+                        ? "bg-slate-900 text-white"
+                        : "hover:bg-slate-50"
+                    }`}
+                  >
+                    Product assets
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setHeroImageSource(HERO_IMAGE_SOURCE.URL)}
+                    className={`px-3 py-2 ${
+                      heroImageSource === HERO_IMAGE_SOURCE.URL
+                        ? "bg-slate-900 text-white"
+                        : "hover:bg-slate-50"
+                    }`}
+                  >
+                    Custom URL / upload
+                  </button>
+                </div>
+              ) : null}
+
               {heroImage ? (
                 <div className="mt-3 overflow-hidden rounded-md border border-slate-200 bg-slate-50">
                   <img
@@ -1319,16 +1453,23 @@ const BlogEditor = () => {
                     className="h-36 w-full object-cover"
                   />
                   <div className="flex items-center justify-between gap-3 border-t border-slate-200 px-3 py-2 text-xs text-slate-600">
-                    <span>Current hero image</span>
-                    {blogMode === "product" ? (
-                      <button
-                        type="button"
-                        onClick={() => setHeroImage("")}
-                        className="font-semibold text-slate-500 hover:text-slate-900"
-                      >
-                        Clear
-                      </button>
-                    ) : null}
+                    <span>
+                      Current hero image
+                      {blogMode === "product" ? (
+                        <span className="ml-2 text-[10px] uppercase tracking-wide text-slate-400">
+                          ({heroImageSource === HERO_IMAGE_SOURCE.ASSET
+                            ? "Product asset"
+                            : "Custom URL"})
+                        </span>
+                      ) : null}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setHeroImage("")}
+                      className="font-semibold text-slate-500 hover:text-slate-900"
+                    >
+                      Clear
+                    </button>
                   </div>
                 </div>
               ) : (
@@ -1337,7 +1478,8 @@ const BlogEditor = () => {
                 </div>
               )}
 
-              {blogMode === "product" ? (
+              {blogMode === "product" &&
+              heroImageSource === HERO_IMAGE_SOURCE.ASSET ? (
                 heroImageChoices.length > 0 ? (
                   <div className="mt-4">
                     <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
@@ -1350,7 +1492,10 @@ const BlogEditor = () => {
                           <button
                             key={`${img}-${idx}`}
                             type="button"
-                            onClick={() => setHeroImage(img)}
+                            onClick={() => {
+                              setHeroImage(img);
+                              setHeroImageSource(HERO_IMAGE_SOURCE.ASSET);
+                            }}
                             className={`overflow-hidden rounded-md border text-left transition ${
                               selected
                                 ? "border-slate-900 ring-1 ring-slate-900"
@@ -1374,14 +1519,64 @@ const BlogEditor = () => {
                 ) : (
                   <div className="mt-4 rounded-md border border-dashed border-slate-300 bg-slate-50 px-3 py-3 text-xs text-slate-500">
                     No product images are attached yet. Add images to the
-                    product first, then select one here.
+                    product first, then select one here. You can still switch
+                    to a custom URL below.
                   </div>
                 )
               ) : (
-                <div className="mt-4 rounded-md border border-slate-200 bg-slate-50 px-3 py-3 text-xs text-slate-600">
-                  General articles keep the hero image from the saved entry or
-                  use the fallback artwork. Switch to a product-linked story to
-                  choose from product images.
+                <div className="mt-4 space-y-3 rounded-md border border-slate-200 bg-slate-50 p-3">
+                  <div>
+                    <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                      Image URL
+                    </label>
+                    <input
+                      type="url"
+                      value={heroImage}
+                      onChange={(event) => {
+                        setHeroImage(event.target.value);
+                        setHeroImageSource(HERO_IMAGE_SOURCE.URL);
+                      }}
+                      className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800"
+                      placeholder="https://example.com/article-image.jpg"
+                    />
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => heroImageInputRef.current?.click()}
+                      disabled={uploadingHeroImage}
+                      className="inline-flex items-center gap-2 rounded-md bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
+                    >
+                      <FaUpload className="text-[11px]" />
+                      {uploadingHeroImage ? "Uploading..." : "Upload image"}
+                    </button>
+                    <input
+                      ref={heroImageInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={async (event) => {
+                        const file = event.target.files?.[0] || null;
+                        await handleHeroImageUpload(file);
+                        event.target.value = "";
+                      }}
+                    />
+                    {heroImage ? (
+                      <button
+                        type="button"
+                        onClick={() => setHeroImage("")}
+                        className="text-xs font-semibold text-slate-500 hover:text-slate-900"
+                      >
+                        Remove image
+                      </button>
+                    ) : null}
+                  </div>
+
+                  <div className="text-[11px] leading-5 text-slate-500">
+                    Use this for blogs and news articles when you want a fresh
+                    cover image instead of a product image.
+                  </div>
                 </div>
               )}
             </div>
