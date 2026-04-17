@@ -345,7 +345,7 @@ const ViewCustomers = () => {
   }
 
   return (
-    <div className="space-y-6 p-6 bg-gray-50 min-h-screen">
+    <div className="page-shell page-stack py-2 sm:py-3">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
@@ -358,7 +358,7 @@ const ViewCustomers = () => {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white rounded-lg shadow p-6 border-l-4 border-blue-600">
+        <div className="ui-stat-card border-l-4 border-blue-600">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-gray-500 text-sm">Total Customers</p>
@@ -370,7 +370,7 @@ const ViewCustomers = () => {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-6 border-l-4 border-green-600">
+        <div className="ui-stat-card border-l-4 border-green-600">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-gray-500 text-sm">This Month</p>
@@ -388,7 +388,7 @@ const ViewCustomers = () => {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-6 border-l-4 border-purple-600">
+        <div className="ui-stat-card border-l-4 border-purple-600">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-gray-500 text-sm">Active</p>
@@ -432,7 +432,7 @@ const ViewCustomers = () => {
       </div>
 
       {/* Search and Filter */}
-      <div className="bg-white rounded-lg shadow p-6 space-y-4">
+      <div className="ui-form-shell p-4 md:p-6 space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {/* Search */}
           <div className="md:col-span-2">
@@ -517,11 +517,11 @@ const ViewCustomers = () => {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="ui-table-shell overflow-hidden">
         {paginatedCustomers.length > 0 ? (
           <>
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="ui-table w-full">
                 <thead className="bg-gray-100 border-b border-gray-200">
                   <tr>
                     <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">

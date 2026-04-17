@@ -1774,7 +1774,7 @@ const CreateMobile = () => {
   };
 
   return (
-    <div className="min-h-full bg-gray-50 p-1 sm:p-2 md:p-2">
+    <div className="inventory-form-page page-shell min-h-full bg-white p-3 sm:p-4 md:p-6">
       {/* Toast Container */}
       <div className="fixed top-4 right-4 z-50 space-y-2 max-w-xs">
         {toasts.map((toast) => (
@@ -1786,10 +1786,11 @@ const CreateMobile = () => {
       <div className="mb-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-6">
           <div>
-            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900">
+            <p className="page-kicker mb-1">Inventory</p>
+            <h1 className="page-title text-xl sm:text-2xl md:text-3xl">
               Create New Mobile
             </h1>
-            <p className="text-xs sm:text-sm text-gray-600 mt-1">
+            <p className="page-copy mt-2 text-xs sm:text-sm">
               Add a new smartphone to your inventory
             </p>
           </div>

@@ -335,9 +335,9 @@ const Breadcrumbs = () => {
   if (!trail || trail.length === 0) return null;
 
   return (
-    <div className="bg-white px-3 py-2 sm:px-4 sm:py-3">
+    <div className="rounded-lg bg-white px-4 py-3 sm:px-5 sm:py-4">
       <nav aria-label="Breadcrumb" className="text-sm">
-        <ol className="flex items-center flex-wrap gap-y-1">
+        <ol className="flex flex-wrap items-center gap-y-1">
           {trail.map((item, idx) => {
             const isLast = idx === trail.length - 1;
             const key = `${item.label}-${idx}`;
@@ -345,26 +345,29 @@ const Breadcrumbs = () => {
             return (
               <li key={key} className="inline-flex items-center">
                 {idx === 0 && (
-                  <span className="mr-2 text-gray-400" aria-hidden="true">
-                    <FaHome className="text-xs" />
+                  <span
+                    className="mr-2 inline-flex h-7 w-7 items-center justify-center  text-sky-600"
+                    aria-hidden="true"
+                  >
+                    <FaHome className="text-[11px]" />
                   </span>
                 )}
 
                 {isLast || !item.to ? (
-                  <span className="text-gray-900 font-semibold">
+                  <span className="font-semibold text-slate-900">
                     {item.label}
                   </span>
                 ) : (
                   <Link
                     to={item.to}
-                    className="text-gray-600 hover:text-gray-900 hover:underline"
+                    className="font-medium text-slate-500 transition-colors hover:text-slate-900"
                   >
                     {item.label}
                   </Link>
                 )}
 
                 {!isLast && (
-                  <span className="mx-2 text-gray-300" aria-hidden="true">
+                  <span className="mx-2 text-slate-300" aria-hidden="true">
                     <FaChevronRight className="text-[10px]" />
                   </span>
                 )}

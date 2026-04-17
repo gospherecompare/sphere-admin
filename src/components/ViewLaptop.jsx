@@ -457,7 +457,7 @@ const ViewLaptops = () => {
   const unpublishedLaptops = laptops.filter((l) => !l.published).length;
 
   return (
-    <div className="min-h-full bg-gray-50 p-1 sm:p-2 md:p-2">
+    <div className="page-shell page-stack py-2 sm:py-3">
       {/* Toast Container */}
       <div className="fixed top-4 right-4 z-50 space-y-2">
         {toasts.map((toast) => (
@@ -516,7 +516,7 @@ const ViewLaptops = () => {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-6">
-          <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <div className="ui-stat-card">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500">Total Laptops</p>
@@ -530,7 +530,7 @@ const ViewLaptops = () => {
             </div>
           </div>
 
-          <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <div className="ui-stat-card">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500">Published</p>
@@ -544,7 +544,7 @@ const ViewLaptops = () => {
             </div>
           </div>
 
-          <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <div className="ui-stat-card">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500">Drafts</p>
@@ -568,8 +568,8 @@ const ViewLaptops = () => {
         </div>
       )}
 
-      <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
-        <div className="px-4 py-3 border-b border-gray-200">
+      <div className="ui-form-shell">
+        <div className="ui-form-header px-4 py-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center space-x-2">
               <h2 className="font-semibold text-gray-800">Laptops List</h2>
@@ -648,7 +648,7 @@ const ViewLaptops = () => {
 
         {/* Table */}
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
+          <table className="ui-table min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
                 <th

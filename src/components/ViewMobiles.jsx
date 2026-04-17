@@ -20,6 +20,10 @@ import {
   FaUpload,
   FaTimes,
   FaEyeSlash,
+  FaRedo,
+  FaDatabase,
+  FaLayerGroup,
+  FaCogs,
 } from "react-icons/fa";
 import Cookies from "js-cookie";
 import { buildUrl } from "../api";
@@ -35,6 +39,44 @@ const formatScore = (value) => {
   const parsed = toScore(value);
   return parsed === null ? "N/A" : `${parsed.toFixed(1)}%`;
 };
+
+const normalizeText = (value) =>
+  value === null || value === undefined ? "" : String(value).trim();
+
+const firstNonEmpty = (...values) =>
+  values.map(normalizeText).find((value) => value.length > 0) || "";
+
+const collectStorageTech = (mobile, variant = null) =>
+  firstNonEmpty(
+    variant?.storage_type,
+    variant?.storageType,
+    variant?.storage_technology,
+    variant?.storageTechnology,
+    variant?.storage_tech,
+    variant?.storageTech,
+    mobile?.storage_type,
+    mobile?.storageType,
+    mobile?.storage_technology,
+    mobile?.storageTechnology,
+    mobile?.storage_tech,
+    mobile?.storageTech,
+    mobile?.performance?.storage_type,
+    mobile?.performance?.storageType,
+    mobile?.performance?.storage_technology,
+    mobile?.performance?.storageTechnology,
+    mobile?.performance_json?.storage_type,
+    mobile?.performance_json?.storageType,
+    mobile?.performanceJson?.storage_type,
+    mobile?.performanceJson?.storageType,
+    mobile?.raw?.performance?.storage_type,
+    mobile?.raw?.performance?.storageType,
+    mobile?.raw?.performance_json?.storage_type,
+    mobile?.raw?.performance_json?.storageType,
+    mobile?.raw?.performanceJson?.storage_type,
+    mobile?.raw?.performanceJson?.storageType,
+    mobile?.raw?.storage_type,
+    mobile?.raw?.storageType,
+  );
 
 const ViewMobiles = ({
   title = "Mobile Management",
@@ -53,11 +95,13 @@ const ViewMobiles = ({
   const [sortBy, setSortBy] = useState("newest");
   const [brandFilter, setBrandFilter] = useState("all");
   const [storageFilter, setStorageFilter] = useState("all");
+  const [storageTechFilter, setStorageTechFilter] = useState("all");
   const [ramFilter, setRamFilter] = useState("all");
   const [variantFilter, setVariantFilter] = useState("all");
   const [variantStoreFilter, setVariantStoreFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [toasts, setToasts] = useState([]);
+  const [reloadKey, setReloadKey] = useState(0);
   const location = useLocation();
   const navigate = useNavigate();
   const itemsPerPage = 10;
@@ -93,7 +137,7 @@ const ViewMobiles = ({
           rows = data.smartphones;
         else if (data && Array.isArray(data.data)) rows = data.data;
 
-        // Process mobiles data into rows per-variant (so storage-specific variants appear separately)
+        // Process mobiles data into rows per-variant so storage-specific variants stay visible.
         const processedMobiles = [];
         rows.forEach((mobile) => {
           const published = mobile.published || mobile.is_published || false;
@@ -126,6 +170,7 @@ const ViewMobiles = ({
             launch_date: launchDateRaw,
             images: mobile.images || [],
             variants: mobile.variants || [],
+            storageTech: collectStorageTech(mobile),
             raw: mobile,
           };
 
@@ -140,6 +185,7 @@ const ViewMobiles = ({
 
               const storage = v.storage || v.attributes?.storage || "";
               const ram = v.ram || v.attributes?.ram || "";
+              const storageTech = collectStorageTech(mobile, v);
 
               processedMobiles.push({
                 ...base,
@@ -149,6 +195,7 @@ const ViewMobiles = ({
                 }`,
                 price: variantPrice || mobile.price || 0,
                 storage: storage || mobile.storage || "",
+                storageTech: storageTech || mobile.storageTech || "",
                 ram: ram || mobile.ram || "",
                 variant: v,
               });
@@ -171,6 +218,7 @@ const ViewMobiles = ({
               rowKey: `${productId || "p"}-0`,
               price: price || mobile.price || 0,
               storage: mobile.storage || "",
+              storageTech: collectStorageTech(mobile) || base.storageTech || "",
               ram: mobile.ram || "",
             });
           }
@@ -201,6 +249,7 @@ const ViewMobiles = ({
                   : [],
               priceList: typeof m.price === "number" ? [m.price] : [],
               storagesSet: new Set(m.storage ? [m.storage] : []),
+              storageTechSet: new Set(m.storageTech ? [m.storageTech] : []),
               ramsSet: new Set(m.ram ? [m.ram] : []),
               hook_score: toScore(m.hook_score),
               buyer_intent: toScore(m.buyer_intent),
@@ -228,6 +277,7 @@ const ViewMobiles = ({
             if (Array.isArray(m.variants)) g.variants.push(...m.variants);
             if (typeof m.price === "number") g.priceList.push(m.price);
             if (m.storage) g.storagesSet.add(m.storage);
+            if (m.storageTech) g.storageTechSet.add(m.storageTech);
             if (m.ram) g.ramsSet.add(m.ram);
             if (g.hook_score === null && toScore(m.hook_score) !== null) {
               g.hook_score = toScore(m.hook_score);
@@ -255,6 +305,7 @@ const ViewMobiles = ({
           );
           const price = prices.length ? Math.min(...prices) : 0;
           const storages = Array.from(g.storagesSet || []).filter(Boolean);
+          const storageTechs = Array.from(g.storageTechSet || []).filter(Boolean);
           const rams = Array.from(g.ramsSet || []).filter(Boolean);
           return {
             id: g.id,
@@ -268,6 +319,7 @@ const ViewMobiles = ({
             variants: g.variants || [],
             price,
             storage: storages.join("/") || "",
+            storageTech: storageTechs.join(" / ") || "",
             ram: rams.join("/") || "",
             hook_score: g.hook_score,
             buyer_intent: g.buyer_intent,
@@ -299,7 +351,7 @@ const ViewMobiles = ({
     };
 
     fetchMobiles();
-  }, []);
+  }, [reloadKey]);
 
   // Toast system
   const showToast = (title, message, type = "success") => {
@@ -353,6 +405,31 @@ const ViewMobiles = ({
     const nb = parseInt(b) || 0;
     return na - nb;
   });
+  const storageTechs = Array.from(
+    new Set(
+      mobiles
+        .map((m) => normalizeText(m.storageTech))
+        .filter((value) => value.length > 0),
+    ),
+  ).sort((a, b) => a.localeCompare(b));
+
+  const totalMobiles = mobiles.length;
+  const publishedMobiles = mobiles.filter((m) => m.published).length;
+  const unpublishedMobiles = mobiles.filter((m) => !m.published).length;
+  const storageTechMobiles = mobiles.filter((m) => normalizeText(m.storageTech)).length;
+  const completeVariantMobiles = mobiles.filter((m) =>
+    productAllVariantsComplete(m),
+  ).length;
+  const incompleteVariantMobiles = Math.max(
+    totalMobiles - completeVariantMobiles,
+    0,
+  );
+  const storageTechCoverage = totalMobiles
+    ? Math.round((storageTechMobiles / totalMobiles) * 100)
+    : 0;
+  const variantHealthCoverage = totalMobiles
+    ? Math.round((completeVariantMobiles / totalMobiles) * 100)
+    : 0;
 
   const clearAllFilters = () => {
     setSearchTerm("");
@@ -360,6 +437,7 @@ const ViewMobiles = ({
     setSortBy("newest");
     setBrandFilter("all");
     setStorageFilter("all");
+    setStorageTechFilter("all");
     setRamFilter("all");
     setVariantFilter("all");
     setVariantStoreFilter("all");
@@ -367,7 +445,7 @@ const ViewMobiles = ({
   };
 
   // Helpers to check variant store/price/affiliate completeness
-  const isVariantComplete = (variant) => {
+  function isVariantComplete(variant) {
     if (!variant) return false;
     const storePrices = variant.store_prices || variant.storePrices || [];
     if (!Array.isArray(storePrices) || storePrices.length === 0) return false;
@@ -387,9 +465,9 @@ const ViewMobiles = ({
       );
       return hasPrice && (hasAffiliate || hasStore);
     });
-  };
+  }
 
-  const productAllVariantsComplete = (mobile) => {
+  function productAllVariantsComplete(mobile) {
     // If product has variants, ensure every variant is complete
     if (Array.isArray(mobile.variants) && mobile.variants.length > 0) {
       return mobile.variants.every((v) => isVariantComplete(v));
@@ -416,7 +494,7 @@ const ViewMobiles = ({
       });
     }
     return false;
-  };
+  }
   const filteredAndSortedMobiles = mobiles
     .filter((mobile) => {
       if (statusFilter === "all") return true;
@@ -436,6 +514,13 @@ const ViewMobiles = ({
       return (
         (mobile.storage || "").toString().toLowerCase() ===
         storageFilter.toString().toLowerCase()
+      );
+    })
+    .filter((mobile) => {
+      if (storageTechFilter === "all") return true;
+      return (
+        normalizeText(mobile.storageTech).toLowerCase() ===
+        storageTechFilter.toString().toLowerCase()
       );
     })
     .filter((mobile) => {
@@ -465,7 +550,10 @@ const ViewMobiles = ({
       (mobile) =>
         mobile.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         mobile.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        mobile.model.toLowerCase().includes(searchTerm.toLowerCase()),
+        mobile.model.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        normalizeText(mobile.storageTech)
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase()),
     )
     .sort((a, b) => {
       if (sortBy === "newest") {
@@ -514,8 +602,10 @@ const ViewMobiles = ({
     statusFilter,
     brandFilter,
     storageFilter,
+    storageTechFilter,
     ramFilter,
     variantFilter,
+    variantStoreFilter,
     sortBy,
   ]);
 
@@ -870,24 +960,19 @@ const ViewMobiles = ({
     }
   };
 
-  // Stats
-  const totalMobiles = mobiles.length;
-  const publishedMobiles = mobiles.filter((m) => m.published).length;
-  const unpublishedMobiles = mobiles.filter((m) => !m.published).length;
-
   return (
-    <div className="min-h-full bg-white p-1 sm:p-2 md:p-2">
+    <div className="page-shell page-stack py-2 sm:py-3">
       {/* Toast Container */}
-      <div className="fixed top-4 right-4 z-50 space-y-2 max-w-xs">
+      <div className="fixed top-4 right-4 z-50 w-full max-w-xs space-y-2">
         {toasts.map((toast) => (
           <div
             key={toast.id}
-            className={`bg-white   shadow-lg border p-4 max-w-sm w-full flex items-start space-x-3 ${
+            className={`ui-form-shell flex items-start space-x-3 p-4 ${
               toast.type === "success"
-                ? "border-green-200 bg-green-50"
+                ? "border-emerald-200 bg-emerald-50/90"
                 : toast.type === "error"
-                  ? "border-red-200 bg-red-50"
-                  : "border-blue-200 bg-blue-50"
+                  ? "border-rose-200 bg-rose-50/90"
+                  : "border-blue-200 bg-blue-50/90"
             }`}
           >
             {toast.type === "success" && (
@@ -897,7 +982,7 @@ const ViewMobiles = ({
               <FaExclamationCircle className="text-red-500 mt-0.5" />
             )}
             <div className="flex-1">
-              <p className="text-sm font-medium text-gray-900">{toast.title}</p>
+              <p className="text-sm font-medium text-slate-900">{toast.title}</p>
               <p className="text-sm text-gray-600 mt-0.5">{toast.message}</p>
             </div>
             <button
@@ -911,21 +996,22 @@ const ViewMobiles = ({
       </div>
 
       {/* Header */}
-      <div className="mb-6 sm:mb-8">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
+      <div className="ui-form-shell p-4 md:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
           <div>
-            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900">
+            <p className="page-kicker mb-1">Inventory</p>
+            <h1 className="page-title text-2xl sm:text-3xl">
               {title}
             </h1>
-            <p className="text-xs sm:text-sm text-gray-600 mt-1">
+            <p className="page-copy mt-2 text-xs sm:text-sm">
               {subtitle}
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="ui-toolbar-actions">
             <button
               onClick={() => navigate("/create-mobile")}
-              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-2 rounded-md font-medium text-xs sm:text-sm"
+              className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30"
             >
               <FaPlus className="text-sm" />
               <span>Add Mobile</span>
@@ -934,45 +1020,214 @@ const ViewMobiles = ({
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-6">
-          <div className="bg-white rounded-lg shadow-md p-3 sm:p-4">
+        <div className="ui-stat-grid mt-6">
+          <div className="ui-stat-card">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500">{totalLabel}</p>
-                <p className="text-2xl font-bold text-gray-900">
+                <p className="page-kicker">{totalLabel}</p>
+                <p className="mt-2 text-2xl font-bold text-slate-900">
                   <CountUp end={totalMobiles} duration={1.0} />
                 </p>
               </div>
-              <div className="w-10 h-10 bg-blue-100   flex items-center justify-center">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-100 text-blue-600">
                 <FaMobile className="text-blue-600" />
               </div>
             </div>
           </div>
 
-          <div className="bg-white shadow-md  p-4">
+          <div className="ui-stat-card">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500">Published</p>
-                <p className="text-2xl font-bold text-green-600">
+                <p className="page-kicker">Published</p>
+                <p className="mt-2 text-2xl font-bold text-emerald-600">
                   <CountUp end={publishedMobiles} duration={1.0} />
                 </p>
               </div>
-              <div className="w-10 h-10 bg-green-100   flex items-center justify-center">
-                <FaEye className="text-green-600" />
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600">
+                <FaEye className="text-emerald-600" />
               </div>
             </div>
           </div>
 
-          <div className="bg-white shadow-md  p-4">
+          <div className="ui-stat-card">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500">Drafts</p>
-                <p className="text-2xl font-bold text-gray-600">
+                <p className="page-kicker">Drafts</p>
+                <p className="mt-2 text-2xl font-bold text-slate-600">
                   <CountUp end={unpublishedMobiles} duration={1.0} />
                 </p>
               </div>
-              <div className="w-10 h-10 bg-gray-100   flex items-center justify-center">
-                <FaEyeSlash className="text-gray-600" />
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100 text-slate-600">
+                <FaEyeSlash className="text-slate-600" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="ui-form-shell p-4 md:p-6">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+          <div className="max-w-3xl">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="page-kicker mb-1">Storage Intelligence</p>
+              <span className="soft-pill text-[11px] uppercase tracking-[0.18em]">
+                Live inventory signal
+              </span>
+            </div>
+            <h2 className="text-lg font-bold text-slate-900 sm:text-xl">
+              Capacity, storage tech, and variant health in one place
+            </h2>
+            <p className="page-copy mt-2 text-sm">
+              Filter by storage capacity or storage technology such as UFS, then
+              inspect which products have complete store data.
+            </p>
+
+            <div className="mt-4 flex flex-wrap gap-2">
+              <span className="soft-pill text-xs sm:text-sm">
+                <CountUp end={storageTechs.length} duration={1.0} /> storage technologies
+              </span>
+              <span className="soft-pill text-xs sm:text-sm">
+                <CountUp end={storageTechCoverage} duration={1.0} suffix="%" /> tech coverage
+              </span>
+              <span className="soft-pill text-xs sm:text-sm">
+                <CountUp end={completeVariantMobiles} duration={1.0} /> complete variants
+              </span>
+            </div>
+          </div>
+
+          <div className="ui-toolbar-actions xl:justify-end">
+            <button
+              onClick={() => setReloadKey((value) => value + 1)}
+              disabled={loading}
+              className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 sm:text-sm"
+            >
+              <FaRedo className={`${loading ? "animate-spin" : ""} text-xs sm:text-sm`} />
+              <span>Refresh</span>
+            </button>
+            <button
+              onClick={() => handleExport(true)}
+              className="inline-flex items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 sm:text-sm"
+            >
+              <FaDownload className="text-xs sm:text-sm" />
+              <span>Export Published</span>
+            </button>
+            <button
+              onClick={clearAllFilters}
+              className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 sm:text-sm"
+            >
+              <FaFilter className="text-xs sm:text-sm" />
+              <span>Reset Filters</span>
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(280px,0.65fr)]">
+          <div className="rounded-md bg-slate-50/80 p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="page-kicker">Storage Techniques</p>
+                <p className="mt-1 text-sm text-slate-600">
+                  Tap a technique to isolate matching devices
+                </p>
+              </div>
+              <button
+                onClick={() => setStorageTechFilter("all")}
+                className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+              >
+                Show all
+              </button>
+            </div>
+
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                onClick={() => setStorageTechFilter("all")}
+                className={`rounded-md border px-3 py-1.5 text-xs font-semibold transition ${
+                  storageTechFilter === "all"
+                    ? "border-blue-200 bg-blue-50 text-blue-700"
+                    : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                }`}
+              >
+                All techniques
+              </button>
+              {storageTechs.length > 0 ? (
+                storageTechs.map((tech) => (
+                  <button
+                    key={tech}
+                    onClick={() => setStorageTechFilter(tech)}
+                    className={`rounded-md border px-3 py-1.5 text-xs font-semibold transition ${
+                      storageTechFilter === tech
+                        ? "border-indigo-200 bg-indigo-50 text-indigo-700"
+                        : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                    }`}
+                  >
+                    {tech}
+                  </button>
+                ))
+              ) : (
+                <span className="soft-pill text-xs text-slate-500">
+                  No storage-tech metadata yet
+                </span>
+              )}
+            </div>
+
+            <div className="mt-4 flex flex-wrap gap-2">
+              <span className="soft-pill text-xs sm:text-sm">
+                <CountUp end={storageTechMobiles} duration={1.0} /> tagged rows
+              </span>
+              <span className="soft-pill text-xs sm:text-sm">
+                <CountUp end={totalMobiles - storageTechMobiles} duration={1.0} /> missing tech data
+              </span>
+              <span className="soft-pill text-xs sm:text-sm">
+                {storageTechFilter === "all"
+                  ? "No active tech filter"
+                  : `Filtering by ${storageTechFilter}`}
+              </span>
+            </div>
+          </div>
+
+          <div className="rounded-md bg-slate-50/80 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="page-kicker">Health Snapshot</p>
+                <p className="mt-1 text-sm text-slate-600">
+                  Variant store completeness and storage coverage
+                </p>
+              </div>
+              <span className="soft-pill text-xs">Live</span>
+            </div>
+
+            <div className="mt-4 space-y-4">
+              <div>
+                <div className="flex items-center justify-between gap-3 text-xs font-semibold text-slate-700">
+                  <span>Storage tech coverage</span>
+                  <span>{storageTechCoverage}%</span>
+                </div>
+                <div className="mt-2 h-2 overflow-hidden rounded-sm bg-white">
+                  <div
+                    className="h-full bg-blue-500"
+                    style={{ width: `${storageTechCoverage}%` }}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between gap-3 text-xs font-semibold text-slate-700">
+                  <span>Complete variant health</span>
+                  <span>
+                    {completeVariantMobiles}/{totalMobiles}
+                  </span>
+                </div>
+                <div className="mt-2 h-2 overflow-hidden rounded-sm bg-white">
+                  <div
+                    className="h-full bg-emerald-500"
+                    style={{ width: `${variantHealthCoverage}%` }}
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between gap-2 text-xs text-slate-500">
+                <span>{storageTechMobiles} rows tagged</span>
+                <span>{incompleteVariantMobiles} need review</span>
               </div>
             </div>
           </div>
@@ -981,31 +1236,31 @@ const ViewMobiles = ({
 
       {/* Error Message */}
       {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200   flex items-center space-x-3">
+        <div className="ui-form-shell flex items-center space-x-3 border border-rose-200 bg-rose-50/90 p-4">
           <FaExclamationCircle className="text-red-500 flex-shrink-0" />
-          <span className="text-red-700">{error}</span>
+          <span className="text-rose-700">{error}</span>
         </div>
       )}
 
-      <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
-        <div className="px-3 sm:px-4 py-3 border-b border-gray-200">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3 sm:mb-0">
+      <div className="ui-table-shell overflow-hidden">
+        <div className="ui-form-header px-4 py-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-2">
-              <h2 className="font-semibold text-sm sm:text-base text-gray-800">
+              <h2 className="text-sm font-semibold text-slate-800 sm:text-base">
                 {listTitle}
               </h2>
-              <span className="bg-gray-100 text-gray-600 text-xs sm:text-sm px-2 py-1 rounded-full">
+              <span className="soft-pill text-xs sm:text-sm">
                 {filteredAndSortedMobiles.length}
               </span>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
               {/* Filter & Sort */}
-              <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:gap-1 items-center">
+              <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:gap-2 items-center">
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="w-full sm:w-auto px-1.5 sm:px-2 py-1 text-[11px] border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent whitespace-nowrap min-w-[88px]"
+                  className="w-full min-w-[88px] whitespace-nowrap rounded-2xl border border-slate-200 bg-white/90 px-3 py-2 text-xs text-slate-700 shadow-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 sm:w-auto"
                 >
                   <option value="all">All Status</option>
                   <option value="published">Published</option>
@@ -1015,7 +1270,7 @@ const ViewMobiles = ({
                 <select
                   value={brandFilter}
                   onChange={(e) => setBrandFilter(e.target.value)}
-                  className="w-full sm:w-auto px-1.5 sm:px-2 py-1 text-[11px] border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent whitespace-nowrap min-w-[100px]"
+                  className="w-full min-w-[100px] whitespace-nowrap rounded-2xl border border-slate-200 bg-white/90 px-3 py-2 text-xs text-slate-700 shadow-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 sm:w-auto"
                 >
                   <option value="all">All Brands</option>
                   {brands.map((b) => (
@@ -1028,7 +1283,7 @@ const ViewMobiles = ({
                 <select
                   value={storageFilter}
                   onChange={(e) => setStorageFilter(e.target.value)}
-                  className="w-full sm:w-auto px-1.5 sm:px-2 py-1 text-[11px] border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent whitespace-nowrap min-w-[88px]"
+                  className="w-full min-w-[88px] whitespace-nowrap rounded-2xl border border-slate-200 bg-white/90 px-3 py-2 text-xs text-slate-700 shadow-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 sm:w-auto"
                 >
                   <option value="all">All Storage</option>
                   {storages.map((s) => (
@@ -1039,9 +1294,22 @@ const ViewMobiles = ({
                 </select>
 
                 <select
+                  value={storageTechFilter}
+                  onChange={(e) => setStorageTechFilter(e.target.value)}
+                  className="w-full min-w-[120px] whitespace-nowrap rounded-2xl border border-slate-200 bg-white/90 px-3 py-2 text-xs text-slate-700 shadow-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 sm:w-auto"
+                >
+                  <option value="all">All Storage Tech</option>
+                  {storageTechs.map((tech) => (
+                    <option key={tech} value={tech}>
+                      {tech}
+                    </option>
+                  ))}
+                </select>
+
+                <select
                   value={ramFilter}
                   onChange={(e) => setRamFilter(e.target.value)}
-                  className="w-full sm:w-auto px-1.5 sm:px-2 py-1 text-[11px] border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent whitespace-nowrap min-w-[88px]"
+                  className="w-full min-w-[88px] whitespace-nowrap rounded-2xl border border-slate-200 bg-white/90 px-3 py-2 text-xs text-slate-700 shadow-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 sm:w-auto"
                 >
                   <option value="all">All RAM</option>
                   {rams.map((r) => (
@@ -1056,7 +1324,7 @@ const ViewMobiles = ({
                 <select
                   value={variantFilter}
                   onChange={(e) => setVariantFilter(e.target.value)}
-                  className="w-full sm:w-auto px-1.5 sm:px-2 py-1 text-[11px] border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent whitespace-nowrap min-w-[88px]"
+                  className="w-full min-w-[88px] whitespace-nowrap rounded-2xl border border-slate-200 bg-white/90 px-3 py-2 text-xs text-slate-700 shadow-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 sm:w-auto"
                 >
                   <option value="all">All Variants</option>
                   <option value="with">With Variants</option>
@@ -1066,7 +1334,7 @@ const ViewMobiles = ({
                 <select
                   value={variantStoreFilter}
                   onChange={(e) => setVariantStoreFilter(e.target.value)}
-                  className="w-full sm:w-auto px-1.5 sm:px-2 py-1 text-[11px] border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent whitespace-nowrap min-w-[140px]"
+                  className="w-full min-w-[140px] whitespace-nowrap rounded-2xl border border-slate-200 bg-white/90 px-3 py-2 text-xs text-slate-700 shadow-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 sm:w-auto"
                 >
                   <option value="all">All</option>
                   <option value="complete">All Variants Have Store Data</option>
@@ -1076,7 +1344,7 @@ const ViewMobiles = ({
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
-                  className="w-full sm:w-auto px-1.5 sm:px-2 py-1 text-[11px] border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent whitespace-nowrap min-w-[88px]"
+                  className="w-full min-w-[88px] whitespace-nowrap rounded-2xl border border-slate-200 bg-white/90 px-3 py-2 text-xs text-slate-700 shadow-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 sm:w-auto"
                 >
                   <option value="newest">Newest</option>
                   <option value="oldest">Oldest</option>
@@ -1088,7 +1356,7 @@ const ViewMobiles = ({
 
                 <button
                   onClick={clearAllFilters}
-                  className="w-full sm:w-auto px-2 py-1 text-xs border border-gray-300 rounded-md bg-white hover:bg-gray-50"
+                  className="w-full rounded-2xl border border-slate-200 bg-white/80 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-white sm:w-auto"
                   title="Clear filters"
                 >
                   Clear
@@ -1103,7 +1371,7 @@ const ViewMobiles = ({
         {/* Responsive Table / Card Layout */}
         <div className="overflow-x-auto">
           {/* Table Top Export/Import */}
-          <div className="px-3 sm:px-4 py-2 border-b border-gray-100 flex flex-col items-stretch sm:flex-row sm:items-center sm:justify-between gap-2">
+          <div className="flex flex-col items-stretch gap-2 border-b border-slate-200/60 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="w-full sm:w-1/2">
               <div className="relative w-full">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -1114,15 +1382,15 @@ const ViewMobiles = ({
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder="Search..."
-                  className="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full rounded-2xl border border-slate-200 bg-white/90 py-2.5 pl-10 pr-4 text-sm text-slate-900 shadow-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
                 />
               </div>
             </div>
 
-            <div className="w-full sm:w-auto grid grid-cols-2 gap-2 sm:flex sm:items-center sm:justify-end">
+            <div className="grid w-full grid-cols-2 gap-2 sm:w-auto sm:flex sm:items-center sm:justify-end">
               <button
                 onClick={() => handleExport()}
-                className="w-full sm:w-auto flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-md text-xs sm:text-sm whitespace-nowrap"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-emerald-600 px-3 py-2.5 text-xs font-semibold text-white shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/30 sm:w-auto sm:text-sm"
               >
                 <FaDownload className="text-xs sm:text-sm" />
                 <span>Export</span>
@@ -1136,7 +1404,7 @@ const ViewMobiles = ({
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                   id="import-file"
                 />
-                <button className="w-full sm:w-auto flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-md text-xs sm:text-sm whitespace-nowrap">
+                <button className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 px-3 py-2.5 text-xs font-semibold text-white shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30 sm:w-auto sm:text-sm">
                   <FaUpload className="text-xs sm:text-sm" />
                   <span>Import</span>
                 </button>
@@ -1144,31 +1412,31 @@ const ViewMobiles = ({
             </div>
           </div>
           {/* Desktop Table View */}
-          <table className="hidden md:table w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="ui-table hidden md:table w-full divide-y divide-gray-200">
+            <thead>
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">
                   Mobile
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">
                   Model
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">
                   Hook Score
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">
                   Specs
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">
                   Created
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">
                   Status
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">
                   Launch Date
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
@@ -1191,14 +1459,14 @@ const ViewMobiles = ({
                       mobile.raw?.id ||
                       `mobile-${startIndex + idx}`
                     }
-                    className="hover:bg-gray-50"
+                    className="hover:bg-slate-50"
                   >
                     <td className="px-4  py-3">
                       <div className="flex items-center">
-                        <div className="flex-shrink-0 h-14 w-14 ">
+                        <div className="flex-shrink-0 h-14 w-14">
                           {mobile.images && mobile.images.length > 0 ? (
                             <img
-                              className="rounded-sm object-contain"
+                              className="h-14 w-14 rounded-lg bg-white object-contain p-1"
                               src={mobile.images[0]}
                               alt={mobile.name}
                               onError={(e) => {
@@ -1208,17 +1476,17 @@ const ViewMobiles = ({
                               }}
                             />
                           ) : (
-                            <div className="h-10 w-10 rounded-md bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-600">
                               <FaMobile className="text-white text-xs" />
                             </div>
                           )}
                         </div>
                         <div className="ml-3">
-                          <div className="font-medium text-gray-900 truncate max-w-[150px] text-sm">
+                          <div className="max-w-[150px] truncate text-sm font-semibold text-slate-900">
                             {mobile.name}
                           </div>
-                          <div className="text-xs text-gray-500 mt-1">
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-100 text-blue-800">
+                          <div className="mt-1">
+                            <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-medium text-blue-700">
                               {mobile.brand}
                             </span>
                           </div>
@@ -1227,7 +1495,7 @@ const ViewMobiles = ({
                     </td>
 
                     <td className="px-4 py-3">
-                      <div className="text-sm text-gray-900">
+                      <div className="text-sm text-slate-900">
                         {mobile.model}
                       </div>
                     </td>
@@ -1236,20 +1504,26 @@ const ViewMobiles = ({
                       <div className="text-sm font-semibold text-violet-700">
                         {formatScore(mobile.hook_score)}
                       </div>
-                      <div className="text-[11px] text-gray-500">
+                      <div className="text-[11px] text-slate-500">
                         Intent: {formatScore(mobile.buyer_intent)}
                       </div>
                     </td>
 
                     <td className="px-4 py-3">
                       <div className="space-y-1">
-                        <div className="text-sm text-gray-900">
+                        <div className="text-sm text-slate-900">
                           <span className="font-medium">Storage:</span>{" "}
                           <span className="font-semibold">
                             {mobile.storage || "N/A"}
                           </span>
                         </div>
-                        <div className="text-sm text-gray-900">
+                        <div className="text-sm text-slate-900">
+                          <span className="font-medium">Storage Tech:</span>{" "}
+                          <span className="font-semibold">
+                            {mobile.storageTech || "N/A"}
+                          </span>
+                        </div>
+                        <div className="text-sm text-slate-900">
                           <span className="font-medium">RAM:</span>{" "}
                           <span className="font-semibold">
                             {mobile.ram || "N/A"}
@@ -1259,10 +1533,10 @@ const ViewMobiles = ({
                     </td>
 
                     <td className="px-4 py-3">
-                      <div className="text-sm text-gray-700">
+                      <div className="text-sm text-slate-700">
                         {formatDateTime(mobile.created_at)}
                       </div>
-                      <div className="text-xs text-gray-500">
+                      <div className="text-xs text-slate-500">
                         {mobile.variants?.length || 0} variants
                       </div>
                     </td>
@@ -1272,8 +1546,8 @@ const ViewMobiles = ({
                         onClick={() => togglePublish(mobile)}
                         className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
                           mobile.published
-                            ? "bg-green-100 text-green-800 hover:bg-green-200"
-                            : "bg-gray-100 text-gray-800 hover:bg-gray-200"
+                            ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
+                            : "bg-slate-100 text-slate-700 hover:bg-slate-200"
                         }`}
                       >
                         {mobile.published ? (
@@ -1291,8 +1565,8 @@ const ViewMobiles = ({
                     </td>
 
                     <td className="px-4 py-3">
-                      <div className="flex items-center text-sm text-gray-500">
-                        <FaCalendarAlt className="mr-2 text-xs text-gray-400" />
+                      <div className="flex items-center text-sm text-slate-500">
+                        <FaCalendarAlt className="mr-2 text-xs text-slate-400" />
                         {formatDate(mobile.launch_date)}
                       </div>
                     </td>
@@ -1346,7 +1620,7 @@ const ViewMobiles = ({
                   <td colSpan="8" className="px-4 py-8 text-center">
                     <div className="flex flex-col items-center">
                       <FaMobile className="text-4xl text-gray-300 mb-3" />
-                      <p className="text-gray-500 font-medium">
+                      <p className="font-medium text-slate-500">
                         {searchTerm ? "No mobiles found" : "No mobiles yet"}
                       </p>
                       <p className="text-gray-400 text-sm mt-1">
@@ -1376,15 +1650,15 @@ const ViewMobiles = ({
                     mobile.raw?.id ||
                     `mobile-${startIndex + idx}`
                   }
-                  className="bg-white border border-gray-200 rounded-lg p-3 sm:p-4 hover:shadow-md transition-shadow"
+                  className="ui-form-shell p-4 transition-transform hover:-translate-y-0.5"
                 >
                   <div className="flex gap-3">
-                    <div className="flex-shrink-0 h-16 w-16">
-                      {mobile.images && mobile.images.length > 0 ? (
-                        <img
-                          className="h-16 w-16 rounded-md object-contain bg-white border border-gray-200 p-1"
-                          src={mobile.images[0]}
-                          alt={mobile.name}
+                        <div className="flex-shrink-0 h-16 w-16">
+                          {mobile.images && mobile.images.length > 0 ? (
+                            <img
+                              className="h-16 w-16 rounded-lg bg-white object-contain p-1"
+                              src={mobile.images[0]}
+                              alt={mobile.name}
                           onError={(e) => {
                             e.target.onerror = null;
                             e.target.src =
@@ -1392,7 +1666,7 @@ const ViewMobiles = ({
                           }}
                         />
                       ) : (
-                        <div className="h-16 w-16 rounded-md bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
+                        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-600">
                           <FaMobile className="text-white text-2xl" />
                         </div>
                       )}
@@ -1400,10 +1674,10 @@ const ViewMobiles = ({
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2 mb-2">
                         <div>
-                          <h3 className="font-semibold text-sm sm:text-base text-gray-900 truncate">
+                          <h3 className="truncate text-sm font-semibold text-slate-900 sm:text-base">
                             {mobile.name}
                           </h3>
-                          <p className="text-xs text-gray-500">
+                          <p className="text-xs text-slate-500">
                             {mobile.brand}
                           </p>
                         </div>
@@ -1411,54 +1685,60 @@ const ViewMobiles = ({
                           onClick={() => togglePublish(mobile)}
                           className={`text-xs px-2 py-1 rounded-full whitespace-nowrap flex-shrink-0 ${
                             mobile.published
-                              ? "bg-green-100 text-green-800"
-                              : "bg-gray-100 text-gray-800"
+                              ? "bg-emerald-100 text-emerald-700"
+                              : "bg-slate-100 text-slate-700"
                           }`}
                         >
                           {mobile.published ? "Published" : "Draft"}
                         </button>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs sm:text-sm mb-2">
+                      <div className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-2 sm:text-sm mb-2">
                         <div>
-                          <p className="text-gray-500">Model</p>
-                          <p className="font-medium text-gray-900">
+                          <p className="text-slate-500">Model</p>
+                          <p className="font-medium text-slate-900">
                             {mobile.model}
                           </p>
                         </div>
                         <div>
-                          <p className="text-gray-500">Created</p>
-                          <p className="font-medium text-gray-900">
+                          <p className="text-slate-500">Created</p>
+                          <p className="font-medium text-slate-900">
                             {formatDateTime(mobile.created_at)}
                           </p>
                         </div>
                         <div>
-                          <p className="text-gray-500">Storage</p>
-                          <p className="font-medium text-gray-900">
+                          <p className="text-slate-500">Storage</p>
+                          <p className="font-medium text-slate-900">
                             {mobile.storage || "N/A"}
                           </p>
                         </div>
                         <div>
-                          <p className="text-gray-500">RAM</p>
-                          <p className="font-medium text-gray-900">
+                          <p className="text-slate-500">Storage Tech</p>
+                          <p className="font-medium text-slate-900">
+                            {mobile.storageTech || "N/A"}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-slate-500">RAM</p>
+                          <p className="font-medium text-slate-900">
                             {mobile.ram || "N/A"}
                           </p>
                         </div>
                         <div>
-                          <p className="text-gray-500">Hook Score</p>
+                          <p className="text-slate-500">Hook Score</p>
                           <p className="font-medium text-violet-700">
                             {formatScore(mobile.hook_score)}
                           </p>
                         </div>
                         <div>
-                          <p className="text-gray-500">Buyer Intent</p>
+                          <p className="text-slate-500">Buyer Intent</p>
                           <p className="font-medium text-violet-700">
                             {formatScore(mobile.buyer_intent)}
                           </p>
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
+                      <div className="mb-2 flex items-center justify-between text-xs text-slate-500">
                         <span className="flex items-center gap-1">
                           <FaCalendarAlt className="text-xs" />
                           {formatDate(mobile.launch_date)}
@@ -1482,7 +1762,7 @@ const ViewMobiles = ({
                               state: { mobile },
                             });
                           }}
-                          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-2 py-1.5 rounded text-xs font-medium transition"
+                          className="flex-1 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 px-2 py-2 text-xs font-semibold text-white shadow-sm transition hover:shadow-md"
                           title="Edit mobile"
                         >
                           <FaEdit className="inline mr-1" /> Edit
@@ -1493,14 +1773,14 @@ const ViewMobiles = ({
                               state: { mobile },
                             })
                           }
-                          className="flex-1 bg-green-600 hover:bg-green-700 text-white px-2 py-1.5 rounded text-xs font-medium transition"
+                          className="flex-1 rounded-2xl bg-gradient-to-r from-emerald-500 to-emerald-600 px-2 py-2 text-xs font-semibold text-white shadow-sm transition hover:shadow-md"
                           title="View mobile"
                         >
                           <FaEye className="inline mr-1" /> View
                         </button>
                         <button
                           onClick={() => handleDelete(mobile.id, mobile.name)}
-                          className="flex-1 bg-red-600 hover:bg-red-700 text-white px-2 py-1.5 rounded text-xs font-medium transition"
+                          className="flex-1 rounded-2xl bg-gradient-to-r from-rose-500 to-rose-600 px-2 py-2 text-xs font-semibold text-white shadow-sm transition hover:shadow-md"
                           title="Delete mobile"
                         >
                           <FaTrash className="inline mr-1" /> Delete
@@ -1512,11 +1792,11 @@ const ViewMobiles = ({
               ))
             ) : (
               <div className="flex flex-col items-center justify-center py-12 text-center">
-                <FaMobile className="text-4xl text-gray-300 mb-3" />
-                <p className="text-gray-500 font-medium">
+                <FaMobile className="mb-3 text-4xl text-slate-300" />
+                <p className="font-medium text-slate-500">
                   {searchTerm ? "No mobiles found" : "No mobiles yet"}
                 </p>
-                <p className="text-gray-400 text-sm mt-1">
+                <p className="mt-1 text-sm text-slate-400">
                   {searchTerm
                     ? "Try adjusting your search"
                     : "Add your first mobile using the form"}
@@ -1528,9 +1808,9 @@ const ViewMobiles = ({
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="px-3 sm:px-4 py-3 border-t border-gray-200 bg-gray-50">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="text-xs sm:text-sm text-gray-700">
+          <div className="ui-form-header px-4 py-3">
+            <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+              <div className="text-xs text-slate-700 sm:text-sm">
                 Showing <span className="font-medium">{startIndex + 1}</span> to{" "}
                 <span className="font-medium">
                   {Math.min(
@@ -1550,7 +1830,7 @@ const ViewMobiles = ({
                     setCurrentPage((prev) => Math.max(prev - 1, 1))
                   }
                   disabled={currentPage === 1}
-                  className="px-2 sm:px-3 py-1 border border-gray-300 rounded text-xs sm:text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                  className="whitespace-nowrap rounded-2xl border border-slate-200 bg-white/80 px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:bg-white disabled:cursor-not-allowed disabled:opacity-50 sm:text-sm"
                 >
                   Previous
                 </button>
@@ -1571,10 +1851,10 @@ const ViewMobiles = ({
                       <button
                         key={pageNum}
                         onClick={() => setCurrentPage(pageNum)}
-                        className={`w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded text-xs sm:text-sm font-medium ${
+                        className={`flex h-8 w-8 items-center justify-center rounded-2xl text-xs font-semibold shadow-sm sm:h-9 sm:w-9 sm:text-sm ${
                           currentPage === pageNum
                             ? "bg-blue-600 text-white"
-                            : "text-gray-700 hover:bg-gray-100"
+                            : "bg-white/80 text-slate-700 hover:bg-white"
                         }`}
                       >
                         {pageNum}
@@ -1587,7 +1867,7 @@ const ViewMobiles = ({
                     setCurrentPage((prev) => Math.min(prev + 1, totalPages))
                   }
                   disabled={currentPage === totalPages}
-                  className="px-2 sm:px-3 py-1 border border-gray-300 rounded text-xs sm:text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                  className="whitespace-nowrap rounded-2xl border border-slate-200 bg-white/80 px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:bg-white disabled:cursor-not-allowed disabled:opacity-50 sm:text-sm"
                 >
                   Next
                 </button>
@@ -1598,11 +1878,11 @@ const ViewMobiles = ({
       </div>
 
       {/* Help Text */}
-      <div className="mt-4 p-3 sm:p-4 bg-blue-50 border border-blue-200 rounded-lg">
+      <div className="ui-form-shell mt-4 border border-blue-200 bg-blue-50/80 p-4">
         <p className="text-xs sm:text-sm text-blue-700">
           <strong>Note:</strong> Click on status buttons to toggle between
-          Published and Draft states. Use action buttons to manage individual
-          mobiles.
+          Published and Draft states. Use storage-tech filters, export tools,
+          and action buttons to manage individual mobiles.
         </p>
       </div>
     </div>

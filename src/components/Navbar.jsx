@@ -11,22 +11,17 @@ import Cookies from "js-cookie";
 import { buildUrl, getAuthToken } from "../api";
 import { getSearchNavigationTarget } from "../utils/searchNavigation";
 import {
+  FaBars,
   FaSearch,
   FaBell,
-  FaComment,
-  FaBars,
   FaUser,
   FaSignOutAlt,
   FaTimes,
   FaHome,
-  FaPlus,
-  FaList,
-  FaTags,
+  FaChevronDown,
   FaMobileAlt,
-  FaBox,
   FaSpinner,
   FaBuilding,
-  FaImage,
 } from "react-icons/fa";
 
 // Constants and utilities
@@ -38,25 +33,31 @@ const SearchSuggestions = ({
   searchQuery,
   onSelect,
   onViewAll,
-  isMobile,
 }) => {
   if (loading) {
     return (
-      <div className="p-4 text-center">
-        <FaSpinner className="animate-spin mx-auto text-gray-400" />
-        <p className="text-sm text-gray-500 mt-2">Searching...</p>
+      <div className="px-4 py-6 text-center">
+        <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-md bg-slate-100 text-slate-500">
+          <FaSpinner className="animate-spin text-base" />
+        </div>
+        <p className="text-sm font-medium text-slate-700">Searching...</p>
+        <p className="mt-1 text-xs text-slate-500">
+          Finding products and brands
+        </p>
       </div>
     );
   }
 
   if (suggestions.length === 0 && searchQuery.trim()) {
     return (
-      <div className="p-4 text-center">
-        <FaSearch className="mx-auto text-gray-400 text-lg" />
-        <p className="text-sm text-gray-500 mt-2">
+      <div className="px-4 py-6 text-center">
+        <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-md bg-slate-100 text-slate-500">
+          <FaSearch className="text-base" />
+        </div>
+        <p className="text-sm font-medium text-slate-700">
           No results found for "{searchQuery}"
         </p>
-        <p className="text-xs text-gray-400 mt-1">Try different keywords</p>
+        <p className="mt-1 text-xs text-slate-500">Try different keywords</p>
       </div>
     );
   }
@@ -65,8 +66,8 @@ const SearchSuggestions = ({
 
   return (
     <>
-      <div className="p-2 border-b border-gray-100">
-        <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+      <div className="border-b border-slate-100 bg-slate-50/80 px-3 py-2">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
           Search Results
         </p>
       </div>
@@ -75,8 +76,8 @@ const SearchSuggestions = ({
           key={`${suggestion.type}-${suggestion.id}-${idx}`}
           onClick={() => onSelect(suggestion)}
           onMouseEnter={() => {}}
-          className={`w-full text-left p-3 hover:bg-gray-50 flex items-center space-x-3 transition-colors ${
-            idx === activeIndex ? "bg-blue-50 border-l-4 border-blue-500" : ""
+          className={`group flex w-full items-center gap-3 rounded-md px-3 py-3 text-left transition-colors hover:bg-slate-50 ${
+            idx === activeIndex ? "bg-sky-50/90 ring-1 ring-sky-200" : ""
           }`}
         >
           <div className="flex-shrink-0">
@@ -84,7 +85,7 @@ const SearchSuggestions = ({
               <img
                 src={suggestion.image_url}
                 alt={suggestion.name}
-                className="w-10 h-10 rounded-md object-cover"
+                className="h-11 w-11 rounded-md object-cover ring-1 ring-slate-200"
                 onError={(e) => {
                   e.target.style.display = "none";
                   e.target.parentElement.innerHTML = getIconForType(
@@ -93,23 +94,23 @@ const SearchSuggestions = ({
                 }}
               />
             ) : (
-              <div className="w-10 h-10 rounded-md bg-gray-100 flex items-center justify-center">
+              <div className="flex h-11 w-11 items-center justify-center rounded-md bg-slate-100 text-slate-500 ring-1 ring-slate-200">
                 {getIconForType(suggestion.type)}
               </div>
             )}
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-gray-900 truncate">
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold text-slate-900">
               {suggestion.name}
             </p>
             {suggestion.type === "product" && (
-              <div className="flex items-center space-x-2 mt-1">
+              <div className="mt-1 flex items-center gap-2">
                 {suggestion.brand_name && (
-                  <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded-full">
+                  <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-semibold text-sky-700">
                     {suggestion.brand_name}
                   </span>
                 )}
-                <span className="text-xs text-gray-500 capitalize">
+                <span className="text-xs capitalize text-slate-500">
                   {suggestion.product_type}
                 </span>
               </div>
@@ -117,10 +118,10 @@ const SearchSuggestions = ({
           </div>
           <div className="flex-shrink-0">
             <span
-              className={`text-xs px-2 py-1 rounded-full ${
+              className={`text-xs px-2 py-1 rounded-full font-semibold ${
                 suggestion.type === "product"
-                  ? "bg-green-100 text-green-800"
-                  : "bg-purple-100 text-purple-800"
+                  ? "bg-emerald-100 text-emerald-700"
+                  : "bg-indigo-100 text-indigo-700"
               }`}
             >
               {suggestion.type === "product" ? "Product" : "Brand"}
@@ -128,10 +129,10 @@ const SearchSuggestions = ({
           </div>
         </button>
       ))}
-      <div className="p-3 border-t border-gray-100">
+      <div className="border-t border-slate-100 bg-slate-50/80 p-3">
         <button
           onClick={onViewAll}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md text-sm font-medium transition-colors"
+          className="w-full rounded-md border border-sky-200 bg-white px-4 py-2.5 text-sm font-semibold text-sky-700 transition-colors hover:bg-sky-50"
         >
           View all results for "{searchQuery}"
         </button>
@@ -144,7 +145,6 @@ const UserMenu = ({
   email,
   role,
   userName,
-  userId,
   loginTimeLabel,
   isOpen,
   onClose,
@@ -155,25 +155,23 @@ const UserMenu = ({
 
   return (
     <>
-      <div
-        className={`absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg  z-40`}
-      >
-        <div className="p-4 border-b border-gray-200">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white">
+      <div className="absolute right-0 z-40 mt-3 w-72 overflow-hidden rounded-md border border-slate-200 bg-white">
+        <div className="border-b border-slate-200 bg-slate-50 p-4 text-slate-900">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700">
               <FaUser className="text-base" />
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-semibold truncate">
+              <p className="truncate text-sm font-semibold text-slate-900">
                 {userName || email || "User"}
               </p>
-              <p className="text-xs text-gray-500 mt-1 truncate">
+              <p className="mt-1 truncate text-xs text-slate-500">
                 {email || "admin"}
               </p>
-              <p className="text-xs text-gray-400 mt-0.5 truncate">
+              <p className="mt-0.5 truncate text-xs text-slate-500">
                 {role || "Admin"}
               </p>
-              <p className="text-xs text-gray-400 mt-0.5 truncate">
+              <p className="mt-0.5 truncate text-xs text-slate-500">
                 Login: {loginTimeLabel || "N/A"}
               </p>
             </div>
@@ -185,9 +183,9 @@ const UserMenu = ({
               onNavigate("/dashboard");
               onClose();
             }}
-            className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md mb-1"
+            className="mb-1 flex w-full items-center rounded-md px-3 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
           >
-            <FaHome className="mr-3 text-gray-500" />
+            <FaHome className="mr-3 text-slate-400" />
             Dashboard
           </button>
           <button
@@ -195,9 +193,9 @@ const UserMenu = ({
               onNavigate("/profile");
               onClose();
             }}
-            className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md mb-1"
+            className="mb-1 flex w-full items-center rounded-md px-3 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
           >
-            <FaUser className="mr-3 text-gray-500" />
+            <FaUser className="mr-3 text-slate-400" />
             My Profile
           </button>
           <button
@@ -205,7 +203,7 @@ const UserMenu = ({
               onLogout();
               onClose();
             }}
-            className="flex items-center w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-md"
+            className="flex w-full items-center rounded-md px-3 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50"
           >
             <FaSignOutAlt className="mr-3" />
             Logout
@@ -230,7 +228,13 @@ const getIconForType = (type) => {
   }
 };
 
-const Navbar = ({ onToggleSidebar, sidebarCollapsed, onLogout }) => {
+const Navbar = ({
+  isMobile,
+  sidebarCollapsed,
+  sidebarOpen,
+  onToggleSidebar,
+  onLogout,
+}) => {
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -252,7 +256,6 @@ const Navbar = ({ onToggleSidebar, sidebarCollapsed, onLogout }) => {
   // Data - Get user info from cookies
   const email = Cookies.get("userEmail") || Cookies.get("username") || "User";
   const role = Cookies.get("userRole") || Cookies.get("role") || "Admin";
-  const userId = Cookies.get("userId");
   const userName = Cookies.get("userName") || "";
 
   const parseJwtPayload = (token) => {
@@ -302,18 +305,6 @@ const Navbar = ({ onToggleSidebar, sidebarCollapsed, onLogout }) => {
 
     return "N/A";
   }, [location.pathname]);
-
-  // Get complete user object if available
-  const getUserData = () => {
-    try {
-      const userData = Cookies.get("userData");
-      return userData ? JSON.parse(userData) : null;
-    } catch {
-      return null;
-    }
-  };
-
-  const userData = getUserData();
 
   // Close menus when route changes
   useEffect(() => {
@@ -366,7 +357,9 @@ const Navbar = ({ onToggleSidebar, sidebarCollapsed, onLogout }) => {
       try {
         const token = getAuthToken();
         const res = await fetch(
-          buildUrl(`/api/search/admin?q=${encodeURIComponent(searchQuery.trim())}`),
+          buildUrl(
+            `/api/search/admin?q=${encodeURIComponent(searchQuery.trim())}`,
+          ),
           {
             headers: token
               ? {
@@ -481,57 +474,18 @@ const Navbar = ({ onToggleSidebar, sidebarCollapsed, onLogout }) => {
 
   // Render
   return (
-    <>
-      <style>{`
-        @keyframes slideDown {
-          from {
-            opacity: 0;
-            transform: translateY(-10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        .animate-slideDown {
-          animation: slideDown 0.2s ease-out;
-        }
-        @media (min-width: 1024px) {
-          .admin-top-nav .admin-nav-left > :not(.header-search) {
-            display: none !important;
-          }
-          .admin-top-nav [aria-label="HOOKS"] {
-            display: none !important;
-          }
-        }
-      `}</style>
-
-      <nav className="admin-top-nav bg-white shadow-sm px-3 sm:px-4 md:px-6 py-3 sm:py-4 relative z-50">
-        <div className="flex items-center justify-between gap-2 sm:gap-3 md:gap-4">
+    <nav className="sticky top-0 z-50 bg-white border-b border-slate-200">
+      <div className="mx-auto flex w-full max-w-[1720px] items-center gap-3 px-4 py-3 sm:px-6 sm:py-4 lg:px-8">
+        <div className="flex w-full items-center gap-3 lg:gap-4">
           {/* Left Section */}
-          <div className="admin-nav-left flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
-            {/* Hamburger Menu Button */}
-            <button
-              onClick={onToggleSidebar}
-              className="p-2 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors duration-200 flex-shrink-0 lg:hidden"
-              aria-label="Toggle sidebar"
-            >
-              {sidebarCollapsed ? (
-                <FaBars className="text-lg sm:text-xl" />
-              ) : (
-                <FaTimes className="text-lg sm:text-xl" />
-              )}
-            </button>
-
+          <div className="admin-nav-left flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
             {/* Global Search */}
             <div
-              className="header-search flex-1 min-w-0 mr-1 sm:mr-2 md:mr-4"
+              className="header-search relative min-w-0 flex-1"
               ref={searchContainerRef}
             >
               <form onSubmit={handleSearchSubmit} className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <FaSearch className="text-gray-400 text-sm" />
-                </div>
+                <FaSearch className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm text-slate-400" />
                 <input
                   ref={searchInputRef}
                   type="text"
@@ -544,14 +498,12 @@ const Navbar = ({ onToggleSidebar, sidebarCollapsed, onLogout }) => {
                       setShowSuggestions(true);
                     }
                   }}
-                  className="pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-full
-                         focus:outline-none focus:ring-2 focus:ring-blue-500
-                         focus:border-transparent w-full search-input"
+                  className="search-input h-11 w-full rounded-md border border-slate-200 bg-white pl-11 pr-4 text-sm text-slate-800 placeholder:text-slate-400 shadow-none focus:border-sky-300 focus:outline-none focus:ring-0"
                 />
 
                 {/* Search Suggestions */}
                 {showSuggestions && (
-                  <div className="absolute left-0 right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-xl z-50 max-h-80 overflow-y-auto">
+                  <div className="absolute left-0 right-0 z-50 mt-3 max-h-[32rem] overflow-y-auto scrollbar-hide rounded-md border border-slate-200 bg-white">
                     <SearchSuggestions
                       suggestions={suggestions}
                       loading={suggestionsLoading}
@@ -559,7 +511,6 @@ const Navbar = ({ onToggleSidebar, sidebarCollapsed, onLogout }) => {
                       searchQuery={searchQuery}
                       onSelect={handleSelectSuggestion}
                       onViewAll={() => performSearch(searchQuery)}
-                      isMobile={false}
                     />
                   </div>
                 )}
@@ -568,45 +519,53 @@ const Navbar = ({ onToggleSidebar, sidebarCollapsed, onLogout }) => {
           </div>
 
           {/* Right Section */}
-          <div className="flex items-center gap-1 sm:gap-2 md:gap-3 flex-shrink-0">
-            <div className="hidden sm:block text-right leading-tight">
-              <p className="text-[10px] uppercase tracking-wide text-gray-400">
+          <div className="flex flex-shrink-0 items-center gap-2 sm:gap-3">
+            <div className="hidden xl:block text-right leading-tight">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">
                 Login
               </p>
-              <p className="text-xs font-medium text-gray-600">
+              <p className="text-xs font-medium text-slate-600">
                 {loginTimeLabel}
               </p>
             </div>
 
+            <button
+              type="button"
+              className="relative flex h-10 w-10 items-center justify-center  bg-white text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
+              aria-label="Notifications"
+            >
+              <FaBell className="text-sm" />
+              <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-rose-500" />
+            </button>
+
             {/* Profile Section */}
             <div className="relative user-btn flex-shrink-0">
-              <div
-                className="flex items-center gap-1.5 sm:gap-2 md:gap-3 p-1.5 sm:p-2 rounded-lg hover:bg-gray-100 cursor-pointer user-btn transition-colors"
+              <button
+                type="button"
                 onClick={toggleUserMenu}
+                className="flex items-center gap-2 rounded-md  bg-white px-2 py-1.5 transition hover:border-slate-300 hover:bg-slate-50 sm:gap-3 sm:px-3 sm:py-2"
               >
-                <div className="w-8 h-8 sm:w-9 sm:h-9 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white flex-shrink-0">
+                <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-cyan-500 via-blue-600 to-indigo-600 text-white">
                   <FaUser className="text-xs sm:text-sm" />
                 </div>
 
                 {/* User info - hidden on small screens */}
-                <div className="hidden lg:block min-w-0">
-                  <p className="text-xs sm:text-sm font-semibold text-gray-900 truncate max-w-[120px]">
+                <div className="hidden min-w-0 lg:block">
+                  <p className="max-w-[140px] truncate text-xs sm:text-sm font-semibold text-slate-900">
                     {email || "User"}
                   </p>
-                  <p className="text-xs text-gray-500 truncate">
+                  <p className="truncate text-xs text-slate-500">
                     {role || "Admin"}
                   </p>
-                  <p className="text-xs text-gray-400 truncate">
-                    Login {loginTimeLabel}
-                  </p>
                 </div>
-              </div>
+
+                <FaChevronDown className="hidden text-xs text-slate-400 sm:block" />
+              </button>
 
               <UserMenu
                 email={email}
                 role={role}
                 userName={userName}
-                userId={userId}
                 loginTimeLabel={loginTimeLabel}
                 isOpen={showUserMenu}
                 onClose={() => setShowUserMenu(false)}
@@ -616,8 +575,8 @@ const Navbar = ({ onToggleSidebar, sidebarCollapsed, onLogout }) => {
             </div>
           </div>
         </div>
-      </nav>
-    </>
+      </div>
+    </nav>
   );
 };
 

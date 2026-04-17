@@ -307,8 +307,8 @@ const UserManagement = () => {
   );
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 3 }}>
+    <Box className="page-shell page-stack py-2 sm:py-3" sx={{ p: 0 }}>
+      <Box className="ui-form-shell mb-4 p-2" sx={{ borderBottom: 0 }}>
         <Tabs value={selectedTab} onChange={handleTabChange}>
           <Tab icon={<FaUser />} label="Users" />
           <Tab icon={<FaUsers />} label="Roles" />
@@ -338,7 +338,7 @@ const UserManagement = () => {
 
       {/* Users Tab */}
       {selectedTab === 0 && (
-        <Card>
+        <Card className="ui-form-shell">
           <CardContent>
             <Box
               sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}
@@ -357,7 +357,7 @@ const UserManagement = () => {
               </Button>
             </Box>
 
-            <TableContainer component={Paper}>
+            <TableContainer component={Paper} className="ui-table-shell">
               <Table>
                 <TableHead>
                   <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
@@ -403,7 +403,7 @@ const UserManagement = () => {
 
       {/* Roles Tab */}
       {selectedTab === 1 && (
-        <Card>
+        <Card className="ui-form-shell">
           <CardContent>
             <Typography variant="h6" gutterBottom>
               <FaUsers style={{ marginRight: 8, verticalAlign: "middle" }} />
@@ -471,7 +471,7 @@ const UserManagement = () => {
 
       {/* Permissions Tab */}
       {selectedTab === 2 && (
-        <Card>
+        <Card className="ui-form-shell">
           <CardContent>
             <Typography variant="h6" gutterBottom>
               <FaLock style={{ marginRight: 8, verticalAlign: "middle" }} />

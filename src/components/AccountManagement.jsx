@@ -528,7 +528,7 @@ const AccountManagement = () => {
   }
 
   return (
-    <div className="min-h-full bg-gray-50 p-1 sm:p-2 md:p-2">
+    <div className="page-shell page-stack py-2 sm:py-3">
       {/* Header */}
 
       <div className="max-w-6xl mx-auto">
@@ -557,7 +557,7 @@ const AccountManagement = () => {
         )}
 
         {/* Tabs */}
-        <div className="flex space-x-4 mb-8 border-b border-gray-200">
+        <div className="ui-form-shell mb-8 flex flex-wrap gap-2 p-2">
           <button
             onClick={() => {
               setActiveTab("profile");
@@ -592,7 +592,7 @@ const AccountManagement = () => {
 
             {/* Profile Form */}
             <div className="lg:col-span-2">
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-4 md:p-6">
+              <div className="ui-form-shell p-3 sm:p-4 md:p-6">
                 <div className="flex items-center justify-between mb-4 sm:mb-6">
                   <h3 className="text-lg font-bold text-gray-900">
                     Profile Information
@@ -774,7 +774,7 @@ const AccountManagement = () => {
         {/* Password Tab */}
         {activeTab === "password" && (
           <div className="max-w-2xl mx-auto space-y-6">
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-4 md:p-6">
+            <div className="ui-form-shell p-3 sm:p-4 md:p-6">
               <h3 className="text-lg font-bold text-gray-900 mb-6">
                 Change Password
               </h3>
@@ -977,7 +977,7 @@ const AccountManagement = () => {
               </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-4 md:p-6">
+            <div className="ui-form-shell p-3 sm:p-4 md:p-6">
               <div className="flex items-start justify-between gap-4 mb-6">
                 <div>
                   <h3 className="text-lg font-bold text-gray-900">

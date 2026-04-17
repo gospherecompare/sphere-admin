@@ -466,7 +466,7 @@ const Brand = () => {
   const inactiveBrands = brands.filter((b) => b.status === "inactive").length;
 
   return (
-    <div className="min-h-full bg-gray-50 p-1 sm:p-2 md:p-2">
+    <div className="page-shell page-stack py-2 sm:py-3">
       {/* Header */}
       <div className="mb-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
@@ -492,7 +492,7 @@ const Brand = () => {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-6">
-          <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <div className="ui-stat-card">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500">Total Brands</p>
@@ -506,7 +506,7 @@ const Brand = () => {
             </div>
           </div>
 
-          <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <div className="ui-stat-card">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500">Active Brands</p>
@@ -520,7 +520,7 @@ const Brand = () => {
             </div>
           </div>
 
-          <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <div className="ui-stat-card">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500">Inactive Brands</p>
@@ -567,8 +567,8 @@ const Brand = () => {
       <div className="space-y-6">
         {/* Left Side - Form */}
         <div className="w-full">
-          <div className="max-w-4xl bg-white rounded-lg border border-gray-200 shadow-sm">
-            <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
+          <div className="ui-form-shell max-w-4xl">
+            <div className="ui-form-header px-4 py-3">
               <h2 className="font-semibold text-gray-800">
                 {isEditing ? "Edit Brand" : "Create New Brand"}
               </h2>
@@ -577,7 +577,7 @@ const Brand = () => {
               </p>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-4 space-y-4">
+            <form onSubmit={handleSubmit} className="ui-form-body space-y-4">
               {/* Brand Name */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">

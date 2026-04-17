@@ -28,9 +28,9 @@ const STEPS = {
 };
 
 const FIELD =
-  "w-full rounded-lg border border-gray-200 bg-gray-50 py-3 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-60";
+  "w-full rounded-2xl border border-slate-200 bg-white/90 py-3.5 text-sm transition-all focus:outline-none focus:ring-4 focus:ring-sky-100 disabled:opacity-60 disabled:cursor-not-allowed";
 const PRIMARY =
-  "w-full rounded-lg bg-gradient-to-r from-purple-500 to-indigo-600 py-3 text-sm font-semibold text-white hover:from-purple-600 hover:to-indigo-700 disabled:opacity-50";
+  "w-full rounded-2xl bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 py-3.5 text-sm font-semibold text-white shadow-lg shadow-blue-500/20 transition hover:shadow-blue-500/30 disabled:opacity-50";
 
 const formatCountdown = (ms) => {
   const seconds = Math.max(0, Math.ceil(Number(ms || 0) / 1000));
@@ -362,15 +362,19 @@ const Login = ({ onLogin }) => {
   const cardFooter = `Session expires in ${formatCountdown(loginTicketRemaining)}.`;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 p-4 md:p-6">
-      <div className="mx-auto grid min-h-[calc(100vh-2rem)] max-w-6xl overflow-hidden rounded-2xl bg-white shadow-xl lg:grid-cols-2">
-        <div className="p-5 sm:p-8 lg:p-10">
+    <div className="relative min-h-screen overflow-hidden px-4 py-6 sm:px-6 lg:px-8">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.16),transparent_35%),radial-gradient(circle_at_top_right,rgba(99,102,241,0.14),transparent_30%),linear-gradient(180deg,rgba(248,251,255,0.85)_0%,rgba(244,247,251,0.65)_100%)]" />
+      <div className="pointer-events-none absolute left-0 top-0 h-72 w-72 -translate-x-1/2 -translate-y-1/2 rounded-full bg-cyan-400/10 blur-3xl" />
+      <div className="pointer-events-none absolute bottom-0 right-0 h-96 w-96 translate-x-1/3 translate-y-1/3 rounded-full bg-indigo-500/10 blur-3xl" />
+
+      <div className="surface-panel-strong relative mx-auto grid min-h-[calc(100vh-2rem)] max-w-6xl overflow-hidden rounded-[32px] lg:grid-cols-2">
+        <div className="relative p-5 sm:p-8 lg:p-10">
           <div className="mb-8">
             <HookLogo className="h-10 w-auto" />
-            <h2 className="mt-6 text-3xl font-bold text-gray-900">
+            <h2 className="mt-6 text-3xl font-bold text-slate-900">
               Welcome Back
             </h2>
-            <p className="mt-2 text-sm text-gray-600">
+            <p className="mt-2 text-sm text-slate-600">
               Sign in to continue to your Hooks admin workspace.
             </p>
           </div>
@@ -536,8 +540,8 @@ const Login = ({ onLogin }) => {
                 </div>
 
                 <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
-                  The organization PIN is shared by your admin team and is stored
-                  securely on the server.
+                  The organization PIN is shared by your admin team and is
+                  stored securely on the server.
                 </div>
               </>
             ) : (
@@ -580,7 +584,9 @@ const Login = ({ onLogin }) => {
                     onChange={(event) => {
                       setForm((value) => ({
                         ...value,
-                        newPin: event.target.value.replace(/\D/g, "").slice(0, 10),
+                        newPin: event.target.value
+                          .replace(/\D/g, "")
+                          .slice(0, 10),
                       }));
                       setError("");
                     }}
@@ -611,7 +617,9 @@ const Login = ({ onLogin }) => {
                     onChange={(event) => {
                       setForm((value) => ({
                         ...value,
-                        confirmPin: event.target.value.replace(/\D/g, "").slice(0, 10),
+                        confirmPin: event.target.value
+                          .replace(/\D/g, "")
+                          .slice(0, 10),
                       }));
                       setError("");
                     }}
@@ -635,7 +643,8 @@ const Login = ({ onLogin }) => {
                 </div>
 
                 <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
-                  Create a 4 to 10 digit organization PIN to secure admin access.
+                  Create a 4 to 10 digit organization PIN to secure admin
+                  access.
                 </div>
               </>
             )}
@@ -686,8 +695,8 @@ const Login = ({ onLogin }) => {
           </p>
         </div>
 
-        <div className="hidden bg-gradient-to-br from-purple-600 to-indigo-700 p-10 text-white lg:flex lg:flex-col lg:justify-between">
-          <div className="rounded-xl bg-white/10 p-4">
+        <div className="hero-panel hidden overflow-hidden p-10 text-white lg:flex lg:flex-col lg:justify-between">
+          <div className="rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur-sm">
             <HookLogo className="h-10 w-auto" />
           </div>
 

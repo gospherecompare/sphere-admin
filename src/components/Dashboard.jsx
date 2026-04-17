@@ -57,7 +57,6 @@ const Dashboard = () => {
   const [recentItems, setRecentItems] = useState([]);
   const [error, setError] = useState(null);
   const [timeFilter, setTimeFilter] = useState("today");
-  const [searchQuery, setSearchQuery] = useState("");
 
   const [trendingType, setTrendingType] = useState("smartphone");
   const [trendingSnapshot, setTrendingSnapshot] = useState({
@@ -274,68 +273,64 @@ const Dashboard = () => {
     }
   }, [trendingType]);
 
-  // Get color classes with gradients
+  // Get color classes with softer panel fills
   const getColorClasses = useCallback((color) => {
     const colors = {
       blue: {
-        bg: "bg-gradient-to-br from-blue-50 to-blue-100",
-        lightBg: "bg-gradient-to-br from-blue-100 to-blue-200",
-        text: "text-blue-600",
+        bg: "bg-blue-50 border border-blue-100",
+        lightBg: "bg-blue-100 border border-blue-200",
+        text: "text-blue-700",
         border: "border-blue-200",
-        hover: "hover:bg-gradient-to-br hover:from-blue-100 hover:to-blue-200",
+        hover: "hover:bg-blue-50",
         gradient: "from-blue-500 to-blue-600",
       },
       emerald: {
-        bg: "bg-gradient-to-br from-emerald-50 to-emerald-100",
-        lightBg: "bg-gradient-to-br from-emerald-100 to-emerald-200",
-        text: "text-emerald-600",
+        bg: "bg-emerald-50 border border-emerald-100",
+        lightBg: "bg-emerald-100 border border-emerald-200",
+        text: "text-emerald-700",
         border: "border-emerald-200",
-        hover:
-          "hover:bg-gradient-to-br hover:from-emerald-100 hover:to-emerald-200",
+        hover: "hover:bg-emerald-50",
         gradient: "from-emerald-500 to-emerald-600",
       },
       purple: {
-        bg: "bg-gradient-to-br from-purple-50 to-purple-100",
-        lightBg: "bg-gradient-to-br from-purple-100 to-purple-200",
-        text: "text-purple-600",
+        bg: "bg-purple-50 border border-purple-100",
+        lightBg: "bg-purple-100 border border-purple-200",
+        text: "text-purple-700",
         border: "border-purple-200",
-        hover:
-          "hover:bg-gradient-to-br hover:from-purple-100 hover:to-purple-200",
+        hover: "hover:bg-purple-50",
         gradient: "from-purple-500 to-purple-600",
       },
       orange: {
-        bg: "bg-gradient-to-br from-orange-50 to-orange-100",
-        lightBg: "bg-gradient-to-br from-orange-100 to-orange-200",
-        text: "text-orange-600",
+        bg: "bg-orange-50 border border-orange-100",
+        lightBg: "bg-orange-100 border border-orange-200",
+        text: "text-orange-700",
         border: "border-orange-200",
-        hover:
-          "hover:bg-gradient-to-br hover:from-orange-100 hover:to-orange-200",
+        hover: "hover:bg-orange-50",
         gradient: "from-orange-500 to-orange-600",
       },
       indigo: {
-        bg: "bg-gradient-to-br from-indigo-50 to-indigo-100",
-        lightBg: "bg-gradient-to-br from-indigo-100 to-indigo-200",
-        text: "text-indigo-600",
+        bg: "bg-indigo-50 border border-indigo-100",
+        lightBg: "bg-indigo-100 border border-indigo-200",
+        text: "text-indigo-700",
         border: "border-indigo-200",
-        hover:
-          "hover:bg-gradient-to-br hover:from-indigo-100 hover:to-indigo-200",
+        hover: "hover:bg-indigo-50",
         gradient: "from-indigo-500 to-indigo-600",
       },
       pink: {
-        bg: "bg-gradient-to-br from-pink-50 to-pink-100",
-        lightBg: "bg-gradient-to-br from-pink-100 to-pink-200",
-        text: "text-pink-600",
+        bg: "bg-pink-50 border border-pink-100",
+        lightBg: "bg-pink-100 border border-pink-200",
+        text: "text-pink-700",
         border: "border-pink-200",
-        hover: "hover:bg-gradient-to-br hover:from-pink-100 hover:to-pink-200",
+        hover: "hover:bg-pink-50",
         gradient: "from-pink-500 to-pink-600",
       },
       gray: {
-        bg: "bg-gradient-to-br from-gray-50 to-gray-100",
-        lightBg: "bg-gradient-to-br from-gray-100 to-gray-200",
-        text: "text-gray-600",
-        border: "border-gray-200",
-        hover: "hover:bg-gradient-to-br hover:from-gray-100 hover:to-gray-200",
-        gradient: "from-gray-500 to-gray-600",
+        bg: "bg-slate-50 border border-slate-200",
+        lightBg: "bg-slate-100 border border-slate-200",
+        text: "text-slate-700",
+        border: "border-slate-200",
+        hover: "hover:bg-slate-50",
+        gradient: "from-slate-500 to-slate-600",
       },
     };
     return colors[color] || colors.blue;
@@ -352,8 +347,11 @@ const Dashboard = () => {
     };
 
     const config = configs[type] || configs.default;
-    const bgColor = action === "created" ? "bg-green-50" : "bg-blue-50";
-    const textColor = action === "created" ? "text-green-700" : "text-blue-700";
+    const bgColor =
+      action === "created"
+        ? "bg-blue-50 border border-blue-100"
+        : "bg-slate-50 border border-slate-200";
+    const textColor = action === "created" ? "text-blue-700" : "text-slate-700";
 
     return { ...config, bgColor, textColor };
   }, []);
@@ -531,32 +529,32 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-full bg-white p-1 sm:p-2 md:p-2">
+    <div className="dashboard-root space-y-6 rounded-lg bg-white p-4 sm:p-6 lg:p-8">
       {/* Header Section */}
-      <div className="mb-6 sm:mb-8">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 sm:gap-6 mb-6 sm:mb-8">
+      <div className="mb-6 rounded-lg bg-white p-4 sm:mb-8 sm:p-6">
+        <div className="mb-6 flex flex-col justify-between gap-4 sm:gap-6 lg:flex-row lg:items-center sm:mb-8">
           <div>
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-2 sm:mb-2">
-              <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg w-fit">
-                <FaHome className="text-xl sm:text-2xl text-white" />
+            <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3 sm:mb-2">
+              <div className="flex w-fit items-center justify-center rounded-2xl border border-slate-200 bg-sky-50 p-2">
+                <FaHome className="text-xl text-sky-600 sm:text-2xl" />
               </div>
               <div>
-                <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900">
+                <h1 className="text-xl font-bold text-slate-900 sm:text-2xl md:text-3xl">
                   Dashboard
                 </h1>
-                <p className="text-sm sm:text-base text-gray-600 mt-1">
+                <p className="mt-1 text-sm text-slate-600 sm:text-base">
                   Welcome back! Here's your inventory overview
                 </p>
               </div>
             </div>
-            <div className="flex items-center space-x-4 mt-3 sm:mt-4">
+            <div className="mt-3 flex items-center sm:mt-4">
               <div
                 onClick={() => navigate("/dashboard")}
-                className="flex items-center space-x-2 text-xs sm:text-sm text-gray-600 cursor-pointer hover:text-gray-900 transition-colors"
+                className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-600 transition-colors hover:border-slate-300 hover:bg-white hover:text-slate-900 sm:text-sm"
                 role="button"
                 tabIndex={0}
               >
-                <FaUserCircle className="text-gray-400" />
+                <FaUserCircle className="text-slate-400" />
                 <span>Admin Dashboard</span>
               </div>
             </div>
@@ -567,14 +565,14 @@ const Dashboard = () => {
         </div>
 
         {/* Stats Summary Bar */}
-        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4 mb-6">
-          <div className="bg-white shadow-md rounded-lg p-3 sm:p-4">
+        <div className="mb-6 grid grid-cols-2 gap-2 sm:grid-cols-2 sm:gap-3 md:gap-4">
+          <div className="rounded-2xl border border-slate-200 bg-white p-3 sm:p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs sm:text-sm text-gray-600">
+                <p className="text-xs text-slate-600 sm:text-sm">
                   Total Products
                 </p>
-                <p className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 mt-1">
+                <p className="mt-1 text-lg font-bold text-slate-900 sm:text-xl md:text-2xl">
                   <CountUp
                     end={
                       counts.mobiles +
@@ -586,14 +584,14 @@ const Dashboard = () => {
                   />
                 </p>
               </div>
-              <FaShoppingBag className="text-blue-500 text-lg sm:text-xl flex-shrink-0" />
+              <FaShoppingBag className="flex-shrink-0 text-lg text-blue-500 sm:text-xl" />
             </div>
           </div>
-          <div className="bg-white shadow-md rounded-lg p-3 sm:p-4">
+          <div className="rounded-2xl border border-slate-200 bg-white p-3 sm:p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs sm:text-sm text-gray-600">Published</p>
-                <p className="text-lg sm:text-xl md:text-2xl font-bold text-emerald-600 mt-1">
+                <p className="text-xs text-slate-600 sm:text-sm">Published</p>
+                <p className="mt-1 text-lg font-bold text-emerald-600 sm:text-xl md:text-2xl">
                   <CountUp
                     end={
                       counts.mobiles_published +
@@ -605,14 +603,14 @@ const Dashboard = () => {
                   />
                 </p>
               </div>
-              <FaCheckCircle className="text-emerald-500 text-lg sm:text-xl flex-shrink-0" />
+              <FaCheckCircle className="flex-shrink-0 text-lg text-emerald-500 sm:text-xl" />
             </div>
           </div>
-          <div className="bg-white shadow-md rounded-lg p-3 sm:p-4">
+          <div className="rounded-2xl border border-slate-200 bg-white p-3 sm:p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs sm:text-sm text-gray-600">Publish Rate</p>
-                <p className="text-lg sm:text-xl md:text-2xl font-bold text-purple-600 mt-1">
+                <p className="text-xs text-slate-600 sm:text-sm">Publish Rate</p>
+                <p className="mt-1 text-lg font-bold text-purple-600 sm:text-xl md:text-2xl">
                   <CountUp
                     end={
                       counts.mobiles +
@@ -638,18 +636,18 @@ const Dashboard = () => {
                   />
                 </p>
               </div>
-              <FaChartLine className="text-purple-500 text-lg sm:text-xl flex-shrink-0" />
+              <FaChartLine className="flex-shrink-0 text-lg text-purple-500 sm:text-xl" />
             </div>
           </div>
-          <div className="bg-white shadow-md rounded-lg p-3 sm:p-4">
+          <div className="rounded-2xl border border-slate-200 bg-white p-3 sm:p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs sm:text-sm text-gray-600">Categories</p>
-                <p className="text-lg sm:text-xl md:text-2xl font-bold text-orange-600 mt-1">
+                <p className="text-xs text-slate-600 sm:text-sm">Categories</p>
+                <p className="mt-1 text-lg font-bold text-orange-600 sm:text-xl md:text-2xl">
                   <CountUp end={counts.categories} duration={1.5} />
                 </p>
               </div>
-              <FaFolderOpen className="text-orange-500 text-lg sm:text-xl flex-shrink-0" />
+              <FaFolderOpen className="flex-shrink-0 text-lg text-orange-500 sm:text-xl" />
             </div>
           </div>
         </div>
@@ -684,10 +682,9 @@ const Dashboard = () => {
                     key={index}
                     onClick={() => handleStatClick(stat.path)}
                     className={`
-                      bg-white rounded-lg shadow-md 
-                      p-3 sm:p-4 hover:shadow-lg transition-all duration-300 
-                      hover:-translate-y-1 cursor-pointer group
-                      ${stat.path ? "hover:border-blue-300" : ""}
+                      rounded-2xl border border-slate-200 bg-white p-3 sm:p-4 
+                      cursor-pointer group transition-colors
+                      hover:border-slate-300 hover:bg-slate-50/60
                     `}
                   >
                     <div className="flex items-center justify-between mb-3">
@@ -742,8 +739,8 @@ const Dashboard = () => {
                       </div>
                     )}
 
-                    <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                      <span className="text-xs sm:text-sm text-gray-600">
+                    <div className="flex items-center justify-between border-t border-slate-200 pt-3">
+                      <span className="text-xs text-slate-600 sm:text-sm">
                         {stat.subtitle}
                       </span>
                       {stat.path && (
@@ -759,27 +756,27 @@ const Dashboard = () => {
           </div>
 
           {/* Recent Activity with Filters */}
-          <div className="bg-white rounded-lg shadow-md p-4 sm:p-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
+          <div className="rounded-lg bg-white p-4 sm:p-6">
+            <div className="mb-4 flex flex-col justify-between gap-3 sm:gap-4 sm:mb-6 sm:flex-row sm:items-center">
               <div>
-                <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-1">
+                <h2 className="mb-1 text-lg font-bold text-slate-900 sm:text-xl">
                   Recent Activity
                 </h2>
-                <p className="text-xs sm:text-sm text-gray-600">
+                <p className="text-xs text-slate-600 sm:text-sm">
                   Latest updates across your inventory
                 </p>
               </div>
 
               <div className="flex items-center gap-2 overflow-x-auto">
-                <div className="flex bg-gray-100 rounded-lg p-1 whitespace-nowrap">
+                <div className="flex whitespace-nowrap rounded-full border border-slate-200 bg-slate-50 p-1">
                   {timeFilters.map((filter) => (
                     <button
                       key={filter.id}
                       onClick={() => setTimeFilter(filter.id)}
                       className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm rounded-md transition-all ${
                         timeFilter === filter.id
-                          ? "bg-white text-blue-600 shadow-sm"
-                          : "text-gray-600 hover:text-gray-900"
+                          ? "border border-slate-200 bg-white text-slate-900"
+                          : "text-slate-600 hover:text-slate-900"
                       }`}
                     >
                       {filter.label}
@@ -798,10 +795,10 @@ const Dashboard = () => {
                 return (
                   <div
                     key={index}
-                    className="flex items-start gap-3 sm:gap-4 p-2 sm:p-3 rounded-lg hover:bg-gray-50 transition-colors group"
+                    className="group flex items-start gap-3 rounded-xl border border-slate-200 bg-white p-3 transition-colors hover:border-slate-300 hover:bg-slate-50 sm:gap-4 sm:p-3"
                   >
                     <div
-                      className={`p-2 rounded-lg flex-shrink-0 ${config.bgColor}`}
+                      className={`flex-shrink-0 rounded-lg p-2 ${config.bgColor}`}
                     >
                       <IconComponent
                         className={`text-sm sm:text-lg ${config.color}`}
@@ -810,31 +807,31 @@ const Dashboard = () => {
 
                     <div className="flex-1 min-w-0">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2 mb-1">
-                        <p className="font-medium text-sm sm:text-base text-gray-900 truncate">
+                        <p className="truncate text-sm font-medium text-slate-900 sm:text-base">
                           {item.name}
                         </p>
                         <div className="flex items-center gap-2 flex-wrap">
                           <span
                             className={`px-2 py-0.5 text-xs rounded-full whitespace-nowrap ${
                               item.status === "Published"
-                                ? "bg-emerald-50 text-emerald-700"
-                                : "bg-yellow-50 text-yellow-700"
+                                ? "border border-emerald-100 bg-emerald-50 text-emerald-700"
+                                : "border border-amber-100 bg-amber-50 text-amber-700"
                             }`}
                           >
                             {item.status}
                           </span>
-                          <span className="text-xs text-gray-500 whitespace-nowrap">
+                          <span className="whitespace-nowrap text-xs text-slate-500">
                             {formatRelativeTime(time)}
                           </span>
                         </div>
                       </div>
 
-                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 text-xs sm:text-sm text-gray-600">
+                      <div className="flex flex-col gap-2 text-xs text-slate-600 sm:flex-row sm:items-center sm:gap-3 sm:text-sm">
                         <span className={config.textColor}>
                           {item.action === "created" ? "Added" : "Updated"}{" "}
                           {item.typeLabel}
                         </span>
-                        <span className="text-gray-400 hidden sm:inline">
+                        <span className="hidden text-slate-300 sm:inline">
                           •
                         </span>
                         <span className="flex items-center gap-1">
@@ -847,7 +844,7 @@ const Dashboard = () => {
                       </div>
                     </div>
 
-                    <FaChevronRight className="text-gray-300 group-hover:text-gray-400 transition-colors text-xs sm:text-sm" />
+                    <FaChevronRight className="text-slate-300 transition-colors group-hover:text-slate-500 text-xs sm:text-sm" />
                   </div>
                 );
               })}
@@ -855,13 +852,13 @@ const Dashboard = () => {
 
             {recentItems.length === 0 && (
               <div className="text-center py-6 sm:py-8">
-                <div className="w-12 sm:w-16 h-12 sm:h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-2 sm:mb-3">
-                  <FaClock className="text-lg sm:text-2xl text-gray-400" />
+                <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full border border-dashed border-slate-200 bg-slate-50 sm:mb-3 sm:h-16 sm:w-16">
+                  <FaClock className="text-lg text-slate-400 sm:text-2xl" />
                 </div>
-                <p className="text-gray-700 font-medium text-sm sm:text-base">
+                <p className="text-sm font-medium text-slate-700 sm:text-base">
                   No recent activity
                 </p>
-                <p className="text-gray-500 text-xs sm:text-sm mt-1">
+                <p className="mt-1 text-xs text-slate-500 sm:text-sm">
                   Activity will appear here as you add products
                 </p>
               </div>
@@ -872,23 +869,23 @@ const Dashboard = () => {
         {/* Right Column - Quick Actions & Insights */}
         <div className="space-y-4 sm:space-y-6">
           {/* Trending Snapshot */}
-          <div className="bg-white shadow-md rounded-lg p-4 sm:p-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+          <div className="rounded-lg bg-white p-4 sm:p-6">
+            <div className="mb-4 flex flex-col justify-between gap-4 md:flex-row md:items-center">
               <div className="min-w-0">
-                <h2 className="text-lg sm:text-xl font-bold text-gray-900 flex items-center gap-2">
+                <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900 sm:text-xl">
                   <FaChartLine className="text-blue-600" />
                   Trending Snapshot
                 </h2>
                 <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <span className="inline-flex items-center px-2 py-1 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                  <span className="inline-flex items-center rounded-full border border-blue-100 bg-blue-50 px-2 py-1 text-[11px] font-semibold text-blue-700">
                     7d momentum
                   </span>
-                  <span className="inline-flex items-center px-2 py-1 rounded-full text-[11px] font-semibold bg-gray-50 text-gray-700 border border-gray-200">
+                  <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-semibold text-slate-700">
                     Top 5
                   </span>
                   {trendingSnapshot.updated_at && (
                     <span
-                      className="text-[11px] text-gray-500"
+                      className="text-[11px] text-slate-500"
                       title={`Updated at ${formatDateTime(trendingSnapshot.updated_at)}`}
                     >
                       Updated {formatRelativeTime(trendingSnapshot.updated_at)}
@@ -897,11 +894,11 @@ const Dashboard = () => {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 w-full md:w-auto">
+              <div className="flex w-full items-center gap-2 md:w-auto">
                 <select
                   value={trendingType}
                   onChange={(e) => setTrendingType(e.target.value)}
-                  className="flex-1 md:flex-none px-3 py-2 border border-gray-200 rounded-lg bg-white text-gray-700 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 focus:border-sky-300 focus:outline-none focus:ring-4 focus:ring-sky-100 md:flex-none sm:text-sm"
                   aria-label="Trending type"
                 >
                   {trendingTypeOptions.map((opt) => (
@@ -912,7 +909,7 @@ const Dashboard = () => {
                 </select>
                 <button
                   onClick={fetchTrendingSnapshot}
-                  className="px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-700 transition-colors disabled:opacity-60"
+                  className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 transition-colors hover:bg-white disabled:opacity-60 sm:text-sm"
                   disabled={trendingLoading}
                   title="Refresh trending snapshot"
                 >
@@ -922,21 +919,21 @@ const Dashboard = () => {
             </div>
 
             {trendingError && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+              <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
                 {trendingError}
               </div>
             )}
 
             {trendingLoading && trendingSnapshot.results.length === 0 ? (
-              <div className="text-sm text-gray-600 py-6 text-center">
+              <div className="py-6 text-center text-sm text-slate-600">
                 Loading trending...
               </div>
             ) : trendingSnapshot.results.length === 0 ? (
-              <div className="text-sm text-gray-600">
+              <div className="text-sm text-slate-600">
                 <p>No trending data yet.</p>
                 <button
                   onClick={() => navigate("/reports/trending")}
-                  className="mt-3 inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700"
+                  className="mt-3 inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-white px-3 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-50"
                 >
                   Open Trending Manager <FaArrowRight />
                 </button>
@@ -974,7 +971,7 @@ const Dashboard = () => {
                     return (
                       <div
                         key={r.product_id}
-                        className="p-3 rounded-xl border border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm transition-all"
+                        className="rounded-xl border border-slate-200 bg-white p-3 transition-colors hover:border-slate-300 hover:bg-slate-50"
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
@@ -982,48 +979,48 @@ const Dashboard = () => {
                               {r.name}
                             </p>
                             <div className="mt-0.5 flex items-center gap-2 min-w-0">
-                              <p className="text-xs text-gray-600 truncate">
+                              <p className="truncate text-xs text-slate-600">
                                 {r.brand || "Unknown brand"}
                               </p>
                               {r.manual_boost && (
-                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-orange-50 text-orange-700 border border-orange-200 whitespace-nowrap">
+                                <span className="inline-flex items-center whitespace-nowrap rounded-full border border-orange-100 bg-orange-50 px-2 py-0.5 text-[11px] font-semibold text-orange-700">
                                   Manual
                                 </span>
                               )}
                             </div>
 
                             <div className="mt-3 grid grid-cols-2 gap-2">
-                              <div className="px-2 py-1.5 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-between">
-                                <span className="text-[10px] font-semibold text-blue-700 uppercase tracking-wide">
+                              <div className="flex items-center justify-between rounded-lg border border-blue-100 bg-blue-50 px-2 py-1.5">
+                                <span className="text-[10px] font-semibold uppercase tracking-wide text-blue-700">
                                   UV7d
                                 </span>
                                 <span className="text-xs font-bold text-blue-900">
                                   {Number(r.views_7d ?? 0).toLocaleString()}
                                 </span>
                               </div>
-                              <div className="px-2 py-1.5 rounded-lg bg-purple-50 border border-purple-100 flex items-center justify-between">
-                                <span className="text-[10px] font-semibold text-purple-700 uppercase tracking-wide">
+                              <div className="flex items-center justify-between rounded-lg border border-purple-100 bg-purple-50 px-2 py-1.5">
+                                <span className="text-[10px] font-semibold uppercase tracking-wide text-purple-700">
                                   Cmp7d
                                 </span>
                                 <span className="text-xs font-bold text-purple-900">
                                   {Number(r.compares_7d ?? 0).toLocaleString()}
                                 </span>
                               </div>
-                              <div className="px-2 py-1.5 rounded-lg bg-gray-50 border border-gray-200 flex items-center justify-between">
-                                <span className="text-[10px] font-semibold text-gray-700 uppercase tracking-wide">
+                              <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5">
+                                <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-700">
                                   Total UV
                                 </span>
-                                <span className="text-xs font-bold text-gray-900">
+                                <span className="text-xs font-bold text-slate-900">
                                   {Number(
                                     r.unique_visitors_total ?? 0,
                                   ).toLocaleString()}
                                 </span>
                               </div>
-                              <div className="px-2 py-1.5 rounded-lg bg-gray-50 border border-gray-200 flex items-center justify-between">
-                                <span className="text-[10px] font-semibold text-gray-700 uppercase tracking-wide">
+                              <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5">
+                                <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-700">
                                   Total Cmp
                                 </span>
-                                <span className="text-xs font-bold text-gray-900">
+                                <span className="text-xs font-bold text-slate-900">
                                   {Number(
                                     r.compares_total ?? 0,
                                   ).toLocaleString()}
@@ -1033,7 +1030,7 @@ const Dashboard = () => {
                           </div>
 
                           <span
-                            className={`inline-flex items-center gap-1 px-2 py-1 rounded-full border text-[11px] font-semibold whitespace-nowrap ${trendPill}`}
+                            className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] font-semibold whitespace-nowrap ${trendPill}`}
                             title="Change vs previous 7 days"
                           >
                             {delta > 0 ? (
@@ -1048,7 +1045,7 @@ const Dashboard = () => {
                         </div>
 
                         <div className="mt-3">
-                          <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                          <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
                             <div
                               className="h-full bg-gradient-to-r from-blue-500 to-purple-600 rounded-full"
                               style={{ width: `${pct}%` }}
@@ -1062,7 +1059,7 @@ const Dashboard = () => {
 
                 <button
                   onClick={() => navigate("/reports/trending")}
-                  className="w-full mt-1 inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
+                  className="mt-1 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
                 >
                   Manage Trending <FaArrowRight />
                 </button>
@@ -1071,18 +1068,18 @@ const Dashboard = () => {
           </div>
 
           {/* Quick Actions */}
-          <div className="bg-white shadow-md rounded-lg p-4 sm:p-6">
-            <div className="flex items-center justify-between mb-4 sm:mb-6">
+          <div className="rounded-lg bg-white p-4 sm:p-6">
+            <div className="mb-4 flex items-center justify-between sm:mb-6">
               <div>
-                <h2 className="text-lg sm:text-xl font-bold text-gray-900">
+                <h2 className="text-lg font-bold text-slate-900 sm:text-xl">
                   Quick Actions
                 </h2>
-                <p className="text-gray-600 text-xs sm:text-sm mt-1">
+                <p className="mt-1 text-xs text-slate-600 sm:text-sm">
                   Frequently used actions
                 </p>
               </div>
-              <div className="p-2 bg-blue-50 rounded-lg flex-shrink-0">
-                <FaBolt className="text-blue-500 text-lg sm:text-xl" />
+              <div className="flex-shrink-0 rounded-2xl border border-slate-200 bg-slate-50 p-2">
+                <FaBolt className="text-lg text-blue-500 sm:text-xl" />
               </div>
             </div>
 
@@ -1095,15 +1092,11 @@ const Dashboard = () => {
                     key={index}
                     onClick={() => handleActionClick(action.path)}
                     className={`
-                      p-3 sm:p-4 rounded-lg border border-gray-200 
-                      hover:shadow-md transition-all duration-200 
-                      active:scale-[0.98] group
-                      flex flex-col items-center justify-center text-center
-                      min-h-[110px] sm:min-h-[120px] ${colors.bg}
+                      group flex min-h-[110px] flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white p-3 text-center transition-colors hover:border-slate-300 hover:bg-slate-50/60 sm:min-h-[120px]
                     `}
                   >
                     <div
-                      className={`p-2 rounded-lg mb-2 sm:mb-3 ${colors.lightBg}`}
+                      className={`mb-2 rounded-2xl p-2 sm:mb-3 ${colors.lightBg}`}
                     >
                       <IconComponent
                         className={`text-lg sm:text-xl ${colors.text}`}
@@ -1114,7 +1107,7 @@ const Dashboard = () => {
                     >
                       {action.label}
                     </span>
-                    <p className="text-xs text-gray-600 line-clamp-2">
+                    <p className="line-clamp-2 text-xs text-slate-600">
                       {action.description}
                     </p>
                   </button>
@@ -1124,41 +1117,41 @@ const Dashboard = () => {
           </div>
 
           {/* Performance Insights */}
-          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg shadow-md p-4 sm:p-6">
-            <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-4">
+          <div className="rounded-lg bg-white p-4 sm:p-6">
+            <h3 className="mb-4 text-base font-bold text-slate-900 sm:text-lg">
               Performance Insights
             </h3>
             <div className="space-y-3 sm:space-y-4">
-              <div className="flex items-center justify-between p-2 sm:p-3 bg-white/50 rounded-lg border border-blue-100">
+              <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-2 sm:p-3">
                 <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                  <div className="p-2 bg-blue-100 rounded-lg flex-shrink-0">
+                  <div className="flex-shrink-0 rounded-lg border border-blue-100 bg-blue-50 p-2">
                     <FaTrophy className="text-blue-600 text-sm sm:text-base" />
                   </div>
                   <div className="min-w-0">
-                    <p className="font-medium text-xs sm:text-sm text-gray-900">
+                    <p className="text-xs font-medium text-slate-900 sm:text-sm">
                       Top Category
                     </p>
-                    <p className="text-xs text-gray-600">Smartphones</p>
+                    <p className="text-xs text-slate-600">Smartphones</p>
                   </div>
                 </div>
-                <span className="text-lg sm:text-2xl font-bold text-blue-600 flex-shrink-0 ml-2">
+                <span className="ml-2 flex-shrink-0 text-lg font-bold text-blue-600 sm:text-2xl">
                   {counts.mobiles}
                 </span>
               </div>
 
-              <div className="flex items-center justify-between p-2 sm:p-3 bg-white/50 rounded-lg border border-emerald-100">
+              <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-2 sm:p-3">
                 <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                  <div className="p-2 bg-emerald-100 rounded-lg flex-shrink-0">
+                  <div className="flex-shrink-0 rounded-lg border border-emerald-100 bg-emerald-50 p-2">
                     <FaStar className="text-emerald-600 text-sm sm:text-base" />
                   </div>
                   <div className="min-w-0">
-                    <p className="font-medium text-xs sm:text-sm text-gray-900">
+                    <p className="text-xs font-medium text-slate-900 sm:text-sm">
                       Publish Rate
                     </p>
-                    <p className="text-xs text-gray-600">Overall success</p>
+                    <p className="text-xs text-slate-600">Overall success</p>
                   </div>
                 </div>
-                <span className="text-lg sm:text-2xl font-bold text-emerald-600 flex-shrink-0 ml-2">
+                <span className="ml-2 flex-shrink-0 text-lg font-bold text-emerald-600 sm:text-2xl">
                   <CountUp
                     end={
                       counts.mobiles +
@@ -1185,19 +1178,19 @@ const Dashboard = () => {
                 </span>
               </div>
 
-              <div className="flex items-center justify-between p-2 sm:p-3 bg-white/50 rounded-lg border border-purple-100">
+              <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-2 sm:p-3">
                 <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                  <div className="p-2 bg-purple-100 rounded-lg flex-shrink-0">
+                  <div className="flex-shrink-0 rounded-lg border border-purple-100 bg-purple-50 p-2">
                     <FaChartLine className="text-purple-600 text-sm sm:text-base" />
                   </div>
                   <div className="min-w-0">
-                    <p className="font-medium text-xs sm:text-sm text-gray-900">
+                    <p className="text-xs font-medium text-slate-900 sm:text-sm">
                       Growth
                     </p>
-                    <p className="text-xs text-gray-600">This month</p>
+                    <p className="text-xs text-slate-600">This month</p>
                   </div>
                 </div>
-                <span className="text-lg sm:text-2xl font-bold text-purple-600 flex-shrink-0 ml-2">
+                <span className="ml-2 flex-shrink-0 text-lg font-bold text-purple-600 sm:text-2xl">
                   +24%
                 </span>
               </div>
@@ -1210,7 +1203,7 @@ const Dashboard = () => {
       <div className="lg:hidden fixed bottom-4 sm:bottom-6 right-4 sm:right-6 z-10">
         <button
           onClick={() => navigate("/products/smartphones/create")}
-          className="w-14 sm:w-16 h-14 sm:h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white shadow-xl hover:shadow-2xl transition-all duration-300 active:scale-95"
+          className="flex h-14 w-14 items-center justify-center rounded-full border border-slate-200 bg-white text-blue-600 transition-colors active:scale-95 sm:h-16 sm:w-16 hover:border-blue-200 hover:bg-blue-50"
           aria-label="Quick add product"
         >
           <FaPlus className="text-lg sm:text-2xl" />
@@ -1219,13 +1212,13 @@ const Dashboard = () => {
 
       {/* Loading State */}
       {loading && (
-        <div className="fixed inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center z-50">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/90 backdrop-blur-sm">
           <div className="text-center px-4">
-            <div className="w-12 sm:w-16 h-12 sm:h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-gray-700 font-medium text-sm sm:text-base">
+            <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-4 border-slate-200 border-t-blue-500 sm:h-16 sm:w-16"></div>
+            <p className="text-sm font-medium text-slate-700 sm:text-base">
               Loading dashboard...
             </p>
-            <p className="text-gray-500 text-xs sm:text-sm mt-1">
+            <p className="mt-1 text-xs text-slate-500 sm:text-sm">
               Fetching the latest data
             </p>
           </div>
@@ -1234,22 +1227,22 @@ const Dashboard = () => {
 
       {/* Error State */}
       {error && !loading && (
-        <div className="fixed inset-0 bg-red-50/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg border border-red-200 p-4 sm:p-6 max-w-md">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-50/90 backdrop-blur-sm p-4">
+          <div className="max-w-md rounded-2xl border border-red-200 bg-white p-4 sm:p-6">
             <div className="flex items-start gap-3 sm:gap-4 mb-4">
-              <div className="p-2 bg-red-100 rounded-lg flex-shrink-0">
+              <div className="flex-shrink-0 rounded-lg border border-red-100 bg-red-50 p-2">
                 <FaExclamationCircle className="text-red-600 text-lg sm:text-xl" />
               </div>
               <div>
-                <h3 className="font-bold text-gray-900 text-sm sm:text-base">
+                <h3 className="text-sm font-bold text-slate-900 sm:text-base">
                   Error Loading Data
                 </h3>
-                <p className="text-gray-600 text-xs sm:text-sm mt-1">{error}</p>
+                <p className="mt-1 text-xs text-slate-600 sm:text-sm">{error}</p>
               </div>
             </div>
             <button
               onClick={() => window.location.reload()}
-              className="w-full py-2 sm:py-3 bg-gradient-to-r from-red-500 to-red-600 text-white text-sm sm:text-base rounded-lg hover:from-red-600 hover:to-red-700 transition-all"
+              className="w-full rounded-xl border border-red-200 bg-white py-2 text-sm text-red-700 transition-colors hover:bg-red-50 sm:py-3 sm:text-base"
             >
               Retry
             </button>

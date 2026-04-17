@@ -164,15 +164,8 @@ const PermissionManagement = () => {
   };
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          mb: 3,
-        }}
-      >
+    <Box className="page-shell page-stack py-2 sm:py-3" sx={{ p: 0 }}>
+      <Box className="ui-toolbar mb-3">
         <Typography variant="h4" component="h1" gutterBottom>
           <FaLock style={{ marginRight: 8, verticalAlign: "middle" }} />
           Permission Management
@@ -208,12 +201,12 @@ const PermissionManagement = () => {
       </Snackbar>
 
       {/* Permissions Table */}
-      <Card>
+      <Card className="ui-form-shell">
         <CardContent>
           <Typography variant="h6" gutterBottom>
             All Permissions ({permissions.length})
           </Typography>
-          <TableContainer component={Paper} elevation={0}>
+          <TableContainer component={Paper} className="ui-table-shell" elevation={0}>
             <Table>
               <TableHead>
                 <TableRow sx={{ backgroundColor: "#f5f5f5" }}>

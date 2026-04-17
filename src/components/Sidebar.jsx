@@ -384,13 +384,13 @@ const MenuItem = ({
       <Link
         to={item.path}
         className={`
-          flex items-center p-4 rounded-xl cursor-pointer transition-all duration-200 group
+          flex items-center rounded-xl border transition-all duration-200 group
+          ${collapsed ? "justify-center p-4" : "px-4 py-3"}
           ${
             isActive
-              ? "bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 border-r-4 border-blue-600 shadow-md"
-              : "text-gray-700 hover:bg-gray-50 hover:text-gray-900 hover:shadow-md"
+              ? "border-blue-200 bg-blue-50/70 text-blue-700"
+              : "border-transparent text-slate-700 hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900"
           }
-          ${collapsed ? "justify-center p-4" : "p-4"}
         `}
         onMouseEnter={() => onMouseEnter(item.id)}
         onMouseLeave={() => onMouseLeave()}
@@ -402,7 +402,7 @@ const MenuItem = ({
           ${
             isActive
               ? "text-blue-600"
-              : "text-gray-500 group-hover:text-gray-700"
+              : "text-slate-500 group-hover:text-slate-700"
           }
           text-xl
         `}
@@ -417,7 +417,7 @@ const MenuItem = ({
         )}
 
         {collapsed && hoveredItem === item.id && (
-          <div className="absolute left-full ml-3 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg shadow-xl z-50 whitespace-nowrap">
+          <div className="absolute left-full ml-3 rounded-lg border border-slate-200 bg-slate-900 px-3 py-2 text-sm text-white whitespace-nowrap">
             {item.label}
             <div className="absolute right-full top-1/2 transform -translate-y-1/2 w-0 h-0 border-t-4 border-b-4 border-l-4 border-transparent border-l-gray-900"></div>
           </div>
@@ -450,11 +450,11 @@ const SubMenuItem = ({
       return (
         <div key={child.id} className="mb-2">
           <div
-            className={`flex items-center p-3 rounded-lg cursor-pointer transition-all duration-200 group ${
+            className={`flex items-center rounded-lg border p-3 cursor-pointer transition-all duration-200 group ${
               (child.children || []).some((c) => c.path === location.pathname)
-                ? "bg-blue-100 text-blue-600 shadow-sm"
-                : "text-gray-600 hover:bg-gray-100 hover:text-gray-700 hover:shadow-sm"
-            } p-3`}
+                ? "border-blue-200 bg-blue-50 text-blue-700"
+                : "border-transparent text-slate-600 hover:border-slate-200 hover:bg-slate-50 hover:text-slate-700"
+            }`}
             onClick={() => onToggle(child.id)}
           >
             <div className={`transition-colors duration-200 text-lg`}>
@@ -478,11 +478,11 @@ const SubMenuItem = ({
                 <Link
                   key={c.id}
                   to={c.path}
-                  className={`flex items-center p-3 rounded-lg cursor-pointer transition-all duration-200 group ${
+                  className={`flex items-center rounded-lg border p-3 cursor-pointer transition-all duration-200 group ${
                     location.pathname === c.path
-                      ? "bg-blue-100 text-blue-600 shadow-sm"
-                      : "text-gray-600 hover:bg-gray-100 hover:text-gray-700 hover:shadow-sm"
-                  } p-3`}
+                      ? "border-blue-200 bg-blue-50 text-blue-700"
+                      : "border-transparent text-slate-600 hover:border-slate-200 hover:bg-slate-50 hover:text-slate-700"
+                  }`}
                   onClick={onLinkClick}
                 >
                   <div className={`transition-colors duration-200 text-lg`}>
@@ -501,11 +501,11 @@ const SubMenuItem = ({
       <Link
         key={child.id}
         to={child.path}
-        className={`flex items-center p-3 rounded-lg cursor-pointer transition-all duration-200 group ${
+        className={`flex items-center rounded-lg border p-3 cursor-pointer transition-all duration-200 group ${
           location.pathname === child.path
-            ? "bg-blue-100 text-blue-600 shadow-sm"
-            : "text-gray-600 hover:bg-gray-100 hover:text-gray-700 hover:shadow-sm"
-        } p-3`}
+            ? "border-blue-200 bg-blue-50 text-blue-700"
+            : "border-transparent text-slate-600 hover:border-slate-200 hover:bg-slate-50 hover:text-slate-700"
+        }`}
         onClick={onLinkClick}
       >
         <div className={`transition-colors duration-200 text-lg`}>
@@ -520,13 +520,13 @@ const SubMenuItem = ({
     <div key={item.id} className="mb-2">
       <div
         className={`
-          flex items-center p-4 rounded-xl cursor-pointer transition-all duration-200 group
+          flex items-center rounded-xl border transition-all duration-200 group
+          ${collapsed ? "justify-center p-4" : "px-4 py-3"}
           ${
             isActive
-              ? "bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 border-r-4 border-blue-600 shadow-md"
-              : "text-gray-700 hover:bg-gray-50 hover:text-gray-900 hover:shadow-md"
+              ? "border-blue-200 bg-blue-50/70 text-blue-700"
+              : "border-transparent text-slate-700 hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900"
           }
-          ${collapsed ? "justify-center p-4" : "p-4"}
         `}
         onClick={() => onToggle(item.id)}
         onMouseEnter={() => onMouseEnter(item.id)}
@@ -536,7 +536,7 @@ const SubMenuItem = ({
           className={`transition-colors duration-200 ${
             isActive
               ? "text-blue-600"
-              : "text-gray-500 group-hover:text-gray-700"
+              : "text-slate-500 group-hover:text-slate-700"
           } text-xl`}
         >
           {item.icon}
@@ -559,7 +559,7 @@ const SubMenuItem = ({
       </div>
 
       {submenuOpen && !collapsed && (
-        <div className="ml-4 mt-2 space-y-1 border-l-2 border-blue-100 pl-4">
+        <div className="ml-4 mt-2 space-y-1 border-l-2 border-slate-200 pl-4">
           {item.children.map((child) => renderChildItem(child))}
         </div>
       )}
@@ -709,12 +709,12 @@ const Sidebar = ({
         ref={sidebarRef}
         className={
           sidebarPositionClasses +
-          " transform transition-all duration-300 ease-in-out h-full bg-gradient-to-b from-white to-gray-50 shadow-none border-r border-gray-200 flex flex-col overflow-y-auto"
+          " transform transition-all duration-300 ease-in-out h-full bg-white border-r border-slate-200 flex flex-col overflow-y-auto"
         }
       >
         {/* Header */}
         <div
-          className={`flex items-center justify-between ${collapsed ? "p-3" : "p-4 sm:p-6"}`}
+          className={`flex items-center justify-between border-b border-slate-200 ${collapsed ? "p-3" : "p-4 sm:p-6"}`}
         >
           {!collapsed ? (
             <Link to="/dashboard" className="flex items-center gap-2 min-w-0">
@@ -742,7 +742,7 @@ const Sidebar = ({
                 setCollapsed(!collapsed);
               }
             }}
-            className="p-2 rounded-lg hover:bg-gray-100 transition-colors duration-200 text-gray-600 hover:shadow-sm flex-shrink-0"
+            className="flex-shrink-0 rounded-lg border border-slate-200 p-2 text-slate-600 transition-colors duration-200 hover:border-slate-300 hover:bg-slate-50"
             aria-label={
               isMobile
                 ? mobileOpen
@@ -768,32 +768,30 @@ const Sidebar = ({
         </div>
 
         {/* Navigation Menu */}
-        <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+        <nav className="flex-1 space-y-2 overflow-y-auto p-4">
           {menuItems.map((item) => renderMenuItem(item))}
         </nav>
         {/* Footer */}
-        <div
-          className={`border-t border-gray-200 bg-gradient-to-r from-gray-50 to-white p-6`}
-        >
+        <div className="border-t border-slate-200 bg-white p-6">
           <div className="flex items-center space-x-4">
             <Link
               to="/account-management"
               className="flex items-center space-x-4 hover:opacity-90 transition-opacity w-full"
               onClick={handleLinkClick}
             >
-              <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-base font-semibold flex-shrink-0">
+              <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-900 text-base font-semibold text-white">
                 <FaUser className="text-lg" />
               </div>
               {!collapsed && (
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-800 truncate">
+                  <p className="truncate text-sm font-semibold text-slate-800">
                     {email || "User Account"}
                   </p>
-                  <p className="text-xs text-gray-500 truncate capitalize">
+                  <p className="truncate text-xs capitalize text-slate-500">
                     {role || "Administrator"}
                   </p>
                   {!collapsed && (
-                    <p className="text-xs text-blue-500 font-medium mt-1 hover:underline">
+                    <p className="mt-1 text-xs font-medium text-blue-600 hover:underline">
                       Manage Account →
                     </p>
                   )}

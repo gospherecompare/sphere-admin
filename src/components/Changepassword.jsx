@@ -222,11 +222,11 @@ const ChangePasswordModal = ({ isOpen, onClose }) => {
       {/* Modal Container */}
       <div className="flex min-h-screen items-center justify-center p-4">
         <div
-          className="relative bg-white rounded-xl shadow-2xl w-full max-w-md transform transition-all"
+          className="ui-form-shell relative w-full max-w-md transform overflow-hidden transition-all"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-6 rounded-t-xl">
+          <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
                 <div className="w-10 h-10 bg-white bg-opacity-20 rounded-full flex items-center justify-center">

@@ -270,7 +270,7 @@ const SpecificationsManager = () => {
   };
 
   return (
-    <div className="min-h-screen ">
+    <div className="page-shell page-stack py-2 sm:py-3">
       {/* Toast Notification */}
       <Toast toast={toast} />
 
@@ -301,7 +301,7 @@ const SpecificationsManager = () => {
 
         {/* Stats Cards */}
         <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-3">
-          <div className="bg-white overflow-hidden shadow rounded-lg hover:shadow-lg transition-shadow duration-300">
+          <div className="ui-stat-card hover:-translate-y-0.5 transition-transform">
             <div className="p-5">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
@@ -321,7 +321,7 @@ const SpecificationsManager = () => {
             </div>
           </div>
 
-          <div className="bg-white overflow-hidden shadow rounded-lg hover:shadow-lg transition-shadow duration-300">
+          <div className="ui-stat-card hover:-translate-y-0.5 transition-transform">
             <div className="p-5">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
@@ -341,7 +341,7 @@ const SpecificationsManager = () => {
             </div>
           </div>
 
-          <div className="bg-white overflow-hidden shadow rounded-lg hover:shadow-lg transition-shadow duration-300">
+          <div className="ui-stat-card hover:-translate-y-0.5 transition-transform">
             <div className="p-5">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
@@ -363,8 +363,8 @@ const SpecificationsManager = () => {
         </div>
 
         {/* Table Section */}
-        <div className="mt-8 bg-white shadow overflow-hidden rounded-lg">
-          <div className="px-4 py-5 border-b border-gray-200 sm:px-6">
+        <div className="ui-table-shell mt-8">
+          <div className="ui-form-header px-4 py-5 sm:px-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
               <h3 className="text-lg font-medium text-gray-900 mb-4 sm:mb-0">
                 All Specifications
@@ -426,7 +426,7 @@ const SpecificationsManager = () => {
           {!loading && filteredSpecs.length > 0 && (
             <>
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
+                <table className="ui-table min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">

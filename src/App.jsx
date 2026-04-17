@@ -219,11 +219,11 @@ function App() {
   // Main Layout Component for authenticated routes
   const MainLayout = () => {
     return (
-      <div className="flex h-screen bg-gradient-to-br from-purple-50 to-indigo-100">
+      <div className="dashboard-root flex h-screen bg-white">
         {/* Mobile Overlay */}
         {isMobile && sidebarOpen && (
           <div
-            className="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden"
+            className="fixed inset-0 z-30 bg-slate-950/20 lg:hidden"
             onClick={() => setSidebarOpen(false)}
           />
         )}
@@ -253,6 +253,7 @@ function App() {
             flex-1 flex flex-col w-full min-w-0
             ${!isMobile && sidebarCollapsed ? "lg:ml-0" : "lg:ml-0"}
             transition-all duration-300
+            bg-white
           `}
         >
           <Navbar
@@ -269,12 +270,12 @@ function App() {
             onLogout={() => clearAuth("logout")}
           />
           <main
-            className="flex-1 overflow-auto p-0"
+            className="flex-1 overflow-auto bg-white p-0"
             onClick={
               isMobile && sidebarOpen ? () => setSidebarOpen(false) : undefined
             }
           >
-            <div className="w-full">
+            <div className="mx-auto flex w-full max-w-[1720px] flex-col gap-4 px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
               <Breadcrumbs />
               <Routes>
                 <Route
@@ -400,10 +401,7 @@ function App() {
                   path="/settings/device-field-profiles"
                   element={<DeviceFieldProfiles />}
                 />
-                <Route
-                  path="/content/news-articles"
-                  element={<BlogEditor />}
-                />
+                <Route path="/content/news-articles" element={<BlogEditor />} />
                 <Route
                   path="/content/blogs"
                   element={<Navigate to="/content/news-articles" replace />}
@@ -453,7 +451,7 @@ function App() {
                   element={<CareerApplications />}
                 />
               </Routes>
-              <footer className="mt-8 text-center text-sm text-gray-500">
+              <footer className="mt-8 border-t border-slate-200 py-4 text-center text-sm text-gray-500">
                 &copy; {new Date().getFullYear()} Hook. All rights reserved.
               </footer>
             </div>
