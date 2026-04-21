@@ -1,13 +1,22 @@
 // components/Sidebar.jsx
 import React, {
   useState,
-  useEffect,
   useRef,
   useMemo,
   useCallback,
+  useEffect,
 } from "react";
 import { Link, useLocation } from "react-router-dom";
 import Cookies from "js-cookie";
+import {
+  canAccessModule,
+  getCurrentPermissions,
+  getCurrentRole,
+  hasAdminAccess,
+  hasAnyPermissions,
+  hasAllPermissions,
+  hasBlogAccess,
+} from "../utils/access";
 import {
   FaChartLine,
   FaNetworkWired,
@@ -56,6 +65,7 @@ const MENU_CONFIG = {
       label: "Products",
       icon: <FaBox />,
       type: "submenu",
+      requiredAnyPermissions: ["products.view"],
       children: [
         {
           id: "smartphones",
@@ -162,6 +172,7 @@ const MENU_CONFIG = {
       label: "Specifications",
       icon: <FaDatabase />,
       type: "submenu",
+      requiredAnyPermissions: ["products.view", "settings.view"],
       children: [
         {
           id: "sp-brands",
@@ -216,13 +227,26 @@ const MENU_CONFIG = {
       label: "Users & Access",
       icon: <FaUsers />,
       type: "submenu",
+      requiredAnyPermissions: [
+        "users.view",
+        "roles.view",
+        "permissions.view",
+        "activity.view",
+      ],
       children: [
-        { id: "ua-users", label: "Users", icon: <FaUser />, path: "/users" },
+        {
+          id: "ua-users",
+          label: "Users",
+          icon: <FaUser />,
+          path: "/user-management",
+          requiredAnyPermissions: ["users.view"],
+        },
         {
           id: "ua-customers",
           label: "Customers",
           icon: <FaUsers />,
           path: "/customer-management",
+          requiredAnyPermissions: ["customers.view", "users.view"],
         },
         {
           id: "ua-account",
@@ -234,7 +258,8 @@ const MENU_CONFIG = {
           id: "ua-roles",
           label: "Roles",
           icon: <FaShieldAlt />,
-          path: "/roles",
+          path: "/permission-management",
+          requiredAnyPermissions: ["roles.view", "permissions.view"],
         },
       ],
     },
@@ -243,6 +268,7 @@ const MENU_CONFIG = {
       label: "Settings",
       icon: <FaCog />,
       type: "submenu",
+      requiredAnyPermissions: ["settings.view"],
       children: [
         {
           id: "set-compare-scoring",
@@ -269,6 +295,7 @@ const MENU_CONFIG = {
       label: "Marketing",
       icon: <FaBullhorn />,
       type: "submenu",
+      requiredAnyPermissions: ["marketing.view"],
       children: [
         {
           id: "marketing-banners",
@@ -283,6 +310,14 @@ const MENU_CONFIG = {
       label: "Content",
       icon: <FaDatabase />,
       type: "submenu",
+      requiredPermissions: ["content.news.view"],
+      requiredAnyPermissions: [
+        "content.news.create",
+        "content.news.edit",
+        "content.news.publish",
+        "content.news.schedule",
+        "content.news.manage",
+      ],
       children: [
         {
           id: "content-blog-studio",
@@ -297,77 +332,145 @@ const MENU_CONFIG = {
       label: "Reports",
       icon: <FaChartLine />,
       type: "submenu",
+      requiredAnyPermissions: ["reports.view", "activity.view"],
       children: [
         {
           id: "product-cat-rep",
           label: "Product Categories",
           icon: <FaChartLine />,
           path: "/reports/productcategories",
+          requiredAnyPermissions: ["reports.view"],
         },
         {
           id: "product-pub-rep",
           label: "Publish Status",
           icon: <FaCocktail />,
           path: "/reports/productpublishstatus",
+          requiredAnyPermissions: ["reports.view"],
         },
         {
           id: "user-activity-rep",
           label: "User Activity",
           icon: <FaUsers />,
           path: "/reports/useractivity",
+          requiredAnyPermissions: ["reports.view"],
         },
         {
           id: "recent-activity-rep",
           label: "Recent Activity",
           icon: <FaStar />,
           path: "/reports/recentactivity",
+          requiredAnyPermissions: ["activity.view"],
         },
         {
           id: "trending-manager-rep",
           label: "Trending Manager",
           icon: <FaChartLine />,
           path: "/reports/trending",
+          requiredAnyPermissions: ["reports.view"],
         },
         {
           id: "hook-score-rep",
           label: "Hook Score Report",
           icon: <FaChartLine />,
           path: "/reports/hook-score",
+          requiredAnyPermissions: ["reports.view"],
         },
         {
           id: "search-popularity-rep",
           label: "Search Popularity",
           icon: <FaChartLine />,
           path: "/reports/search-popularity",
+          requiredAnyPermissions: ["reports.view"],
         },
         {
           id: "feature-click-rep",
           label: "Feature Clicks",
           icon: <FaChartLine />,
           path: "/reports/feature-clicks",
+          requiredAnyPermissions: ["reports.view"],
         },
         {
           id: "career-applications-rep",
           label: "Career Applications",
           icon: <FaUsers />,
           path: "/reports/career-applications",
+          requiredAnyPermissions: ["reports.view"],
         },
         {
           id: "import-rep",
           label: "Import",
           icon: <FaUpload />,
           path: "/reports/import",
+          requiredAnyPermissions: ["reports.view"],
         },
         {
           id: "export-rep",
           label: "Export",
           icon: <FaDownload />,
           path: "/reports/export",
+          requiredAnyPermissions: ["reports.view"],
         },
       ],
     },
   ],
 };
+
+const canViewMenuItem = (item = [], role = "", permissions = []) => {
+  if (!item) return false;
+
+  if (Array.isArray(item.requiredRoles) && item.requiredRoles.length) {
+    const normalizedRole = String(role || "").trim().toLowerCase();
+    const allowedRoles = item.requiredRoles.map((value) =>
+      String(value || "").trim().toLowerCase(),
+    );
+    if (!allowedRoles.includes(normalizedRole)) return false;
+  }
+
+  if (
+    Array.isArray(item.requiredPermissions) &&
+    item.requiredPermissions.length &&
+    !hasAllPermissions(item.requiredPermissions, permissions)
+  ) {
+    return false;
+  }
+
+  if (
+    Array.isArray(item.requiredAnyPermissions) &&
+    item.requiredAnyPermissions.length &&
+    !hasAnyPermissions(item.requiredAnyPermissions, permissions)
+  ) {
+    return false;
+  }
+
+  if (item.moduleKey) {
+    return canAccessModule(
+      item.moduleKey,
+      item.action || "view",
+      permissions,
+    );
+  }
+
+  if (item.id === "content" && !hasBlogAccess(role, permissions)) return false;
+  if (item.id === "ua-roles" && !hasAdminAccess(role, permissions)) return false;
+
+  return true;
+};
+
+const filterMenuItemsByRole = (items = [], role = "", permissions = []) =>
+  items
+    .map((item) => {
+      if (!canViewMenuItem(item, role, permissions)) return null;
+
+      if (item.children && Array.isArray(item.children)) {
+        const nextChildren = filterMenuItemsByRole(item.children, role, permissions);
+        if (!nextChildren.length) return null;
+        return { ...item, children: nextChildren };
+      }
+
+      return item;
+    })
+    .filter(Boolean);
 
 // Sub-components
 const MenuItem = ({
@@ -434,14 +537,13 @@ const SubMenuItem = ({
   isActive,
   submenuOpen,
   openSubmenus,
-  hoveredItem,
   onMouseEnter,
   onMouseLeave,
   onToggle,
   onLinkClick,
   location,
 }) => {
-  const renderChildItem = (child, depth = 0) => {
+  const renderChildItem = (child) => {
     const childOpen =
       child.type === "submenu" &&
       (openSubmenus ? openSubmenus[child.id] : false);
@@ -577,13 +679,35 @@ const Sidebar = ({
 }) => {
   const [openSubmenus, setOpenSubmenus] = useState({});
   const [hoveredItem, setHoveredItem] = useState(null);
+  const [authSnapshot, setAuthSnapshot] = useState(() => ({
+    role: getCurrentRole(),
+    permissions: getCurrentPermissions(),
+  }));
   const sidebarRef = useRef(null);
   const location = useLocation();
   const email = Cookies.get("username");
-  const role = Cookies.get("role");
+  const role = authSnapshot.role || Cookies.get("role");
+  const normalizedRole = authSnapshot.role;
+  const permissions = authSnapshot.permissions;
 
-  // Initialize open submenus based on current route
   useEffect(() => {
+    const syncAuthSnapshot = () => {
+      setAuthSnapshot({
+        role: getCurrentRole(),
+        permissions: getCurrentPermissions(),
+      });
+    };
+
+    syncAuthSnapshot();
+    window.addEventListener("storage", syncAuthSnapshot);
+    window.addEventListener("hooks-rbac-updated", syncAuthSnapshot);
+    return () => {
+      window.removeEventListener("storage", syncAuthSnapshot);
+      window.removeEventListener("hooks-rbac-updated", syncAuthSnapshot);
+    };
+  }, []);
+
+  const routeOpenSubmenus = useMemo(() => {
     const initialOpenSubmenus = {};
 
     const checkItems = (items) => {
@@ -605,8 +729,13 @@ const Sidebar = ({
     };
 
     checkItems(MENU_CONFIG.items);
-    setOpenSubmenus(initialOpenSubmenus);
+    return initialOpenSubmenus;
   }, [location.pathname]);
+
+  const effectiveOpenSubmenus = useMemo(
+    () => ({ ...openSubmenus, ...routeOpenSubmenus }),
+    [openSubmenus, routeOpenSubmenus],
+  );
 
   const toggleSubmenu = useCallback((id) => {
     setOpenSubmenus((prev) => ({
@@ -617,9 +746,9 @@ const Sidebar = ({
 
   const isSubmenuOpen = useCallback(
     (id) => {
-      return openSubmenus[id] || false;
+      return effectiveOpenSubmenus[id] || false;
     },
-    [openSubmenus],
+    [effectiveOpenSubmenus],
   );
 
   const isItemActive = useCallback(
@@ -632,7 +761,10 @@ const Sidebar = ({
     [location.pathname],
   );
 
-  const menuItems = useMemo(() => MENU_CONFIG.items, []);
+  const menuItems = useMemo(
+    () => filterMenuItemsByRole(MENU_CONFIG.items, normalizedRole, permissions),
+    [normalizedRole, permissions],
+  );
 
   // Compute sidebar position and width classes (handle mobile translate)
   const widthClass = collapsed ? "w-20" : "w-64";
@@ -679,7 +811,6 @@ const Sidebar = ({
             isActive={isActive}
             submenuOpen={submenuOpen}
             openSubmenus={openSubmenus}
-            hoveredItem={hoveredItem}
             onMouseEnter={setHoveredItem}
             onMouseLeave={() => setHoveredItem(null)}
             onToggle={toggleSubmenu}

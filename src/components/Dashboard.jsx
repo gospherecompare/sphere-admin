@@ -2,6 +2,7 @@
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import CountUp from "react-countup";
 import Cookies from "js-cookie";
+import { hasBlogAccess } from "../utils/access";
 import {
   FaHome,
   FaMobileAlt,
@@ -65,6 +66,7 @@ const Dashboard = () => {
   });
   const [trendingLoading, setTrendingLoading] = useState(false);
   const [trendingError, setTrendingError] = useState(null);
+  const currentRole = String(Cookies.get("role") || "").trim().toLowerCase();
 
   // Enhanced stats with more data
   const stats = useMemo(
@@ -206,15 +208,19 @@ const Dashboard = () => {
         path: "/reports/productpublishstatus",
         description: "View reports",
       },
-      {
-        icon: FaNewspaper,
-        label: "News Desk",
-        color: "gray",
-        path: "/content/news-articles",
-        description: "Manage articles",
-      },
+      ...(hasBlogAccess(currentRole)
+        ? [
+            {
+              icon: FaNewspaper,
+              label: "News Desk",
+              color: "gray",
+              path: "/content/news-articles",
+              description: "Manage articles",
+            },
+          ]
+        : []),
     ],
-    [],
+    [currentRole],
   );
 
   // Time filters for activity

@@ -6,6 +6,7 @@ import Navbar from "./Navbar";
 import Breadcrumbs from "./Breadcrumbs";
 import ROUTE_CONFIG from "../config/routes";
 import { LoadingSpinner } from "./ui/LoadingSpinner";
+import AccessGate from "./AccessGate";
 
 /**
  * Main Layout Component for authenticated routes
@@ -251,7 +252,18 @@ const MainLayout = ({
                 {/* Permissions & Ratings */}
                 <Route
                   path="/permission-management"
-                  element={<ROUTE_CONFIG.permissionManagement.component />}
+                  element={
+                    <AccessGate
+                      requiredAnyPermissions={[
+                        "roles.manage",
+                        "permissions.manage",
+                      ]}
+                      title="Permission management is restricted"
+                      message="Your account needs role or permission management access to open this workspace."
+                    >
+                      <ROUTE_CONFIG.permissionManagement.component />
+                    </AccessGate>
+                  }
                 />
                 <Route
                   path="/smartphonesrating"
@@ -271,7 +283,22 @@ const MainLayout = ({
                 {/* Content */}
                 <Route
                   path="/content/news-articles"
-                  element={<ROUTE_CONFIG.newsArticles.component />}
+                  element={
+                    <AccessGate
+                      requiredPermissions={["content.news.view"]}
+                      requiredAnyPermissions={[
+                        "content.news.create",
+                        "content.news.edit",
+                        "content.news.publish",
+                        "content.news.schedule",
+                        "content.news.manage",
+                      ]}
+                      title="News & Articles access required"
+                      message="This newsroom studio is available to roles with News & Articles permissions."
+                    >
+                      <ROUTE_CONFIG.newsArticles.component />
+                    </AccessGate>
+                  }
                 />
                 <Route
                   path="/content/blogs"

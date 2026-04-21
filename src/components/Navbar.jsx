@@ -230,7 +230,6 @@ const getIconForType = (type) => {
 
 const Navbar = ({
   isMobile,
-  sidebarCollapsed,
   sidebarOpen,
   onToggleSidebar,
   onLogout,
@@ -479,6 +478,26 @@ const Navbar = ({
         <div className="flex w-full items-center gap-3 lg:gap-4">
           {/* Left Section */}
           <div className="admin-nav-left flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
+            {isMobile ? (
+              <button
+                type="button"
+                onClick={onToggleSidebar}
+                className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-md bg-white text-slate-600 transition hover:bg-slate-50"
+                aria-label={
+                  sidebarOpen
+                    ? "Close navigation menu"
+                    : "Open navigation menu"
+                }
+                aria-expanded={sidebarOpen}
+              >
+                {sidebarOpen ? (
+                  <FaTimes className="text-base" />
+                ) : (
+                  <FaBars className="text-base" />
+                )}
+              </button>
+            ) : null}
+
             {/* Global Search */}
             <div
               className="header-search relative min-w-0 flex-1"

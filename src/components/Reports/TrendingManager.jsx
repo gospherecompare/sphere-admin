@@ -1,10 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   FaArrowDown,
   FaArrowUp,
   FaBolt,
-  FaCheckCircle,
   FaChartLine,
+  FaCheckCircle,
   FaExclamationCircle,
   FaMinus,
   FaSave,
@@ -15,32 +15,130 @@ import {
   FaTrash,
 } from "react-icons/fa";
 import { buildUrl, getAuthToken } from "../../api";
+import {
+  formatDateTime,
+  formatNumber,
+  normalizeDateValue,
+  sortRows,
+} from "./reportHelpers";
+
+const TYPE_OPTIONS = [
+  { value: "smartphone", label: "Smartphone" },
+  { value: "laptop", label: "Laptop" },
+  { value: "tv", label: "TV" },
+  { value: "networking", label: "Networking" },
+  { value: "accessories", label: "Accessories" },
+];
+
+const BADGE_OPTIONS = [
+  { value: "", label: "Default (Editor Pick)" },
+  { value: "Editor Pick", label: "Editor Pick" },
+  { value: "Trending Now", label: "Trending Now" },
+  { value: "Popular This Week", label: "Popular This Week" },
+  { value: "Gaining Attention", label: "Gaining Attention" },
+  { value: "Sponsored", label: "Sponsored" },
+  { value: "New Launch", label: "New Launch" },
+  { value: "Featured", label: "Featured" },
+];
+
+const SORT_OPTIONS = [
+  { value: "calculated_at", label: "Latest calculation", type: "date" },
+  { value: "trending_score", label: "Trending score", type: "number" },
+  { value: "views_7d", label: "Visitors 7d", type: "number" },
+  { value: "unique_visitors_total", label: "Visitors total", type: "number" },
+  { value: "compares_7d", label: "Compares 7d", type: "number" },
+  { value: "compares_total", label: "Compares total", type: "number" },
+  { value: "manual_priority", label: "Manual priority", type: "number" },
+  { value: "name", label: "Product name", type: "text" },
+  { value: "brand", label: "Brand", type: "text" },
+];
+
+const getSortValue = (row, sortField) => {
+  switch (sortField) {
+    case "trending_score":
+      return row?.trending_score;
+    case "views_7d":
+      return row?.views_7d;
+    case "unique_visitors_total":
+      return row?.unique_visitors_total;
+    case "compares_7d":
+      return row?.compares_7d;
+    case "compares_total":
+      return row?.compares_total;
+    case "manual_priority":
+      return row?.manual_priority;
+    case "brand":
+      return row?.brand;
+    case "name":
+      return row?.name;
+    case "calculated_at":
+    default:
+      return row?.calculated_at;
+  }
+};
+
+const getTrendData = (row) => {
+  const current = Number(row?.views_7d ?? 0);
+  const previous = Number(row?.views_prev_7d ?? 0);
+  const delta = current - previous;
+  const percentage =
+    Number.isFinite(previous) && previous > 0 ? (delta / previous) * 100 : null;
+
+  if (delta > 0) {
+    return {
+      delta,
+      percentage,
+      className: "border-emerald-200 bg-emerald-50 text-emerald-700",
+      icon: <FaArrowUp />,
+      label: "Up",
+    };
+  }
+
+  if (delta < 0) {
+    return {
+      delta,
+      percentage,
+      className: "border-red-200 bg-red-50 text-red-700",
+      icon: <FaArrowDown />,
+      label: "Down",
+    };
+  }
+
+  return {
+    delta,
+    percentage,
+    className: "border-slate-200 bg-slate-50 text-slate-600",
+    icon: <FaMinus />,
+    label: "Flat",
+  };
+};
 
 const TrendingManager = () => {
   const [type, setType] = useState("smartphone");
   const [limit, setLimit] = useState(200);
   const [query, setQuery] = useState("");
-
+  const [sortField, setSortField] = useState("calculated_at");
+  const [sortDirection, setSortDirection] = useState("desc");
   const [loading, setLoading] = useState(false);
   const [recomputing, setRecomputing] = useState(false);
   const [savingById, setSavingById] = useState({});
   const [error, setError] = useState(null);
-
   const [updatedAt, setUpdatedAt] = useState(null);
   const [rows, setRows] = useState([]);
   const [toasts, setToasts] = useState([]);
+  const lastFetchSignatureRef = useRef("");
 
   const showToast = useCallback((title, message, toastType = "success") => {
-    const id = Date.now();
-    const newToast = { id, title, message, type: toastType };
-    setToasts((prev) => [...prev, newToast]);
+    const id = Date.now() + Math.random();
+    const nextToast = { id, title, message, type: toastType };
+    setToasts((previous) => [...previous, nextToast]);
     setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id));
+      setToasts((previous) => previous.filter((toast) => toast.id !== id));
     }, 5000);
   }, []);
 
   const removeToast = useCallback((id) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
+    setToasts((previous) => previous.filter((toast) => toast.id !== id));
   }, []);
 
   const authHeaders = useCallback(() => {
@@ -52,8 +150,8 @@ const TrendingManager = () => {
   }, []);
 
   const fetchTrending = useCallback(
-    async (opts = {}) => {
-      const { silent = false } = opts;
+    async (options = {}) => {
+      const { silent = false } = options;
       setLoading(true);
       setError(null);
       try {
@@ -73,10 +171,12 @@ const TrendingManager = () => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
 
-        setUpdatedAt(data.updated_at || null);
-        setRows(Array.isArray(data.results) ? data.results : []);
+        setUpdatedAt(data?.updated_at || null);
+        setRows(Array.isArray(data?.results) ? data.results : []);
 
-        if (!silent) showToast("Success", "Trending report loaded", "success");
+        if (!silent) {
+          showToast("Success", "Trending report loaded", "success");
+        }
       } catch (err) {
         console.error("Failed to fetch trending:", err);
         setError(err.message || "Failed to load trending report");
@@ -113,6 +213,7 @@ const TrendingManager = () => {
           "success",
         );
       }
+
       await fetchTrending({ silent: true });
     } catch (err) {
       console.error("Failed to recompute trending:", err);
@@ -124,37 +225,22 @@ const TrendingManager = () => {
   }, [authHeaders, fetchTrending, showToast]);
 
   useEffect(() => {
+    const signature = `${type}:${limit}`;
+    if (lastFetchSignatureRef.current === signature) return;
+    lastFetchSignatureRef.current = signature;
     fetchTrending({ silent: true });
-  }, [fetchTrending]);
-
-  const filteredRows = useMemo(() => {
-    const q = String(query || "")
-      .trim()
-      .toLowerCase();
-    if (!q) return rows;
-
-    return rows.filter((r) => {
-      const id = String(r.product_id ?? "");
-      const name = String(r.name ?? "").toLowerCase();
-      const brand = String(r.brand ?? "").toLowerCase();
-      const pType = String(r.product_type ?? "").toLowerCase();
-      return (
-        id.includes(q) ||
-        name.includes(q) ||
-        brand.includes(q) ||
-        pType.includes(q)
-      );
-    });
-  }, [query, rows]);
+  }, [fetchTrending, limit, type]);
 
   const updateRow = useCallback((productId, patch) => {
-    setRows((prev) =>
-      prev.map((r) => (r.product_id === productId ? { ...r, ...patch } : r)),
+    setRows((previous) =>
+      previous.map((row) =>
+        row.product_id === productId ? { ...row, ...patch } : row,
+      ),
     );
   }, []);
 
   const setSaving = useCallback((productId, isSaving) => {
-    setSavingById((prev) => ({ ...prev, [productId]: isSaving }));
+    setSavingById((previous) => ({ ...previous, [productId]: isSaving }));
   }, []);
 
   const saveOverride = useCallback(
@@ -165,14 +251,14 @@ const TrendingManager = () => {
       setSaving(productId, true);
       setError(null);
       try {
-        const badgeTrimmed = String(row.manual_badge ?? "").trim();
+        const trimmedBadge = String(row?.manual_badge ?? "").trim();
         const payload = {
           product_id: productId,
-          manual_boost: Boolean(row.manual_boost),
-          manual_priority: Number.isFinite(Number(row.manual_priority))
-            ? Math.max(0, Math.floor(Number(row.manual_priority)))
+          manual_boost: Boolean(row?.manual_boost),
+          manual_priority: Number.isFinite(Number(row?.manual_priority))
+            ? Math.max(0, Math.floor(Number(row?.manual_priority)))
             : 0,
-          badge: badgeTrimmed ? badgeTrimmed : null,
+          badge: trimmedBadge || null,
         };
 
         const res = await fetch(buildUrl("/api/admin/trending/boost"), {
@@ -184,27 +270,25 @@ const TrendingManager = () => {
         const data = await res.json();
 
         updateRow(productId, {
-          manual_boost: Boolean(data.manual_boost),
-          manual_priority: data.manual_priority ?? payload.manual_priority,
-          manual_badge: data.manual_badge ?? payload.badge,
+          manual_boost: Boolean(data?.manual_boost),
+          manual_priority: data?.manual_priority ?? payload.manual_priority,
+          manual_badge: data?.manual_badge ?? payload.badge,
         });
 
-        const displayName = String(row?.name || "").trim();
         showToast(
           "Saved",
-          displayName
-            ? `Manual override saved for ${displayName}`
+          row?.name
+            ? `Manual override saved for ${row.name}`
             : "Manual override saved",
           "success",
         );
       } catch (err) {
         console.error("Failed to save override:", err);
         setError(err.message || "Failed to save override");
-        const displayName = String(row?.name || "").trim();
         showToast(
           "Error",
-          displayName
-            ? `Failed to save override for ${displayName}`
+          row?.name
+            ? `Failed to save override for ${row.name}`
             : "Failed to save override",
           "error",
         );
@@ -219,6 +303,7 @@ const TrendingManager = () => {
     async (row) => {
       const productId = row?.product_id;
       if (!productId) return;
+
       setSaving(productId, true);
       setError(null);
       try {
@@ -241,22 +326,20 @@ const TrendingManager = () => {
           manual_badge: null,
         });
 
-        const displayName = String(row?.name || "").trim();
         showToast(
           "Cleared",
-          displayName
-            ? `Manual override cleared for ${displayName}`
+          row?.name
+            ? `Manual override cleared for ${row.name}`
             : "Manual override cleared",
           "success",
         );
       } catch (err) {
         console.error("Failed to clear override:", err);
         setError(err.message || "Failed to clear override");
-        const displayName = String(row?.name || "").trim();
         showToast(
           "Error",
-          displayName
-            ? `Failed to clear override for ${displayName}`
+          row?.name
+            ? `Failed to clear override for ${row.name}`
             : "Failed to clear override",
           "error",
         );
@@ -267,95 +350,88 @@ const TrendingManager = () => {
     [authHeaders, setSaving, showToast, updateRow],
   );
 
-  const formatNumber = useCallback((v, digits = 0) => {
-    const n = Number(v);
-    if (!Number.isFinite(n)) return "-";
-    return n.toFixed(digits);
-  }, []);
+  const filteredRows = useMemo(() => {
+    const search = String(query || "").trim().toLowerCase();
+    if (!search) return rows;
 
-  const formatDateTime = useCallback((value) => {
-    if (!value) return "-";
+    return rows.filter((row) => {
+      const values = [row?.product_id, row?.name, row?.brand, row?.product_type];
+      return values.some((value) =>
+        String(value ?? "")
+          .toLowerCase()
+          .includes(search),
+      );
+    });
+  }, [query, rows]);
 
-    const tryParse = (v) => {
-      const d = new Date(v);
-      return Number.isNaN(d.getTime()) ? null : d;
+  const sortMeta = useMemo(
+    () =>
+      SORT_OPTIONS.find((option) => option.value === sortField) ||
+      SORT_OPTIONS[0],
+    [sortField],
+  );
+
+  const sortedRows = useMemo(
+    () =>
+      sortRows(filteredRows, (row) => getSortValue(row, sortField), {
+        direction: sortDirection,
+        type: sortMeta.type,
+      }),
+    [filteredRows, sortDirection, sortField, sortMeta.type],
+  );
+
+  const summary = useMemo(() => {
+    const scores = rows
+      .map((row) => Number(row?.trending_score))
+      .filter(Number.isFinite);
+    const latestCalculated = rows.reduce((latest, row) => {
+      const current = normalizeDateValue(row?.calculated_at);
+      if (current === null) return latest;
+      return latest === null || current > latest ? current : latest;
+    }, null);
+
+    return {
+      totalRows: rows.length,
+      manualBoosts: rows.filter((row) => Boolean(row?.manual_boost)).length,
+      averageScore: scores.length
+        ? scores.reduce((sum, value) => sum + value, 0) / scores.length
+        : null,
+      latestCalculated,
     };
-
-    // Prefer native parsing (ISO strings)
-    let d = tryParse(value);
-    if (!d) {
-      // Fallback for Postgres "timestamp without time zone" strings
-      const s = String(value).trim();
-      const normalized = s.includes("T") ? s : s.replace(" ", "T");
-      d = tryParse(`${normalized}Z`) || tryParse(normalized);
-    }
-
-    if (!d) return String(value);
-
-    return new Intl.DateTimeFormat(undefined, {
-      year: "numeric",
-      month: "short",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      timeZoneName: "short",
-    }).format(d);
-  }, []);
-
-  const TYPE_OPTIONS = useMemo(
-    () => [
-      { value: "smartphone", label: "Smartphone" },
-      { value: "laptop", label: "Laptop" },
-      { value: "tv", label: "TV" },
-      { value: "networking", label: "Networking" },
-      { value: "accessories", label: "Accessories" },
-    ],
-    [],
-  );
-
-  const BADGE_OPTIONS = useMemo(
-    () => [
-      { value: "", label: "Default (Editor Pick)" },
-      { value: "Editor Pick", label: "Editor Pick" },
-      { value: "Trending Now", label: "Trending Now" },
-      { value: "Popular This Week", label: "Popular This Week" },
-      { value: "Gaining Attention", label: "Gaining Attention" },
-      { value: "Sponsored", label: "Sponsored" },
-      { value: "New Launch", label: "New Launch" },
-      { value: "Featured", label: "Featured" },
-    ],
-    [],
-  );
+  }, [rows]);
 
   return (
-    <div className="min-h-full bg-gray-50 p-1 sm:p-2 md:p-2">
-      {/* Toast Container */}
-      <div className="fixed top-4 right-4 z-50 space-y-2">
+    <div className="min-h-full bg-slate-50 p-2 sm:p-3">
+      <div className="fixed right-4 top-4 z-50 space-y-2">
         {toasts.map((toast) => (
           <div
             key={toast.id}
-            className={`bg-white rounded-lg shadow-lg border p-4 max-w-sm w-full flex items-start space-x-3 ${
+            className={`flex w-full max-w-sm items-start gap-3 rounded-2xl border bg-white p-4 shadow-lg ${
               toast.type === "success"
-                ? "border-green-200 bg-green-50"
+                ? "border-emerald-200 bg-emerald-50"
                 : toast.type === "error"
                   ? "border-red-200 bg-red-50"
                   : "border-blue-200 bg-blue-50"
             }`}
           >
             {toast.type === "success" && (
-              <FaCheckCircle className="text-green-500 mt-0.5" />
+              <FaCheckCircle className="mt-0.5 text-emerald-500" />
             )}
             {toast.type === "error" && (
-              <FaExclamationCircle className="text-red-500 mt-0.5" />
+              <FaExclamationCircle className="mt-0.5 text-red-500" />
+            )}
+            {toast.type === "info" && (
+              <FaChartLine className="mt-0.5 text-blue-500" />
             )}
             <div className="flex-1">
-              <p className="text-sm font-medium text-gray-900">{toast.title}</p>
-              <p className="text-sm text-gray-600 mt-0.5">{toast.message}</p>
+              <p className="text-sm font-semibold text-slate-900">
+                {toast.title}
+              </p>
+              <p className="mt-1 text-sm text-slate-600">{toast.message}</p>
             </div>
             <button
               onClick={() => removeToast(toast.id)}
-              className="text-gray-400 hover:text-gray-600"
+              className="text-slate-400 transition hover:text-slate-600"
             >
               <FaTimes className="text-sm" />
             </button>
@@ -363,386 +439,622 @@ const TrendingManager = () => {
         ))}
       </div>
 
-      {/* Header */}
-      <div className="mb-6">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 flex items-center gap-3">
-              <span className="p-2 bg-blue-100 rounded-lg">
-                <FaChartLine className="text-blue-600" />
-              </span>
-              Trending Manager
-            </h1>
-            <p className="text-gray-600 mt-2">
-              Admin-only view: shows internal signals (views/compares/score) and
-              lets you manually boost products.
+      <div className="mx-auto max-w-7xl space-y-6">
+        <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+          <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+            <div className="max-w-3xl space-y-3">
+              <div className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-blue-700">
+                <FaChartLine />
+                Reports
+              </div>
+              <div className="space-y-2">
+                <h1 className="flex items-center gap-3 text-2xl font-bold text-slate-900 sm:text-3xl">
+                  <span className="rounded-2xl bg-blue-100 p-3 text-blue-600">
+                    <FaChartLine />
+                  </span>
+                  Trending Manager
+                </h1>
+                <p className="max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
+                  Manage manual boosts, compare short-term movement, and keep the
+                  trending report usable on both wide desktops and smaller admin
+                  screens.
+                </p>
+                {type === "laptop" && (
+                  <p className="text-xs font-medium text-blue-700">
+                    Laptop boosts and badges here are reflected on laptop
+                    trending cards in the client app.
+                  </p>
+                )}
+                {updatedAt && (
+                  <p className="text-xs text-slate-500">
+                    Updated at {formatDateTime(updatedAt)}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <button
+                onClick={() => fetchTrending()}
+                disabled={loading}
+                className={`inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-semibold transition ${
+                  loading
+                    ? "cursor-not-allowed bg-slate-100 text-slate-400"
+                    : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                }`}
+              >
+                {loading ? <FaSpinner className="animate-spin" /> : <FaSyncAlt />}
+                Refresh
+              </button>
+
+              <button
+                onClick={recompute}
+                disabled={recomputing}
+                className={`inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-semibold transition ${
+                  recomputing
+                    ? "cursor-not-allowed bg-blue-100 text-blue-300"
+                    : "bg-blue-600 text-white hover:bg-blue-700 hover:text-white"
+                }`}
+              >
+                {recomputing ? (
+                  <FaSpinner className="animate-spin" />
+                ) : (
+                  <FaBolt />
+                )}
+                Recompute
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <p className="text-sm text-slate-500">Tracked products</p>
+            <p className="mt-2 text-2xl font-bold text-slate-900">
+              {summary.totalRows}
             </p>
-            {type === "laptop" && (
-              <p className="text-xs text-blue-600 mt-1">
-                Laptop boosts and badges here are reflected on laptop trending
-                cards in the client app.
-              </p>
-            )}
-            {updatedAt && (
-              <p className="text-xs text-gray-500 mt-1">
-                Updated at: {formatDateTime(updatedAt)}
-              </p>
-            )}
           </div>
-
-          <div className="flex flex-wrap items-center gap-3">
-            <button
-              onClick={() => fetchTrending()}
-              disabled={loading}
-              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 ${
-                loading
-                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                  : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 shadow-sm"
-              }`}
-            >
-              {loading ? <FaSpinner className="animate-spin" /> : <FaSyncAlt />}
-              Refresh
-            </button>
-
-            <button
-              onClick={recompute}
-              disabled={recomputing}
-              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 ${
-                recomputing
-                  ? "bg-orange-100 text-orange-400 cursor-not-allowed"
-                  : "bg-orange-600 text-white hover:bg-orange-700 shadow-sm"
-              }`}
-            >
-              {recomputing ? (
-                <FaSpinner className="animate-spin" />
-              ) : (
-                <FaBolt />
-              )}
-              Recompute
-            </button>
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <p className="text-sm text-slate-500">Manual boosts on</p>
+            <p className="mt-2 text-2xl font-bold text-slate-900">
+              {summary.manualBoosts}
+            </p>
           </div>
-        </div>
-      </div>
-
-      {/* Filters */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Product Type
-            </label>
-            <select
-              value={type}
-              onChange={(e) => setType(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {TYPE_OPTIONS.map((t) => (
-                <option key={t.value} value={t.value}>
-                  {t.label}
-                </option>
-              ))}
-            </select>
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <p className="text-sm text-slate-500">Average score</p>
+            <p className="mt-2 text-2xl font-bold text-slate-900">
+              {formatNumber(summary.averageScore, 2)}
+            </p>
           </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Limit
-            </label>
-            <input
-              type="number"
-              min={1}
-              max={200}
-              value={limit}
-              onChange={(e) => setLimit(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="200"
-            />
-            <p className="text-xs text-gray-500 mt-1">Max: 200</p>
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <p className="text-sm text-slate-500">Latest calculation</p>
+            <p className="mt-2 text-sm font-semibold text-slate-900">
+              {formatDateTime(summary.latestCalculated || updatedAt)}
+            </p>
           </div>
+        </section>
 
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Search
-            </label>
-            <div className="relative">
-              <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+        <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-5">
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
+                Product type
+              </label>
+              <select
+                value={type}
+                onChange={(event) => setType(event.target.value)}
+                className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-100"
+              >
+                {TYPE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
+                Limit
+              </label>
               <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                className="w-full pl-10 pr-3 py-2 border border-gray-200 rounded-lg bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Search by id, name, brand, type…"
+                type="number"
+                min={1}
+                max={200}
+                value={limit}
+                onChange={(event) => setLimit(event.target.value)}
+                className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-100"
               />
             </div>
-            <p className="text-xs text-gray-500 mt-1">
-              Showing {filteredRows.length} of {rows.length}
-            </p>
-          </div>
-        </div>
-      </div>
 
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
-          <div className="flex items-start gap-3">
-            <FaExclamationCircle className="text-red-500 mt-0.5" />
             <div>
-              <p className="font-semibold text-red-700">Error</p>
-              <p className="text-sm text-red-600">{error}</p>
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
+                Sort by
+              </label>
+              <select
+                value={sortField}
+                onChange={(event) => setSortField(event.target.value)}
+                className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-100"
+              >
+                {SORT_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
+                Direction
+              </label>
+              <select
+                value={sortDirection}
+                onChange={(event) => setSortDirection(event.target.value)}
+                className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-100"
+              >
+                <option value="desc">Latest / highest first</option>
+                <option value="asc">Oldest / lowest first</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
+                Search
+              </label>
+              <div className="relative">
+                <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  className="w-full rounded-2xl border border-slate-200 bg-white py-2.5 pl-10 pr-3 text-sm text-slate-700 outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-100"
+                  placeholder="Search by ID, name, or brand"
+                />
+              </div>
             </div>
           </div>
-        </div>
-      )}
 
-      {/* Table */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                {[
-                  "Name",
-                  "Brand",
-                  "Type",
-                  "Unique Visitors (7d)",
-                  "Trend",
-                  "Total Unique Visitors",
-                  "Compares (7d)",
-                  "Total Compares",
-                  "Score",
-                  "Calculated",
-                  "Manual Boost",
-                  "Priority",
-                  "Manual Badge",
-                  "Actions",
-                ].map((h) => (
-                  <th
-                    key={h}
-                    className="text-left px-4 py-3 font-semibold text-gray-700 whitespace-nowrap"
-                  >
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {loading && rows.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={14}
-                    className="px-4 py-8 text-center text-gray-600"
-                  >
-                    <FaSpinner className="inline animate-spin mr-2" />
-                    Loading…
-                  </td>
-                </tr>
-              ) : filteredRows.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={14}
-                    className="px-4 py-8 text-center text-gray-600"
-                  >
-                    No results. If this is a new setup, click{" "}
-                    <span className="font-semibold">Recompute</span> to generate
-                    the trending table.
-                  </td>
-                </tr>
-              ) : (
-                filteredRows.map((r) => {
-                  const isSaving = Boolean(savingById[r.product_id]);
+          <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-slate-500">
+            <span className="rounded-full bg-slate-100 px-3 py-1 font-medium text-slate-600">
+              Showing {sortedRows.length} of {rows.length}
+            </span>
+            <span>Missing values always stay at the bottom.</span>
+          </div>
+        </section>
 
-                  const current = Number(r.views_7d ?? 0);
-                  const prev = Number(r.views_prev_7d ?? 0);
-                  const delta = current - prev;
-                  const pct =
-                    Number.isFinite(prev) && prev > 0
-                      ? (delta / prev) * 100
-                      : null;
+        {error && (
+          <section className="rounded-2xl border border-red-200 bg-red-50 p-4 shadow-sm">
+            <div className="flex items-start gap-3">
+              <FaExclamationCircle className="mt-0.5 text-red-500" />
+              <div>
+                <p className="font-semibold text-red-700">Error</p>
+                <p className="text-sm text-red-600">{error}</p>
+              </div>
+            </div>
+          </section>
+        )}
 
-                  const trendStyle =
-                    delta > 0
-                      ? "bg-green-50 text-green-700 border-green-200"
-                      : delta < 0
-                        ? "bg-red-50 text-red-700 border-red-200"
-                        : "bg-gray-50 text-gray-600 border-gray-200";
+        <section className="space-y-4 xl:hidden">
+          {loading && rows.length === 0 ? (
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center text-sm text-slate-600 shadow-sm">
+              <FaSpinner className="mr-2 inline animate-spin" />
+              Loading trending report...
+            </div>
+          ) : sortedRows.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-slate-600 shadow-sm">
+              No results yet. Recompute the report to generate trending data.
+            </div>
+          ) : (
+            sortedRows.map((row, index) => {
+              const trend = getTrendData(row);
+              const isSaving = Boolean(savingById[row?.product_id]);
+              const currentBadge = String(row?.manual_badge ?? "");
+              const hasCurrentBadge = BADGE_OPTIONS.some(
+                (badge) => badge.value === currentBadge,
+              );
+              const badgeOptions = hasCurrentBadge
+                ? BADGE_OPTIONS
+                : [
+                    { value: currentBadge, label: `${currentBadge} (Custom)` },
+                    ...BADGE_OPTIONS,
+                  ];
 
-                  return (
-                    <tr key={r.product_id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-gray-900 min-w-[240px]">
-                        <div className="font-semibold">{r.name}</div>
-                      </td>
-                      <td className="px-4 py-3 text-gray-700 whitespace-nowrap">
-                        {r.brand || "-"}
-                      </td>
-                      <td className="px-4 py-3 text-gray-700 whitespace-nowrap">
-                        {r.product_type}
-                      </td>
-                      <td className="px-4 py-3 text-gray-700 whitespace-nowrap">
-                        {formatNumber(r.views_7d)}
-                      </td>
-                      <td className="px-4 py-3 text-gray-700 whitespace-nowrap">
-                        <span
-                          className={`inline-flex items-center gap-1 px-2 py-1 rounded-full border text-xs font-semibold ${trendStyle}`}
-                        >
-                          {delta > 0 ? (
-                            <FaArrowUp />
-                          ) : delta < 0 ? (
-                            <FaArrowDown />
-                          ) : (
-                            <FaMinus />
-                          )}
-                          <span>{delta > 0 ? `+${delta}` : `${delta}`}</span>
-                          {pct !== null && Number.isFinite(pct) && (
-                            <span className="opacity-80">
-                              ({pct > 0 ? "+" : ""}
-                              {Math.round(pct)}%)
-                            </span>
-                          )}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-gray-700 whitespace-nowrap">
-                        {formatNumber(r.unique_visitors_total)}
-                      </td>
-                      <td className="px-4 py-3 text-gray-700 whitespace-nowrap">
-                        {formatNumber(r.compares_7d)}
-                      </td>
-                      <td className="px-4 py-3 text-gray-700 whitespace-nowrap">
-                        {formatNumber(r.compares_total)}
-                      </td>
-                      <td className="px-4 py-3 text-gray-700 whitespace-nowrap">
-                        {formatNumber(r.trending_score, 2)}
-                      </td>
-                      <td className="px-4 py-3 text-gray-700 whitespace-nowrap">
-                        {formatDateTime(r.calculated_at)}
-                      </td>
-                      <td className="px-4 py-3 text-gray-700 whitespace-nowrap">
-                        <label className="inline-flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={Boolean(r.manual_boost)}
-                            onChange={(e) =>
-                              updateRow(r.product_id, {
-                                manual_boost: e.target.checked,
-                              })
-                            }
-                            className="w-4 h-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
-                          />
-                          <span className="text-xs text-gray-600">
-                            {r.manual_boost ? "On" : "Off"}
-                          </span>
-                        </label>
-                      </td>
-                      <td className="px-4 py-3 text-gray-700 whitespace-nowrap">
+              return (
+                <article
+                  key={row?.product_id ?? `${row?.name}-${index}`}
+                  className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                        Rank #{index + 1}
+                      </p>
+                      <h2 className="mt-1 text-lg font-semibold text-slate-900">
+                        {row?.name || "Untitled product"}
+                      </h2>
+                      <p className="mt-1 text-sm text-slate-500">
+                        {[row?.brand, row?.product_type]
+                          .filter(Boolean)
+                          .join(" • ") || "No brand details"}
+                      </p>
+                    </div>
+
+                    <span
+                      className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold ${trend.className}`}
+                    >
+                      {trend.icon}
+                      <span>
+                        {trend.delta > 0 ? `+${trend.delta}` : trend.delta}
+                      </span>
+                    </span>
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-2 gap-3">
+                    <div className="rounded-2xl bg-slate-50 p-3">
+                      <p className="text-xs text-slate-500">Visitors 7d</p>
+                      <p className="mt-1 text-lg font-semibold text-slate-900">
+                        {formatNumber(row?.views_7d)}
+                      </p>
+                    </div>
+                    <div className="rounded-2xl bg-slate-50 p-3">
+                      <p className="text-xs text-slate-500">Score</p>
+                      <p className="mt-1 text-lg font-semibold text-slate-900">
+                        {formatNumber(row?.trending_score, 2)}
+                      </p>
+                    </div>
+                    <div className="rounded-2xl bg-slate-50 p-3">
+                      <p className="text-xs text-slate-500">Visitors total</p>
+                      <p className="mt-1 text-lg font-semibold text-slate-900">
+                        {formatNumber(row?.unique_visitors_total)}
+                      </p>
+                    </div>
+                    <div className="rounded-2xl bg-slate-50 p-3">
+                      <p className="text-xs text-slate-500">Compares 7d</p>
+                      <p className="mt-1 text-lg font-semibold text-slate-900">
+                        {formatNumber(row?.compares_7d)}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <label className="rounded-2xl border border-slate-200 p-3">
+                      <span className="text-xs uppercase tracking-[0.16em] text-slate-400">
+                        Manual boost
+                      </span>
+                      <div className="mt-2 flex items-center gap-2">
                         <input
-                          type="number"
-                          min={0}
-                          value={r.manual_priority ?? 0}
-                          onChange={(e) =>
-                            updateRow(r.product_id, {
-                              manual_priority: e.target.value,
+                          type="checkbox"
+                          checked={Boolean(row?.manual_boost)}
+                          onChange={(event) =>
+                            updateRow(row.product_id, {
+                              manual_boost: event.target.checked,
                             })
                           }
-                          className="w-24 px-2 py-1 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                         />
-                      </td>
-                      <td className="px-4 py-3 text-gray-700 min-w-[220px]">
-                        {(() => {
-                          const currentBadge = String(r.manual_badge ?? "");
-                          const hasCurrent = BADGE_OPTIONS.some(
-                            (b) => b.value === currentBadge,
-                          );
-                          const options = hasCurrent
-                            ? BADGE_OPTIONS
-                            : [
-                                {
-                                  value: currentBadge,
-                                  label: `${currentBadge} (Custom)`,
-                                },
-                                ...BADGE_OPTIONS,
-                              ];
+                        <span className="text-sm font-medium text-slate-700">
+                          {row?.manual_boost ? "Enabled" : "Disabled"}
+                        </span>
+                      </div>
+                    </label>
 
-                          return (
-                            <select
-                              value={r.manual_badge ?? ""}
-                              onChange={(e) =>
-                                updateRow(r.product_id, {
-                                  manual_badge: e.target.value,
+                    <label className="rounded-2xl border border-slate-200 p-3">
+                      <span className="text-xs uppercase tracking-[0.16em] text-slate-400">
+                        Priority
+                      </span>
+                      <input
+                        type="number"
+                        min={0}
+                        value={row?.manual_priority ?? 0}
+                        onChange={(event) =>
+                          updateRow(row.product_id, {
+                            manual_priority: event.target.value,
+                          })
+                        }
+                        className="mt-2 w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-100"
+                      />
+                    </label>
+                  </div>
+
+                  <div className="mt-3 rounded-2xl border border-slate-200 p-3">
+                    <p className="text-xs uppercase tracking-[0.16em] text-slate-400">
+                      Manual badge
+                    </p>
+                    <select
+                      value={row?.manual_badge ?? ""}
+                      onChange={(event) =>
+                        updateRow(row.product_id, {
+                          manual_badge: event.target.value,
+                        })
+                      }
+                      className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-100"
+                    >
+                      {badgeOptions.map((badge) => (
+                        <option key={`${badge.label}-${badge.value}`} value={badge.value}>
+                          {badge.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-1 gap-3 text-sm text-slate-600 sm:grid-cols-2">
+                    <div className="rounded-2xl border border-slate-200 p-3">
+                      <p className="text-xs uppercase tracking-[0.16em] text-slate-400">
+                        Calculated
+                      </p>
+                      <p className="mt-1 font-medium text-slate-900">
+                        {formatDateTime(row?.calculated_at)}
+                      </p>
+                    </div>
+                    <div className="rounded-2xl border border-slate-200 p-3">
+                      <p className="text-xs uppercase tracking-[0.16em] text-slate-400">
+                        Trend change
+                      </p>
+                      <p className="mt-1 font-medium text-slate-900">
+                        {trend.label}
+                        {trend.percentage !== null &&
+                          ` (${trend.percentage > 0 ? "+" : ""}${Math.round(trend.percentage)}%)`}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+                    <button
+                      onClick={() => saveOverride(row)}
+                      disabled={isSaving}
+                      className={`inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-semibold transition ${
+                        isSaving
+                          ? "cursor-not-allowed bg-slate-100 text-slate-400"
+                          : "bg-blue-600 text-white hover:bg-blue-700 hover:text-white"
+                      }`}
+                    >
+                      {isSaving ? <FaSpinner className="animate-spin" /> : <FaSave />}
+                      Save
+                    </button>
+                    <button
+                      onClick={() => clearOverride(row)}
+                      disabled={isSaving}
+                      className={`inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-semibold transition ${
+                        isSaving
+                          ? "cursor-not-allowed bg-slate-100 text-slate-400"
+                          : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                      }`}
+                    >
+                      <FaTrash />
+                      Clear
+                    </button>
+                  </div>
+                </article>
+              );
+            })
+          )}
+        </section>
+
+        <section className="hidden overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm xl:block">
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead className="border-b border-slate-200 bg-slate-50">
+                <tr>
+                  {[
+                    "Product",
+                    "Brand",
+                    "Type",
+                    "Trend",
+                    "Visitors 7d",
+                    "Visitors total",
+                    "Compares 7d",
+                    "Compares total",
+                    "Score",
+                    "Calculated",
+                    "Manual boost",
+                    "Priority",
+                    "Badge",
+                    "Actions",
+                  ].map((heading) => (
+                    <th
+                      key={heading}
+                      className="whitespace-nowrap px-4 py-3 text-left font-semibold text-slate-700"
+                    >
+                      {heading}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {loading && rows.length === 0 ? (
+                  <tr>
+                    <td colSpan={14} className="px-4 py-10 text-center text-slate-600">
+                      <FaSpinner className="mr-2 inline animate-spin" />
+                      Loading trending report...
+                    </td>
+                  </tr>
+                ) : sortedRows.length === 0 ? (
+                  <tr>
+                    <td colSpan={14} className="px-4 py-10 text-center text-slate-600">
+                      No results yet. Recompute the report to generate trending data.
+                    </td>
+                  </tr>
+                ) : (
+                  sortedRows.map((row, index) => {
+                    const trend = getTrendData(row);
+                    const isSaving = Boolean(savingById[row?.product_id]);
+                    const currentBadge = String(row?.manual_badge ?? "");
+                    const hasCurrentBadge = BADGE_OPTIONS.some(
+                      (badge) => badge.value === currentBadge,
+                    );
+                    const badgeOptions = hasCurrentBadge
+                      ? BADGE_OPTIONS
+                      : [
+                          { value: currentBadge, label: `${currentBadge} (Custom)` },
+                          ...BADGE_OPTIONS,
+                        ];
+
+                    return (
+                      <tr
+                        key={row?.product_id ?? `${row?.name}-${index}`}
+                        className="align-top hover:bg-slate-50"
+                      >
+                        <td className="min-w-[240px] px-4 py-4">
+                          <div className="font-semibold text-slate-900">
+                            {row?.name || "-"}
+                          </div>
+                          <div className="mt-1 text-xs text-slate-500">
+                            #{index + 1} • ID {row?.product_id ?? "-"}
+                          </div>
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-4 text-slate-700">
+                          {row?.brand || "-"}
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-4 text-slate-700">
+                          {row?.product_type || "-"}
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-4">
+                          <span
+                            className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold ${trend.className}`}
+                          >
+                            {trend.icon}
+                            <span>
+                              {trend.delta > 0 ? `+${trend.delta}` : trend.delta}
+                            </span>
+                            {trend.percentage !== null && (
+                              <span>
+                                ({trend.percentage > 0 ? "+" : ""}
+                                {Math.round(trend.percentage)}%)
+                              </span>
+                            )}
+                          </span>
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-4 text-slate-700">
+                          {formatNumber(row?.views_7d)}
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-4 text-slate-700">
+                          {formatNumber(row?.unique_visitors_total)}
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-4 text-slate-700">
+                          {formatNumber(row?.compares_7d)}
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-4 text-slate-700">
+                          {formatNumber(row?.compares_total)}
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-4 font-semibold text-slate-900">
+                          {formatNumber(row?.trending_score, 2)}
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-4 text-slate-700">
+                          {formatDateTime(row?.calculated_at)}
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-4">
+                          <label className="inline-flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={Boolean(row?.manual_boost)}
+                              onChange={(event) =>
+                                updateRow(row.product_id, {
+                                  manual_boost: event.target.checked,
                                 })
                               }
-                              className="w-full px-2 py-1 border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <span className="text-xs font-medium text-slate-600">
+                              {row?.manual_boost ? "On" : "Off"}
+                            </span>
+                          </label>
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-4">
+                          <input
+                            type="number"
+                            min={0}
+                            value={row?.manual_priority ?? 0}
+                            onChange={(event) =>
+                              updateRow(row.product_id, {
+                                manual_priority: event.target.value,
+                              })
+                            }
+                            className="w-24 rounded-2xl border border-slate-200 px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-100"
+                          />
+                        </td>
+                        <td className="min-w-[220px] px-4 py-4">
+                          <select
+                            value={row?.manual_badge ?? ""}
+                            onChange={(event) =>
+                              updateRow(row.product_id, {
+                                manual_badge: event.target.value,
+                              })
+                            }
+                            className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-100"
+                          >
+                            {badgeOptions.map((badge) => (
+                              <option
+                                key={`${badge.label}-${badge.value}`}
+                                value={badge.value}
+                              >
+                                {badge.label}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-4">
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => saveOverride(row)}
+                              disabled={isSaving}
+                              className={`inline-flex items-center gap-2 rounded-2xl px-3 py-2 text-xs font-semibold transition ${
+                                isSaving
+                                  ? "cursor-not-allowed bg-slate-100 text-slate-400"
+                                  : "bg-blue-600 text-white hover:bg-blue-700 hover:text-white"
+                              }`}
                             >
-                              {options.map((b) => (
-                                <option key={b.label} value={b.value}>
-                                  {b.label}
-                                </option>
-                              ))}
-                            </select>
-                          );
-                        })()}
-                      </td>
-                      <td className="px-4 py-3 text-gray-700 whitespace-nowrap">
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => saveOverride(r)}
-                            disabled={isSaving}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-2 ${
-                              isSaving
-                                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                                : "bg-blue-600 text-white hover:bg-blue-700"
-                            }`}
-                          >
-                            {isSaving ? (
-                              <FaSpinner className="animate-spin" />
-                            ) : (
-                              <FaSave />
-                            )}
-                            Save
-                          </button>
-                          <button
-                            onClick={() => clearOverride(r)}
-                            disabled={isSaving}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-2 ${
-                              isSaving
-                                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                                : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
-                            }`}
-                            title="Clear manual override"
-                          >
-                            <FaTrash />
-                            Clear
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+                              {isSaving ? (
+                                <FaSpinner className="animate-spin" />
+                              ) : (
+                                <FaSave />
+                              )}
+                              Save
+                            </button>
+                            <button
+                              onClick={() => clearOverride(row)}
+                              disabled={isSaving}
+                              className={`inline-flex items-center gap-2 rounded-2xl px-3 py-2 text-xs font-semibold transition ${
+                                isSaving
+                                  ? "cursor-not-allowed bg-slate-100 text-slate-400"
+                                  : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                              }`}
+                            >
+                              <FaTrash />
+                              Clear
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
 
-      {/* Info */}
-      <div className="mt-6 bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-        <h4 className="font-bold text-gray-900 mb-2">How manual boost works</h4>
-        <ul className="text-sm text-gray-700 space-y-2">
-          <li>
-            - Manual boost does <span className="font-semibold">not</span>{" "}
-            change views/compares. Those signals come from real activity.
-          </li>
-          <li>
-            - Turning on <span className="font-semibold">Manual Boost</span> and
-            setting a higher <span className="font-semibold">Priority</span>{" "}
-            makes a product appear above algorithm results.
-          </li>
-          <li>
-            - Public API only returns clean fields (no scores or counters). This
-            page is admin-only.
-          </li>
-        </ul>
+        <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h2 className="text-lg font-semibold text-slate-900">
+            How manual boost works
+          </h2>
+          <div className="mt-3 space-y-2 text-sm leading-6 text-slate-600">
+            <p>
+              Manual boost does not change views or compares. Those numbers still
+              come from real activity.
+            </p>
+            <p>
+              Turning on manual boost and increasing priority moves a product
+              above algorithm-only ordering.
+            </p>
+            <p>
+              Public APIs keep the clean client payload. This page stays admin
+              only for internal controls and diagnostics.
+            </p>
+          </div>
+        </section>
       </div>
     </div>
   );
 };
 
 export default TrendingManager;
-
-

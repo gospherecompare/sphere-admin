@@ -1,5 +1,5 @@
 // App.js
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -48,12 +48,70 @@ import EditHomeAppliance from "./components/EditAppliance";
 import CompareScoring from "./components/Settings/CompareScoring";
 import DeviceFieldProfiles from "./components/Settings/DeviceFieldProfiles";
 import BlogEditor from "./components/Content/BlogEditor";
+import AccessGate from "./components/AccessGate";
 import Cookies from "js-cookie";
 import GlobalSearchResults from "./components/GlobalSearchResults";
 
 const AUTH_NOTICE_STORAGE_KEY = "hooksAdminAuthNotice";
 const POST_LOGIN_REDIRECT_KEY = "hooksAdminPostLoginRedirect";
 const SESSION_TIMEOUT_NOTICE = "Session timed out. Please log in again.";
+
+const parseTokenPayload = (token) => {
+  try {
+    if (!token) return null;
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+    const payload = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const decoded = atob(payload.replace(/=+$/, ""));
+    return JSON.parse(
+      decodeURIComponent(
+        decoded
+          .split("")
+          .map(function (c) {
+            return "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2);
+          })
+          .join(""),
+      ),
+    );
+  } catch {
+    return null;
+  }
+};
+
+const getTokenExpiryMs = (token) => {
+  const payload = parseTokenPayload(token);
+  if (!payload || !payload.exp) return null;
+  return payload.exp * 1000;
+};
+
+const isTokenValid = (token = Cookies.get("authToken")) => {
+  const expMs = getTokenExpiryMs(token);
+  if (!expMs) return false;
+  return expMs > Date.now();
+};
+
+const storePostLoginRedirect = () => {
+  if (typeof window === "undefined") return;
+  const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+  if (!currentPath || currentPath.startsWith("/login")) return;
+  try {
+    window.sessionStorage.setItem(
+      POST_LOGIN_REDIRECT_KEY,
+      JSON.stringify({ path: currentPath, savedAt: Date.now() }),
+    );
+  } catch {
+    // Ignore storage failures.
+  }
+};
+
+const storeAuthNotice = (message) => {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.setItem(AUTH_NOTICE_STORAGE_KEY, message);
+  } catch {
+    // Ignore storage failures.
+  }
+};
 
 function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -79,68 +137,10 @@ function App() {
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  const parseTokenPayload = (token) => {
-    try {
-      if (!token) return null;
-      // simple parse - decode payload
-      const parts = token.split(".");
-      if (parts.length !== 3) return null;
-      const payload = parts[1].replace(/-/g, "+").replace(/_/g, "/");
-      const decoded = atob(payload.replace(/=+$/, ""));
-      return JSON.parse(
-        decodeURIComponent(
-          decoded
-            .split("")
-            .map(function (c) {
-              return "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2);
-            })
-            .join(""),
-        ),
-      );
-    } catch (err) {
-      return null;
-    }
-  };
-
-  const getTokenExpiryMs = (token) => {
-    const payload = parseTokenPayload(token);
-    if (!payload || !payload.exp) return null;
-    return payload.exp * 1000;
-  };
-
-  const isTokenValid = (token = Cookies.get("authToken")) => {
-    const expMs = getTokenExpiryMs(token);
-    if (!expMs) return false;
-    return expMs > Date.now();
-  };
-
   const [isAuthenticated, setIsAuthenticated] = useState(() => isTokenValid());
   const [authReason, setAuthReason] = useState("");
 
-  const storePostLoginRedirect = () => {
-    if (typeof window === "undefined") return;
-    const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
-    if (!currentPath || currentPath.startsWith("/login")) return;
-    try {
-      window.sessionStorage.setItem(
-        POST_LOGIN_REDIRECT_KEY,
-        JSON.stringify({ path: currentPath, savedAt: Date.now() }),
-      );
-    } catch (error) {
-      // Ignore storage failures.
-    }
-  };
-
-  const storeAuthNotice = (message) => {
-    if (typeof window === "undefined") return;
-    try {
-      window.sessionStorage.setItem(AUTH_NOTICE_STORAGE_KEY, message);
-    } catch (error) {
-      // Ignore storage failures.
-    }
-  };
-
-  const clearAuth = (reason = "logout") => {
+  const clearAuth = useCallback((reason = "logout") => {
     if (reason === "session_expired") {
       storeAuthNotice(SESSION_TIMEOUT_NOTICE);
     }
@@ -152,14 +152,14 @@ function App() {
     Cookies.remove("role");
     Cookies.remove("loginAt");
     setIsAuthenticated(false);
-  };
+  }, []);
 
   useEffect(() => {
     const token = Cookies.get("authToken");
     if (token && !isTokenValid(token)) {
       clearAuth("session_expired");
     }
-  }, []);
+  }, [clearAuth]);
 
   useEffect(() => {
     if (!isAuthenticated) return undefined;
@@ -188,7 +188,7 @@ function App() {
       clearTimeout(timeoutId);
       clearInterval(intervalId);
     };
-  }, [isAuthenticated]);
+  }, [isAuthenticated, clearAuth]);
 
   // Close sidebar when route changes (mobile)
   const handleRouteChange = () => {
@@ -358,10 +358,37 @@ function App() {
                   element={<CreateHomeAppliance />}
                 />
                 <Route path="/edit-mobile/:id" element={<EditMobile />} />
-                <Route path="/user-management" element={<UserManagement />} />
+                <Route
+                  path="/users"
+                  element={<Navigate to="/user-management" replace />}
+                />
+                <Route
+                  path="/roles"
+                  element={<Navigate to="/permission-management" replace />}
+                />
+                <Route
+                  path="/user-management"
+                  element={
+                    <AccessGate
+                      requiredAnyPermissions={["users.view"]}
+                      title="User management access required"
+                      message="Your account needs user-management permissions to open this workspace."
+                    >
+                      <UserManagement />
+                    </AccessGate>
+                  }
+                />
                 <Route
                   path="/customer-management"
-                  element={<ViewCustomers />}
+                  element={
+                    <AccessGate
+                      requiredAnyPermissions={["customers.view", "users.view"]}
+                      title="Customer management access required"
+                      message="This screen is available to roles that can manage customers or users."
+                    >
+                      <ViewCustomers />
+                    </AccessGate>
+                  }
                 />
                 <Route
                   path="/account-management"
@@ -369,7 +396,15 @@ function App() {
                 />
                 <Route
                   path="/specifications-manager"
-                  element={<SpecificationsManager />}
+                  element={
+                    <AccessGate
+                      requiredAnyPermissions={["settings.view", "products.view"]}
+                      title="Specifications access required"
+                      message="This section is available to product and settings roles."
+                    >
+                      <SpecificationsManager />
+                    </AccessGate>
+                  }
                 />
                 <Route
                   path="/specifications/memory-storage/configurations"
@@ -377,12 +412,42 @@ function App() {
                 />
                 <Route
                   path="/specifications/categories/create"
-                  element={<CategoryManagement />}
+                  element={
+                    <AccessGate
+                      requiredAnyPermissions={["settings.view", "products.view"]}
+                      title="Category management access required"
+                      message="This screen is limited to product and settings roles."
+                    >
+                      <CategoryManagement />
+                    </AccessGate>
+                  }
                 />
-                <Route path="/specifications/brands" element={<Brand />} />
+                <Route
+                  path="/specifications/brands"
+                  element={
+                    <AccessGate
+                      requiredAnyPermissions={["settings.view", "products.view"]}
+                      title="Brand management access required"
+                      message="This screen is limited to product and settings roles."
+                    >
+                      <Brand />
+                    </AccessGate>
+                  }
+                />
                 <Route
                   path="/permission-management"
-                  element={<PermissionManagement />}
+                  element={
+                    <AccessGate
+                      requiredAnyPermissions={[
+                        "roles.manage",
+                        "permissions.manage",
+                      ]}
+                      title="Permission management is restricted"
+                      message="Your account needs role or permission management access to open this workspace."
+                    >
+                      <PermissionManagement />
+                    </AccessGate>
+                  }
                 />
                 <Route
                   path="/smartphonesrating"
@@ -392,32 +457,112 @@ function App() {
                   path="/change-password"
                   element={<ChangePasswordModal />}
                 />
-                <Route path="/api-tester" element={<ApiTester />} />
+                <Route
+                  path="/api-tester"
+                  element={
+                    <AccessGate
+                      requiredAnyPermissions={["settings.manage", "settings.view"]}
+                      title="API tester access required"
+                      message="You need settings access to open the API tester."
+                    >
+                      <ApiTester />
+                    </AccessGate>
+                  }
+                />
                 <Route
                   path="/settings/compare-scoring"
-                  element={<CompareScoring />}
+                  element={
+                    <AccessGate
+                      requiredAnyPermissions={["settings.view"]}
+                      title="Settings access required"
+                      message="You need settings access to open this page."
+                    >
+                      <CompareScoring />
+                    </AccessGate>
+                  }
                 />
                 <Route
                   path="/settings/device-field-profiles"
-                  element={<DeviceFieldProfiles />}
+                  element={
+                    <AccessGate
+                      requiredAnyPermissions={["settings.view"]}
+                      title="Settings access required"
+                      message="You need settings access to open this page."
+                    >
+                      <DeviceFieldProfiles />
+                    </AccessGate>
+                  }
                 />
-                <Route path="/content/news-articles" element={<BlogEditor />} />
+                <Route
+                  path="/content/news-articles"
+                  element={
+                    <AccessGate
+                      requiredPermissions={["content.news.view"]}
+                      requiredAnyPermissions={[
+                        "content.news.create",
+                        "content.news.edit",
+                        "content.news.publish",
+                        "content.news.schedule",
+                        "content.news.manage",
+                      ]}
+                      title="News & Articles access required"
+                      message="This newsroom studio is available to roles with News & Articles permissions."
+                    >
+                      <BlogEditor />
+                    </AccessGate>
+                  }
+                />
                 <Route
                   path="/content/blogs"
                   element={<Navigate to="/content/news-articles" replace />}
                 />
                 <Route
                   path="/specifications/store"
-                  element={<OnlineStoreManagement />}
+                  element={
+                    <AccessGate
+                      requiredAnyPermissions={["products.view", "settings.view"]}
+                      title="Store management access required"
+                      message="You need product or settings access to open this page."
+                    >
+                      <OnlineStoreManagement />
+                    </AccessGate>
+                  }
                 />
-                <Route path="/marketing/banners" element={<BannerManager />} />
+                <Route
+                  path="/marketing/banners"
+                  element={
+                    <AccessGate
+                      requiredAnyPermissions={["marketing.view"]}
+                      title="Marketing access required"
+                      message="You need marketing access to open this page."
+                    >
+                      <BannerManager />
+                    </AccessGate>
+                  }
+                />
                 <Route
                   path="/reports/productcategories"
-                  element={<ProductCategoryReport />}
+                  element={
+                    <AccessGate
+                      requiredAnyPermissions={["reports.view"]}
+                      title="Reports access required"
+                      message="You need report access to open this page."
+                    >
+                      <ProductCategoryReport />
+                    </AccessGate>
+                  }
                 />
                 <Route
                   path="/reports/productpublishstatus"
-                  element={<ProductPublishStatusReport />}
+                  element={
+                    <AccessGate
+                      requiredAnyPermissions={["reports.view"]}
+                      title="Reports access required"
+                      message="You need report access to open this page."
+                    >
+                      <ProductPublishStatusReport />
+                    </AccessGate>
+                  }
                 />
                 <Route
                   path="/analytics"
@@ -427,28 +572,87 @@ function App() {
                 />
                 <Route
                   path="/reports/useractivity"
-                  element={<PublishedByUserReport />}
+                  element={
+                    <AccessGate
+                      requiredAnyPermissions={["reports.view"]}
+                      title="Reports access required"
+                      message="You need report access to open this page."
+                    >
+                      <PublishedByUserReport />
+                    </AccessGate>
+                  }
                 />
                 <Route
                   path="/reports/recentactivity"
-                  element={<RecentPublishActivity />}
+                  element={
+                    <AccessGate
+                      requiredAnyPermissions={["activity.view", "reports.view"]}
+                      title="Recent activity access required"
+                      message="You need activity access to open this page."
+                    >
+                      <RecentPublishActivity />
+                    </AccessGate>
+                  }
                 />
-                <Route path="/reports/trending" element={<TrendingManager />} />
+                <Route
+                  path="/reports/trending"
+                  element={
+                    <AccessGate
+                      requiredAnyPermissions={["reports.view"]}
+                      title="Reports access required"
+                      message="You need report access to open this page."
+                    >
+                      <TrendingManager />
+                    </AccessGate>
+                  }
+                />
                 <Route
                   path="/reports/hook-score"
-                  element={<HookScoreReport />}
+                  element={
+                    <AccessGate
+                      requiredAnyPermissions={["reports.view"]}
+                      title="Reports access required"
+                      message="You need report access to open this page."
+                    >
+                      <HookScoreReport />
+                    </AccessGate>
+                  }
                 />
                 <Route
                   path="/reports/feature-clicks"
-                  element={<FeatureClicksReport />}
+                  element={
+                    <AccessGate
+                      requiredAnyPermissions={["reports.view"]}
+                      title="Reports access required"
+                      message="You need report access to open this page."
+                    >
+                      <FeatureClicksReport />
+                    </AccessGate>
+                  }
                 />
                 <Route
                   path="/reports/search-popularity"
-                  element={<SearchPopularityReport />}
+                  element={
+                    <AccessGate
+                      requiredAnyPermissions={["reports.view"]}
+                      title="Reports access required"
+                      message="You need report access to open this page."
+                    >
+                      <SearchPopularityReport />
+                    </AccessGate>
+                  }
                 />
                 <Route
                   path="/reports/career-applications"
-                  element={<CareerApplications />}
+                  element={
+                    <AccessGate
+                      requiredAnyPermissions={["reports.view"]}
+                      title="Reports access required"
+                      message="You need report access to open this page."
+                    >
+                      <CareerApplications />
+                    </AccessGate>
+                  }
                 />
               </Routes>
               <footer className="mt-8 border-t border-slate-200 py-4 text-center text-sm text-gray-500">

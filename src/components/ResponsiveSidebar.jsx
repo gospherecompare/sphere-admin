@@ -2,7 +2,7 @@
  * Professional Responsive Sidebar Component
  * Mobile-optimized navigation menu with smooth animations
  */
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   FaChartLine,
@@ -15,6 +15,13 @@ import {
   FaTimes,
 } from "react-icons/fa";
 import PropTypes from "prop-types";
+import {
+  canAccessModule,
+  getCurrentPermissions,
+  getCurrentRole,
+  hasAnyPermissions,
+  hasAllPermissions,
+} from "../utils/access";
 
 const MENU_ITEMS = [
   {
@@ -27,6 +34,7 @@ const MENU_ITEMS = [
     id: "products",
     label: "Products",
     icon: <FaBox />,
+    requiredAnyPermissions: ["products.view"],
     submenu: [
       { label: "Smartphones", path: "/products/smartphones/inventory" },
       { label: "Laptops", path: "/products/laptops/inventory" },
@@ -37,8 +45,14 @@ const MENU_ITEMS = [
     id: "users",
     label: "Management",
     icon: <FaUsers />,
+    requiredAnyPermissions: [
+      "users.view",
+      "roles.view",
+      "permissions.view",
+      "activity.view",
+    ],
     submenu: [
-      { label: "Users", path: "/user-management" },
+      { label: "Users", path: "/user-management", requiredAnyPermissions: ["users.view"] },
       { label: "Customers", path: "/customer-management" },
       { label: "Permissions", path: "/permission-management" },
     ],
@@ -47,6 +61,7 @@ const MENU_ITEMS = [
     id: "settings",
     label: "Settings",
     icon: <FaCog />,
+    requiredAnyPermissions: ["settings.view"],
     submenu: [
       { label: "Specifications", path: "/specifications-manager" },
       { label: "Brands", path: "/specifications/brands" },
@@ -58,19 +73,41 @@ const MENU_ITEMS = [
     label: "Reports",
     icon: <FaFileAlt />,
     path: "/reports/productpublishstatus",
+    requiredAnyPermissions: ["reports.view", "activity.view"],
   },
 ];
 
 const ResponsiveSidebar = ({
   collapsed = false,
-  setCollapsed = () => {},
   isMobile = false,
   onClose = () => {},
   mobileOpen = false,
-  setMobileOpen = () => {},
 }) => {
   const [expandedItems, setExpandedItems] = useState({});
+  const [authSnapshot, setAuthSnapshot] = useState(() => ({
+    role: getCurrentRole(),
+    permissions: getCurrentPermissions(),
+  }));
   const location = useLocation();
+  const role = authSnapshot.role;
+  const permissions = authSnapshot.permissions;
+
+  useEffect(() => {
+    const syncAuthSnapshot = () => {
+      setAuthSnapshot({
+        role: getCurrentRole(),
+        permissions: getCurrentPermissions(),
+      });
+    };
+
+    syncAuthSnapshot();
+    window.addEventListener("storage", syncAuthSnapshot);
+    window.addEventListener("hooks-rbac-updated", syncAuthSnapshot);
+    return () => {
+      window.removeEventListener("storage", syncAuthSnapshot);
+      window.removeEventListener("hooks-rbac-updated", syncAuthSnapshot);
+    };
+  }, []);
 
   const toggleSubmenu = useCallback((itemId) => {
     setExpandedItems((prev) => ({
@@ -84,12 +121,71 @@ const ResponsiveSidebar = ({
     [location.pathname],
   );
 
+  const canSeeMenuItem = useCallback(
+    (item) => {
+      if (!item) return false;
+
+      if (Array.isArray(item.requiredRoles) && item.requiredRoles.length) {
+        const normalizedRole = String(role || "").trim().toLowerCase();
+        const allowedRoles = item.requiredRoles.map((value) =>
+          String(value || "").trim().toLowerCase(),
+        );
+        if (!allowedRoles.includes(normalizedRole)) return false;
+      }
+
+      if (
+        Array.isArray(item.requiredPermissions) &&
+        item.requiredPermissions.length &&
+        !hasAllPermissions(item.requiredPermissions, permissions)
+      ) {
+        return false;
+      }
+
+      if (
+        Array.isArray(item.requiredAnyPermissions) &&
+        item.requiredAnyPermissions.length &&
+        !hasAnyPermissions(item.requiredAnyPermissions, permissions)
+      ) {
+        return false;
+      }
+
+      if (item.moduleKey) {
+        return canAccessModule(item.moduleKey, item.action || "view", permissions);
+      }
+
+      if (item.id === "users" && !hasAnyPermissions(["users.view", "roles.view", "permissions.view", "activity.view"], permissions)) {
+        return false;
+      }
+
+      if (item.id === "settings" && !hasAnyPermissions(["settings.view"], permissions)) {
+        return false;
+      }
+
+      if (item.id === "products" && !hasAnyPermissions(["products.view"], permissions)) {
+        return false;
+      }
+
+      if (item.id === "reports" && !hasAnyPermissions(["reports.view", "activity.view"], permissions)) {
+        return false;
+      }
+
+      return true;
+    },
+    [permissions, role],
+  );
+
   const renderMenuItems = useMemo(
     () =>
-      MENU_ITEMS.map((item) => (
-        <div key={item.id}>
-          {item.submenu ? (
-            <>
+      MENU_ITEMS.filter((item) => canSeeMenuItem(item)).map((item) => {
+        if (item.submenu) {
+          const visibleSubitems = item.submenu.filter((subitem) =>
+            canSeeMenuItem(subitem),
+          );
+
+          if (!visibleSubitems.length) return null;
+
+          return (
+            <div key={item.id}>
               <button
                 onClick={() => toggleSubmenu(item.id)}
                 className={`group flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left transition-colors ${
@@ -115,7 +211,7 @@ const ResponsiveSidebar = ({
 
               {expandedItems[item.id] && !collapsed && (
                 <div className="ml-8 mt-2 space-y-1">
-                  {item.submenu.map((subitem) => (
+                  {visibleSubitems.map((subitem) => (
                     <Link
                       key={subitem.path}
                       to={subitem.path}
@@ -131,34 +227,45 @@ const ResponsiveSidebar = ({
                   ))}
                 </div>
               )}
-            </>
-          ) : (
-            <Link
-              to={item.path}
-              onClick={() => isMobile && onClose()}
-              className={`group mb-1 flex items-center gap-3 rounded-2xl px-4 py-3 transition-colors ${
+            </div>
+          );
+        }
+
+        return (
+          <Link
+            key={item.id}
+            to={item.path}
+            onClick={() => isMobile && onClose()}
+            className={`group mb-1 flex items-center gap-3 rounded-2xl px-4 py-3 transition-colors ${
+              isActive(item.path)
+                ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20"
+                : "text-slate-700 hover:bg-white/70 hover:text-slate-900"
+            }`}
+          >
+            <span
+              className={`text-lg ${
                 isActive(item.path)
-                  ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20"
-                  : "text-slate-700 hover:bg-white/70 hover:text-slate-900"
+                  ? "text-white"
+                  : "text-slate-500 transition group-hover:text-blue-600"
               }`}
             >
-              <span
-                className={`text-lg ${
-                  isActive(item.path)
-                    ? "text-white"
-                    : "text-slate-500 transition group-hover:text-blue-600"
-                }`}
-              >
-                {item.icon}
-              </span>
-              {!collapsed && (
-                <span className="truncate text-sm font-medium">{item.label}</span>
-              )}
-            </Link>
-          )}
-        </div>
-      )),
-    [collapsed, expandedItems, isActive, isMobile, onClose, toggleSubmenu],
+              {item.icon}
+            </span>
+            {!collapsed && (
+              <span className="truncate text-sm font-medium">{item.label}</span>
+            )}
+          </Link>
+        );
+      }),
+    [
+      canSeeMenuItem,
+      collapsed,
+      expandedItems,
+      isActive,
+      isMobile,
+      onClose,
+      toggleSubmenu,
+    ],
   );
 
   return (
@@ -211,11 +318,9 @@ const ResponsiveSidebar = ({
 
 ResponsiveSidebar.propTypes = {
   collapsed: PropTypes.bool,
-  setCollapsed: PropTypes.func,
   isMobile: PropTypes.bool,
   onClose: PropTypes.func,
   mobileOpen: PropTypes.bool,
-  setMobileOpen: PropTypes.func,
 };
 
 export default ResponsiveSidebar;
