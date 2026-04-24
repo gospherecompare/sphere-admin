@@ -20,6 +20,7 @@ import HookLogo from "./Ui/hooklogo";
 const AUTH_NOTICE_STORAGE_KEY = "hooksAdminAuthNotice";
 const POST_LOGIN_REDIRECT_KEY = "hooksAdminPostLoginRedirect";
 const POST_LOGIN_REDIRECT_MAX_AGE_MS = 1000 * 60 * 30;
+const POST_LOGIN_UPDATES_POSTER_KEY = "hooksAdminShowLoginUpdatesPoster";
 
 const STEPS = {
   credentials: "credentials",
@@ -218,6 +219,8 @@ const Login = ({ onLogin }) => {
     }
 
     try {
+      sessionStorage.setItem(POST_LOGIN_UPDATES_POSTER_KEY, "1");
+
       if (rememberMe) {
         localStorage.setItem("savedEmail", String(form.email || "").trim());
       } else {

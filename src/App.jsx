@@ -6,6 +6,7 @@ import {
   Route,
   Navigate,
   useLocation,
+  useNavigate,
 } from "react-router-dom";
 import Sidebar from "./components/Sidebar";
 import Navbar from "./components/Navbar";
@@ -51,10 +52,21 @@ import BlogEditor from "./components/Content/BlogEditor";
 import AccessGate from "./components/AccessGate";
 import Cookies from "js-cookie";
 import GlobalSearchResults from "./components/GlobalSearchResults";
+import LoginStatusPoster from "./components/LoginStatusPoster";
+import { buildUrl, getAuthToken } from "./api";
+import { createMobileReminderItems } from "./utils/mobileReminders";
 
 const AUTH_NOTICE_STORAGE_KEY = "hooksAdminAuthNotice";
 const POST_LOGIN_REDIRECT_KEY = "hooksAdminPostLoginRedirect";
 const SESSION_TIMEOUT_NOTICE = "Session timed out. Please log in again.";
+const POST_LOGIN_UPDATES_POSTER_KEY = "hooksAdminShowLoginUpdatesPoster";
+
+const extractSmartphoneRows = (payload) => {
+  if (Array.isArray(payload)) return payload;
+  if (payload && Array.isArray(payload.smartphones)) return payload.smartphones;
+  if (payload && Array.isArray(payload.data)) return payload.data;
+  return [];
+};
 
 const parseTokenPayload = (token) => {
   try {
@@ -218,6 +230,100 @@ function App() {
 
   // Main Layout Component for authenticated routes
   const MainLayout = () => {
+    const navigate = useNavigate();
+    const [loginPosterOpen, setLoginPosterOpen] = useState(false);
+    const [loginPosterLoading, setLoginPosterLoading] = useState(false);
+    const [loginPosterError, setLoginPosterError] = useState("");
+    const [loginPosterReminders, setLoginPosterReminders] = useState([]);
+
+    const fetchTodayLoginReminders = useCallback(async () => {
+      const token = getAuthToken();
+      const res = await fetch(buildUrl("/api/smartphone"), {
+        headers: token
+          ? {
+              Authorization: `Bearer ${token}`,
+            }
+          : {},
+      });
+
+      if (!res.ok) {
+        throw new Error(`Request failed with status ${res.status}`);
+      }
+
+      const data = await res.json();
+      return createMobileReminderItems(extractSmartphoneRows(data)).filter(
+        (item) => item.group === "today",
+      );
+    }, []);
+
+    const showLoginPosterIfNeeded = useCallback(async () => {
+      let shouldShowPoster = false;
+
+      try {
+        shouldShowPoster =
+          sessionStorage.getItem(POST_LOGIN_UPDATES_POSTER_KEY) === "1";
+        sessionStorage.removeItem(POST_LOGIN_UPDATES_POSTER_KEY);
+      } catch {
+        shouldShowPoster = false;
+      }
+
+      if (!shouldShowPoster) return;
+
+      setLoginPosterLoading(true);
+      setLoginPosterError("");
+
+      try {
+        const items = await fetchTodayLoginReminders();
+        setLoginPosterReminders(items);
+        setLoginPosterOpen(items.length > 0);
+      } catch (err) {
+        console.error("Login poster reminder error:", err);
+        setLoginPosterError(
+          err?.message || "Unable to load today's mobile updates.",
+        );
+        setLoginPosterOpen(false);
+      } finally {
+        setLoginPosterLoading(false);
+      }
+    }, [fetchTodayLoginReminders]);
+
+    const refreshLoginPoster = useCallback(async () => {
+      setLoginPosterLoading(true);
+      setLoginPosterError("");
+
+      try {
+        const items = await fetchTodayLoginReminders();
+        setLoginPosterReminders(items);
+      } catch (err) {
+        console.error("Login poster refresh error:", err);
+        setLoginPosterError(
+          err?.message || "Unable to refresh today's mobile updates.",
+        );
+      } finally {
+        setLoginPosterLoading(false);
+      }
+    }, [fetchTodayLoginReminders]);
+
+    const handleOpenLoginPosterReminder = useCallback(
+      (item) => {
+        setLoginPosterOpen(false);
+
+        if (item?.productId) {
+          navigate(`/edit-mobile/${item.productId}`);
+          return;
+        }
+
+        navigate("/products/smartphones/inventory", {
+          state: { searchTerm: item?.productName || "" },
+        });
+      },
+      [navigate],
+    );
+
+    useEffect(() => {
+      showLoginPosterIfNeeded();
+    }, [showLoginPosterIfNeeded]);
+
     return (
       <div className="dashboard-root flex h-screen bg-white">
         {/* Mobile Overlay */}
@@ -275,6 +381,16 @@ function App() {
               isMobile && sidebarOpen ? () => setSidebarOpen(false) : undefined
             }
           >
+            <LoginStatusPoster
+              open={loginPosterOpen}
+              loading={loginPosterLoading}
+              error={loginPosterError}
+              reminders={loginPosterReminders}
+              onDismiss={() => setLoginPosterOpen(false)}
+              onRefresh={refreshLoginPoster}
+              onOpenReminder={handleOpenLoginPosterReminder}
+            />
+
             <div className="mx-auto flex w-full max-w-[1720px] flex-col gap-4 px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
               <Breadcrumbs />
               <Routes>
