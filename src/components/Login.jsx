@@ -2,19 +2,6 @@ import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Cookies from "js-cookie";
 import { buildUrl } from "../api";
-import {
-  FaEye,
-  FaEyeSlash,
-  FaEnvelope,
-  FaExclamationCircle,
-  FaInfoCircle,
-  FaLock,
-  FaRocket,
-  FaShieldAlt,
-  FaSignInAlt,
-  FaSpinner,
-  FaUser,
-} from "react-icons/fa";
 import HookLogo from "./Ui/hooklogo";
 
 const AUTH_NOTICE_STORAGE_KEY = "hooksAdminAuthNotice";
@@ -28,16 +15,79 @@ const STEPS = {
   pinSetup: "pin_setup",
 };
 
-const FIELD =
-  "w-full rounded-2xl border border-slate-200 bg-white/90 py-3.5 text-sm transition-all focus:outline-none focus:ring-4 focus:ring-sky-100 disabled:opacity-60 disabled:cursor-not-allowed";
-const PRIMARY =
-  "w-full rounded-2xl bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 py-3.5 text-sm font-semibold text-white shadow-lg shadow-blue-500/20 transition hover:shadow-blue-500/30 disabled:opacity-50";
+const MIN_PIN_LENGTH = 4;
+const MAX_PIN_LENGTH = 7;
 
-const formatCountdown = (ms) => {
-  const seconds = Math.max(0, Math.ceil(Number(ms || 0) / 1000));
-  return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(
-    seconds % 60,
-  ).padStart(2, "0")}`;
+const FIELD =
+  "w-full appearance-none border-0 bg-transparent px-0 py-3 text-base text-slate-800 shadow-none outline-none placeholder:text-slate-400 ring-0 transition focus:outline-none focus:ring-0 disabled:cursor-not-allowed disabled:opacity-60";
+const PRIMARY =
+  "w-full border border-blue-700 bg-blue-600 py-3.5 text-sm font-semibold uppercase tracking-[0.14em] text-white transition hover:bg-blue-700 disabled:opacity-50";
+
+const PinBoxesField = ({
+  label,
+  value,
+  onChange,
+  disabled,
+  autoFocus = false,
+}) => {
+  const normalized = String(value || "")
+    .replace(/\D/g, "")
+    .slice(0, MAX_PIN_LENGTH);
+
+  return (
+    <div>
+      {label ? (
+        <label className="mb-3 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+          {label}
+        </label>
+      ) : null}
+
+      <div className="relative border border-slate-200 bg-slate-50 p-4">
+        <div className="grid grid-cols-7 gap-2.5 sm:gap-3">
+          {Array.from({ length: MAX_PIN_LENGTH }).map((_, index) => {
+            const digit = normalized[index] || "";
+            const filled = Boolean(digit);
+            const active =
+              !disabled &&
+              index === Math.min(normalized.length, MAX_PIN_LENGTH - 1);
+
+            return (
+              <div
+                key={`${label}-${index}`}
+                className={`flex h-14 min-w-0 items-center justify-center border text-base font-semibold transition sm:h-16 sm:text-lg ${
+                  filled
+                    ? "border-blue-400 bg-white text-slate-950 shadow-[0_10px_20px_rgba(37,99,235,0.12)]"
+                    : active
+                      ? "border-blue-500 bg-white text-slate-400 ring-4 ring-blue-100"
+                      : "border-slate-200 bg-white text-slate-300"
+                }`}
+              >
+                {filled ? digit : ""}
+              </div>
+            );
+          })}
+        </div>
+
+        <input
+          type="text"
+          inputMode="numeric"
+          pattern="[0-9]{4,7}"
+          minLength={MIN_PIN_LENGTH}
+          maxLength={MAX_PIN_LENGTH}
+          autoFocus={autoFocus}
+          value={normalized}
+          onChange={(event) =>
+            onChange(
+              event.target.value.replace(/\D/g, "").slice(0, MAX_PIN_LENGTH),
+            )
+          }
+          disabled={disabled}
+          className="absolute inset-0 cursor-text opacity-0"
+          aria-label={label}
+        />
+      </div>
+    </div>
+  );
 };
 
 const Login = ({ onLogin }) => {
@@ -50,25 +100,14 @@ const Login = ({ onLogin }) => {
   });
   const [step, setStep] = useState(STEPS.credentials);
   const [loginTicket, setLoginTicket] = useState("");
-  const [loginTicketExpiresAt, setLoginTicketExpiresAt] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
-  const [showPin, setShowPin] = useState(false);
-  const [showSetupPin, setShowSetupPin] = useState(false);
-  const [showSetupConfirmPin, setShowSetupConfirmPin] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const [tick, setTick] = useState(() => Date.now());
 
   const navigate = useNavigate();
   const location = useLocation();
-  const loginTicketRemaining = Math.max(0, loginTicketExpiresAt - tick);
-
-  useEffect(() => {
-    const timer = window.setInterval(() => setTick(Date.now()), 1000);
-    return () => window.clearInterval(timer);
-  }, []);
 
   useEffect(() => {
     try {
@@ -105,8 +144,10 @@ const Login = ({ onLogin }) => {
     const newPin = String(form.newPin || "").trim();
     const confirmPin = String(form.confirmPin || "").trim();
 
-    if (!/^\d{4,10}$/.test(newPin)) {
-      return "Organization PIN must be 4 to 10 digits.";
+    if (
+      !new RegExp(`^\\d{${MIN_PIN_LENGTH},${MAX_PIN_LENGTH}}$`).test(newPin)
+    ) {
+      return `Organization PIN must be ${MIN_PIN_LENGTH} to ${MAX_PIN_LENGTH} digits.`;
     }
 
     if (newPin !== confirmPin) {
@@ -119,11 +160,7 @@ const Login = ({ onLogin }) => {
   const clearAll = (keepEmail = true) => {
     setStep(STEPS.credentials);
     setLoginTicket("");
-    setLoginTicketExpiresAt(0);
     setShowPassword(false);
-    setShowPin(false);
-    setShowSetupPin(false);
-    setShowSetupConfirmPin(false);
     setError("");
 
     if (keepEmail) {
@@ -150,9 +187,6 @@ const Login = ({ onLogin }) => {
     const nextStep = String(data?.nextStep || "");
     setStep(nextStep);
     setLoginTicket(String(data?.loginTicket || ""));
-    setLoginTicketExpiresAt(
-      Date.now() + Math.max(0, Number(data?.pendingExpiresIn || 900) * 1000),
-    );
     setNotice(
       String(data?.message || "").trim() ||
         (nextStep === STEPS.pinSetup
@@ -362,375 +396,314 @@ const Login = ({ onLogin }) => {
     }
   };
 
-  const cardFooter = `Session expires in ${formatCountdown(loginTicketRemaining)}.`;
+  const isPinOverlayOpen = step === STEPS.pin || step === STEPS.pinSetup;
+  const overlayTitle =
+    step === STEPS.pin ? "Enter organization PIN" : "Create organization PIN";
 
   return (
-    <div className="relative min-h-screen overflow-hidden px-4 py-6 sm:px-6 lg:px-8">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.16),transparent_35%),radial-gradient(circle_at_top_right,rgba(99,102,241,0.14),transparent_30%),linear-gradient(180deg,rgba(248,251,255,0.85)_0%,rgba(244,247,251,0.65)_100%)]" />
-      <div className="pointer-events-none absolute left-0 top-0 h-72 w-72 -translate-x-1/2 -translate-y-1/2 rounded-full bg-cyan-400/10 blur-3xl" />
-      <div className="pointer-events-none absolute bottom-0 right-0 h-96 w-96 translate-x-1/3 translate-y-1/3 rounded-full bg-indigo-500/10 blur-3xl" />
+    <div className="relative min-h-screen overflow-hidden">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.18),transparent_26%),radial-gradient(circle_at_bottom_right,rgba(255,255,255,0.14),transparent_24%)]" />
 
-      <div className="surface-panel-strong relative mx-auto grid min-h-[calc(100vh-2rem)] max-w-6xl overflow-hidden rounded-[32px] lg:grid-cols-2">
-        <div className="relative p-5 sm:p-8 lg:p-10">
-          <div className="mb-8">
-            <HookLogo className="h-10 w-auto" />
-            <h2 className="mt-6 text-3xl font-bold text-slate-900">
-              Welcome Back
-            </h2>
-            <p className="mt-2 text-sm text-slate-600">
-              Sign in to continue to your Hooks admin workspace.
-            </p>
+      <div className="relative mx-auto  flex min-h-screen max-w-6xl items-center px-4 py-8 sm:px-6 lg:px-8">
+        <div className="relative grid w-full overflow-hidden border border-white/25  bg-[linear-gradient(135deg,#1e5bff_0%,#2b67ff_34%,#4ba8ff_100%)] shadow-[0_30px_90px_rgba(16,24,40,0.28)] lg:grid-cols-[1.15fr_0.85fr]">
+          <div className="relative overflow-hidden border-b border-white/15 bg-[linear-gradient(180deg,rgba(255,255,255,0.12)_0%,rgba(255,255,255,0.05)_100%)] px-6 py-8 text-white sm:px-8 sm:py-10 lg:border-b-0 lg:border-r">
+            <div className="relative z-10">
+              <HookLogo className="h-10 w-auto" />
+              <div className="mt-10 max-w-md">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.26em] text-blue-100/85">
+                  Hooks Admin
+                </div>
+                <h2 className="mt-4 text-4xl font-bold leading-tight tracking-[-0.03em]">
+                  Welcome to your blue access workspace
+                </h2>
+                <p className="mt-4 text-sm leading-7 text-blue-50/88">
+                  Sign in to manage content, products, and publishing with a
+                  simple two-step admin flow designed for your Hooks team.
+                </p>
+              </div>
+
+              <div className="mt-10 grid gap-4 sm:grid-cols-3 lg:max-w-xl">
+                {[
+                  {
+                    kicker: "01",
+                    title: "Fast access",
+                    copy: "Open the admin panel quickly with a clear email and password flow.",
+                  },
+                  {
+                    kicker: "02",
+                    title: "Secure step",
+                    copy: "Organization PIN verification adds one focused security layer.",
+                  },
+                  {
+                    kicker: "03",
+                    title: "Team ready",
+                    copy: "Shared admin access stays easier to manage across your workspace.",
+                  },
+                ].map((item) => {
+                  return (
+                    <div
+                      key={item.title}
+                      className="border border-white/18 bg-white/10 px-4 py-4 backdrop-blur-sm"
+                    >
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-blue-100/80">
+                        {item.kicker}
+                      </div>
+                      <div className="mt-4 text-sm font-semibold text-white">
+                        {item.title}
+                      </div>
+                      <p className="mt-2 text-xs leading-6 text-blue-50/82">
+                        {item.copy}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="pointer-events-none absolute -bottom-6 left-6 flex gap-5 opacity-90">
+              {[0, 1, 2].map((item) => (
+                <div
+                  key={item}
+                  className="h-28 w-10 -skew-x-[28deg] bg-[linear-gradient(180deg,rgba(255,161,84,0.15)_0%,rgba(255,159,67,0.9)_100%)] shadow-[0_0_24px_rgba(255,159,67,0.28)]"
+                  style={{
+                    transform: `translateY(${item * 18}px) skewX(-28deg)`,
+                  }}
+                />
+              ))}
+            </div>
           </div>
 
-          {notice && (
-            <div className="mb-4 flex gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-              <FaInfoCircle className="mt-0.5 shrink-0 text-amber-500" />
-              <span>{notice}</span>
-            </div>
-          )}
-
-          {error && (
-            <div className="mb-4 flex gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-              <FaExclamationCircle className="mt-0.5 shrink-0 text-red-500" />
-              <span>{error}</span>
-            </div>
-          )}
-
-          <form onSubmit={submit} className="space-y-4">
-            {step !== STEPS.credentials && (
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => clearAll(false)}
-                  disabled={loading}
-                  className="text-sm font-medium text-purple-600 hover:text-purple-700"
-                >
-                  Use another account
-                </button>
+          <div className="relative bg-white px-6 py-8 sm:px-8 sm:py-10">
+            <div className={isPinOverlayOpen ? "opacity-50 blur-[1px]" : ""}>
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-blue-600">
+                    User Login
+                  </div>
+                  <h3 className="mt-3 text-3xl font-bold tracking-[-0.03em] text-slate-950">
+                    Welcome back
+                  </h3>
+                  <p className="mt-3 max-w-sm text-sm leading-7 text-slate-600">
+                    Enter your credentials to continue to the Hooks admin
+                    dashboard.
+                  </p>
+                </div>
+                <HookLogo className="hidden h-10 w-auto shrink-0 sm:block" />
               </div>
-            )}
 
-            {step === STEPS.credentials ? (
-              <>
-                <div className="relative">
-                  <FaEnvelope className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="email"
-                    value={form.email}
-                    onChange={(event) => {
-                      setForm((value) => ({
-                        ...value,
-                        email: event.target.value,
-                      }));
-                      setError("");
-                    }}
-                    placeholder="Enter your email"
-                    autoComplete="email"
-                    required
-                    disabled={loading}
-                    className={`${FIELD} pl-11 pr-4`}
-                  />
+              {!isPinOverlayOpen && notice ? (
+                <div className="mt-6 border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                  {notice}
+                </div>
+              ) : null}
+
+              {!isPinOverlayOpen && error ? (
+                <div className="mt-6 border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                  {error}
+                </div>
+              ) : null}
+
+              {isPinOverlayOpen ? (
+                <div className="mt-6 border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+                  Password verified for{" "}
+                  <span className="font-semibold text-emerald-950">
+                    {form.email || "your account"}
+                  </span>
+                  . Complete the organization PIN step in the security panel.
+                </div>
+              ) : null}
+
+              <form onSubmit={submit} className="mt-8 space-y-5">
+                <div>
+                  <label className="mb-2 block text-xs  font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    Email
+                  </label>
+                  <div>
+                    <input
+                      type="email"
+                      value={form.email}
+                      onChange={(event) => {
+                        setForm((value) => ({
+                          ...value,
+                          email: event.target.value,
+                        }));
+                        setError("");
+                      }}
+                      placeholder="Enter your email"
+                      autoComplete="email"
+                      required
+                      disabled={loading || isPinOverlayOpen}
+                      className={FIELD}
+                    />
+                  </div>
                 </div>
 
-                <div className="relative">
-                  <FaLock className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    value={form.password}
-                    onChange={(event) => {
-                      setForm((value) => ({
-                        ...value,
-                        password: event.target.value,
-                      }));
-                      setError("");
-                    }}
-                    placeholder="Enter your password"
-                    autoComplete="current-password"
-                    required
-                    disabled={loading}
-                    className={`${FIELD} pl-11 pr-12`}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((value) => !value)}
-                    disabled={loading}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  >
-                    {showPassword ? <FaEyeSlash /> : <FaEye />}
-                  </button>
+                <div>
+                  <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    Password
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      value={form.password}
+                      onChange={(event) => {
+                        setForm((value) => ({
+                          ...value,
+                          password: event.target.value,
+                        }));
+                        setError("");
+                      }}
+                      placeholder="Enter your password"
+                      autoComplete="current-password"
+                      required
+                      disabled={loading || isPinOverlayOpen}
+                      className={`${FIELD} pr-14`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((value) => !value)}
+                      disabled={loading || isPinOverlayOpen}
+                      className="absolute right-0 top-1/2 -translate-y-1/2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 transition hover:text-slate-700 disabled:opacity-50"
+                    >
+                      {showPassword ? "Hide" : "Show"}
+                    </button>
+                  </div>
                 </div>
 
-                <div className="flex items-center justify-between gap-3 text-sm">
-                  <label className="flex items-center gap-2 text-gray-700">
+                <div className="flex items-center justify-between gap-3 text-sm text-slate-600">
+                  <label className="flex items-center gap-2">
                     <input
                       type="checkbox"
                       checked={rememberMe}
                       onChange={(event) => setRememberMe(event.target.checked)}
-                      disabled={loading}
+                      disabled={loading || isPinOverlayOpen}
                     />
                     <span>Remember me</span>
                   </label>
                   <button
                     type="button"
-                    className="font-medium text-purple-600 hover:text-purple-700"
+                    className="font-medium text-blue-600 transition hover:text-blue-700"
                   >
                     Forgot password?
                   </button>
                 </div>
-              </>
-            ) : step === STEPS.pin ? (
-              <>
-                <div className="relative">
-                  <FaEnvelope className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="email"
-                    value={form.email}
-                    disabled
-                    className={`${FIELD} pl-11 pr-4`}
-                  />
-                </div>
 
-                <div className="rounded-xl border border-purple-100 bg-purple-50/70 p-4">
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-purple-100 text-purple-700">
-                      <FaShieldAlt />
-                    </div>
-                    <div>
-                      <div className="text-sm font-semibold text-gray-900">
-                        Enter organization PIN
-                      </div>
-                      <div className="mt-1 text-sm text-gray-600">
-                        Password is already verified. Enter the organization PIN
-                        to complete admin sign-in.
-                      </div>
-                      <div className="mt-2 text-xs text-gray-500">
-                        {cardFooter}
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                <button
+                  type="submit"
+                  disabled={loading || isPinOverlayOpen}
+                  className={PRIMARY}
+                >
+                  {loading && !isPinOverlayOpen
+                    ? "Checking credentials..."
+                    : "Login"}
+                </button>
+              </form>
 
-                <div className="relative">
-                  <FaLock className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input
-                    type={showPin ? "text" : "password"}
-                    value={form.pin}
-                    onChange={(event) => {
-                      setForm((value) => ({
-                        ...value,
-                        pin: event.target.value.replace(/\D/g, "").slice(0, 10),
-                      }));
-                      setError("");
-                    }}
-                    placeholder="Enter organization PIN"
-                    autoComplete="one-time-code"
-                    inputMode="numeric"
-                    pattern="[0-9]{4,10}"
-                    minLength={4}
-                    maxLength={10}
-                    required
-                    disabled={loading}
-                    className={`${FIELD} pl-11 pr-12`}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPin((value) => !value)}
-                    disabled={loading}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  >
-                    {showPin ? <FaEyeSlash /> : <FaEye />}
-                  </button>
-                </div>
-
-                <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
-                  The organization PIN is shared by your admin team and is
-                  stored securely on the server.
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="relative">
-                  <FaEnvelope className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="email"
-                    value={form.email}
-                    disabled
-                    className={`${FIELD} pl-11 pr-4`}
-                  />
-                </div>
-
-                <div className="rounded-xl border border-purple-100 bg-purple-50/70 p-4">
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-purple-100 text-purple-700">
-                      <FaShieldAlt />
-                    </div>
-                    <div>
-                      <div className="text-sm font-semibold text-gray-900">
-                        Create organization PIN
-                      </div>
-                      <div className="mt-1 text-sm text-gray-600">
-                        No organization PIN is configured yet. Create it now to
-                        complete admin sign-in.
-                      </div>
-                      <div className="mt-2 text-xs text-gray-500">
-                        {cardFooter}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="relative">
-                  <FaLock className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input
-                    type={showSetupPin ? "text" : "password"}
-                    value={form.newPin}
-                    onChange={(event) => {
-                      setForm((value) => ({
-                        ...value,
-                        newPin: event.target.value
-                          .replace(/\D/g, "")
-                          .slice(0, 10),
-                      }));
-                      setError("");
-                    }}
-                    placeholder="Create organization PIN"
-                    inputMode="numeric"
-                    pattern="[0-9]{4,10}"
-                    minLength={4}
-                    maxLength={10}
-                    required
-                    disabled={loading}
-                    className={`${FIELD} pl-11 pr-12`}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowSetupPin((value) => !value)}
-                    disabled={loading}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  >
-                    {showSetupPin ? <FaEyeSlash /> : <FaEye />}
-                  </button>
-                </div>
-
-                <div className="relative">
-                  <FaLock className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input
-                    type={showSetupConfirmPin ? "text" : "password"}
-                    value={form.confirmPin}
-                    onChange={(event) => {
-                      setForm((value) => ({
-                        ...value,
-                        confirmPin: event.target.value
-                          .replace(/\D/g, "")
-                          .slice(0, 10),
-                      }));
-                      setError("");
-                    }}
-                    placeholder="Confirm organization PIN"
-                    inputMode="numeric"
-                    pattern="[0-9]{4,10}"
-                    minLength={4}
-                    maxLength={10}
-                    required
-                    disabled={loading}
-                    className={`${FIELD} pl-11 pr-12`}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowSetupConfirmPin((value) => !value)}
-                    disabled={loading}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  >
-                    {showSetupConfirmPin ? <FaEyeSlash /> : <FaEye />}
-                  </button>
-                </div>
-
-                <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
-                  Create a 4 to 10 digit organization PIN to secure admin
-                  access.
-                </div>
-              </>
-            )}
-
-            <button type="submit" disabled={loading} className={PRIMARY}>
-              <span className="inline-flex items-center justify-center gap-2">
-                {loading ? (
-                  <>
-                    <FaSpinner className="animate-spin" />
-                    <span>
-                      {step === STEPS.pin
-                        ? "Verifying organization PIN..."
-                        : step === STEPS.pinSetup
-                          ? "Creating organization PIN..."
-                          : "Checking credentials..."}
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    {step === STEPS.credentials ? (
-                      <FaSignInAlt />
-                    ) : (
-                      <FaShieldAlt />
-                    )}
-                    <span>
-                      {step === STEPS.pin
-                        ? "Verify Organization PIN"
-                        : step === STEPS.pinSetup
-                          ? "Create PIN and Sign In"
-                          : "Continue"}
-                    </span>
-                  </>
-                )}
-              </span>
-            </button>
-          </form>
-
-          <p className="mt-6 text-center text-xs text-gray-600">
-            By signing in, you agree to our{" "}
-            <a href="#" className="font-medium text-purple-600">
-              Terms of Service
-            </a>{" "}
-            and{" "}
-            <a href="#" className="font-medium text-purple-600">
-              Privacy Policy
-            </a>
-            .
-          </p>
-        </div>
-
-        <div className="hero-panel hidden overflow-hidden p-10 text-white lg:flex lg:flex-col lg:justify-between">
-          <div className="rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur-sm">
-            <HookLogo className="h-10 w-auto" />
-          </div>
-
-          <div>
-            <h3 className="text-4xl font-bold leading-tight">
-              Secure admin access for your Hooks workspace
-            </h3>
-            <div className="mt-8 space-y-4 text-sm text-purple-50">
-              <div className="flex gap-3">
-                <FaRocket className="mt-0.5 shrink-0" />
-                <span>
-                  Password is step one, and the organization PIN completes
-                  access to the admin workspace.
-                </span>
-              </div>
-              <div className="flex gap-3">
-                <FaShieldAlt className="mt-0.5 shrink-0" />
-                <span>
-                  The PIN is centrally managed so admins can update it whenever
-                  the team needs to rotate access.
-                </span>
-              </div>
-              <div className="flex gap-3">
-                <FaUser className="mt-0.5 shrink-0" />
-                <span>
-                  Email login stays the same while the second step is now a
-                  simple admin PIN instead of device-based MFA.
-                </span>
-              </div>
+              <p className="mt-8 text-center text-xs leading-6 text-slate-500">
+                By signing in, you agree to our{" "}
+                <a href="#" className="font-medium text-blue-600">
+                  Terms of Service
+                </a>{" "}
+                and{" "}
+                <a href="#" className="font-medium text-blue-600">
+                  Privacy Policy
+                </a>
+                .
+              </p>
             </div>
           </div>
+
+          {isPinOverlayOpen ? (
+            <div className="fixed inset-0 z-[120] flex items-center justify-center bg-[rgba(5,17,55,0.82)] p-4 sm:p-6">
+              <form
+                onSubmit={submit}
+                className="w-full max-w-lg overflow-hidden border border-slate-200 bg-white shadow-[0_30px_90px_rgba(0,0,0,0.45)]"
+              >
+                <div className="relative border-b border-slate-200 bg-white px-6 py-8 text-center sm:px-8">
+                  <div className="pointer-events-none absolute left-0 top-0 h-1 w-full bg-[linear-gradient(90deg,#275DFF_0%,#57BCFF_100%)]" />
+                  <h3 className="text-[34px] font-bold tracking-[-0.03em] text-slate-950">
+                    {step === STEPS.pin
+                      ? "Secure PIN Verification"
+                      : "Create Security PIN"}
+                  </h3>
+                  <p className="mt-3 text-sm leading-7 text-slate-500">
+                    {step === STEPS.pin
+                      ? "Enter your 7-digit organization verification code."
+                      : "Create your 7-digit organization security code."}
+                  </p>
+                </div>
+
+                <div className="p-6 sm:p-8">
+                  {error ? (
+                    <div className="mb-4 border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                      {error}
+                    </div>
+                  ) : null}
+
+                  <div className="space-y-5">
+                    {step === STEPS.pin ? (
+                      <PinBoxesField
+                        label=""
+                        value={form.pin}
+                        onChange={(nextPin) => {
+                          setForm((value) => ({ ...value, pin: nextPin }));
+                          setError("");
+                        }}
+                        disabled={loading}
+                        autoFocus
+                      />
+                    ) : (
+                      <>
+                        <PinBoxesField
+                          label="New PIN"
+                          value={form.newPin}
+                          onChange={(nextPin) => {
+                            setForm((value) => ({
+                              ...value,
+                              newPin: nextPin,
+                            }));
+                            setError("");
+                          }}
+                          disabled={loading}
+                          autoFocus
+                        />
+                        <PinBoxesField
+                          label="Confirm PIN"
+                          value={form.confirmPin}
+                          onChange={(nextPin) => {
+                            setForm((value) => ({
+                              ...value,
+                              confirmPin: nextPin,
+                            }));
+                            setError("");
+                          }}
+                          disabled={loading}
+                        />
+                      </>
+                    )}
+                  </div>
+
+                  <p className="mt-5 text-center text-sm text-slate-500">
+                    Use the organization PIN shared with your admin team.
+                  </p>
+
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="mt-6 w-full border border-blue-700 bg-blue-600 py-4 text-sm font-semibold uppercase tracking-[0.14em] text-white transition hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    {loading
+                      ? step === STEPS.pin
+                        ? "Verifying organization PIN..."
+                        : "Creating organization PIN..."
+                      : step === STEPS.pin
+                        ? "Verify Organization PIN"
+                        : "Create PIN and Sign In"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          ) : null}
         </div>
       </div>
     </div>
