@@ -247,6 +247,14 @@ const ROUTE_TRAILS = [
     ],
   },
   {
+    path: "/reports/launch-timing",
+    trail: [
+      DASHBOARD_CRUMB,
+      { label: "Reports", to: "/reports/productpublishstatus" },
+      { label: "Launch Timing" },
+    ],
+  },
+  {
     path: "/reports/useractivity",
     trail: [
       DASHBOARD_CRUMB,

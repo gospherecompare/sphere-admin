@@ -38,6 +38,9 @@ const ProductCategoryReport = lazy(
 const ProductPublishStatusReport = lazy(
   () => import("../components/Reports/ProductPublish"),
 );
+const LaunchTimingReport = lazy(
+  () => import("../components/Reports/LaunchTimingReport"),
+);
 const PublishedByUserReport = lazy(
   () => import("../components/Reports/PublishUser"),
 );
@@ -277,6 +280,11 @@ export const ROUTE_CONFIG = {
     path: "/reports/productpublishstatus",
     component: ProductPublishStatusReport,
     label: "Product Publish Status Report",
+  },
+  launchTimingReport: {
+    path: "/reports/launch-timing",
+    component: LaunchTimingReport,
+    label: "Launch Timing Report",
   },
   userActivityReport: {
     path: "/reports/useractivity",

@@ -349,6 +349,13 @@ const MENU_CONFIG = {
           requiredAnyPermissions: ["reports.view"],
         },
         {
+          id: "launch-timing-rep",
+          label: "Launch Timing",
+          icon: <FaCalendarAlt />,
+          path: "/reports/launch-timing",
+          requiredAnyPermissions: ["reports.view"],
+        },
+        {
           id: "user-activity-rep",
           label: "User Activity",
           icon: <FaUsers />,

@@ -327,6 +327,10 @@ const MainLayout = ({
                   }
                 />
                 <Route
+                  path="/reports/launch-timing"
+                  element={<ROUTE_CONFIG.launchTimingReport.component />}
+                />
+                <Route
                   path="/analytics"
                   element={
                     <Navigate to="/reports/productpublishstatus" replace />

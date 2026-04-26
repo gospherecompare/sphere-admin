@@ -36,6 +36,7 @@ import CategoryManagement from "./components/Category";
 import OnlineStoreManagement from "./components/Store";
 import ProductCategoryReport from "./components/Reports/ProductCategory";
 import ProductPublishStatusReport from "./components/Reports/ProductPublish";
+import LaunchTimingReport from "./components/Reports/LaunchTimingReport";
 import PublishedByUserReport from "./components/Reports/PublishUser";
 import RecentPublishActivity from "./components/Reports/RecentPublish";
 import TrendingManager from "./components/Reports/TrendingManager";
@@ -677,6 +678,18 @@ function App() {
                       message="You need report access to open this page."
                     >
                       <ProductPublishStatusReport />
+                    </AccessGate>
+                  }
+                />
+                <Route
+                  path="/reports/launch-timing"
+                  element={
+                    <AccessGate
+                      requiredAnyPermissions={["reports.view"]}
+                      title="Reports access required"
+                      message="You need report access to open this page."
+                    >
+                      <LaunchTimingReport />
                     </AccessGate>
                   }
                 />
