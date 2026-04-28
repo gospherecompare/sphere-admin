@@ -230,24 +230,54 @@ const escapeHtml = (value) =>
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
 
+const decodeHtmlEntities = (value) => {
+  let text = String(value || "");
+  if (!text) return "";
+
+  const replacements = [
+    ["&lt;", "<"],
+    ["&gt;", ">"],
+    ["&quot;", '"'],
+    ["&#39;", "'"],
+    ["&nbsp;", " "],
+    ["&amp;", "&"],
+  ];
+
+  for (let pass = 0; pass < 2; pass += 1) {
+    let next = text;
+    replacements.forEach(([encoded, decoded]) => {
+      next = next.split(encoded).join(decoded);
+    });
+    if (next === text) break;
+    text = next;
+  }
+
+  return text;
+};
+
+const normalizeArticleContent = (value) =>
+  decodeHtmlEntities(String(value || "").replace(/\r\n?/g, "\n")).trim();
+
 const renderBlogTemplatePreview = (content, tokenMap = {}) =>
-  String(content || "").replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (full, key) => {
-    const normalizedKey = String(key || "")
-      .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9_]+/g, "_");
-    const value = toPlainObject(tokenMap)[normalizedKey];
-    return value == null || value === "" ? full : String(value);
-  });
+  normalizeArticleContent(content).replace(
+    /\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g,
+    (full, key) => {
+      const normalizedKey = String(key || "")
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9_]+/g, "_");
+      const value = toPlainObject(tokenMap)[normalizedKey];
+      return value == null || value === "" ? full : String(value);
+    },
+  );
 
 const hasStructuredArticleMarkup = (value) =>
   /<\s*(?:p|br|h[1-6]|ul|ol|li|table|thead|tbody|tr|th|td|blockquote|a|strong|em|b|i|u)\b/i.test(
-    String(value || ""),
+    normalizeArticleContent(value),
   );
 
 const sanitizeArticleMarkup = (value) => {
-  const normalized = String(value || "")
-    .replace(/\r\n?/g, "\n")
+  const normalized = normalizeArticleContent(value)
     .replace(/<!--[\s\S]*?-->/g, "")
     .replace(/<(\/?)(?:div|section|article)\b[^>]*>/gi, (_, closing) =>
       closing ? "</p>" : "<p>",
@@ -278,7 +308,7 @@ const sanitizeArticleMarkup = (value) => {
 };
 
 const buildEditorSurfaceHtml = (value) => {
-  const content = String(value || "").trim();
+  const content = normalizeArticleContent(value);
   if (!content) return "";
 
   if (hasStructuredArticleMarkup(content)) {
@@ -294,7 +324,7 @@ const buildEditorSurfaceHtml = (value) => {
 };
 
 const buildArticlePreviewHtml = (value) => {
-  const content = String(value || "").trim();
+  const content = normalizeArticleContent(value);
   if (!content) return "";
 
   if (hasStructuredArticleMarkup(content)) {
@@ -309,6 +339,12 @@ const buildArticlePreviewHtml = (value) => {
     .filter(Boolean)
     .map((paragraph) => `<p>${escapeHtml(paragraph).replace(/\n/g, "<br />")}</p>`)
     .join("");
+};
+
+const clampTableCount = (value, fallback, min = 1, max = 12) => {
+  const parsed = Number.parseInt(String(value || "").trim(), 10);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.min(max, Math.max(min, parsed));
 };
 
 const hasMeaningfulArticleContent = (value) =>
@@ -719,7 +755,9 @@ const BlogEditor = () => {
           setPublishedAt(toDateTimeLocalValue(existing.published_at));
           setStatus(existing.status === "published" ? "published" : "draft");
           setContentTemplate(
-            existing.content_template || DEFAULT_PRODUCT_TEMPLATE,
+            normalizeArticleContent(
+              existing.content_template || DEFAULT_PRODUCT_TEMPLATE,
+            ),
           );
           setMessage("Loaded saved product-linked story.");
         } else {
@@ -865,7 +903,11 @@ const BlogEditor = () => {
       setPinned(normalizeBoolean(article.pinned));
       setPublishedAt(toDateTimeLocalValue(article.published_at));
       setStatus(article.status === "published" ? "published" : "draft");
-      setContentTemplate(article.content_template || DEFAULT_CUSTOM_TEMPLATE);
+      setContentTemplate(
+        normalizeArticleContent(
+          article.content_template || DEFAULT_CUSTOM_TEMPLATE,
+        ),
+      );
       setMessage("Loaded saved article.");
     } catch (err) {
       setError(err.message || "Failed to load article");
@@ -1022,18 +1064,72 @@ const BlogEditor = () => {
       ].join(""),
     );
 
-  const insertTableLayout = () =>
+  const insertTableLayout = () => {
+    if (typeof window === "undefined") return;
+
+    const requestedColumns = window.prompt(
+      "How many columns should the table have?",
+      "2",
+    );
+    if (requestedColumns === null) return;
+
+    const requestedRows = window.prompt(
+      "How many body rows should the table have?",
+      "2",
+    );
+    if (requestedRows === null) return;
+
+    const columnCount = clampTableCount(requestedColumns, 2, 1, 8);
+    const rowCount = clampTableCount(requestedRows, 2, 1, 20);
+
+    const headerLabels =
+      blogMode === "product" && columnCount === 2
+        ? ["Spec", "Details"]
+        : Array.from(
+            { length: columnCount },
+            (_, index) => `Column ${index + 1}`,
+          );
+
+    const productPresetRows =
+      blogMode === "product" && columnCount === 2
+        ? [
+            ["Battery", "{{battery}}"],
+            ["Processor", "{{processor}}"],
+            ["Price", "{{price}}"],
+            ["Display", "{{display}}"],
+            ["Main Camera", "{{main_camera}}"],
+            ["RAM", "{{ram}}"],
+            ["Storage", "{{storage}}"],
+            ["OS", "{{os}}"],
+          ]
+        : [];
+
+    const tableRows = Array.from({ length: rowCount }, (_, rowIndex) => {
+      const presetRow = productPresetRows[rowIndex] || [];
+      const cells = Array.from({ length: columnCount }, (_, columnIndex) => {
+        if (presetRow[columnIndex]) return presetRow[columnIndex];
+        if (columnIndex === 0) return `Row ${rowIndex + 1}`;
+        return "";
+      });
+
+      return `<tr>${cells
+        .map((cell) => `<td>${escapeHtml(cell)}</td>`)
+        .join("")}</tr>`;
+    });
+
     insertEditorHtml(
       [
         "<table>",
-        "<thead><tr><th>Spec</th><th>Details</th></tr></thead>",
+        `<thead><tr>${headerLabels
+          .map((label) => `<th>${escapeHtml(label)}</th>`)
+          .join("")}</tr></thead>`,
         "<tbody>",
-        "<tr><td>Battery</td><td>{{battery}}</td></tr>",
-        "<tr><td>Processor</td><td>{{processor}}</td></tr>",
+        ...tableRows,
         "</tbody>",
         "</table>",
       ].join(""),
     );
+  };
 
   const insertToken = (tokenKey) => {
     insertEditorText(`{{${tokenKey}}}`);
