@@ -272,7 +272,7 @@ const renderBlogTemplatePreview = (content, tokenMap = {}) =>
   );
 
 const hasStructuredArticleMarkup = (value) =>
-  /<\s*(?:p|br|h[1-6]|ul|ol|li|table|thead|tbody|tr|th|td|blockquote|a|strong|em|b|i|u)\b/i.test(
+  /<\s*(?:p|br|h[1-6]|ul|ol|li|table|thead|tbody|tr|th|td|blockquote|a|strong|em|b|i|u|figure|figcaption|img)\b/i.test(
     normalizeArticleContent(value),
   );
 
@@ -301,10 +301,30 @@ const sanitizeArticleMarkup = (value) => {
 
   return normalized
     .replace(
-      /<(?!\/?(?:p|br|strong|em|b|i|u|a|ul|ol|li|h2|h3|h4|h5|h6|blockquote|table|thead|tbody|tr|th|td)\b)[^>]+>/gi,
+      /<(?!\/?(?:p|br|strong|em|b|i|u|a|ul|ol|li|h2|h3|h4|h5|h6|blockquote|table|thead|tbody|tr|th|td|figure|figcaption|img)\b)[^>]+>/gi,
       "",
     )
     .trim();
+};
+
+const buildInlineImageHtml = (source, { alt = "", caption = "" } = {}) => {
+  const normalizedSource = String(source || "").trim();
+  if (!normalizedSource) return "";
+
+  const normalizedAlt = String(alt || "").trim();
+  const normalizedCaption = String(caption || "").trim();
+
+  return [
+    "<figure>",
+    `<img src="${escapeHtml(normalizedSource)}" alt="${escapeHtml(
+      normalizedAlt,
+    )}" />`,
+    normalizedCaption
+      ? `<figcaption>${escapeHtml(normalizedCaption)}</figcaption>`
+      : "",
+    "</figure>",
+    "<p><br /></p>",
+  ].join("");
 };
 
 const buildEditorSurfaceHtml = (value) => {
@@ -387,6 +407,7 @@ const BlogEditor = () => {
   const [pinned, setPinned] = useState(false);
   const [publishedAt, setPublishedAt] = useState("");
   const [uploadingHeroImage, setUploadingHeroImage] = useState(false);
+  const [uploadingInlineImage, setUploadingInlineImage] = useState(false);
   const [status, setStatus] = useState("draft");
   const [contentTemplate, setContentTemplate] = useState(
     DEFAULT_PRODUCT_TEMPLATE,
@@ -407,6 +428,7 @@ const BlogEditor = () => {
   const lastEditorHtmlRef = useRef("");
   const savedEditorRangeRef = useRef(null);
   const heroImageInputRef = useRef(null);
+  const inlineImageInputRef = useRef(null);
   const deferredLibraryQuery = useDeferredValue(libraryQuery);
 
   const authHeaders = useMemo(() => {
@@ -853,6 +875,80 @@ const BlogEditor = () => {
     }
   };
 
+  const insertInlineImage = ({ source, alt = "", caption = "" }) => {
+    const markup = buildInlineImageHtml(source, {
+      alt: alt || title || "Article image",
+      caption,
+    });
+    if (!markup) return;
+    insertEditorHtml(markup);
+  };
+
+  const insertInlineImageFromUrl = () => {
+    if (typeof window === "undefined") return;
+
+    const requestedUrl = window.prompt("Enter the inline image URL");
+    if (requestedUrl === null) return;
+
+    const normalizedUrl = String(requestedUrl || "").trim();
+    if (!normalizedUrl) return;
+
+    const fallbackAlt = title || "Article image";
+    const requestedAlt = window.prompt(
+      "Add alt text for the image",
+      fallbackAlt,
+    );
+    const requestedCaption = window.prompt("Optional caption or credit", "");
+
+    insertInlineImage({
+      source: normalizedUrl,
+      alt: String(requestedAlt || fallbackAlt).trim() || fallbackAlt,
+      caption: String(requestedCaption || "").trim(),
+    });
+  };
+
+  const handleInlineImageUpload = async (file) => {
+    if (!file) return;
+
+    setUploadingInlineImage(true);
+    setError("");
+
+    try {
+      const data = await uploadToCloudinary(file, "banners", {
+        resourceType: "image",
+      });
+
+      if (!data?.secure_url) {
+        throw new Error("No secure_url returned from upload");
+      }
+
+      const fileLabel = String(file.name || "")
+        .replace(/\.[^.]+$/, "")
+        .replace(/[-_]+/g, " ")
+        .trim();
+      const fallbackAlt = title || fileLabel || "Article image";
+      const requestedAlt =
+        typeof window !== "undefined"
+          ? window.prompt("Add alt text for the image", fallbackAlt)
+          : fallbackAlt;
+      const requestedCaption =
+        typeof window !== "undefined"
+          ? window.prompt("Optional caption or credit", "")
+          : "";
+
+      insertInlineImage({
+        source: data.secure_url,
+        alt: String(requestedAlt || fallbackAlt).trim() || fallbackAlt,
+        caption: String(requestedCaption || "").trim(),
+      });
+      setMessage("Inline image inserted into the story.");
+    } catch (err) {
+      setError(err?.message || "Failed to upload inline image");
+    } finally {
+      setUploadingInlineImage(false);
+    }
+  };
+
   const loadGeneralArticle = async (articleId) => {
     if (!articleId) return;
 
@@ -1064,6 +1160,20 @@ const BlogEditor = () => {
       ].join(""),
     );
 
+  const insertGuideStepLayout = () =>
+    insertEditorHtml(
+      [
+        "<h2>How to use this feature</h2>",
+        "<p>Open with a clear intro so the reader knows what changed and why it matters.</p>",
+        "<h3><strong>Step 1:</strong> Open the right setting</h3>",
+        "<p>Explain the first action in direct language and mention the exact screen or menu to open.</p>",
+        "<h3><strong>Step 2:</strong> Turn the feature on</h3>",
+        "<p>Call out the toggle, tap target, or confirmation message the reader should watch for.</p>",
+        "<h3><strong>Step 3:</strong> Confirm the result</h3>",
+        "<p>Close with what changes after setup, plus any caveat or tip that saves the reader time.</p>",
+      ].join(""),
+    );
+
   const insertTableLayout = () => {
     if (typeof window === "undefined") return;
 
@@ -1159,6 +1269,11 @@ const BlogEditor = () => {
       onClick: insertStarterLayout,
     },
     {
+      key: "guide",
+      label: "Guide steps",
+      onClick: insertGuideStepLayout,
+    },
+    {
       key: "h2",
       label: "H2",
       onClick: () => runEditorCommand("formatBlock", "<h2>"),
@@ -1192,6 +1307,19 @@ const BlogEditor = () => {
       key: "link",
       label: "Link",
       onClick: applyLink,
+    },
+    {
+      key: "image-url",
+      label: "Image URL",
+      onClick: insertInlineImageFromUrl,
+    },
+    {
+      key: "image-upload",
+      label: uploadingInlineImage ? "Uploading..." : "Upload image",
+      onClick: () => {
+        rememberEditorSelection();
+        inlineImageInputRef.current?.click();
+      },
     },
     {
       key: "bold",
@@ -2349,8 +2477,20 @@ const BlogEditor = () => {
 
             <div className="mt-3 rounded-md border border-dashed border-slate-300 bg-white px-3 py-2 text-[11px] leading-5 text-slate-500">
               Tip: paste plain text, then use the toolbar to style it. Product
-              facts on the right can be inserted into the story at the cursor.
+              facts on the right can be inserted at the cursor, and guide
+              screenshots can now be placed between steps with the image tools.
             </div>
+            <input
+              ref={inlineImageInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={async (event) => {
+                const file = event.target.files?.[0] || null;
+                await handleInlineImageUpload(file);
+                event.target.value = "";
+              }}
+            />
           </div>
 
           <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
@@ -2360,9 +2500,9 @@ const BlogEditor = () => {
             </div>
             <div className="relative">
               {!editorHasContent ? (
-                <div className="pointer-events-none absolute left-4 top-4 right-4 text-[15px] leading-7 text-slate-400">
+                  <div className="pointer-events-none absolute left-4 top-4 right-4 text-[15px] leading-7 text-slate-400">
                   Start writing the full story here. Add headings, lists,
-                  links, and tables using the toolbar above.
+                  links, inline images, and tables using the toolbar above.
                 </div>
               ) : null}
               <div
@@ -2393,7 +2533,7 @@ const BlogEditor = () => {
                   event.preventDefault();
                   pastePlainTextIntoEditor(pastedText);
                 }}
-                className="mb-0 min-h-[420px] w-full overflow-auto border-0 bg-white px-4 py-4 text-[15px] leading-7 text-slate-800 outline-none [&_a]:font-semibold [&_a]:text-sky-700 [&_a]:underline [&_a]:underline-offset-4 [&_blockquote]:my-5 [&_blockquote]:border-l-4 [&_blockquote]:border-sky-500 [&_blockquote]:bg-sky-50 [&_blockquote]:px-4 [&_blockquote]:py-3 [&_blockquote]:text-slate-700 [&_h2]:mt-7 [&_h2]:text-[24px] [&_h2]:font-black [&_h2]:leading-tight [&_h2]:tracking-[-0.03em] [&_h2]:text-slate-950 [&_h3]:mt-6 [&_h3]:text-[18px] [&_h3]:font-bold [&_h3]:text-slate-900 [&_ol]:my-4 [&_ol]:list-decimal [&_ol]:space-y-2 [&_ol]:pl-6 [&_p]:my-4 [&_strong]:font-semibold [&_table]:my-5 [&_table]:w-full [&_table]:border-collapse [&_table]:text-left [&_table]:text-sm [&_td]:border [&_td]:border-slate-200 [&_td]:px-3 [&_td]:py-2 [&_th]:border [&_th]:border-slate-200 [&_th]:bg-slate-50 [&_th]:px-3 [&_th]:py-2 [&_th]:font-semibold [&_ul]:my-4 [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-6"
+                className="mb-0 min-h-[420px] w-full overflow-auto border-0 bg-white px-4 py-4 text-[15px] leading-7 text-slate-800 outline-none [&_a]:font-semibold [&_a]:text-sky-700 [&_a]:underline [&_a]:underline-offset-4 [&_blockquote]:my-5 [&_blockquote]:border-l-4 [&_blockquote]:border-sky-500 [&_blockquote]:bg-sky-50 [&_blockquote]:px-4 [&_blockquote]:py-3 [&_blockquote]:text-slate-700 [&_figure]:my-6 [&_figure]:overflow-hidden [&_figure]:rounded-2xl [&_figure]:border [&_figure]:border-slate-200 [&_figure]:bg-slate-50 [&_figure_figcaption]:border-t [&_figure_figcaption]:border-slate-200 [&_figure_figcaption]:px-4 [&_figure_figcaption]:py-3 [&_figure_figcaption]:text-xs [&_figure_figcaption]:leading-5 [&_figure_figcaption]:text-slate-500 [&_figure_img]:w-full [&_figure_img]:bg-slate-100 [&_figure_img]:object-cover [&_h2]:mt-7 [&_h2]:text-[24px] [&_h2]:font-black [&_h2]:leading-tight [&_h2]:tracking-[-0.03em] [&_h2]:text-slate-950 [&_h3]:mt-6 [&_h3]:text-[18px] [&_h3]:font-bold [&_h3]:text-slate-900 [&_img]:my-6 [&_img]:w-full [&_img]:rounded-2xl [&_ol]:my-4 [&_ol]:list-decimal [&_ol]:space-y-2 [&_ol]:pl-6 [&_p]:my-4 [&_strong]:font-semibold [&_table]:my-5 [&_table]:w-full [&_table]:border-collapse [&_table]:text-left [&_table]:text-sm [&_td]:border [&_td]:border-slate-200 [&_td]:px-3 [&_td]:py-2 [&_th]:border [&_th]:border-slate-200 [&_th]:bg-slate-50 [&_th]:px-3 [&_th]:py-2 [&_th]:font-semibold [&_ul]:my-4 [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-6"
               />
             </div>
           </div>
@@ -2460,7 +2600,7 @@ const BlogEditor = () => {
 
               {articlePreviewHtml ? (
                 <div
-                  className="mt-5 text-[15px] leading-7 text-slate-700 [&_p]:mb-5 [&_p:last-child]:mb-0 [&_h2]:mt-8 [&_h2]:text-[22px] [&_h2]:font-black [&_h2]:leading-tight [&_h2]:tracking-[-0.03em] [&_h2]:text-slate-950 [&_h3]:mt-7 [&_h3]:text-[18px] [&_h3]:font-bold [&_h3]:text-slate-900 [&_h4]:mt-6 [&_h4]:text-[16px] [&_h4]:font-bold [&_h4]:text-slate-900 [&_ul]:my-5 [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-5 [&_ol]:my-5 [&_ol]:list-decimal [&_ol]:space-y-2 [&_ol]:pl-5 [&_blockquote]:my-6 [&_blockquote]:border-l-4 [&_blockquote]:border-sky-500 [&_blockquote]:bg-sky-50 [&_blockquote]:px-4 [&_blockquote]:py-3 [&_blockquote]:text-slate-700 [&_a]:font-semibold [&_a]:text-sky-700 [&_a]:underline [&_a]:underline-offset-4 [&_strong]:font-semibold [&_strong]:text-slate-950 [&_div.article-table-wrap]:my-5 [&_div.article-table-wrap]:overflow-x-auto [&_table]:min-w-[520px] [&_table]:w-full [&_table]:border-collapse [&_table]:text-left [&_table]:text-sm [&_thead]:bg-slate-50 [&_th]:border [&_th]:border-slate-200 [&_th]:px-3 [&_th]:py-2 [&_th]:font-semibold [&_th]:text-slate-800 [&_td]:border [&_td]:border-slate-200 [&_td]:px-3 [&_td]:py-2 [&_td]:align-top"
+                  className="mt-5 text-[15px] leading-7 text-slate-700 [&_p]:mb-5 [&_p:last-child]:mb-0 [&_h2]:mt-8 [&_h2]:text-[22px] [&_h2]:font-black [&_h2]:leading-tight [&_h2]:tracking-[-0.03em] [&_h2]:text-slate-950 [&_h3]:mt-7 [&_h3]:text-[18px] [&_h3]:font-bold [&_h3]:text-slate-900 [&_h4]:mt-6 [&_h4]:text-[16px] [&_h4]:font-bold [&_h4]:text-slate-900 [&_ul]:my-5 [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-5 [&_ol]:my-5 [&_ol]:list-decimal [&_ol]:space-y-2 [&_ol]:pl-5 [&_blockquote]:my-6 [&_blockquote]:border-l-4 [&_blockquote]:border-sky-500 [&_blockquote]:bg-sky-50 [&_blockquote]:px-4 [&_blockquote]:py-3 [&_blockquote]:text-slate-700 [&_a]:font-semibold [&_a]:text-sky-700 [&_a]:underline [&_a]:underline-offset-4 [&_strong]:font-semibold [&_strong]:text-slate-950 [&_figure]:my-7 [&_figure]:overflow-hidden [&_figure]:rounded-2xl [&_figure]:border [&_figure]:border-slate-200 [&_figure]:bg-slate-50 [&_figure_figcaption]:border-t [&_figure_figcaption]:border-slate-200 [&_figure_figcaption]:px-4 [&_figure_figcaption]:py-3 [&_figure_figcaption]:text-xs [&_figure_figcaption]:uppercase [&_figure_figcaption]:tracking-[0.14em] [&_figure_figcaption]:text-slate-500 [&_figure_img]:w-full [&_figure_img]:bg-slate-100 [&_figure_img]:object-cover [&_img]:my-6 [&_img]:w-full [&_img]:rounded-2xl [&_div.article-table-wrap]:my-5 [&_div.article-table-wrap]:overflow-x-auto [&_table]:min-w-[520px] [&_table]:w-full [&_table]:border-collapse [&_table]:text-left [&_table]:text-sm [&_thead]:bg-slate-50 [&_th]:border [&_th]:border-slate-200 [&_th]:px-3 [&_th]:py-2 [&_th]:font-semibold [&_th]:text-slate-800 [&_td]:border [&_td]:border-slate-200 [&_td]:px-3 [&_td]:py-2 [&_td]:align-top"
                   dangerouslySetInnerHTML={{ __html: articlePreviewHtml }}
                 />
               ) : (
