@@ -198,6 +198,14 @@ const ROUTE_TRAILS = [
   },
 
   {
+    path: "/settings/compare-pages",
+    trail: [
+      DASHBOARD_CRUMB,
+      { label: "Settings", to: "/settings/compare-pages" },
+      { label: "Compare Pages" },
+    ],
+  },
+  {
     path: "/settings/compare-scoring",
     trail: [
       DASHBOARD_CRUMB,

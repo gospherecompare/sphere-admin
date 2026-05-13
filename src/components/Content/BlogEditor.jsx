@@ -258,6 +258,24 @@ const decodeHtmlEntities = (value) => {
 const normalizeArticleContent = (value) =>
   decodeHtmlEntities(String(value || "").replace(/\r\n?/g, "\n")).trim();
 
+const applyInlineBoldMarkers = (value) =>
+  String(value || "")
+    .split(/(<[^>]+>)/g)
+    .map((segment) => {
+      if (!segment || segment.startsWith("<")) return segment;
+
+      return segment
+        .replace(/\*\*([\s\S]*?)\*\*/g, (full, inner) => {
+          const text = String(inner || "").trim();
+          return text ? `<strong>${text}</strong>` : full;
+        })
+        .replace(/__([\s\S]*?)__/g, (full, inner) => {
+          const text = String(inner || "").trim();
+          return text ? `<strong>${text}</strong>` : full;
+        });
+    })
+    .join("");
+
 const renderBlogTemplatePreview = (content, tokenMap = {}) =>
   normalizeArticleContent(content).replace(
     /\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g,
@@ -299,7 +317,7 @@ const sanitizeArticleMarkup = (value) => {
     .replace(/&nbsp;/gi, " ")
     .replace(/<p>\s*(?:<br\s*\/?>|\s)*<\/p>/gi, "");
 
-  return normalized
+  return applyInlineBoldMarkers(normalized)
     .replace(
       /<(?!\/?(?:p|br|strong|em|b|i|u|a|ul|ol|li|h2|h3|h4|h5|h6|blockquote|table|thead|tbody|tr|th|td|figure|figcaption|img)\b)[^>]+>/gi,
       "",
@@ -339,7 +357,12 @@ const buildEditorSurfaceHtml = (value) => {
     .split(/\n\s*\n/)
     .map((paragraph) => paragraph.trim())
     .filter(Boolean)
-    .map((paragraph) => `<p>${escapeHtml(paragraph).replace(/\n/g, "<br />")}</p>`)
+    .map(
+      (paragraph) =>
+        `<p>${applyInlineBoldMarkers(
+          escapeHtml(paragraph).replace(/\n/g, "<br />"),
+        )}</p>`,
+    )
     .join("");
 };
 
@@ -357,7 +380,12 @@ const buildArticlePreviewHtml = (value) => {
     .split(/\n\s*\n/)
     .map((paragraph) => paragraph.trim())
     .filter(Boolean)
-    .map((paragraph) => `<p>${escapeHtml(paragraph).replace(/\n/g, "<br />")}</p>`)
+    .map(
+      (paragraph) =>
+        `<p>${applyInlineBoldMarkers(
+          escapeHtml(paragraph).replace(/\n/g, "<br />"),
+        )}</p>`,
+    )
     .join("");
 };
 
@@ -1596,14 +1624,14 @@ const BlogEditor = () => {
   const currentPermalink = slug
     ? `/news/${slug}`
     : "Slug will be generated when you save";
-  const overviewCards = [
+  const libraryOverviewCards = [
     {
       label: "Library Items",
       value: libraryStats.total,
       hint: "Saved stories and articles",
       cardClassName: "border-slate-200 bg-white",
       labelClassName: "text-slate-500",
-      valueClassName: "text-slate-900",
+      valueClassName: "text-2xl text-slate-900",
     },
     {
       label: "Drafts",
@@ -1611,7 +1639,7 @@ const BlogEditor = () => {
       hint: "Needs review or publish",
       cardClassName: "border-amber-200 bg-amber-50",
       labelClassName: "text-amber-700",
-      valueClassName: "text-amber-900",
+      valueClassName: "text-2xl text-amber-900",
     },
     {
       label: "Published",
@@ -1619,30 +1647,80 @@ const BlogEditor = () => {
       hint: "Live in the newsroom",
       cardClassName: "border-emerald-200 bg-emerald-50",
       labelClassName: "text-emerald-700",
-      valueClassName: "text-emerald-900",
+      valueClassName: "text-2xl text-emerald-900",
     },
   ];
+  const editorOverviewCards = [
+    {
+      label: "Workspace",
+      value: blogMode === "product" ? "Product Linked" : "General Article",
+      hint: workspaceView === "composer" ? "Editing surface active" : "Library mode active",
+      cardClassName: "border-slate-200 bg-white",
+      labelClassName: "text-slate-500",
+      valueClassName: "text-lg leading-6 text-slate-900",
+    },
+    {
+      label: "Publish State",
+      value: status === "published" ? "Published" : "Draft",
+      hint: publishedAt
+        ? `Scheduled ${formatDateLabel(publishedAt)}`
+        : "Ready to save or publish",
+      cardClassName:
+        status === "published"
+          ? "border-emerald-200 bg-emerald-50"
+          : "border-amber-200 bg-amber-50",
+      labelClassName:
+        status === "published" ? "text-emerald-700" : "text-amber-700",
+      valueClassName:
+        status === "published"
+          ? "text-lg leading-6 text-emerald-900"
+          : "text-lg leading-6 text-amber-900",
+    },
+    {
+      label: blogMode === "product" ? "Source Device" : "Permalink",
+      value:
+        blogMode === "product"
+          ? selectedProduct?.name || "No product selected"
+          : slug || "Auto generated on save",
+      hint:
+        blogMode === "product"
+          ? selectedProduct?.brand_name || currentModeHelp
+          : currentPermalink,
+      cardClassName: "border-sky-200 bg-sky-50",
+      labelClassName: "text-sky-700",
+      valueClassName: "text-base leading-6 text-sky-900",
+    },
+  ];
+  const activeOverviewCards =
+    workspaceView === "listing" ? libraryOverviewCards : editorOverviewCards;
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 py-4 sm:px-6">
-      <div className="mb-5 rounded-xl border border-slate-200 bg-gradient-to-r from-slate-50 to-white px-4 py-4 sm:px-5">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-900 text-white">
-              <FaNewspaper className="text-base" />
+    <div className="inventory-form-page page-shell page-stack px-4 py-4 sm:px-6">
+      <div className="ui-form-shell hero-panel p-4 md:p-6">
+        <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+          <div className="flex items-start gap-4">
+            <div className="flex h-14 w-14 items-center justify-center rounded-xl border border-white/15 bg-white/10 text-white">
+              <FaNewspaper className="text-lg" />
             </div>
-            <div>
-              <h1 className="text-lg font-semibold text-slate-900">
-                News & Articles Studio
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="page-kicker text-white/80">Editorial ERP</p>
+                <span className="dashboard-pill border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/80">
+                  {workspaceView === "listing" ? "Library view" : "Composer view"}
+                </span>
+              </div>
+              <h1 className="page-title mt-2 text-white">
+                News and Articles Studio
               </h1>
-              <p className="mt-1 text-xs text-slate-600 sm:text-sm">
-                Manage product-linked stories and general editorial content from
-                one admin workspace.
+              <p className="page-copy mt-3 max-w-3xl text-sm text-slate-100/90">
+                Manage product linked stories and general editorial content from
+                one ERP workspace with a registry view, editor controls, live
+                preview, and publish actions in one place.
               </p>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="ui-toolbar-actions">
             <div className="inline-flex overflow-hidden rounded-lg border border-slate-200 bg-white">
               <button
                 type="button"
@@ -1684,85 +1762,86 @@ const BlogEditor = () => {
             </button>
           </div>
         </div>
+      </div>
 
-        {workspaceView === "listing" ? (
-          <div className="mt-4 grid gap-3 sm:grid-cols-3">
-            {overviewCards.map((card) => (
-              <div
-                key={card.label}
-                className={`rounded-lg border px-4 py-3 ${card.cardClassName}`}
-              >
-                <div
-                  className={`text-xs font-semibold uppercase tracking-wide ${card.labelClassName}`}
-                >
-                  {card.label}
-                </div>
-                <div
-                  className={`mt-2 text-2xl font-semibold ${card.valueClassName}`}
-                >
-                  {card.value}
-                </div>
-                <div className="mt-1 text-xs text-slate-500">{card.hint}</div>
-              </div>
-            ))}
+      <div className="ui-stat-grid">
+        {activeOverviewCards.map((card) => (
+          <div
+            key={card.label}
+            className={`ui-stat-card border ${card.cardClassName}`}
+          >
+            <div
+              className={`text-xs font-semibold uppercase tracking-wide ${card.labelClassName}`}
+            >
+              {card.label}
+            </div>
+            <div className={`mt-2 font-semibold ${card.valueClassName}`}>
+              {card.value}
+            </div>
+            <div className="mt-1 text-xs text-slate-500">{card.hint}</div>
           </div>
-        ) : null}
+        ))}
       </div>
 
       {error ? (
-        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <div className="ui-form-shell border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
           {error}
         </div>
       ) : null}
 
       <div className="mb-5">
         {workspaceView === "listing" ? (
-        <div className="rounded-xl border border-slate-200 bg-white p-4">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <h2 className="text-sm font-semibold text-slate-900">
-                Content Library
-              </h2>
-              <p className="mt-1 text-xs text-slate-600">
-                Review saved entries and reopen any story or article in the
-                editor.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <select
-                value={libraryStatus}
-                onChange={(event) => setLibraryStatus(event.target.value)}
-                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700"
-              >
-                <option value="all">All statuses</option>
-                <option value="draft">Draft only</option>
-                <option value="published">Published only</option>
-              </select>
-              <div className="relative">
-                <FaSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400" />
-                <input
-                  value={libraryQuery}
-                  onChange={(event) => setLibraryQuery(event.target.value)}
-                  placeholder="Search title, slug, author, tags..."
-                  className="w-full rounded-lg border border-slate-300 py-2 pl-9 pr-3 text-sm text-slate-800 sm:w-64"
-                />
+        <div className="ui-table-shell overflow-hidden">
+          <div className="ui-form-header px-4 py-4 md:px-6">
+            <div className="ui-toolbar">
+              <div>
+                <p className="page-kicker">Registry</p>
+                <h2 className="mt-1 text-base font-semibold text-slate-900">
+                  Content Library
+                </h2>
+                <p className="mt-1 text-sm text-slate-600">
+                  Review saved entries and reopen any story or article in the
+                  editor workspace.
+                </p>
               </div>
-              <button
-                type="button"
-                onClick={() => loadLibrary(libraryStatus)}
-                disabled={libraryLoading}
-                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:border-slate-300 hover:bg-slate-50 disabled:opacity-60"
-              >
-                <FaSyncAlt
-                  className={
-                    libraryLoading ? "animate-spin text-xs" : "text-xs"
-                  }
-                />
-                Refresh
-              </button>
+
+              <div className="ui-toolbar-actions">
+                <select
+                  value={libraryStatus}
+                  onChange={(event) => setLibraryStatus(event.target.value)}
+                  className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700"
+                >
+                  <option value="all">All statuses</option>
+                  <option value="draft">Draft only</option>
+                  <option value="published">Published only</option>
+                </select>
+                <div className="relative">
+                  <FaSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400" />
+                  <input
+                    value={libraryQuery}
+                    onChange={(event) => setLibraryQuery(event.target.value)}
+                    placeholder="Search title slug author tags"
+                    className="w-full rounded-lg border border-slate-300 py-2 pl-9 pr-3 text-sm text-slate-800 sm:w-64"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => loadLibrary(libraryStatus)}
+                  disabled={libraryLoading}
+                  className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:border-slate-300 hover:bg-slate-50 disabled:opacity-60"
+                >
+                  <FaSyncAlt
+                    className={
+                      libraryLoading ? "animate-spin text-xs" : "text-xs"
+                    }
+                  />
+                  Refresh
+                </button>
+              </div>
             </div>
           </div>
+
+          <div className="ui-form-body space-y-4">
 
           {libraryError ? (
             <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -1942,6 +2021,7 @@ const BlogEditor = () => {
               })
             )}
           </div>
+          </div>
         </div>
         ) : null}
 
@@ -2072,31 +2152,30 @@ const BlogEditor = () => {
       </div>
 
       {workspaceView === "composer" ? (
-      <div className="mb-5 rounded-[20px] border border-slate-200 bg-white px-5 py-5">
+      <div className="ui-form-shell p-4 md:p-6">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <div>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
-              Editorial Workspace
-            </div>
-            <h2 className="mt-2 text-xl font-semibold text-slate-900">
+            <p className="page-kicker">Editorial Workspace</p>
+            <h2 className="page-title mt-2 text-2xl sm:text-3xl">
               Editorial Composer
             </h2>
-            <p className="mt-1 max-w-2xl text-sm text-slate-600">
-              A cleaner post editor with the writing canvas on the left and the
-              publishing rail on the right.
+            <p className="page-copy mt-2 max-w-2xl text-sm">
+              Use this workspace like an ERP desk: source on the right, writing
+              in the center, preview below, and publish actions always within
+              reach.
             </p>
             <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
-              <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1">
+              <span className="soft-pill px-2.5 py-1">
                 {currentModeLabel}
               </span>
-              <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1">
+              <span className="soft-pill px-2.5 py-1">
                 {status === "published" ? "Published" : "Draft"}
               </span>
               <span className="break-all text-blue-700">{currentPermalink}</span>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="ui-toolbar-actions">
             <button
               type="button"
               onClick={() => setWorkspaceView("listing")}
@@ -2164,22 +2243,22 @@ const BlogEditor = () => {
       {workspaceView === "composer" ? (
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-4">
-          <div className="rounded-[20px] border border-slate-200 bg-white p-5">
-          <div className="mb-4">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-              Story Header
-            </div>
+          <div className="ui-form-shell overflow-hidden">
+          <div className="ui-form-header px-5 py-4">
+            <p className="page-kicker">Writing Desk</p>
             <h3 className="mt-2 text-base font-semibold text-slate-900">
-              Write The Core Story First
+              Write the core story first
             </h3>
             <p className="mt-1 text-sm text-slate-600">
-              Keep the writing flow focused here. Story settings, SEO, and
-              featured image controls are handled in the right rail.
+              Keep the writing flow focused here. Story settings SEO and hero
+              image controls stay in the control rail so the editor remains
+              clean.
             </p>
             <div className="mt-2 text-[11px] font-medium uppercase tracking-[0.18em] text-blue-700">
               {currentPermalink}
             </div>
           </div>
+          <div className="space-y-4 p-5">
 
           <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
             <div className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
@@ -2436,6 +2515,8 @@ const BlogEditor = () => {
           <p className="mb-3 mt-3 text-xs text-slate-600">
             No HTML is needed here. Type like a document editor, then use the
             buttons for headings, bold text, lists, quotes, links, and tables.
+            You can also type `**important words**` to make them bold in preview
+            and on the live story page.
           </p>
 
           <div className="mb-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
@@ -2477,8 +2558,9 @@ const BlogEditor = () => {
 
             <div className="mt-3 rounded-md border border-dashed border-slate-300 bg-white px-3 py-2 text-[11px] leading-5 text-slate-500">
               Tip: paste plain text, then use the toolbar to style it. Product
-              facts on the right can be inserted at the cursor, and guide
-              screenshots can now be placed between steps with the image tools.
+              facts on the right can be inserted at the cursor, guide
+              screenshots can be placed between steps with the image tools, and
+              `**bold text**` is converted into real story emphasis.
             </div>
             <input
               ref={inlineImageInputRef}
@@ -2533,7 +2615,7 @@ const BlogEditor = () => {
                   event.preventDefault();
                   pastePlainTextIntoEditor(pastedText);
                 }}
-                className="mb-0 min-h-[420px] w-full overflow-auto border-0 bg-white px-4 py-4 text-[15px] leading-7 text-slate-800 outline-none [&_a]:font-semibold [&_a]:text-sky-700 [&_a]:underline [&_a]:underline-offset-4 [&_blockquote]:my-5 [&_blockquote]:border-l-4 [&_blockquote]:border-sky-500 [&_blockquote]:bg-sky-50 [&_blockquote]:px-4 [&_blockquote]:py-3 [&_blockquote]:text-slate-700 [&_figure]:my-6 [&_figure]:overflow-hidden [&_figure]:rounded-2xl [&_figure]:border [&_figure]:border-slate-200 [&_figure]:bg-slate-50 [&_figure_figcaption]:border-t [&_figure_figcaption]:border-slate-200 [&_figure_figcaption]:px-4 [&_figure_figcaption]:py-3 [&_figure_figcaption]:text-xs [&_figure_figcaption]:leading-5 [&_figure_figcaption]:text-slate-500 [&_figure_img]:w-full [&_figure_img]:bg-slate-100 [&_figure_img]:object-cover [&_h2]:mt-7 [&_h2]:text-[24px] [&_h2]:font-black [&_h2]:leading-tight [&_h2]:tracking-[-0.03em] [&_h2]:text-slate-950 [&_h3]:mt-6 [&_h3]:text-[18px] [&_h3]:font-bold [&_h3]:text-slate-900 [&_img]:my-6 [&_img]:w-full [&_img]:rounded-2xl [&_ol]:my-4 [&_ol]:list-decimal [&_ol]:space-y-2 [&_ol]:pl-6 [&_p]:my-4 [&_strong]:font-semibold [&_table]:my-5 [&_table]:w-full [&_table]:border-collapse [&_table]:text-left [&_table]:text-sm [&_td]:border [&_td]:border-slate-200 [&_td]:px-3 [&_td]:py-2 [&_th]:border [&_th]:border-slate-200 [&_th]:bg-slate-50 [&_th]:px-3 [&_th]:py-2 [&_th]:font-semibold [&_ul]:my-4 [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-6"
+                className="mb-0 min-h-[420px] w-full overflow-auto border-0 bg-white px-4 py-4 text-[15px] leading-7 text-slate-800 outline-none [&_a]:font-semibold [&_a]:text-sky-700 [&_a]:underline [&_a]:underline-offset-4 [&_blockquote]:my-5 [&_blockquote]:border-l-4 [&_blockquote]:border-sky-500 [&_blockquote]:bg-sky-50 [&_blockquote]:px-4 [&_blockquote]:py-3 [&_blockquote]:text-slate-700 [&_figure]:my-6 [&_figure]:overflow-hidden [&_figure]:rounded-2xl [&_figure]:border [&_figure]:border-slate-200 [&_figure]:bg-slate-50 [&_figure_figcaption]:border-t [&_figure_figcaption]:border-slate-200 [&_figure_figcaption]:px-4 [&_figure_figcaption]:py-3 [&_figure_figcaption]:text-xs [&_figure_figcaption]:leading-5 [&_figure_figcaption]:text-slate-500 [&_figure_img]:w-full [&_figure_img]:bg-slate-100 [&_figure_img]:object-cover [&_h2]:mt-7 [&_h2]:text-[24px] [&_h2]:font-black [&_h2]:leading-tight [&_h2]:tracking-[-0.03em] [&_h2]:text-slate-950 [&_h3]:mt-6 [&_h3]:text-[18px] [&_h3]:font-bold [&_h3]:text-slate-900 [&_img]:my-6 [&_img]:w-full [&_img]:rounded-2xl [&_ol]:my-4 [&_ol]:list-decimal [&_ol]:space-y-2 [&_ol]:pl-6 [&_p]:my-4 [&_strong]:font-bold [&_strong]:text-slate-950 [&_table]:my-5 [&_table]:w-full [&_table]:border-collapse [&_table]:text-left [&_table]:text-sm [&_td]:border [&_td]:border-slate-200 [&_td]:px-3 [&_td]:py-2 [&_th]:border [&_th]:border-slate-200 [&_th]:bg-slate-50 [&_th]:px-3 [&_th]:py-2 [&_th]:font-semibold [&_ul]:my-4 [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-6"
               />
             </div>
           </div>
@@ -2600,7 +2682,7 @@ const BlogEditor = () => {
 
               {articlePreviewHtml ? (
                 <div
-                  className="mt-5 text-[15px] leading-7 text-slate-700 [&_p]:mb-5 [&_p:last-child]:mb-0 [&_h2]:mt-8 [&_h2]:text-[22px] [&_h2]:font-black [&_h2]:leading-tight [&_h2]:tracking-[-0.03em] [&_h2]:text-slate-950 [&_h3]:mt-7 [&_h3]:text-[18px] [&_h3]:font-bold [&_h3]:text-slate-900 [&_h4]:mt-6 [&_h4]:text-[16px] [&_h4]:font-bold [&_h4]:text-slate-900 [&_ul]:my-5 [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-5 [&_ol]:my-5 [&_ol]:list-decimal [&_ol]:space-y-2 [&_ol]:pl-5 [&_blockquote]:my-6 [&_blockquote]:border-l-4 [&_blockquote]:border-sky-500 [&_blockquote]:bg-sky-50 [&_blockquote]:px-4 [&_blockquote]:py-3 [&_blockquote]:text-slate-700 [&_a]:font-semibold [&_a]:text-sky-700 [&_a]:underline [&_a]:underline-offset-4 [&_strong]:font-semibold [&_strong]:text-slate-950 [&_figure]:my-7 [&_figure]:overflow-hidden [&_figure]:rounded-2xl [&_figure]:border [&_figure]:border-slate-200 [&_figure]:bg-slate-50 [&_figure_figcaption]:border-t [&_figure_figcaption]:border-slate-200 [&_figure_figcaption]:px-4 [&_figure_figcaption]:py-3 [&_figure_figcaption]:text-xs [&_figure_figcaption]:uppercase [&_figure_figcaption]:tracking-[0.14em] [&_figure_figcaption]:text-slate-500 [&_figure_img]:w-full [&_figure_img]:bg-slate-100 [&_figure_img]:object-cover [&_img]:my-6 [&_img]:w-full [&_img]:rounded-2xl [&_div.article-table-wrap]:my-5 [&_div.article-table-wrap]:overflow-x-auto [&_table]:min-w-[520px] [&_table]:w-full [&_table]:border-collapse [&_table]:text-left [&_table]:text-sm [&_thead]:bg-slate-50 [&_th]:border [&_th]:border-slate-200 [&_th]:px-3 [&_th]:py-2 [&_th]:font-semibold [&_th]:text-slate-800 [&_td]:border [&_td]:border-slate-200 [&_td]:px-3 [&_td]:py-2 [&_td]:align-top"
+                  className="mt-5 text-[15px] leading-7 text-slate-700 [&_p]:mb-5 [&_p:last-child]:mb-0 [&_p:first-of-type]:text-[16px] [&_p:first-of-type]:leading-8 [&_p:first-of-type]:text-slate-800 sm:[&_p:first-of-type]:text-[17px] sm:[&_p:first-of-type]:leading-8 [&_h2]:mt-8 [&_h2]:text-[22px] [&_h2]:font-black [&_h2]:leading-tight [&_h2]:tracking-[-0.03em] [&_h2]:text-slate-950 [&_h3]:mt-7 [&_h3]:text-[18px] [&_h3]:font-bold [&_h3]:text-slate-900 [&_h4]:mt-6 [&_h4]:text-[16px] [&_h4]:font-bold [&_h4]:text-slate-900 [&_ul]:my-5 [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-5 [&_ol]:my-5 [&_ol]:list-decimal [&_ol]:space-y-2 [&_ol]:pl-5 [&_blockquote]:my-6 [&_blockquote]:border-l-4 [&_blockquote]:border-sky-500 [&_blockquote]:bg-sky-50 [&_blockquote]:px-4 [&_blockquote]:py-3 [&_blockquote]:text-slate-700 [&_a]:font-semibold [&_a]:text-sky-700 [&_a]:underline [&_a]:underline-offset-4 [&_strong]:font-bold [&_strong]:text-slate-950 [&_figure]:my-7 [&_figure]:overflow-hidden [&_figure]:rounded-2xl [&_figure]:border [&_figure]:border-slate-200 [&_figure]:bg-slate-50 [&_figure_figcaption]:border-t [&_figure_figcaption]:border-slate-200 [&_figure_figcaption]:px-4 [&_figure_figcaption]:py-3 [&_figure_figcaption]:text-xs [&_figure_figcaption]:uppercase [&_figure_figcaption]:tracking-[0.14em] [&_figure_figcaption]:text-slate-500 [&_figure_img]:w-full [&_figure_img]:bg-slate-100 [&_figure_img]:object-cover [&_img]:my-6 [&_img]:w-full [&_img]:rounded-2xl [&_div.article-table-wrap]:my-5 [&_div.article-table-wrap]:overflow-x-auto [&_table]:min-w-[520px] [&_table]:w-full [&_table]:border-collapse [&_table]:text-left [&_table]:text-sm [&_thead]:bg-slate-50 [&_th]:border [&_th]:border-slate-200 [&_th]:px-3 [&_th]:py-2 [&_th]:font-semibold [&_th]:text-slate-800 [&_td]:border [&_td]:border-slate-200 [&_td]:px-3 [&_td]:py-2 [&_td]:align-top"
                   dangerouslySetInnerHTML={{ __html: articlePreviewHtml }}
                 />
               ) : (
@@ -2616,11 +2698,12 @@ const BlogEditor = () => {
             Use the right publish rail or top action buttons to save drafts,
             preview the article, and publish when ready.
           </div>
+          </div>
         </div>
         </div>
 
         <div className="space-y-4 xl:sticky xl:top-4 xl:self-start">
-          <div className="rounded-[20px] border border-slate-200 bg-white p-4">
+          <div className="ui-form-shell p-4 md:p-5">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
@@ -2717,7 +2800,7 @@ const BlogEditor = () => {
             </div>
           </div>
 
-          <div className="rounded-[20px] border border-slate-200 bg-white p-4">
+          <div className="ui-form-shell p-4 md:p-5">
             <div className="mb-3 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
               <FaTag className="text-xs text-slate-400" />
               Story Settings
@@ -2848,7 +2931,7 @@ const BlogEditor = () => {
             </div>
           </div>
 
-          <div className="rounded-[20px] border border-slate-200 bg-white p-4">
+          <div className="ui-form-shell p-4 md:p-5">
             <div className="mb-3 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
               <FaCalendarAlt className="text-xs text-slate-400" />
               Publishing & SEO
@@ -3164,7 +3247,7 @@ const BlogEditor = () => {
             </div>
           </div>
 
-          <div className="rounded-xl border border-slate-200 bg-white p-3">
+          <div className="ui-form-shell p-3">
             <h2 className="mb-2 text-sm font-semibold text-gray-900">
               Product Facts
             </h2>

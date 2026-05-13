@@ -48,6 +48,7 @@ import BannerManager from "./components/BannerManager";
 import EditLaptop from "./components/EditLaptop";
 import EditHomeAppliance from "./components/EditAppliance";
 import CompareScoring from "./components/Settings/CompareScoring";
+import ComparePages from "./components/Settings/ComparePages";
 import DeviceFieldProfiles from "./components/Settings/DeviceFieldProfiles";
 import BlogEditor from "./components/Content/BlogEditor";
 import AccessGate from "./components/AccessGate";
@@ -583,6 +584,18 @@ function App() {
                       message="You need settings access to open the API tester."
                     >
                       <ApiTester />
+                    </AccessGate>
+                  }
+                />
+                <Route
+                  path="/settings/compare-pages"
+                  element={
+                    <AccessGate
+                      requiredAnyPermissions={["settings.view"]}
+                      title="Settings access required"
+                      message="You need settings access to open this page."
+                    >
+                      <ComparePages />
                     </AccessGate>
                   }
                 />

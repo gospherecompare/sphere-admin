@@ -272,6 +272,10 @@ const MainLayout = ({
 
                 {/* Settings */}
                 <Route
+                  path="/settings/compare-pages"
+                  element={<ROUTE_CONFIG.comparePages.component />}
+                />
+                <Route
                   path="/settings/compare-scoring"
                   element={<ROUTE_CONFIG.compareScoring.component />}
                 />

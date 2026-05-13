@@ -68,6 +68,7 @@ const EditHomeAppliance = lazy(() => import("../components/EditAppliance"));
 const CompareScoring = lazy(
   () => import("../components/Settings/CompareScoring"),
 );
+const ComparePages = lazy(() => import("../components/Settings/ComparePages"));
 const DeviceFieldProfiles = lazy(
   () => import("../components/Settings/DeviceFieldProfiles"),
 );
@@ -244,6 +245,11 @@ export const ROUTE_CONFIG = {
     path: "/settings/compare-scoring",
     component: CompareScoring,
     label: "Compare Scoring",
+  },
+  comparePages: {
+    path: "/settings/compare-pages",
+    component: ComparePages,
+    label: "Compare Pages",
   },
   deviceFieldProfiles: {
     path: "/settings/device-field-profiles",

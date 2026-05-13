@@ -271,6 +271,12 @@ const MENU_CONFIG = {
       requiredAnyPermissions: ["settings.view"],
       children: [
         {
+          id: "set-compare-pages",
+          label: "Compare Pages",
+          icon: <FaPlus />,
+          path: "/settings/compare-pages",
+        },
+        {
           id: "set-compare-scoring",
           label: "Compare Scoring",
           icon: <FaChartLine />,
