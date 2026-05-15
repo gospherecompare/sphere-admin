@@ -4,7 +4,9 @@ import React, {
   useMemo,
   useRef,
   useState,
+  useCallback,
 } from "react";
+import { useParams } from "react-router-dom";
 import Cookies from "js-cookie";
 import {
   FaLink,
@@ -20,6 +22,7 @@ import {
   FaThumbtack,
   FaFire,
   FaStar,
+  FaCheckCircle,
 } from "react-icons/fa";
 import { buildUrl, getAuthToken } from "../../api";
 import { uploadToCloudinary } from "../../config/cloudinary";
@@ -60,8 +63,12 @@ const HERO_IMAGE_SOURCE = {
   URL: "url",
 };
 
+const EDITOR_INSERT_MARKER_ATTR = "data-editor-insert-marker";
+
 const normalizeHeroImageSource = (value) => {
-  const text = String(value || "").trim().toLowerCase();
+  const text = String(value || "")
+    .trim()
+    .toLowerCase();
   if (!text) return "";
   if (text === "asset" || text === "product" || text === "product_asset")
     return HERO_IMAGE_SOURCE.ASSET;
@@ -191,7 +198,8 @@ const normalizeBlogTags = (value) => {
   return [];
 };
 
-const tagsToInputValue = (value) => formatCommaSeparatedList(normalizeBlogTags(value));
+const tagsToInputValue = (value) =>
+  formatCommaSeparatedList(normalizeBlogTags(value));
 
 const normalizeBoolean = (value) => {
   if (typeof value === "string") {
@@ -205,8 +213,14 @@ const normalizeBoolean = (value) => {
 
 const getCategoryLabel = (value) =>
   STORY_CATEGORY_OPTIONS.find(
-    (option) => option.value === String(value || "").trim().toLowerCase(),
-  )?.label || String(value || "").trim() || "News";
+    (option) =>
+      option.value ===
+      String(value || "")
+        .trim()
+        .toLowerCase(),
+  )?.label ||
+  String(value || "").trim() ||
+  "News";
 
 const toDateTimeLocalValue = (value) => {
   if (!value) return "";
@@ -372,7 +386,10 @@ const buildArticlePreviewHtml = (value) => {
 
   if (hasStructuredArticleMarkup(content)) {
     return sanitizeArticleMarkup(content)
-      .replace(/<table\b([^>]*)>/gi, '<div class="article-table-wrap"><table$1>')
+      .replace(
+        /<table\b([^>]*)>/gi,
+        '<div class="article-table-wrap"><table$1>',
+      )
       .replace(/<\/table>/gi, "</table></div>");
   }
 
@@ -404,7 +421,36 @@ const hasMeaningfulArticleContent = (value) =>
       .trim(),
   );
 
+const resolveStoredArticleContent = (record, fallback = "") => {
+  const candidateFields = [
+    record?.content_template,
+    record?.content_rendered,
+    record?.content,
+    record?.content_html,
+    record?.body,
+    record?.body_html,
+    record?.article_body,
+    record?.story_body,
+    fallback,
+  ];
+
+  const match = candidateFields.find((value) =>
+    hasMeaningfulArticleContent(value),
+  );
+
+  return normalizeArticleContent(match || fallback);
+};
+
 const BlogEditor = () => {
+  // Get articleId from route param (for /blog-editor/:id or similar route)
+  const { id: routeArticleId } = useParams ? useParams() : { id: undefined };
+  // Auto-load article if route param is present and not already loaded
+  useEffect(() => {
+    if (routeArticleId && String(blogId) !== String(routeArticleId)) {
+      loadGeneralArticle(Number(routeArticleId));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [routeArticleId]);
   const [blogMode, setBlogMode] = useState("product");
   const [productType, setProductType] = useState("smartphone");
   const [candidates, setCandidates] = useState([]);
@@ -452,12 +498,31 @@ const BlogEditor = () => {
   const [selectedLibraryId, setSelectedLibraryId] = useState(null);
   const [loadingEntryId, setLoadingEntryId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
+  const [mobileComposerPanels, setMobileComposerPanels] = useState({
+    publish: true,
+    workflow: false,
+    settings: true,
+    seo: false,
+    source: true,
+    facts: false,
+  });
   const contentRef = useRef(null);
   const lastEditorHtmlRef = useRef("");
   const savedEditorRangeRef = useRef(null);
+  const pendingEditorMarkerIdRef = useRef("");
+  const suspendEditorNormalizationRef = useRef(false);
+  const pendingInlineImageDialogMarkerRef = useRef("");
+  const pendingInlineImageDialogCleanupRef = useRef(null);
   const heroImageInputRef = useRef(null);
   const inlineImageInputRef = useRef(null);
   const deferredLibraryQuery = useDeferredValue(libraryQuery);
+
+  const toggleMobileComposerPanel = (panelKey) => {
+    setMobileComposerPanels((prev) => ({
+      ...prev,
+      [panelKey]: !prev[panelKey],
+    }));
+  };
 
   const authHeaders = useMemo(() => {
     const token = getAuthToken();
@@ -471,9 +536,12 @@ const BlogEditor = () => {
 
     const refreshAuthorOptions = async () => {
       try {
-        const response = await fetch(buildUrl("/api/rbac/users?includeInactive=false"), {
-          headers: authHeaders,
-        });
+        const response = await fetch(
+          buildUrl("/api/rbac/users?includeInactive=false"),
+          {
+            headers: authHeaders,
+          },
+        );
         const data = await response.json().catch(() => []);
 
         if (!response.ok) {
@@ -590,6 +658,24 @@ const BlogEditor = () => {
     [renderedTemplatePreview],
   );
 
+  const prepareEditorForExternalContent = () => {
+    lastEditorHtmlRef.current = "";
+    savedEditorRangeRef.current = null;
+    pendingEditorMarkerIdRef.current = "";
+    pendingInlineImageDialogMarkerRef.current = "";
+    suspendEditorNormalizationRef.current = false;
+
+    const editor = contentRef.current;
+    if (editor) {
+      editor.innerHTML = "";
+    }
+  };
+
+  const loadEditorTemplate = (nextContent) => {
+    prepareEditorForExternalContent();
+    setContentTemplate(nextContent);
+  };
+
   const startNewProductStory = (nextType = productType) => {
     setError("");
     setMessage("Choose a product to start a linked story.");
@@ -621,7 +707,7 @@ const BlogEditor = () => {
     setPublishedAt("");
     setUploadingHeroImage(false);
     setStatus("draft");
-    setContentTemplate(DEFAULT_PRODUCT_TEMPLATE);
+    loadEditorTemplate(DEFAULT_PRODUCT_TEMPLATE);
   };
 
   const startNewGeneralArticle = () => {
@@ -654,7 +740,7 @@ const BlogEditor = () => {
     setPublishedAt("");
     setUploadingHeroImage(false);
     setStatus("draft");
-    setContentTemplate(DEFAULT_CUSTOM_TEMPLATE);
+    loadEditorTemplate(DEFAULT_CUSTOM_TEMPLATE);
   };
 
   const loadLibrary = async (nextStatus = libraryStatus) => {
@@ -757,22 +843,22 @@ const BlogEditor = () => {
       setTokenMap(data?.token_map || {});
       setTokenKeys(Array.isArray(data?.token_keys) ? data.token_keys : []);
 
-        if (existing) {
-          setBlogId(existing.id || null);
-          setSelectedLibraryId(existing.id || null);
-          setTitle(existing.title || "");
-          setSlug(existing.slug || "");
-          setExcerpt(existing.excerpt || "");
-          setCategory(existing.category || getDefaultStoryCategory("product"));
-          setAuthorName(existing.author_name || "");
-          setAuthorUserId(
-            existing.author_user_id ? String(existing.author_user_id) : "",
-          );
-          setMetaTitle(existing.meta_title || "");
-          setMetaDescription(existing.meta_description || "");
-          const heroChoice =
-            existing.hero_image ||
-            getFirstImageCandidate(
+      if (existing) {
+        setBlogId(existing.id || null);
+        setSelectedLibraryId(existing.id || null);
+        setTitle(existing.title || "");
+        setSlug(existing.slug || "");
+        setExcerpt(existing.excerpt || "");
+        setCategory(existing.category || getDefaultStoryCategory("product"));
+        setAuthorName(existing.author_name || "");
+        setAuthorUserId(
+          existing.author_user_id ? String(existing.author_user_id) : "",
+        );
+        setMetaTitle(existing.meta_title || "");
+        setMetaDescription(existing.meta_description || "");
+        const heroChoice =
+          existing.hero_image ||
+          getFirstImageCandidate(
             product?.hero_image,
             product?.image,
             product?.image_url,
@@ -789,74 +875,72 @@ const BlogEditor = () => {
           product?.images,
         );
         setHeroImage(heroChoice);
-          setHeroImageSource(
-            normalizeHeroImageSource(existing.hero_image_source) ||
-              inferHeroImageSource(heroChoice, productImageChoices),
-          );
-          setHeroImageAlt(
-            existing.hero_image_alt ||
-              (product?.name ? String(product.name).trim() : ""),
-          );
-          setHeroImageCaption(existing.hero_image_caption || "");
-          setTagsInput(tagsToInputValue(existing.tags));
-          setFeatured(normalizeBoolean(existing.featured));
-          setTrending(normalizeBoolean(existing.trending));
-          setPinned(normalizeBoolean(existing.pinned));
-          setPublishedAt(toDateTimeLocalValue(existing.published_at));
-          setStatus(existing.status === "published" ? "published" : "draft");
-          setContentTemplate(
-            normalizeArticleContent(
-              existing.content_template || DEFAULT_PRODUCT_TEMPLATE,
+        setHeroImageSource(
+          normalizeHeroImageSource(existing.hero_image_source) ||
+            inferHeroImageSource(heroChoice, productImageChoices),
+        );
+        setHeroImageAlt(
+          existing.hero_image_alt ||
+            (product?.name ? String(product.name).trim() : ""),
+        );
+        setHeroImageCaption(existing.hero_image_caption || "");
+        setTagsInput(tagsToInputValue(existing.tags));
+        setFeatured(normalizeBoolean(existing.featured));
+        setTrending(normalizeBoolean(existing.trending));
+        setPinned(normalizeBoolean(existing.pinned));
+        setPublishedAt(toDateTimeLocalValue(existing.published_at));
+        setStatus(existing.status === "published" ? "published" : "draft");
+        loadEditorTemplate(
+          resolveStoredArticleContent(existing, DEFAULT_PRODUCT_TEMPLATE),
+        );
+        setMessage("Loaded saved product-linked story.");
+      } else {
+        const productName = product?.name || "";
+        setBlogId(null);
+        setSelectedLibraryId(null);
+        setTitle(
+          productName ? `${productName} - Specs, Price and Highlights` : "",
+        );
+        setSlug("");
+        setExcerpt("");
+        setCategory(getDefaultStoryCategory("product"));
+        setAuthorName(getDefaultAuthorName());
+        setAuthorUserId("");
+        setMetaTitle("");
+        setMetaDescription("");
+        const heroChoice = getFirstImageCandidate(
+          product?.hero_image,
+          product?.image,
+          product?.image_url,
+          product?.cover_image,
+          product?.thumbnail,
+          product?.images,
+        );
+        setHeroImage(heroChoice);
+        setHeroImageSource(
+          inferHeroImageSource(
+            heroChoice,
+            collectImageCandidates(
+              product?.hero_image,
+              product?.image,
+              product?.image_url,
+              product?.cover_image,
+              product?.thumbnail,
+              product?.images,
             ),
-          );
-          setMessage("Loaded saved product-linked story.");
-        } else {
-          const productName = product?.name || "";
-          setBlogId(null);
-          setSelectedLibraryId(null);
-          setTitle(
-            productName ? `${productName} - Specs, Price and Highlights` : "",
-          );
-          setSlug("");
-          setExcerpt("");
-          setCategory(getDefaultStoryCategory("product"));
-          setAuthorName(getDefaultAuthorName());
-          setAuthorUserId("");
-          setMetaTitle("");
-          setMetaDescription("");
-          const heroChoice = getFirstImageCandidate(
-            product?.hero_image,
-            product?.image,
-            product?.image_url,
-            product?.cover_image,
-            product?.thumbnail,
-            product?.images,
-          );
-          setHeroImage(heroChoice);
-          setHeroImageSource(
-            inferHeroImageSource(
-              heroChoice,
-              collectImageCandidates(
-                product?.hero_image,
-                product?.image,
-                product?.image_url,
-                product?.cover_image,
-                product?.thumbnail,
-                product?.images,
-              ),
-            ),
-          );
-          setHeroImageAlt(productName || "");
-          setHeroImageCaption("");
-          setTagsInput("");
-          setFeatured(false);
-          setTrending(false);
-          setPinned(false);
-          setPublishedAt("");
-          setStatus("draft");
-          setContentTemplate(DEFAULT_PRODUCT_TEMPLATE);
-          setMessage("Ready to draft a new product-linked story.");
-        }
+          ),
+        );
+        setHeroImageAlt(productName || "");
+        setHeroImageCaption("");
+        setTagsInput("");
+        setFeatured(false);
+        setTrending(false);
+        setPinned(false);
+        setPublishedAt("");
+        setStatus("draft");
+        loadEditorTemplate(DEFAULT_PRODUCT_TEMPLATE);
+        setMessage("Ready to draft a new product-linked story.");
+      }
     } catch (err) {
       setError(err.message || "Failed to load product suggestions");
       setBlogId(null);
@@ -903,40 +987,64 @@ const BlogEditor = () => {
     }
   };
 
-  const insertInlineImage = ({ source, alt = "", caption = "" }) => {
+  const insertInlineImage = ({
+    source,
+    alt = "",
+    caption = "",
+    markerId = "",
+  }) => {
     const markup = buildInlineImageHtml(source, {
       alt: alt || title || "Article image",
       caption,
     });
-    if (!markup) return;
+    if (!markup) return false;
+
+    if (markerId && replaceEditorMarkerWithHtml(markerId, markup)) {
+      return true;
+    }
+
     insertEditorHtml(markup);
+    return true;
   };
 
   const insertInlineImageFromUrl = () => {
     if (typeof window === "undefined") return;
 
-    const requestedUrl = window.prompt("Enter the inline image URL");
-    if (requestedUrl === null) return;
+    runEditorPromptTask(() => {
+      const markerId = createEditorInsertionMarker();
+      const requestedUrl = window.prompt("Enter the inline image URL");
+      if (requestedUrl === null) {
+        clearEditorInsertionMarker(markerId);
+        return;
+      }
 
-    const normalizedUrl = String(requestedUrl || "").trim();
-    if (!normalizedUrl) return;
+      const normalizedUrl = String(requestedUrl || "").trim();
+      if (!normalizedUrl) {
+        clearEditorInsertionMarker(markerId);
+        return;
+      }
 
-    const fallbackAlt = title || "Article image";
-    const requestedAlt = window.prompt(
-      "Add alt text for the image",
-      fallbackAlt,
-    );
-    const requestedCaption = window.prompt("Optional caption or credit", "");
+      const fallbackAlt = title || "Article image";
+      const requestedAlt = window.prompt(
+        "Add alt text for the image",
+        fallbackAlt,
+      );
+      const requestedCaption = window.prompt("Optional caption or credit", "");
 
-    insertInlineImage({
-      source: normalizedUrl,
-      alt: String(requestedAlt || fallbackAlt).trim() || fallbackAlt,
-      caption: String(requestedCaption || "").trim(),
+      insertInlineImage({
+        source: normalizedUrl,
+        alt: String(requestedAlt || fallbackAlt).trim() || fallbackAlt,
+        caption: String(requestedCaption || "").trim(),
+        markerId,
+      });
     });
   };
 
-  const handleInlineImageUpload = async (file) => {
-    if (!file) return;
+  const handleInlineImageUpload = async (file, markerId = "") => {
+    if (!file) {
+      clearEditorInsertionMarker(markerId);
+      return;
+    }
 
     setUploadingInlineImage(true);
     setError("");
@@ -957,24 +1065,61 @@ const BlogEditor = () => {
       const fallbackAlt = title || fileLabel || "Article image";
       const requestedAlt =
         typeof window !== "undefined"
-          ? window.prompt("Add alt text for the image", fallbackAlt)
+          ? runEditorPromptTask(() =>
+              window.prompt("Add alt text for the image", fallbackAlt),
+            )
           : fallbackAlt;
       const requestedCaption =
         typeof window !== "undefined"
-          ? window.prompt("Optional caption or credit", "")
+          ? runEditorPromptTask(() =>
+              window.prompt("Optional caption or credit", ""),
+            )
           : "";
 
       insertInlineImage({
         source: data.secure_url,
         alt: String(requestedAlt || fallbackAlt).trim() || fallbackAlt,
         caption: String(requestedCaption || "").trim(),
+        markerId,
       });
       setMessage("Inline image inserted into the story.");
     } catch (err) {
+      clearEditorInsertionMarker(markerId);
       setError(err?.message || "Failed to upload inline image");
     } finally {
       setUploadingInlineImage(false);
     }
+  };
+
+  const openInlineImagePicker = () => {
+    const markerId = createEditorInsertionMarker();
+    const input = inlineImageInputRef.current;
+
+    if (!input) {
+      clearEditorInsertionMarker(markerId);
+      return;
+    }
+
+    clearPendingInlineImageDialogWatcher();
+    pendingInlineImageDialogMarkerRef.current = markerId;
+
+    if (typeof window !== "undefined") {
+      const handleWindowFocus = () => {
+        window.setTimeout(() => {
+          if (pendingInlineImageDialogMarkerRef.current !== markerId) return;
+          pendingInlineImageDialogMarkerRef.current = "";
+          clearPendingInlineImageDialogWatcher();
+          clearEditorInsertionMarker(markerId);
+        }, 0);
+      };
+
+      window.addEventListener("focus", handleWindowFocus, true);
+      pendingInlineImageDialogCleanupRef.current = () => {
+        window.removeEventListener("focus", handleWindowFocus, true);
+      };
+    }
+
+    input.click();
   };
 
   const loadGeneralArticle = async (articleId) => {
@@ -1011,7 +1156,9 @@ const BlogEditor = () => {
       setExcerpt(article.excerpt || "");
       setCategory(article.category || getDefaultStoryCategory("general"));
       setAuthorName(article.author_name || "");
-      setAuthorUserId(article.author_user_id ? String(article.author_user_id) : "");
+      setAuthorUserId(
+        article.author_user_id ? String(article.author_user_id) : "",
+      );
       setMetaTitle(article.meta_title || "");
       setMetaDescription(article.meta_description || "");
       setHeroImage(article.hero_image || "");
@@ -1027,10 +1174,8 @@ const BlogEditor = () => {
       setPinned(normalizeBoolean(article.pinned));
       setPublishedAt(toDateTimeLocalValue(article.published_at));
       setStatus(article.status === "published" ? "published" : "draft");
-      setContentTemplate(
-        normalizeArticleContent(
-          article.content_template || DEFAULT_CUSTOM_TEMPLATE,
-        ),
+      loadEditorTemplate(
+        resolveStoredArticleContent(article, DEFAULT_CUSTOM_TEMPLATE),
       );
       setMessage("Loaded saved article.");
     } catch (err) {
@@ -1080,11 +1225,192 @@ const BlogEditor = () => {
     if (!editor) return;
 
     const nextHtml = buildEditorSurfaceHtml(contentTemplate);
-    if (lastEditorHtmlRef.current === nextHtml) return;
+    if (
+      lastEditorHtmlRef.current === nextHtml &&
+      editor.innerHTML === nextHtml
+    ) {
+      return;
+    }
 
     editor.innerHTML = nextHtml;
     lastEditorHtmlRef.current = nextHtml;
   }, [contentTemplate]);
+
+  const isRangeInsideEditor = (range) => {
+    const editor = contentRef.current;
+    const container = range?.commonAncestorContainer || null;
+    return Boolean(editor && container && editor.contains(container));
+  };
+
+  const setEditorSelection = (range) => {
+    if (typeof window === "undefined" || !range) return false;
+    const selection = window.getSelection();
+    if (!selection) return false;
+    selection.removeAllRanges();
+    selection.addRange(range);
+    return true;
+  };
+
+  const focusEditorAtEnd = () => {
+    if (typeof document === "undefined") return null;
+
+    const editor = contentRef.current;
+    if (!editor) return null;
+
+    editor.focus();
+
+    const range = document.createRange();
+    range.selectNodeContents(editor);
+    range.collapse(false);
+    setEditorSelection(range);
+    savedEditorRangeRef.current = range.cloneRange();
+    return range;
+  };
+
+  const findEditorInsertionMarker = (markerId = pendingEditorMarkerIdRef.current) => {
+    const editor = contentRef.current;
+    if (!editor || !markerId) return null;
+
+    return Array.from(editor.querySelectorAll(`[${EDITOR_INSERT_MARKER_ATTR}]`)).find(
+      (element) => element.getAttribute(EDITOR_INSERT_MARKER_ATTR) === markerId,
+    );
+  };
+
+  const clearEditorInsertionMarker = (markerId = pendingEditorMarkerIdRef.current) => {
+    const marker = findEditorInsertionMarker(markerId);
+    if (!marker) {
+      if (pendingEditorMarkerIdRef.current === markerId) {
+        pendingEditorMarkerIdRef.current = "";
+      }
+      return false;
+    }
+
+    const parent = marker.parentNode;
+    const previousSibling = marker.previousSibling;
+    const nextSibling = marker.nextSibling;
+    marker.remove();
+
+    if (pendingEditorMarkerIdRef.current === markerId) {
+      pendingEditorMarkerIdRef.current = "";
+    }
+
+    if (typeof document === "undefined" || !parent) return true;
+
+    const range = document.createRange();
+    if (nextSibling && nextSibling.parentNode === parent) {
+      range.setStartBefore(nextSibling);
+    } else if (previousSibling && previousSibling.parentNode === parent) {
+      range.setStartAfter(previousSibling);
+    } else if (parent.nodeType === 1) {
+      range.selectNodeContents(parent);
+    } else {
+      const fallbackRange = focusEditorAtEnd();
+      return Boolean(fallbackRange);
+    }
+
+    range.collapse(true);
+    contentRef.current?.focus();
+    setEditorSelection(range);
+    savedEditorRangeRef.current = range.cloneRange();
+    return true;
+  };
+
+  const createEditorInsertionMarker = () => {
+    if (typeof document === "undefined") return "";
+
+    const editor = contentRef.current;
+    if (!editor) return "";
+
+    if (pendingEditorMarkerIdRef.current) {
+      clearEditorInsertionMarker(pendingEditorMarkerIdRef.current);
+    }
+
+    restoreEditorSelection();
+
+    const selection =
+      typeof window !== "undefined" ? window.getSelection() : null;
+    let range =
+      selection && selection.rangeCount > 0
+        ? selection.getRangeAt(0).cloneRange()
+        : null;
+
+    if (!isRangeInsideEditor(range)) {
+      range = focusEditorAtEnd();
+    }
+
+    if (!range) return "";
+
+    const markerId = `editor-marker-${Date.now()}-${Math.random()
+      .toString(36)
+      .slice(2, 8)}`;
+    const marker = document.createElement("span");
+    marker.setAttribute(EDITOR_INSERT_MARKER_ATTR, markerId);
+    marker.setAttribute("aria-hidden", "true");
+
+    range.deleteContents();
+    range.insertNode(marker);
+
+    const caretRange = document.createRange();
+    caretRange.setStartAfter(marker);
+    caretRange.collapse(true);
+    editor.focus();
+    setEditorSelection(caretRange);
+    savedEditorRangeRef.current = caretRange.cloneRange();
+    pendingEditorMarkerIdRef.current = markerId;
+    return markerId;
+  };
+
+  const replaceEditorMarkerWithHtml = (markerId, html) => {
+    if (typeof document === "undefined" || !html) return false;
+
+    const marker = findEditorInsertionMarker(markerId);
+    if (!marker) return false;
+
+    const template = document.createElement("template");
+    template.innerHTML = html;
+    const insertedNodes = Array.from(template.content.childNodes);
+
+    marker.replaceWith(template.content);
+
+    if (pendingEditorMarkerIdRef.current === markerId) {
+      pendingEditorMarkerIdRef.current = "";
+    }
+
+    const range = document.createRange();
+    const lastNode = insertedNodes[insertedNodes.length - 1] || null;
+
+    if (lastNode && lastNode.parentNode) {
+      if (lastNode.nodeType === 3) {
+        range.setStart(lastNode, lastNode.textContent?.length || 0);
+      } else {
+        range.setStartAfter(lastNode);
+      }
+      range.collapse(true);
+      contentRef.current?.focus();
+      setEditorSelection(range);
+      savedEditorRangeRef.current = range.cloneRange();
+    }
+
+    syncEditorStateFromDom();
+    rememberEditorSelection();
+    return true;
+  };
+
+  const clearPendingInlineImageDialogWatcher = () => {
+    const cleanup = pendingInlineImageDialogCleanupRef.current;
+    pendingInlineImageDialogCleanupRef.current = null;
+    if (cleanup) cleanup();
+  };
+
+  const runEditorPromptTask = (task) => {
+    suspendEditorNormalizationRef.current = true;
+    rememberEditorSelection();
+    try {
+      return task();
+    } finally {
+      suspendEditorNormalizationRef.current = false;
+    }
+  };
 
   const rememberEditorSelection = () => {
     if (typeof window === "undefined") return;
@@ -1094,7 +1420,7 @@ const BlogEditor = () => {
     if (!editor || !selection || selection.rangeCount === 0) return;
 
     const range = selection.getRangeAt(0);
-    if (!editor.contains(range.commonAncestorContainer)) return;
+    if (!isRangeInsideEditor(range)) return;
     savedEditorRangeRef.current = range.cloneRange();
   };
 
@@ -1107,10 +1433,22 @@ const BlogEditor = () => {
 
     editor.focus();
 
-    if (!savedEditorRangeRef.current) return;
+    if (!savedEditorRangeRef.current) {
+      focusEditorAtEnd();
+      return;
+    }
 
-    selection.removeAllRanges();
-    selection.addRange(savedEditorRangeRef.current);
+    if (!isRangeInsideEditor(savedEditorRangeRef.current)) {
+      focusEditorAtEnd();
+      return;
+    }
+
+    try {
+      selection.removeAllRanges();
+      selection.addRange(savedEditorRangeRef.current);
+    } catch {
+      focusEditorAtEnd();
+    }
   };
 
   const syncEditorStateFromDom = () => {
@@ -1156,25 +1494,45 @@ const BlogEditor = () => {
     rememberEditorSelection();
   };
 
+  const getSavedEditorSelectionText = () => {
+    if (typeof window !== "undefined") {
+      const selection = window.getSelection();
+      if (selection && selection.rangeCount > 0) {
+        const activeRange = selection.getRangeAt(0);
+        const activeText = isRangeInsideEditor(activeRange)
+          ? String(activeRange.toString() || "").trim()
+          : "";
+        if (activeText) return activeText;
+      }
+    }
+
+    return isRangeInsideEditor(savedEditorRangeRef.current)
+      ? String(savedEditorRangeRef.current.toString() || "").trim()
+      : "";
+  };
+
   const applyLink = () => {
     if (typeof window === "undefined") return;
 
-    const nextUrl = window.prompt("Enter the link URL");
-    if (!nextUrl) return;
+    runEditorPromptTask(() => {
+      const nextUrl = window.prompt("Enter the link URL");
+      if (!nextUrl) return;
 
-    const normalizedUrl = String(nextUrl).trim();
-    if (!normalizedUrl) return;
+      const normalizedUrl = String(nextUrl).trim();
+      if (!normalizedUrl) return;
 
-    const selection = window.getSelection ? window.getSelection() : null;
-    const selectionText = selection ? String(selection.toString() || "").trim() : "";
-    if (selectionText) {
-      runEditorCommand("createLink", normalizedUrl);
-      return;
-    }
+      const selectionText = getSavedEditorSelectionText();
+      if (selectionText) {
+        runEditorCommand("createLink", normalizedUrl);
+        return;
+      }
 
-    insertEditorHtml(
-      `<a href="${escapeHtml(normalizedUrl)}">${escapeHtml(normalizedUrl)}</a>`,
-    );
+      insertEditorHtml(
+        `<a href="${escapeHtml(normalizedUrl)}">${escapeHtml(
+          normalizedUrl,
+        )}</a>`,
+      );
+    });
   };
 
   const insertStarterLayout = () =>
@@ -1205,68 +1563,70 @@ const BlogEditor = () => {
   const insertTableLayout = () => {
     if (typeof window === "undefined") return;
 
-    const requestedColumns = window.prompt(
-      "How many columns should the table have?",
-      "2",
-    );
-    if (requestedColumns === null) return;
+    runEditorPromptTask(() => {
+      const requestedColumns = window.prompt(
+        "How many columns should the table have?",
+        "2",
+      );
+      if (requestedColumns === null) return;
 
-    const requestedRows = window.prompt(
-      "How many body rows should the table have?",
-      "2",
-    );
-    if (requestedRows === null) return;
+      const requestedRows = window.prompt(
+        "How many body rows should the table have?",
+        "2",
+      );
+      if (requestedRows === null) return;
 
-    const columnCount = clampTableCount(requestedColumns, 2, 1, 8);
-    const rowCount = clampTableCount(requestedRows, 2, 1, 20);
+      const columnCount = clampTableCount(requestedColumns, 2, 1, 8);
+      const rowCount = clampTableCount(requestedRows, 2, 1, 20);
 
-    const headerLabels =
-      blogMode === "product" && columnCount === 2
-        ? ["Spec", "Details"]
-        : Array.from(
-            { length: columnCount },
-            (_, index) => `Column ${index + 1}`,
-          );
+      const headerLabels =
+        blogMode === "product" && columnCount === 2
+          ? ["Spec", "Details"]
+          : Array.from(
+              { length: columnCount },
+              (_, index) => `Column ${index + 1}`,
+            );
 
-    const productPresetRows =
-      blogMode === "product" && columnCount === 2
-        ? [
-            ["Battery", "{{battery}}"],
-            ["Processor", "{{processor}}"],
-            ["Price", "{{price}}"],
-            ["Display", "{{display}}"],
-            ["Main Camera", "{{main_camera}}"],
-            ["RAM", "{{ram}}"],
-            ["Storage", "{{storage}}"],
-            ["OS", "{{os}}"],
-          ]
-        : [];
+      const productPresetRows =
+        blogMode === "product" && columnCount === 2
+          ? [
+              ["Battery", "{{battery}}"],
+              ["Processor", "{{processor}}"],
+              ["Price", "{{price}}"],
+              ["Display", "{{display}}"],
+              ["Main Camera", "{{main_camera}}"],
+              ["RAM", "{{ram}}"],
+              ["Storage", "{{storage}}"],
+              ["OS", "{{os}}"],
+            ]
+          : [];
 
-    const tableRows = Array.from({ length: rowCount }, (_, rowIndex) => {
-      const presetRow = productPresetRows[rowIndex] || [];
-      const cells = Array.from({ length: columnCount }, (_, columnIndex) => {
-        if (presetRow[columnIndex]) return presetRow[columnIndex];
-        if (columnIndex === 0) return `Row ${rowIndex + 1}`;
-        return "";
+      const tableRows = Array.from({ length: rowCount }, (_, rowIndex) => {
+        const presetRow = productPresetRows[rowIndex] || [];
+        const cells = Array.from({ length: columnCount }, (_, columnIndex) => {
+          if (presetRow[columnIndex]) return presetRow[columnIndex];
+          if (columnIndex === 0) return `Row ${rowIndex + 1}`;
+          return "";
+        });
+
+        return `<tr>${cells
+          .map((cell) => `<td>${escapeHtml(cell)}</td>`)
+          .join("")}</tr>`;
       });
 
-      return `<tr>${cells
-        .map((cell) => `<td>${escapeHtml(cell)}</td>`)
-        .join("")}</tr>`;
+      insertEditorHtml(
+        [
+          "<table>",
+          `<thead><tr>${headerLabels
+            .map((label) => `<th>${escapeHtml(label)}</th>`)
+            .join("")}</tr></thead>`,
+          "<tbody>",
+          ...tableRows,
+          "</tbody>",
+          "</table>",
+        ].join(""),
+      );
     });
-
-    insertEditorHtml(
-      [
-        "<table>",
-        `<thead><tr>${headerLabels
-          .map((label) => `<th>${escapeHtml(label)}</th>`)
-          .join("")}</tr></thead>`,
-        "<tbody>",
-        ...tableRows,
-        "</tbody>",
-        "</table>",
-      ].join(""),
-    );
   };
 
   const insertToken = (tokenKey) => {
@@ -1278,7 +1638,10 @@ const BlogEditor = () => {
       .split(/\n\s*\n/)
       .map((paragraph) => paragraph.trim())
       .filter(Boolean)
-      .map((paragraph) => `<p>${escapeHtml(paragraph).replace(/\n/g, "<br />")}</p>`)
+      .map(
+        (paragraph) =>
+          `<p>${escapeHtml(paragraph).replace(/\n/g, "<br />")}</p>`,
+      )
       .join("");
 
     if (!html) return;
@@ -1293,83 +1656,137 @@ const BlogEditor = () => {
   const formattingTools = [
     {
       key: "starter",
-      label: "Starter layout",
+      label: "Start news article",
+      description: "Adds a ready-made news story structure.",
       onClick: insertStarterLayout,
     },
     {
       key: "guide",
-      label: "Guide steps",
+      label: "Start how-to guide",
+      description: "Adds step-by-step guide sections.",
       onClick: insertGuideStepLayout,
     },
     {
       key: "h2",
-      label: "H2",
+      label: "Big heading",
+      description: "Use for a main section title.",
       onClick: () => runEditorCommand("formatBlock", "<h2>"),
     },
     {
       key: "h3",
-      label: "H3",
+      label: "Small heading",
+      description: "Use under a main section heading.",
       onClick: () => runEditorCommand("formatBlock", "<h3>"),
     },
     {
       key: "paragraph",
-      label: "Paragraph",
+      label: "Normal text",
+      description: "Switch back to regular paragraph text.",
       onClick: () => runEditorCommand("formatBlock", "<p>"),
     },
     {
       key: "bullets",
-      label: "Bullets",
+      label: "Bullet list",
+      description: "Show points as simple bullet items.",
       onClick: () => runEditorCommand("insertUnorderedList"),
     },
     {
       key: "numbers",
-      label: "Numbers",
+      label: "Numbered list",
+      description: "Show steps in order with numbers.",
       onClick: () => runEditorCommand("insertOrderedList"),
     },
     {
       key: "quote",
-      label: "Quote",
+      label: "Highlight quote",
+      description: "Pull out an important statement or note.",
       onClick: () => runEditorCommand("formatBlock", "<blockquote>"),
     },
     {
       key: "link",
-      label: "Link",
+      label: "Add website link",
+      description: "Turn text into a clickable link.",
       onClick: applyLink,
     },
     {
       key: "image-url",
-      label: "Image URL",
+      label: "Use image link",
+      description: "Insert a photo from a web URL.",
       onClick: insertInlineImageFromUrl,
     },
     {
       key: "image-upload",
-      label: uploadingInlineImage ? "Uploading..." : "Upload image",
-      onClick: () => {
-        rememberEditorSelection();
-        inlineImageInputRef.current?.click();
-      },
+      label: uploadingInlineImage ? "Uploading image..." : "Upload photo",
+      description: "Insert a photo from your computer.",
+      onClick: openInlineImagePicker,
     },
     {
       key: "bold",
-      label: "B",
+      label: "Bold text",
+      description: "Make selected words stand out more.",
       onClick: () => runEditorCommand("bold"),
     },
     {
       key: "italic",
-      label: "I",
+      label: "Italic text",
+      description: "Add lighter emphasis to selected words.",
       onClick: () => runEditorCommand("italic"),
     },
     {
       key: "underline",
-      label: "U",
+      label: "Underline text",
+      description: "Underline selected words or phrases.",
       onClick: () => runEditorCommand("underline"),
     },
     {
       key: "table",
-      label: "Table",
+      label: "Add table",
+      description: "Create rows and columns for facts or comparisons.",
       onClick: insertTableLayout,
     },
   ];
+
+  const formattingToolMap = useMemo(
+    () => new Map(formattingTools.map((tool) => [tool.key, tool])),
+    [formattingTools],
+  );
+
+  const toolbarGroups = useMemo(
+    () =>
+      [
+        {
+          title: "Start With a Ready Layout",
+          hint: "Pick a starting block if you do not want to begin from a blank page.",
+          keys: ["starter", "guide", "table"],
+        },
+        {
+          title: "Change the Text Style",
+          hint: "Use these when you want a heading, normal text, or a highlighted quote.",
+          keys: ["h2", "h3", "paragraph", "quote"],
+        },
+        {
+          title: "Add Lists or Links",
+          hint: "Use these for points, steps, or clickable website links.",
+          keys: ["bullets", "numbers", "link"],
+        },
+        {
+          title: "Add an Image",
+          hint: "The image is inserted exactly where your cursor is placed in the article.",
+          keys: ["image-upload", "image-url"],
+        },
+        {
+          title: "Highlight Important Words",
+          hint: "Use these when you want selected words to stand out more.",
+          keys: ["bold", "italic", "underline"],
+        },
+      ].map((group) => ({
+        ...group,
+        tools: group.keys
+          .map((key) => formattingToolMap.get(key))
+          .filter(Boolean),
+      })),
+    [formattingToolMap],
+  );
 
   const saveBlog = async (statusOverride = null) => {
     const productIdForSave = blogMode === "product" ? selectedProductId : null;
@@ -1465,7 +1882,9 @@ const BlogEditor = () => {
       }
       if (data?.blog?.hero_image) setHeroImage(data.blog.hero_image);
       if (data?.blog?.hero_image_source) {
-        setHeroImageSource(normalizeHeroImageSource(data.blog.hero_image_source));
+        setHeroImageSource(
+          normalizeHeroImageSource(data.blog.hero_image_source),
+        );
       }
       if (typeof data?.blog?.hero_image_alt !== "undefined") {
         setHeroImageAlt(data.blog.hero_image_alt || "");
@@ -1587,8 +2006,7 @@ const BlogEditor = () => {
   );
   const heroImageChoices = useMemo(
     () =>
-      blogMode === "product" &&
-      heroImageSource === HERO_IMAGE_SOURCE.ASSET
+      blogMode === "product" && heroImageSource === HERO_IMAGE_SOURCE.ASSET
         ? collectImageCandidates(productImages, heroImage)
         : [],
     [blogMode, heroImage, heroImageSource, productImages],
@@ -1654,7 +2072,10 @@ const BlogEditor = () => {
     {
       label: "Workspace",
       value: blogMode === "product" ? "Product Linked" : "General Article",
-      hint: workspaceView === "composer" ? "Editing surface active" : "Library mode active",
+      hint:
+        workspaceView === "composer"
+          ? "Editing surface active"
+          : "Library mode active",
       cardClassName: "border-slate-200 bg-white",
       labelClassName: "text-slate-500",
       valueClassName: "text-lg leading-6 text-slate-900",
@@ -1690,85 +2111,284 @@ const BlogEditor = () => {
       labelClassName: "text-sky-700",
       valueClassName: "text-base leading-6 text-sky-900",
     },
+    {
+      label: "Workflow Progress",
+      value: `${
+        [
+          blogMode === "general" || Boolean(selectedProductId),
+          Boolean(title.trim()),
+          Boolean(excerpt.trim()),
+          editorHasContent,
+          Boolean(previewHeroImage),
+          Boolean(metaTitle.trim() && metaDescription.trim()),
+        ].filter(Boolean).length
+      } / 6`,
+      hint: "Source, headline, summary, body, image, and SEO checks",
+      cardClassName: "border-violet-200 bg-violet-50",
+      labelClassName: "text-violet-700",
+      valueClassName: "text-lg leading-6 text-violet-900",
+    },
   ];
   const activeOverviewCards =
     workspaceView === "listing" ? libraryOverviewCards : editorOverviewCards;
 
+  const workflowChecklist = [
+    {
+      label: "Choose source",
+      done: blogMode === "general" || Boolean(selectedProductId),
+      detail:
+        blogMode === "product"
+          ? selectedProduct?.name || "Pick the product that powers this story."
+          : "General article mode is active.",
+    },
+    {
+      label: "Add headline and summary",
+      done: Boolean(title.trim()) && Boolean(excerpt.trim()),
+      detail:
+        title.trim() && excerpt.trim()
+          ? "Headline and standfirst are ready."
+          : "These power the article header, cards, and previews.",
+    },
+    {
+      label: "Write the body",
+      done: editorHasContent,
+      detail: editorHasContent
+        ? "Formatted story content is ready in the writing surface."
+        : "Use the body editor to write the core article content.",
+    },
+    {
+      label: "Set hero image",
+      done: Boolean(previewHeroImage),
+      detail: previewHeroImage
+        ? "A hero image is available for the preview and live post."
+        : "Recommended for stronger cards and article headers.",
+    },
+    {
+      label: "Review SEO and publish",
+      done: Boolean(metaTitle.trim() && metaDescription.trim()),
+      detail:
+        metaTitle.trim() && metaDescription.trim()
+          ? "SEO basics are filled in."
+          : "Add SEO title and description before final publish.",
+    },
+  ];
+
+  const workflowCompletedCount = workflowChecklist.filter(
+    (item) => item.done,
+  ).length;
+
+  const workspaceGuideCards =
+    workspaceView === "listing"
+      ? [
+          {
+            title: "Track status",
+            text: "Filter drafts and published posts from one registry view.",
+          },
+          {
+            title: "Reopen any entry",
+            text: "Open a row to continue editing without leaving the workspace.",
+          },
+          {
+            title: "Manage faster",
+            text: "Search by title, slug, author, brand, or tags.",
+          },
+        ]
+      : [
+          {
+            title: "1. Select source",
+            text:
+              blogMode === "product"
+                ? "Choose the product first so facts and images load automatically."
+                : "Use general mode for custom newsroom stories and explainers.",
+          },
+          {
+            title: "2. Write the story",
+            text:
+              "Use the grouped writing tools like a document editor. No HTML is needed.",
+          },
+          {
+            title: "3. Review and publish",
+            text:
+              "Check the preview, add SEO details, then save as draft or publish.",
+          },
+        ];
+
   return (
-    <div className="inventory-form-page page-shell page-stack px-4 py-4 sm:px-6">
-      <div className="ui-form-shell hero-panel p-4 md:p-6">
-        <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
-          <div className="flex items-start gap-4">
-            <div className="flex h-14 w-14 items-center justify-center rounded-xl border border-white/15 bg-white/10 text-white">
-              <FaNewspaper className="text-lg" />
-            </div>
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="page-kicker text-white/80">Editorial ERP</p>
-                <span className="dashboard-pill border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/80">
-                  {workspaceView === "listing" ? "Library view" : "Composer view"}
-                </span>
+    <div className="inventory-form-page page-shell page-stack px-3 py-3 sm:px-6 sm:py-4">
+      <div className="ui-form-shell hero-panel overflow-hidden p-3 sm:p-4 md:p-6">
+        <div className="grid gap-4 sm:gap-5 2xl:grid-cols-[minmax(0,1fr)_380px]">
+          <div className="flex flex-col gap-4 sm:gap-5">
+            <div className="flex flex-col gap-4 sm:gap-5 xl:flex-row xl:items-start xl:justify-between">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-white/15 bg-white/10 text-white shadow-lg shadow-slate-950/15 sm:h-14 sm:w-14 sm:rounded-2xl">
+                  <FaNewspaper className="text-lg" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="page-kicker text-white/80">Editorial ERP</p>
+                    <span className="dashboard-pill border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/80">
+                      {workspaceView === "listing"
+                        ? "Library view"
+                        : "Composer view"}
+                    </span>
+                    {workspaceView === "composer" ? (
+                      <span className="dashboard-pill border border-emerald-200/40 bg-emerald-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-100">
+                        {workflowCompletedCount} / {workflowChecklist.length} steps ready
+                      </span>
+                    ) : null}
+                  </div>
+                  <h1 className="page-title mt-1.5 text-white sm:mt-2">
+                    News and Articles Studio
+                  </h1>
+                  <p className="page-copy mt-2 max-w-3xl text-sm text-slate-100/90 sm:mt-3">
+                    Manage product linked stories and general editorial content from
+                    one ERP workspace with a registry view, editor controls, live
+                    preview, and publish actions in one place.
+                  </p>
+                </div>
               </div>
-              <h1 className="page-title mt-2 text-white">
-                News and Articles Studio
-              </h1>
-              <p className="page-copy mt-3 max-w-3xl text-sm text-slate-100/90">
-                Manage product linked stories and general editorial content from
-                one ERP workspace with a registry view, editor controls, live
-                preview, and publish actions in one place.
-              </p>
+
+              <div className="ui-toolbar-actions w-full flex-col items-stretch sm:w-auto sm:flex-row sm:items-center">
+                <div className="grid grid-cols-2 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm sm:inline-flex">
+                  <button
+                    type="button"
+                    onClick={() => setWorkspaceView("listing")}
+                    className={`px-3 py-2 text-sm font-medium transition ${
+                      workspaceView === "listing"
+                        ? "bg-blue-600 text-white"
+                        : "text-slate-700 hover:bg-slate-50"
+                    }`}
+                  >
+                    Posts Library
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setWorkspaceView("composer")}
+                    className={`px-3 py-2 text-sm font-medium transition ${
+                      workspaceView === "composer"
+                        ? "bg-blue-600 text-white"
+                        : "text-slate-700 hover:bg-slate-50"
+                    }`}
+                  >
+                    Composer
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => startNewGeneralArticle()}
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm hover:border-slate-300 hover:bg-slate-50 sm:w-auto"
+                >
+                  New Article
+                </button>
+                <button
+                  type="button"
+                  onClick={() => startNewProductStory()}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 sm:w-auto"
+                >
+                  <FaLink className="text-xs" />
+                  New Product Story
+                </button>
+              </div>
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-3">
+              {workspaceGuideCards.map((card) => (
+                <div
+                  key={card.title}
+                  className="rounded-2xl border border-white/10 bg-white/10 px-4 py-4 text-white shadow-sm shadow-slate-950/10 backdrop-blur"
+                >
+                  <div className="text-sm font-semibold tracking-tight">
+                    {card.title}
+                  </div>
+                  <p className="mt-2 text-sm leading-6 text-slate-100/85">
+                    {card.text}
+                  </p>
+                </div>
+              ))}
             </div>
           </div>
 
-          <div className="ui-toolbar-actions">
-            <div className="inline-flex overflow-hidden rounded-lg border border-slate-200 bg-white">
-              <button
-                type="button"
-                onClick={() => setWorkspaceView("listing")}
-                className={`px-3 py-2 text-sm font-medium transition ${
-                  workspaceView === "listing"
-                    ? "bg-blue-600 text-white"
-                    : "text-slate-700 hover:bg-slate-50"
-                }`}
-              >
-                Posts Library
-              </button>
-              <button
-                type="button"
-                onClick={() => setWorkspaceView("composer")}
-                className={`px-3 py-2 text-sm font-medium transition ${
-                  workspaceView === "composer"
-                    ? "bg-blue-600 text-white"
-                    : "text-slate-700 hover:bg-slate-50"
-                }`}
-              >
-                Composer
-              </button>
+          <div className="rounded-3xl border border-white/10 bg-slate-950/15 p-4 text-white shadow-lg shadow-slate-950/15 backdrop-blur">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-100/70">
+                  {workspaceView === "listing"
+                    ? "Registry Summary"
+                    : "Workflow Summary"}
+                </div>
+                <div className="mt-2 text-lg font-semibold">
+                  {workspaceView === "listing"
+                    ? `${filteredLibrary.length} visible records`
+                    : `${workflowCompletedCount} of ${workflowChecklist.length} publishing checks complete`}
+                </div>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-white/10 px-3 py-2 text-right">
+                <div className="text-[11px] uppercase tracking-[0.18em] text-slate-100/70">
+                  Active Desk
+                </div>
+                <div className="mt-1 text-sm font-semibold">
+                  {workspaceView === "listing" ? "Content registry" : currentModeLabel}
+                </div>
+              </div>
             </div>
-            <button
-              type="button"
-              onClick={() => startNewGeneralArticle()}
-              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:border-slate-300 hover:bg-slate-50"
-            >
-              New Article
-            </button>
-            <button
-              type="button"
-              onClick={() => startNewProductStory()}
-              className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700"
-            >
-              <FaLink className="text-xs" />
-              New Product Story
-            </button>
+
+            <div className="mt-4 space-y-3">
+              {(workspaceView === "listing"
+                ? [
+                    {
+                      label: "Drafts waiting",
+                      detail: `${libraryStats.draft} items still need review or publish.`,
+                    },
+                    {
+                      label: "Published records",
+                      detail: `${libraryStats.published} items are already live in the newsroom.`,
+                    },
+                    {
+                      label: "Search behaviour",
+                      detail: deferredLibraryQuery
+                        ? `Filtered by "${deferredLibraryQuery}".`
+                        : "Search title, slug, author, tags, product, or brand.",
+                    },
+                  ]
+                : workflowChecklist
+              ).map((item, index) => (
+                <div
+                  key={item.label}
+                  className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/10 px-3 py-3"
+                >
+                  <div
+                    className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-xs font-semibold ${
+                      "done" in item && item.done
+                        ? "border-emerald-300/50 bg-emerald-300/15 text-emerald-100"
+                        : "border-white/15 bg-white/10 text-white/90"
+                    }`}
+                  >
+                    {"done" in item && item.done ? (
+                      <FaCheckCircle className="text-xs" />
+                    ) : (
+                      index + 1
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-sm font-semibold">
+                      {item.label}
+                    </div>
+                    <div className="mt-1 text-sm leading-6 text-slate-100/75">
+                      {item.detail}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="ui-stat-grid">
+      <div className="ui-stat-grid gap-4">
         {activeOverviewCards.map((card) => (
           <div
             key={card.label}
-            className={`ui-stat-card border ${card.cardClassName}`}
+            className={`ui-stat-card rounded-2xl border shadow-sm ${card.cardClassName}`}
           >
             <div
               className={`text-xs font-semibold uppercase tracking-wide ${card.labelClassName}`}
@@ -1791,925 +2411,275 @@ const BlogEditor = () => {
 
       <div className="mb-5">
         {workspaceView === "listing" ? (
-        <div className="ui-table-shell overflow-hidden">
-          <div className="ui-form-header px-4 py-4 md:px-6">
-            <div className="ui-toolbar">
-              <div>
-                <p className="page-kicker">Registry</p>
-                <h2 className="mt-1 text-base font-semibold text-slate-900">
-                  Content Library
-                </h2>
-                <p className="mt-1 text-sm text-slate-600">
-                  Review saved entries and reopen any story or article in the
-                  editor workspace.
-                </p>
-              </div>
-
-              <div className="ui-toolbar-actions">
-                <select
-                  value={libraryStatus}
-                  onChange={(event) => setLibraryStatus(event.target.value)}
-                  className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700"
-                >
-                  <option value="all">All statuses</option>
-                  <option value="draft">Draft only</option>
-                  <option value="published">Published only</option>
-                </select>
-                <div className="relative">
-                  <FaSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400" />
-                  <input
-                    value={libraryQuery}
-                    onChange={(event) => setLibraryQuery(event.target.value)}
-                    placeholder="Search title slug author tags"
-                    className="w-full rounded-lg border border-slate-300 py-2 pl-9 pr-3 text-sm text-slate-800 sm:w-64"
-                  />
+          <div className="ui-table-shell overflow-hidden">
+            <div className="ui-form-header px-4 py-4 md:px-6">
+              <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                <div>
+                  <p className="page-kicker">Registry</p>
+                  <h2 className="mt-1 text-base font-semibold text-slate-900">
+                    Content Library
+                  </h2>
+                  <p className="mt-1 max-w-2xl text-sm text-slate-600">
+                    This is the editorial register for your team. Search by title,
+                    slug, author, tags, or linked product, then reopen any row in
+                    the composer workspace.
+                  </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => loadLibrary(libraryStatus)}
-                  disabled={libraryLoading}
-                  className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:border-slate-300 hover:bg-slate-50 disabled:opacity-60"
-                >
-                  <FaSyncAlt
-                    className={
-                      libraryLoading ? "animate-spin text-xs" : "text-xs"
-                    }
-                  />
-                  Refresh
-                </button>
-              </div>
-            </div>
-          </div>
 
-          <div className="ui-form-body space-y-4">
+                <div className="grid gap-3 sm:grid-cols-3 xl:min-w-[520px]">
+                  <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                      Status Filter
+                    </div>
+                    <select
+                      value={libraryStatus}
+                      onChange={(event) => setLibraryStatus(event.target.value)}
+                      className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700"
+                    >
+                      <option value="all">All statuses</option>
+                      <option value="draft">Draft only</option>
+                      <option value="published">Published only</option>
+                    </select>
+                  </div>
 
-          {libraryError ? (
-            <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-              {libraryError}
-            </div>
-          ) : null}
-
-          <div className="mt-4 flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
-            <span>
-              Showing {filteredLibrary.length} of {libraryStats.total} saved
-              items
-            </span>
-            <span>
-              {libraryLoading ? "Refreshing library..." : "Latest first"}
-            </span>
-          </div>
-
-          <div className="mt-3 hidden rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 lg:grid lg:grid-cols-[88px_minmax(0,1.7fr)_minmax(0,1fr)_150px_150px]">
-            <span>Image</span>
-            <span>Post</span>
-            <span>Reference</span>
-            <span>Updated</span>
-            <span className="text-right">Actions</span>
-          </div>
-
-          <div className="mt-3 max-h-[28rem] space-y-3 overflow-y-auto pr-1">
-            {libraryLoading && libraryRows.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
-                Loading content library...
-              </div>
-            ) : filteredLibrary.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
-                No content matches the current filter.
-              </div>
-            ) : (
-              filteredLibrary.map((row) => {
-                const rowTags = normalizeBlogTags(row.tags);
-                const rowCategory =
-                  row.category ||
-                  (row.product_id
-                    ? getDefaultStoryCategory("product")
-                    : getDefaultStoryCategory("general"));
-
-                return (
-                  <div
-                    key={row.id}
-                    className={`w-full rounded-xl border px-4 py-3 text-left transition ${
-                      selectedLibraryId === row.id
-                        ? "border-blue-500 bg-blue-50/40"
-                        : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
-                    }`}
-                  >
-                    <div className="grid gap-3 lg:grid-cols-[88px_minmax(0,1.7fr)_minmax(0,1fr)_150px_150px] lg:items-center">
-                      <div className="overflow-hidden rounded-lg border border-slate-200 bg-slate-100">
-                        {row.hero_image ? (
-                          <img
-                            src={row.hero_image}
-                            alt={row.hero_image_alt || row.title || "Story cover"}
-                            className="h-20 w-full object-cover"
-                          />
-                        ) : (
-                          <div className="flex h-20 items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-700 text-white">
-                            <FaNewspaper className="text-base opacity-80" />
-                          </div>
-                        )}
+                  <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm sm:col-span-2">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                      Search Register
+                    </div>
+                    <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+                      <div className="relative min-w-0 flex-1">
+                        <FaSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400" />
+                        <input
+                          value={libraryQuery}
+                          onChange={(event) => setLibraryQuery(event.target.value)}
+                          placeholder="Search title, slug, author, brand, or tags"
+                          className="w-full rounded-xl border border-slate-300 py-2 pl-9 pr-3 text-sm text-slate-800"
+                        />
                       </div>
-
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span
-                            className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold capitalize ${
-                              STATUS_BADGES[row.status] || STATUS_BADGES.draft
-                            }`}
-                          >
-                            {row.status || "draft"}
-                          </span>
-                          <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
-                            {row.product_id
-                              ? `Product-linked ${PRODUCT_TYPE_LABELS[row.product_type] || "story"}`
-                              : "General article"}
-                          </span>
-                        </div>
-                        <div className="mt-2 text-sm font-semibold leading-6 text-slate-900">
-                          {row.title || "Untitled content"}
-                        </div>
-                        {row.excerpt ? (
-                          <div className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500">
-                            {row.excerpt}
-                          </div>
-                        ) : null}
-                        <div className="mt-2 truncate text-[11px] font-medium text-blue-700">
-                          {row.slug || "Slug will be generated on save"}
-                        </div>
-                      </div>
-
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="inline-flex rounded-full border border-indigo-100 bg-indigo-50 px-2.5 py-1 text-[11px] font-semibold text-indigo-700">
-                            {getCategoryLabel(rowCategory)}
-                          </span>
-                          <span className="inline-flex rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600">
-                            {row.product_id
-                              ? row.product_name || "Standalone editorial"
-                              : "Standalone editorial"}
-                          </span>
-                        </div>
-                        <div className="mt-2 text-xs text-slate-600">
-                          {row.author_name ? `By ${row.author_name}` : "No byline set"}
-                        </div>
-                        <div className="mt-1 text-xs text-slate-500">
-                          {row.brand_name || "No brand assigned"}
-                        </div>
-                        {rowTags.length ? (
-                          <div className="mt-2 text-[11px] leading-5 text-slate-500">
-                            Tags: {rowTags.slice(0, 3).join(", ")}
-                          </div>
-                        ) : null}
-                      </div>
-
-                      <div className="text-xs text-slate-600">
-                        <div className="font-semibold text-slate-800">
-                          {formatDateLabel(row.updated_at)}
-                        </div>
-                        <div className="mt-1 text-slate-500">
-                          {row.published_at
-                            ? `Published ${formatDateLabel(row.published_at)}`
-                            : "Not published yet"}
-                        </div>
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {row.featured ? (
-                            <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-semibold text-amber-800">
-                              <FaStar className="text-[10px]" />
-                              Featured
-                            </span>
-                          ) : null}
-                          {row.trending ? (
-                            <span className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2 py-1 text-[11px] font-semibold text-rose-800">
-                              <FaFire className="text-[10px]" />
-                              Trending
-                            </span>
-                          ) : null}
-                          {row.pinned ? (
-                            <span className="inline-flex items-center gap-1 rounded-full border border-sky-200 bg-sky-50 px-2 py-1 text-[11px] font-semibold text-sky-800">
-                              <FaThumbtack className="text-[10px]" />
-                              Pinned
-                            </span>
-                          ) : null}
-                        </div>
-                      </div>
-
-                      <div className="flex flex-wrap gap-2 lg:justify-end">
-                        <button
-                          type="button"
-                          onClick={() => handleLibrarySelect(row)}
-                          disabled={
-                            loadingEntryId === row.id || deletingId === row.id
+                      <button
+                        type="button"
+                        onClick={() => loadLibrary(libraryStatus)}
+                        disabled={libraryLoading}
+                        className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-700 hover:border-slate-300 hover:bg-white disabled:opacity-60"
+                      >
+                        <FaSyncAlt
+                          className={
+                            libraryLoading ? "animate-spin text-xs" : "text-xs"
                           }
-                          className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:border-slate-400 hover:bg-slate-50 disabled:opacity-60"
-                        >
-                          {loadingEntryId === row.id ? "Loading..." : "Open"}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => deleteBlog(row)}
-                          disabled={
-                            deletingId === row.id || loadingEntryId === row.id
-                          }
-                          className="inline-flex items-center gap-1 rounded-md border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 hover:border-red-300 hover:bg-red-100 disabled:opacity-60"
-                        >
-                          <FaTrashAlt className="text-[11px]" />
-                          {deletingId === row.id ? "Deleting..." : "Delete"}
-                        </button>
-                      </div>
+                        />
+                        Refresh
+                      </button>
                     </div>
                   </div>
-                );
-              })
-            )}
+                </div>
+              </div>
+            </div>
+
+            <div className="ui-form-body space-y-4">
+              {libraryError ? (
+                <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                  {libraryError}
+                </div>
+              ) : null}
+
+              <div className="mt-4 flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                <span>
+                  Showing {filteredLibrary.length} of {libraryStats.total} saved
+                  items
+                </span>
+                <span>
+                  {libraryLoading ? "Refreshing library..." : "Latest first"}
+                </span>
+              </div>
+
+              <div className="mt-3 hidden rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 lg:grid lg:grid-cols-[88px_minmax(0,1.7fr)_minmax(0,1fr)_150px_150px]">
+                <span>Image</span>
+                <span>Post</span>
+                <span>Reference</span>
+                <span>Updated</span>
+                <span className="text-right">Actions</span>
+              </div>
+
+              <div className="mt-3 max-h-[28rem] space-y-3 overflow-y-auto pr-1">
+                {libraryLoading && libraryRows.length === 0 ? (
+                  <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
+                    Loading content library...
+                  </div>
+                ) : filteredLibrary.length === 0 ? (
+                  <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
+                    No content matches the current filter.
+                  </div>
+                ) : (
+                  filteredLibrary.map((row) => {
+                    const rowTags = normalizeBlogTags(row.tags);
+                    const rowCategory =
+                      row.category ||
+                      (row.product_id
+                        ? getDefaultStoryCategory("product")
+                        : getDefaultStoryCategory("general"));
+
+                    return (
+                      <div
+                        key={row.id}
+                        className={`w-full rounded-2xl border px-4 py-4 text-left shadow-sm transition ${
+                          selectedLibraryId === row.id
+                            ? "border-blue-500 bg-blue-50/40 shadow-blue-100"
+                            : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
+                        }`}
+                      >
+                        <div className="grid gap-3 lg:grid-cols-[88px_minmax(0,1.7fr)_minmax(0,1fr)_150px_150px] lg:items-center">
+                          <div className="overflow-hidden rounded-lg border border-slate-200 bg-slate-100">
+                            {row.hero_image ? (
+                              <img
+                                src={row.hero_image}
+                                alt={
+                                  row.hero_image_alt ||
+                                  row.title ||
+                                  "Story cover"
+                                }
+                                className="h-20 w-full object-cover"
+                              />
+                            ) : (
+                              <div className="flex h-20 items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-700 text-white">
+                                <FaNewspaper className="text-base opacity-80" />
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="inline-flex rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-500">
+                                Record #{row.id}
+                              </span>
+                              <span
+                                className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold capitalize ${
+                                  STATUS_BADGES[row.status] ||
+                                  STATUS_BADGES.draft
+                                }`}
+                              >
+                                {row.status || "draft"}
+                              </span>
+                              <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
+                                {row.product_id
+                                  ? `Product-linked ${PRODUCT_TYPE_LABELS[row.product_type] || "story"}`
+                                  : "General article"}
+                              </span>
+                            </div>
+                            <div className="mt-2 text-sm font-semibold leading-6 text-slate-900">
+                              {row.title || "Untitled content"}
+                            </div>
+                            {row.excerpt ? (
+                              <div className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500">
+                                {row.excerpt}
+                              </div>
+                            ) : null}
+                            <div className="mt-2 truncate text-[11px] font-medium text-blue-700">
+                              {row.slug || "Slug will be generated on save"}
+                            </div>
+                          </div>
+
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="inline-flex rounded-full border border-indigo-100 bg-indigo-50 px-2.5 py-1 text-[11px] font-semibold text-indigo-700">
+                                {getCategoryLabel(rowCategory)}
+                              </span>
+                              <span className="inline-flex rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600">
+                                {row.product_id
+                                  ? row.product_name || "Standalone editorial"
+                                  : "Standalone editorial"}
+                              </span>
+                            </div>
+                            <div className="mt-2 text-xs text-slate-600">
+                              {row.author_name
+                                ? `By ${row.author_name}`
+                                : "No byline set"}
+                            </div>
+                            <div className="mt-1 text-xs text-slate-500">
+                              {row.brand_name || "No brand assigned"}
+                            </div>
+                            {rowTags.length ? (
+                              <div className="mt-2 text-[11px] leading-5 text-slate-500">
+                                Tags: {rowTags.slice(0, 3).join(", ")}
+                              </div>
+                            ) : null}
+                          </div>
+
+                          <div className="text-xs text-slate-600">
+                            <div className="font-semibold text-slate-800">
+                              {formatDateLabel(row.updated_at)}
+                            </div>
+                            <div className="mt-1 text-slate-500">
+                              {row.published_at
+                                ? `Published ${formatDateLabel(row.published_at)}`
+                                : "Not published yet"}
+                            </div>
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              {row.featured ? (
+                                <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-semibold text-amber-800">
+                                  <FaStar className="text-[10px]" />
+                                  Featured
+                                </span>
+                              ) : null}
+                              {row.trending ? (
+                                <span className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2 py-1 text-[11px] font-semibold text-rose-800">
+                                  <FaFire className="text-[10px]" />
+                                  Trending
+                                </span>
+                              ) : null}
+                              {row.pinned ? (
+                                <span className="inline-flex items-center gap-1 rounded-full border border-sky-200 bg-sky-50 px-2 py-1 text-[11px] font-semibold text-sky-800">
+                                  <FaThumbtack className="text-[10px]" />
+                                  Pinned
+                                </span>
+                              ) : null}
+                            </div>
+                          </div>
+
+                          <div className="flex flex-wrap gap-2 lg:justify-end">
+                            <button
+                              type="button"
+                              onClick={() => handleLibrarySelect(row)}
+                              disabled={
+                                loadingEntryId === row.id ||
+                                deletingId === row.id
+                              }
+                              className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:border-slate-400 hover:bg-slate-50 disabled:opacity-60"
+                            >
+                              {loadingEntryId === row.id
+                                ? "Loading..."
+                                : "Open in Composer"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => deleteBlog(row)}
+                              disabled={
+                                deletingId === row.id ||
+                                loadingEntryId === row.id
+                              }
+                              className="inline-flex items-center gap-1 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 hover:border-red-300 hover:bg-red-100 disabled:opacity-60"
+                            >
+                              <FaTrashAlt className="text-[11px]" />
+                              {deletingId === row.id ? "Deleting..." : "Delete"}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
           </div>
-          </div>
-        </div>
         ) : null}
 
         {false ? (
-        <div className="rounded-xl border border-slate-200 bg-white p-4">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                Publish Panel
-              </div>
-              <div className="mt-2 text-lg font-semibold text-slate-900">
-                {activeEditorSummary}
-              </div>
-              <div className="mt-1 text-sm text-slate-600">
-                {currentModeLabel}
-                {blogId ? ` - ID ${blogId}` : " - New draft"}
-              </div>
-            </div>
-            <span
-              className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold capitalize ${
-                STATUS_BADGES[status] || STATUS_BADGES.draft
-              }`}
-            >
-              {status}
-            </span>
-          </div>
-
-          {message ? (
-            <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-              {message}
-            </div>
-          ) : null}
-
-          <div className="mt-4 grid gap-2 sm:grid-cols-3 xl:grid-cols-1">
-            <button
-              type="button"
-              onClick={() =>
-                document
-                  .getElementById("story-preview-panel")
-                  ?.scrollIntoView({ behavior: "smooth", block: "start" })
-              }
-              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:border-slate-400 hover:bg-slate-50"
-            >
-              Preview
-            </button>
-            <button
-              type="button"
-              onClick={() => saveBlog("draft")}
-              disabled={saving}
-              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:border-slate-400 hover:bg-slate-50 disabled:opacity-60"
-            >
-              Save Draft
-            </button>
-            <button
-              type="button"
-              onClick={() => saveBlog("published")}
-              disabled={saving}
-              className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
-            >
-              {saving && status === "published" ? "Publishing..." : "Publish"}
-            </button>
-          </div>
-
-          <div className="mt-4 space-y-3">
-            <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                Current Mode
-              </div>
-              <div className="mt-1 text-sm font-semibold text-slate-900">
-                {currentModeLabel}
-              </div>
-            </div>
-            <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                Permalink
-              </div>
-              <div className="mt-1 break-all text-sm font-medium text-blue-700">
-                {currentPermalink}
-              </div>
-            </div>
-            <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                Current Reference
-              </div>
-              <div className="mt-1 text-sm font-semibold text-slate-900">
-                {currentReference}
-              </div>
-              <div className="mt-1 text-xs text-slate-600">
-                {getCategoryLabel(category)} • {authorName || "No byline set"}
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-4 rounded-lg border border-slate-200 bg-white px-3 py-3">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-              Workflow Notes
-            </div>
-            <div className="mt-2 text-sm text-slate-700">{currentModeHelp}</div>
-            <div className="mt-3 space-y-2 text-xs text-slate-600">
-              <div>1. Pick the content mode and source.</div>
-              <div>2. Fill the headline, summary, and article body.</div>
-              <div>3. Set image, metadata, then preview and publish.</div>
-            </div>
-            {blogId ? (
-              <button
-                type="button"
-                onClick={() =>
-                  deleteBlog({
-                    id: blogId,
-                    title,
-                    product_id:
-                      blogMode === "product" ? selectedProductId : null,
-                    product_type: blogMode === "product" ? productType : null,
-                  })
-                }
-                disabled={deletingId === blogId}
-                className="mt-4 inline-flex items-center gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 hover:border-red-300 hover:bg-red-100 disabled:opacity-60"
-              >
-                <FaTrashAlt className="text-[11px]" />
-                {deletingId === blogId
-                  ? "Deleting entry..."
-                  : "Delete current entry"}
-              </button>
-            ) : null}
-          </div>
-        </div>
-        ) : null}
-      </div>
-
-      {workspaceView === "composer" ? (
-      <div className="ui-form-shell p-4 md:p-6">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-          <div>
-            <p className="page-kicker">Editorial Workspace</p>
-            <h2 className="page-title mt-2 text-2xl sm:text-3xl">
-              Editorial Composer
-            </h2>
-            <p className="page-copy mt-2 max-w-2xl text-sm">
-              Use this workspace like an ERP desk: source on the right, writing
-              in the center, preview below, and publish actions always within
-              reach.
-            </p>
-            <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
-              <span className="soft-pill px-2.5 py-1">
-                {currentModeLabel}
-              </span>
-              <span className="soft-pill px-2.5 py-1">
-                {status === "published" ? "Published" : "Draft"}
-              </span>
-              <span className="break-all text-blue-700">{currentPermalink}</span>
-            </div>
-          </div>
-
-          <div className="ui-toolbar-actions">
-            <button
-              type="button"
-              onClick={() => setWorkspaceView("listing")}
-              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:border-slate-400 hover:bg-slate-50"
-            >
-              Back to Posts
-            </button>
-            <select
-              value={blogMode}
-              onChange={(event) => {
-                if (event.target.value === "product") {
-                  startNewProductStory(productType);
-                } else {
-                  startNewGeneralArticle();
-                }
-              }}
-              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700"
-            >
-              <option value="product">Product-Linked Story</option>
-              <option value="general">General Article</option>
-            </select>
-            {blogMode === "product" ? (
-              <select
-                value={productType}
-                onChange={(event) => startNewProductStory(event.target.value)}
-                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700"
-              >
-                <option value="smartphone">Smartphones</option>
-                <option value="laptop">Laptops</option>
-                <option value="tv">TVs</option>
-              </select>
-            ) : null}
-            <button
-              type="button"
-              onClick={() =>
-                document
-                  .getElementById("story-preview-panel")
-                  ?.scrollIntoView({ behavior: "smooth", block: "start" })
-              }
-              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:border-slate-400 hover:bg-slate-50"
-            >
-              Preview
-            </button>
-            <button
-              type="button"
-              onClick={() => saveBlog("draft")}
-              disabled={saving}
-              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:border-slate-400 hover:bg-slate-50 disabled:opacity-60"
-            >
-              Save Draft
-            </button>
-            <button
-              type="button"
-              onClick={() => saveBlog("published")}
-              disabled={saving}
-              className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
-            >
-              Publish
-            </button>
-          </div>
-        </div>
-      </div>
-      ) : null}
-
-      {workspaceView === "composer" ? (
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="space-y-4">
-          <div className="ui-form-shell overflow-hidden">
-          <div className="ui-form-header px-5 py-4">
-            <p className="page-kicker">Writing Desk</p>
-            <h3 className="mt-2 text-base font-semibold text-slate-900">
-              Write the core story first
-            </h3>
-            <p className="mt-1 text-sm text-slate-600">
-              Keep the writing flow focused here. Story settings SEO and hero
-              image controls stay in the control rail so the editor remains
-              clean.
-            </p>
-            <div className="mt-2 text-[11px] font-medium uppercase tracking-[0.18em] text-blue-700">
-              {currentPermalink}
-            </div>
-          </div>
-          <div className="space-y-4 p-5">
-
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-            <div className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-              Story Basics
-            </div>
-
-            <div className="grid gap-3 md:grid-cols-2">
-              <div>
-                <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">
-                  Headline
-                </label>
-                <input
-                  value={title}
-                  onChange={(event) => setTitle(event.target.value)}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800"
-                  placeholder="Enter the main story headline"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">
-                  URL Slug
-                </label>
-                <input
-                  value={slug}
-                  onChange={(event) => setSlug(event.target.value)}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800"
-                  placeholder="optional-custom-slug"
-                />
-              </div>
-              <div className="md:col-span-2">
-                <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">
-                  Standfirst / Summary
-                </label>
-                <input
-                  value={excerpt}
-                  onChange={(event) => setExcerpt(event.target.value)}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800"
-                  placeholder="Short summary for cards, listings, and article intro"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="hidden mb-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
-            <div className="mb-3 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-              <FaTag className="text-xs text-slate-400" />
-              Story Metadata
-            </div>
-
-            <div className="grid gap-3 md:grid-cols-2">
-              <div>
-                <label className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                  <FaTag className="text-[10px]" />
-                  Category
-                </label>
-                <select
-                  value={category}
-                  onChange={(event) => setCategory(event.target.value)}
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800"
-                >
-                  {STORY_CATEGORY_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                  <FaUser className="text-[10px]" />
-                  Byline / Author
-                </label>
-                <div className="space-y-2">
-                  <select
-                    value={authorUserId}
-                    onChange={(event) => {
-                      const nextAuthorId = event.target.value;
-                      setAuthorUserId(nextAuthorId);
-                      const selectedAuthor = authorOptions.find(
-                        (option) => String(option.value) === String(nextAuthorId),
-                      );
-                      setAuthorName(
-                        selectedAuthor?.label || getDefaultAuthorName() || "",
-                      );
-                    }}
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800"
-                  >
-                    <option value="">Custom byline</option>
-                    {authorOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label} · {option.secondary}
-                      </option>
-                    ))}
-                  </select>
-                  <input
-                    value={authorName}
-                    onChange={(event) => {
-                      setAuthorName(event.target.value);
-                      setAuthorUserId("");
-                    }}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800"
-                    placeholder={getDefaultAuthorName() || "Editor name"}
-                  />
-                </div>
-                <div className="mt-1 text-[11px] text-slate-500">
-                  Choose an active author, or type a custom byline if needed.
-                </div>
-              </div>
-              <div className="md:col-span-2">
-                <label className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                  <FaTag className="text-[10px]" />
-                  Tags / Keywords
-                </label>
-                <input
-                  value={tagsInput}
-                  onChange={(event) => setTagsInput(event.target.value)}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800"
-                  placeholder="news, launch, smartphone, samsung"
-                />
-                <div className="mt-1 text-[11px] text-slate-500">
-                  Separate tags with commas. They are used for searching,
-                  filters, and related story grouping.
-                </div>
-              </div>
-              <div className="md:col-span-2">
-                <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                  Story Flags
-                </div>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {[
-                    {
-                      key: "featured",
-                      label: "Featured",
-                      icon: FaStar,
-                      active: featured,
-                      onClick: () => setFeatured((prev) => !prev),
-                      activeClass:
-                        "border-amber-300 bg-amber-50 text-amber-800",
-                    },
-                    {
-                      key: "trending",
-                      label: "Trending",
-                      icon: FaFire,
-                      active: trending,
-                      onClick: () => setTrending((prev) => !prev),
-                      activeClass: "border-rose-300 bg-rose-50 text-rose-800",
-                    },
-                    {
-                      key: "pinned",
-                      label: "Pinned",
-                      icon: FaThumbtack,
-                      active: pinned,
-                      onClick: () => setPinned((prev) => !prev),
-                      activeClass: "border-sky-300 bg-sky-50 text-sky-800",
-                    },
-                  ].map((item) => {
-                    const Icon = item.icon;
-                    return (
-                      <button
-                        key={item.key}
-                        type="button"
-                        onClick={item.onClick}
-                        className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold transition ${
-                          item.active
-                            ? item.activeClass
-                            : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-100"
-                        }`}
-                      >
-                        <Icon className="text-[10px]" />
-                        {item.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="hidden mb-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
-            <div className="mb-3 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-              <FaCalendarAlt className="text-xs text-slate-400" />
-              Publishing & SEO
-            </div>
-
-            <div className="grid gap-3 md:grid-cols-2">
-              <div>
-                <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">
-                  Publish State
-                </label>
-                <select
-                  value={status}
-                  onChange={(event) => setStatus(event.target.value)}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800"
-                >
-                  <option value="draft">Draft</option>
-                  <option value="published">Publish</option>
-                </select>
-              </div>
-              <div>
-                <label className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                  <FaCalendarAlt className="text-[10px]" />
-                  Publish At
-                </label>
-                <input
-                  type="datetime-local"
-                  value={publishedAt}
-                  onChange={(event) => setPublishedAt(event.target.value)}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800"
-                />
-                <div className="mt-1 text-[11px] text-slate-500">
-                  Leave blank to publish immediately. Use a future time to
-                  schedule an article.
-                </div>
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">
-                  SEO Title
-                </label>
-                <input
-                  value={metaTitle}
-                  onChange={(event) => setMetaTitle(event.target.value)}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800"
-                  placeholder="Title used for search engines"
-                />
-              </div>
-              <div className="md:col-span-2">
-                <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">
-                  SEO Description
-                </label>
-                <textarea
-                  value={metaDescription}
-                  onChange={(event) => setMetaDescription(event.target.value)}
-                  rows={2}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800"
-                  placeholder="Short description used in search previews"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                Body Editor
-              </div>
-              <p className="mt-1 text-sm text-slate-600">
-                Write naturally, then use the toolbar to shape the article.
-              </p>
-            </div>
-            <div className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
-              Visual editor
-            </div>
-          </div>
-          <p className="mb-3 mt-3 text-xs text-slate-600">
-            No HTML is needed here. Type like a document editor, then use the
-            buttons for headings, bold text, lists, quotes, links, and tables.
-            You can also type `**important words**` to make them bold in preview
-            and on the live story page.
-          </p>
-
-          <div className="mb-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                  Writing Tools
-                </div>
-                <div className="mt-1 text-xs text-slate-600">
-                  Format the story visually. Clean article HTML is stored
-                  automatically in the background.
-                </div>
-              </div>
-              <div className="text-[11px] font-medium text-slate-500">
-                {hasStructuredPreview
-                  ? "Rich article formatting detected"
-                  : "Plain paragraph mode"}
-              </div>
-            </div>
-
-            <div className="mt-3 flex flex-wrap gap-2">
-              {formattingTools.map((tool) => (
-                <button
-                  key={tool.key}
-                  type="button"
-                  onPointerDown={(event) =>
-                    handleToolbarAction(event, tool.onClick)
-                  }
-                  className={`rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:border-slate-300 hover:bg-slate-100 ${
-                    ["bold", "italic", "underline"].includes(tool.key)
-                      ? "min-w-[2.25rem] text-center"
-                      : ""
-                  }`}
-                >
-                  {tool.label}
-                </button>
-              ))}
-            </div>
-
-            <div className="mt-3 rounded-md border border-dashed border-slate-300 bg-white px-3 py-2 text-[11px] leading-5 text-slate-500">
-              Tip: paste plain text, then use the toolbar to style it. Product
-              facts on the right can be inserted at the cursor, guide
-              screenshots can be placed between steps with the image tools, and
-              `**bold text**` is converted into real story emphasis.
-            </div>
-            <input
-              ref={inlineImageInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={async (event) => {
-                const file = event.target.files?.[0] || null;
-                await handleInlineImageUpload(file);
-                event.target.value = "";
-              }}
-            />
-          </div>
-
-          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-            <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-              <span>Writing Surface</span>
-              <span>{hasStructuredPreview ? "Formatted article" : "Simple article"}</span>
-            </div>
-            <div className="relative">
-              {!editorHasContent ? (
-                  <div className="pointer-events-none absolute left-4 top-4 right-4 text-[15px] leading-7 text-slate-400">
-                  Start writing the full story here. Add headings, lists,
-                  links, inline images, and tables using the toolbar above.
-                </div>
-              ) : null}
-              <div
-                ref={contentRef}
-                contentEditable
-                suppressContentEditableWarning
-                onFocus={() => {
-                  if (typeof document === "undefined") return;
-                  document.execCommand("defaultParagraphSeparator", false, "p");
-                  rememberEditorSelection();
-                }}
-                onInput={() => {
-                  syncEditorStateFromDom();
-                  rememberEditorSelection();
-                }}
-                onBlur={() => {
-                  const nextValue = syncEditorStateFromDom();
-                  if (contentRef.current) {
-                    contentRef.current.innerHTML = nextValue;
-                  }
-                  lastEditorHtmlRef.current = nextValue;
-                }}
-                onKeyUp={rememberEditorSelection}
-                onMouseUp={rememberEditorSelection}
-                onPaste={(event) => {
-                  const pastedText = event.clipboardData?.getData("text/plain");
-                  if (!pastedText) return;
-                  event.preventDefault();
-                  pastePlainTextIntoEditor(pastedText);
-                }}
-                className="mb-0 min-h-[420px] w-full overflow-auto border-0 bg-white px-4 py-4 text-[15px] leading-7 text-slate-800 outline-none [&_a]:font-semibold [&_a]:text-sky-700 [&_a]:underline [&_a]:underline-offset-4 [&_blockquote]:my-5 [&_blockquote]:border-l-4 [&_blockquote]:border-sky-500 [&_blockquote]:bg-sky-50 [&_blockquote]:px-4 [&_blockquote]:py-3 [&_blockquote]:text-slate-700 [&_figure]:my-6 [&_figure]:overflow-hidden [&_figure]:rounded-2xl [&_figure]:border [&_figure]:border-slate-200 [&_figure]:bg-slate-50 [&_figure_figcaption]:border-t [&_figure_figcaption]:border-slate-200 [&_figure_figcaption]:px-4 [&_figure_figcaption]:py-3 [&_figure_figcaption]:text-xs [&_figure_figcaption]:leading-5 [&_figure_figcaption]:text-slate-500 [&_figure_img]:w-full [&_figure_img]:bg-slate-100 [&_figure_img]:object-cover [&_h2]:mt-7 [&_h2]:text-[24px] [&_h2]:font-black [&_h2]:leading-tight [&_h2]:tracking-[-0.03em] [&_h2]:text-slate-950 [&_h3]:mt-6 [&_h3]:text-[18px] [&_h3]:font-bold [&_h3]:text-slate-900 [&_img]:my-6 [&_img]:w-full [&_img]:rounded-2xl [&_ol]:my-4 [&_ol]:list-decimal [&_ol]:space-y-2 [&_ol]:pl-6 [&_p]:my-4 [&_strong]:font-bold [&_strong]:text-slate-950 [&_table]:my-5 [&_table]:w-full [&_table]:border-collapse [&_table]:text-left [&_table]:text-sm [&_td]:border [&_td]:border-slate-200 [&_td]:px-3 [&_td]:py-2 [&_th]:border [&_th]:border-slate-200 [&_th]:bg-slate-50 [&_th]:px-3 [&_th]:py-2 [&_th]:font-semibold [&_ul]:my-4 [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-6"
-              />
-            </div>
-          </div>
-
-          <div className="mb-4 text-[11px] text-slate-500">
-            The editor saves clean story markup behind the scenes, and the live
-            preview below uses the same article rendering rules as the public
-            news page.
-          </div>
-
-          <div
-            id="story-preview-panel"
-            className="mb-4 rounded-[20px] border border-slate-200 bg-slate-50 p-4"
-          >
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h4 className="text-sm font-semibold text-slate-900">
-                  Live Preview
-                </h4>
-                <p className="mt-1 text-xs text-slate-600">
-                  Title, standfirst, and body preview with token replacement.
-                </p>
-              </div>
-              <div className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600">
-                {hasStructuredPreview ? "Rich layout" : "Simple layout"}
-              </div>
-            </div>
-
-            <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
-              {previewHeroImage ? (
-                <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
-                  <img
-                    src={previewHeroImage}
-                    alt={previewHeroAlt}
-                    className="h-56 w-full object-cover sm:h-72"
-                  />
-                </div>
-              ) : null}
-
-              <div className={previewHeroImage ? "mt-5" : ""}>
-              {title ? (
-                <h2 className="text-2xl font-black leading-tight tracking-[-0.03em] text-slate-950">
-                  {title}
-                </h2>
-              ) : (
-                <div className="rounded-md border border-dashed border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-500">
-                  Add a headline to preview the article header.
-                </div>
-              )}
-
-              {excerpt ? (
-                <p className="mt-3 text-sm leading-7 text-slate-600 sm:text-[15px]">
-                  {excerpt}
-                </p>
-              ) : null}
-
-              <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-slate-500">
-                <span className="font-semibold text-blue-700">
-                  {getCategoryLabel(category)}
-                </span>
-                <span className="h-1 w-1 rounded-full bg-slate-300" />
-                <span>{authorName || "No byline set"}</span>
-              </div>
-
-              {articlePreviewHtml ? (
-                <div
-                  className="mt-5 text-[15px] leading-7 text-slate-700 [&_p]:mb-5 [&_p:last-child]:mb-0 [&_p:first-of-type]:text-[16px] [&_p:first-of-type]:leading-8 [&_p:first-of-type]:text-slate-800 sm:[&_p:first-of-type]:text-[17px] sm:[&_p:first-of-type]:leading-8 [&_h2]:mt-8 [&_h2]:text-[22px] [&_h2]:font-black [&_h2]:leading-tight [&_h2]:tracking-[-0.03em] [&_h2]:text-slate-950 [&_h3]:mt-7 [&_h3]:text-[18px] [&_h3]:font-bold [&_h3]:text-slate-900 [&_h4]:mt-6 [&_h4]:text-[16px] [&_h4]:font-bold [&_h4]:text-slate-900 [&_ul]:my-5 [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-5 [&_ol]:my-5 [&_ol]:list-decimal [&_ol]:space-y-2 [&_ol]:pl-5 [&_blockquote]:my-6 [&_blockquote]:border-l-4 [&_blockquote]:border-sky-500 [&_blockquote]:bg-sky-50 [&_blockquote]:px-4 [&_blockquote]:py-3 [&_blockquote]:text-slate-700 [&_a]:font-semibold [&_a]:text-sky-700 [&_a]:underline [&_a]:underline-offset-4 [&_strong]:font-bold [&_strong]:text-slate-950 [&_figure]:my-7 [&_figure]:overflow-hidden [&_figure]:rounded-2xl [&_figure]:border [&_figure]:border-slate-200 [&_figure]:bg-slate-50 [&_figure_figcaption]:border-t [&_figure_figcaption]:border-slate-200 [&_figure_figcaption]:px-4 [&_figure_figcaption]:py-3 [&_figure_figcaption]:text-xs [&_figure_figcaption]:uppercase [&_figure_figcaption]:tracking-[0.14em] [&_figure_figcaption]:text-slate-500 [&_figure_img]:w-full [&_figure_img]:bg-slate-100 [&_figure_img]:object-cover [&_img]:my-6 [&_img]:w-full [&_img]:rounded-2xl [&_div.article-table-wrap]:my-5 [&_div.article-table-wrap]:overflow-x-auto [&_table]:min-w-[520px] [&_table]:w-full [&_table]:border-collapse [&_table]:text-left [&_table]:text-sm [&_thead]:bg-slate-50 [&_th]:border [&_th]:border-slate-200 [&_th]:px-3 [&_th]:py-2 [&_th]:font-semibold [&_th]:text-slate-800 [&_td]:border [&_td]:border-slate-200 [&_td]:px-3 [&_td]:py-2 [&_td]:align-top"
-                  dangerouslySetInnerHTML={{ __html: articlePreviewHtml }}
-                />
-              ) : (
-                <div className="mt-5 rounded-md border border-dashed border-slate-300 bg-slate-50 px-3 py-3 text-sm text-slate-500">
-                  Start writing the story body to see the rendered preview.
-                </div>
-              )}
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-            Use the right publish rail or top action buttons to save drafts,
-            preview the article, and publish when ready.
-          </div>
-          </div>
-        </div>
-        </div>
-
-        <div className="space-y-4 xl:sticky xl:top-4 xl:self-start">
-          <div className="ui-form-shell p-4 md:p-5">
+          <div className="rounded-xl border border-slate-200 bg-white p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  Publish
+                  Publish Panel
                 </div>
-                <div className="mt-2 text-base font-semibold text-slate-900">
+                <div className="mt-2 text-lg font-semibold text-slate-900">
                   {activeEditorSummary}
                 </div>
                 <div className="mt-1 text-sm text-slate-600">
@@ -2742,7 +2712,7 @@ const BlogEditor = () => {
                 }
                 className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:border-slate-400 hover:bg-slate-50"
               >
-                Preview Article
+                Preview
               </button>
               <button
                 type="button"
@@ -2762,20 +2732,48 @@ const BlogEditor = () => {
               </button>
             </div>
 
-            <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-3">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                Permalink
+            <div className="mt-4 space-y-3">
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  Current Mode
+                </div>
+                <div className="mt-1 text-sm font-semibold text-slate-900">
+                  {currentModeLabel}
+                </div>
               </div>
-              <div className="mt-1 break-all text-sm font-medium text-blue-700">
-                {currentPermalink}
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  Permalink
+                </div>
+                <div className="mt-1 break-all text-sm font-medium text-blue-700">
+                  {currentPermalink}
+                </div>
+              </div>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  Current Reference
+                </div>
+                <div className="mt-1 text-sm font-semibold text-slate-900">
+                  {currentReference}
+                </div>
+                <div className="mt-1 text-xs text-slate-600">
+                  {getCategoryLabel(category)} • {authorName || "No byline set"}
+                </div>
               </div>
             </div>
 
-            <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-3">
+            <div className="mt-4 rounded-lg border border-slate-200 bg-white px-3 py-3">
               <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                 Workflow Notes
               </div>
-              <div className="mt-2 text-sm text-slate-700">{currentModeHelp}</div>
+              <div className="mt-2 text-sm text-slate-700">
+                {currentModeHelp}
+              </div>
+              <div className="mt-3 space-y-2 text-xs text-slate-600">
+                <div>1. Pick the content mode and source.</div>
+                <div>2. Fill the headline, summary, and article body.</div>
+                <div>3. Set image, metadata, then preview and publish.</div>
+              </div>
               {blogId ? (
                 <button
                   type="button"
@@ -2799,489 +2797,1588 @@ const BlogEditor = () => {
               ) : null}
             </div>
           </div>
+        ) : null}
+      </div>
 
-          <div className="ui-form-shell p-4 md:p-5">
-            <div className="mb-3 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-              <FaTag className="text-xs text-slate-400" />
-              Story Settings
-            </div>
-
-            <div className="space-y-3">
-              <div>
-                <label className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                  <FaTag className="text-[10px]" />
-                  Category
-                </label>
-                <select
-                  value={category}
-                  onChange={(event) => setCategory(event.target.value)}
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800"
-                >
-                  {STORY_CATEGORY_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
+      {workspaceView === "composer" ? (
+        <div className="ui-form-shell overflow-hidden p-4 md:p-6">
+          <div className="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_420px]">
+            <div>
+              <p className="page-kicker">Editorial Workspace</p>
+              <h2 className="page-title mt-2 text-2xl sm:text-3xl">
+                Editorial Composer
+              </h2>
+              <p className="page-copy mt-2 max-w-2xl text-sm">
+                Use this workspace like an ERP desk: source on the right,
+                writing in the center, preview below, and publish actions always
+                within reach.
+              </p>
+              <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
+                <span className="soft-pill px-2.5 py-1">
+                  {currentModeLabel}
+                </span>
+                <span className="soft-pill px-2.5 py-1">
+                  {status === "published" ? "Published" : "Draft"}
+                </span>
+                <span className="soft-pill px-2.5 py-1">
+                  {workflowCompletedCount} / {workflowChecklist.length} workflow checks
+                </span>
+                <span className="break-all text-blue-700">
+                  {currentPermalink}
+                </span>
               </div>
 
-              <div>
-                <label className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                  <FaUser className="text-[10px]" />
-                  Byline / Author
-                </label>
-                <div className="space-y-2">
-                  <select
-                    value={authorUserId}
-                    onChange={(event) => {
-                      const nextAuthorId = event.target.value;
-                      setAuthorUserId(nextAuthorId);
-                      const selectedAuthor = authorOptions.find(
-                        (option) => String(option.value) === String(nextAuthorId),
-                      );
-                      setAuthorName(
-                        selectedAuthor?.label || getDefaultAuthorName() || "",
-                      );
-                    }}
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800"
+              <div className="mt-4 grid gap-3 md:grid-cols-3">
+                {[
+                  {
+                    title: "Step 1",
+                    text:
+                      blogMode === "product"
+                        ? "Choose the source product in the control rail."
+                        : "General article mode is ready for custom writing.",
+                  },
+                  {
+                    title: "Step 2",
+                    text:
+                      "Fill headline, summary, and body. The editor stores clean markup automatically.",
+                  },
+                  {
+                    title: "Step 3",
+                    text:
+                      "Review preview, SEO, and publishing controls before going live.",
+                  },
+                ].map((card) => (
+                  <div
+                    key={card.title}
+                    className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4"
                   >
-                    <option value="">Custom byline</option>
-                    {authorOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label} | {option.secondary}
-                      </option>
-                    ))}
-                  </select>
-                  <input
-                    value={authorName}
-                    onChange={(event) => {
-                      setAuthorName(event.target.value);
-                      setAuthorUserId("");
-                    }}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800"
-                    placeholder={getDefaultAuthorName() || "Editor name"}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                  <FaTag className="text-[10px]" />
-                  Tags / Keywords
-                </label>
-                <input
-                  value={tagsInput}
-                  onChange={(event) => setTagsInput(event.target.value)}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800"
-                  placeholder="news, launch, smartphone, samsung"
-                />
-              </div>
-
-              <div>
-                <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                  Story Flags
-                </div>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {[
-                    {
-                      key: "featured",
-                      label: "Featured",
-                      icon: FaStar,
-                      active: featured,
-                      onClick: () => setFeatured((prev) => !prev),
-                      activeClass:
-                        "border-amber-300 bg-amber-50 text-amber-800",
-                    },
-                    {
-                      key: "trending",
-                      label: "Trending",
-                      icon: FaFire,
-                      active: trending,
-                      onClick: () => setTrending((prev) => !prev),
-                      activeClass: "border-rose-300 bg-rose-50 text-rose-800",
-                    },
-                    {
-                      key: "pinned",
-                      label: "Pinned",
-                      icon: FaThumbtack,
-                      active: pinned,
-                      onClick: () => setPinned((prev) => !prev),
-                      activeClass: "border-sky-300 bg-sky-50 text-sky-800",
-                    },
-                  ].map((item) => {
-                    const Icon = item.icon;
-                    return (
-                      <button
-                        key={item.key}
-                        type="button"
-                        onClick={item.onClick}
-                        className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold transition ${
-                          item.active
-                            ? item.activeClass
-                            : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-100"
-                        }`}
-                      >
-                        <Icon className="text-[10px]" />
-                        {item.label}
-                      </button>
-                    );
-                  })}
-                </div>
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                      {card.title}
+                    </div>
+                    <p className="mt-2 text-sm leading-6 text-slate-700">
+                      {card.text}
+                    </p>
+                  </div>
+                ))}
               </div>
             </div>
-          </div>
 
-          <div className="ui-form-shell p-4 md:p-5">
-            <div className="mb-3 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-              <FaCalendarAlt className="text-xs text-slate-400" />
-              Publishing & SEO
-            </div>
-
-            <div className="space-y-3">
-              <div>
-                <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">
-                  Publish State
-                </label>
-                <select
-                  value={status}
-                  onChange={(event) => setStatus(event.target.value)}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800"
-                >
-                  <option value="draft">Draft</option>
-                  <option value="published">Publish</option>
-                </select>
+            <div className="rounded-3xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-4 shadow-sm">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                Command Center
               </div>
-              <div>
-                <label className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                  <FaCalendarAlt className="text-[10px]" />
-                  Publish At
-                </label>
-                <input
-                  type="datetime-local"
-                  value={publishedAt}
-                  onChange={(event) => setPublishedAt(event.target.value)}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800"
-                />
+              <div className="mt-2 text-base font-semibold text-slate-900">
+                Fast actions for editors
               </div>
-              <div>
-                <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">
-                  SEO Title
-                </label>
-                <input
-                  value={metaTitle}
-                  onChange={(event) => setMetaTitle(event.target.value)}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800"
-                  placeholder="Title used for search engines"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">
-                  SEO Description
-                </label>
-                <textarea
-                  value={metaDescription}
-                  onChange={(event) => setMetaDescription(event.target.value)}
-                  rows={3}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800"
-                  placeholder="Short description used in search previews"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-xl border border-slate-200 bg-white p-4">
-            <h2 className="text-sm font-semibold text-gray-900">
-              Source & Assets
-            </h2>
-            <p className="mt-1 text-xs text-slate-600">
-              Pick the story source, review the content reference, and control
-              the hero image from here.
-            </p>
-
-            {blogMode === "product" ? (
-              <>
-                <label className="mt-4 mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Candidate Product
-                </label>
-                <select
-                  value={selectedProductId || ""}
-                  onChange={(event) =>
-                    setSelectedProductId(Number(event.target.value))
-                  }
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700"
-                  disabled={candidatesLoading || candidates.length === 0}
-                >
-                  {candidates.length === 0 ? (
-                    <option value="">
-                      {candidatesLoading ? "Loading..." : "No candidates"}
-                    </option>
-                  ) : null}
-                  {candidates.map((row) => (
-                    <option key={row.product_id} value={row.product_id}>
-                      {row.name} ({row.brand_name || "Brand"})
-                    </option>
-                  ))}
-                </select>
-
-                <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700">
-                  <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                    Product Snapshot
-                  </div>
-                  <div className="mt-2 font-semibold text-slate-900">
-                    {selectedProduct?.name || "-"}
-                  </div>
-                  <div className="mt-1">
-                    {selectedProduct?.brand_name || "-"}
-                  </div>
-                  <div className="mt-1">{selectedProduct?.price || "-"}</div>
-                </div>
-              </>
-            ) : (
-              <div className="mt-4 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-3 text-sm text-indigo-800">
-                General article mode is ideal for launch roundups, trend
-                reports, and custom newsroom posts.
-              </div>
-            )}
-
-            <div className="mt-4">
-              <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Hero Image
-              </label>
-              <p className="mt-1 text-xs text-slate-500">
-                Choose an attached product image or switch to a custom URL for
-                a fresh cover. We store the source with the blog.
+              <p className="mt-1 text-sm text-slate-600">
+                Switch modes, save progress, or jump to preview without leaving the writer flow.
               </p>
 
-              {blogMode === "product" ? (
-                <div className="mt-3 inline-flex overflow-hidden rounded-md border border-slate-200 bg-white text-xs font-semibold text-slate-600">
-                  <button
-                    type="button"
-                    onClick={() => setHeroImageSource(HERO_IMAGE_SOURCE.ASSET)}
-                    className={`px-3 py-2 ${
-                      heroImageSource === HERO_IMAGE_SOURCE.ASSET
-                        ? "bg-blue-600 text-white"
-                        : "hover:bg-slate-50"
-                    }`}
-                  >
-                    Product assets
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setHeroImageSource(HERO_IMAGE_SOURCE.URL)}
-                    className={`px-3 py-2 ${
-                      heroImageSource === HERO_IMAGE_SOURCE.URL
-                        ? "bg-blue-600 text-white"
-                        : "hover:bg-slate-50"
-                    }`}
-                  >
-                    Custom URL / upload
-                  </button>
-                </div>
-              ) : null}
-
-              {heroImage ? (
-                <div className="mt-3 overflow-hidden rounded-md border border-slate-200 bg-slate-50">
-                  <img
-                    src={heroImage}
-                    alt={heroImageAlt || title || "Selected hero"}
-                    className="h-36 w-full object-cover"
-                  />
-                  <div className="flex items-center justify-between gap-3 border-t border-slate-200 px-3 py-2 text-xs text-slate-600">
-                    <span>
-                      Current hero image
-                      {blogMode === "product" ? (
-                        <span className="ml-2 text-[10px] uppercase tracking-wide text-slate-400">
-                          ({heroImageSource === HERO_IMAGE_SOURCE.ASSET
-                            ? "Product asset"
-                            : "Custom URL"})
-                        </span>
-                      ) : null}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setHeroImage("")}
-                      className="font-semibold text-slate-500 hover:text-slate-900"
-                    >
-                      Clear
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="mt-3 rounded-md border border-dashed border-slate-300 bg-slate-50 px-3 py-3 text-xs text-slate-500">
-                  No hero image selected yet.
-                </div>
-              )}
-
-              {blogMode === "product" &&
-              heroImageSource === HERO_IMAGE_SOURCE.ASSET ? (
-                heroImageChoices.length > 0 ? (
-                  <div className="mt-4">
-                    <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                      Select from product images
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                      {heroImageChoices.map((img, idx) => {
-                        const selected = heroImage === img;
-                        return (
-                          <button
-                            key={`${img}-${idx}`}
-                            type="button"
-                            onClick={() => {
-                              setHeroImage(img);
-                              setHeroImageSource(HERO_IMAGE_SOURCE.ASSET);
-                            }}
-                            className={`overflow-hidden rounded-md border text-left transition ${
-                              selected
-                                ? "border-slate-900 ring-1 ring-slate-900"
-                                : "border-slate-200 hover:border-slate-400"
-                            }`}
-                          >
-                            <img
-                              src={img}
-                              alt={`product-${idx + 1}`}
-                              className="h-20 w-full object-cover"
-                            />
-                            <div className="flex items-center justify-between gap-2 border-t border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-600">
-                              <span>{selected ? "Selected" : "Use image"}</span>
-                              <span>#{idx + 1}</span>
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="mt-4 rounded-md border border-dashed border-slate-300 bg-slate-50 px-3 py-3 text-xs text-slate-500">
-                    No product images are attached yet. Add images to the
-                    product first, then select one here. You can still switch
-                    to a custom URL below.
-                  </div>
-                )
-              ) : (
-                <div className="mt-4 space-y-3 rounded-md border border-slate-200 bg-slate-50 p-3">
-                  <div>
-                    <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                      Image URL
-                    </label>
-                    <input
-                      type="url"
-                      value={heroImage}
-                      onChange={(event) => {
-                        setHeroImage(event.target.value);
-                        setHeroImageSource(HERO_IMAGE_SOURCE.URL);
-                      }}
-                      className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800"
-                      placeholder="https://example.com/article-image.jpg"
-                    />
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => heroImageInputRef.current?.click()}
-                      disabled={uploadingHeroImage}
-                      className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
-                    >
-                      <FaUpload className="text-[11px]" />
-                      {uploadingHeroImage ? "Uploading..." : "Upload image"}
-                    </button>
-                    <input
-                      ref={heroImageInputRef}
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={async (event) => {
-                        const file = event.target.files?.[0] || null;
-                        await handleHeroImageUpload(file);
-                        event.target.value = "";
-                      }}
-                    />
-                    {heroImage ? (
-                      <button
-                        type="button"
-                        onClick={() => setHeroImage("")}
-                        className="text-xs font-semibold text-slate-500 hover:text-slate-900"
-                      >
-                        Remove image
-                      </button>
-                    ) : null}
-                  </div>
-
-                  <div className="text-[11px] leading-5 text-slate-500">
-                    Use this for blogs and news articles when you want a fresh
-                    cover image instead of a product image.
-                  </div>
-                </div>
-              )}
-
-              <div className="mt-4 grid gap-3 md:grid-cols-2">
-                <div className="md:col-span-2">
-                  <label className="mb-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                    <FaImage className="text-[10px]" />
-                    Hero Image Alt Text
-                  </label>
-                  <input
-                    type="text"
-                    value={heroImageAlt}
-                    onChange={(event) => setHeroImageAlt(event.target.value)}
-                    className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800"
-                    placeholder="Describe the image for accessibility and SEO"
-                  />
-                </div>
-                <div className="md:col-span-2">
-                  <label className="mb-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                    <FaImage className="text-[10px]" />
-                    Image Caption / Credit
-                  </label>
-                  <input
-                    type="text"
-                    value={heroImageCaption}
-                    onChange={(event) =>
-                      setHeroImageCaption(event.target.value)
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setWorkspaceView("listing")}
+                  className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:border-slate-400 hover:bg-slate-50"
+                >
+                  Back to Posts
+                </button>
+                <select
+                  value={blogMode}
+                  onChange={(event) => {
+                    if (event.target.value === "product") {
+                      startNewProductStory(productType);
+                    } else {
+                      startNewGeneralArticle();
                     }
-                    className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800"
-                    placeholder="Image credit shown below the hero image"
-                  />
-                </div>
+                  }}
+                  className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700"
+                >
+                  <option value="product">Product-Linked Story</option>
+                  <option value="general">General Article</option>
+                </select>
+                {blogMode === "product" ? (
+                  <select
+                    value={productType}
+                    onChange={(event) => startNewProductStory(event.target.value)}
+                    className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700"
+                  >
+                    <option value="smartphone">Smartphones</option>
+                    <option value="laptop">Laptops</option>
+                    <option value="tv">TVs</option>
+                  </select>
+                ) : null}
               </div>
-            </div>
-          </div>
 
-          <div className="ui-form-shell p-3">
-            <h2 className="mb-2 text-sm font-semibold text-gray-900">
-              Product Facts
-            </h2>
-            <p className="mb-3 text-xs text-slate-600">
-              Insert product-specific facts into the story body when you need
-              them. These are most useful for product-linked stories.
-            </p>
-            <div className="flex max-h-48 flex-wrap gap-2 overflow-y-auto">
-              {blogMode !== "product" ? (
-                <span className="text-xs text-slate-500">
-                  Switch to a product-linked story to use dynamic product facts.
-                </span>
-              ) : tokenKeys.length === 0 ? (
-                <span className="text-xs text-slate-500">
-                  No product facts available
-                </span>
-              ) : (
-                tokenKeys.map((tokenKey) => (
-                  <button
-                    key={tokenKey}
-                    type="button"
-                    onPointerDown={(event) =>
-                      handleToolbarAction(event, () => insertToken(tokenKey))
-                    }
-                    className="rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-semibold text-slate-700 hover:border-slate-300 hover:bg-slate-100"
-                  >
-                    {`{{${tokenKey}}}`}
-                  </button>
-                ))
-              )}
+              <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                <button
+                  type="button"
+                  onClick={() =>
+                    document
+                      .getElementById("story-preview-panel")
+                      ?.scrollIntoView({ behavior: "smooth", block: "start" })
+                  }
+                  className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:border-slate-400 hover:bg-slate-50"
+                >
+                  Preview
+                </button>
+                <button
+                  type="button"
+                  onClick={() => saveBlog("draft")}
+                  disabled={saving}
+                  className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:border-slate-400 hover:bg-slate-50 disabled:opacity-60"
+                >
+                  Save Draft
+                </button>
+                <button
+                  type="button"
+                  onClick={() => saveBlog("published")}
+                  disabled={saving}
+                  className="rounded-xl bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+                >
+                  Publish
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      ) : null}
+
+      {workspaceView === "composer" ? (
+        <div className="grid gap-5 pb-28 xl:grid-cols-[minmax(0,1fr)_360px] xl:pb-0">
+          <div className="space-y-4">
+            <div className="ui-form-shell overflow-hidden">
+              <div className="ui-form-header px-5 py-5">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                  <div>
+                    <p className="page-kicker">Writing Desk</p>
+                    <h3 className="mt-2 text-base font-semibold text-slate-900">
+                      Write the core story first
+                    </h3>
+                    <p className="mt-1 max-w-2xl text-sm text-slate-600">
+                      Keep the writing flow focused here. Story settings, SEO, and
+                      hero image controls stay in the control rail so the editor
+                      remains clean.
+                    </p>
+                    <div className="mt-2 text-[11px] font-medium uppercase tracking-[0.18em] text-blue-700">
+                      {currentPermalink}
+                    </div>
+                  </div>
+
+                  <div className="grid gap-2 sm:grid-cols-3 lg:w-[28rem]">
+                    {[
+                      {
+                        label: "No HTML",
+                        value: "Write like a document",
+                      },
+                      {
+                        label: "Inline Images",
+                        value: "Insert at the cursor",
+                      },
+                      {
+                        label: "Preview",
+                        value: "Updates from saved markup",
+                      },
+                    ].map((item) => (
+                      <div
+                        key={item.label}
+                        className="rounded-2xl border border-slate-200 bg-white px-3 py-3 shadow-sm"
+                      >
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                          {item.label}
+                        </div>
+                        <div className="mt-1 text-sm font-semibold text-slate-900">
+                          {item.value}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-4 p-5">
+                <div className="rounded-3xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-4 shadow-sm">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-600 text-sm font-semibold text-white">
+                      1
+                    </div>
+                    <div>
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                        Story Basics
+                      </div>
+                      <div className="mt-1 text-sm text-slate-600">
+                        Set the headline, slug, and short summary that readers see first.
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div>
+                      <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">
+                        Headline
+                      </label>
+                      <input
+                        value={title}
+                        onChange={(event) => setTitle(event.target.value)}
+                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800"
+                        placeholder="Enter the main story headline"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">
+                        URL Slug
+                      </label>
+                      <input
+                        value={slug}
+                        onChange={(event) => setSlug(event.target.value)}
+                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800"
+                        placeholder="optional-custom-slug"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">
+                        Standfirst / Summary
+                      </label>
+                      <input
+                        value={excerpt}
+                        onChange={(event) => setExcerpt(event.target.value)}
+                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800"
+                        placeholder="Short summary for cards, listings, and article intro"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="hidden mb-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
+                  <div className="mb-3 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                    <FaTag className="text-xs text-slate-400" />
+                    Story Metadata
+                  </div>
+
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div>
+                      <label className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                        <FaTag className="text-[10px]" />
+                        Category
+                      </label>
+                      <select
+                        value={category}
+                        onChange={(event) => setCategory(event.target.value)}
+                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800"
+                      >
+                        {STORY_CATEGORY_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                        <FaUser className="text-[10px]" />
+                        Byline / Author
+                      </label>
+                      <div className="space-y-2">
+                        <select
+                          value={authorUserId}
+                          onChange={(event) => {
+                            const nextAuthorId = event.target.value;
+                            setAuthorUserId(nextAuthorId);
+                            const selectedAuthor = authorOptions.find(
+                              (option) =>
+                                String(option.value) === String(nextAuthorId),
+                            );
+                            setAuthorName(
+                              selectedAuthor?.label ||
+                                getDefaultAuthorName() ||
+                                "",
+                            );
+                          }}
+                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800"
+                        >
+                          <option value="">Custom byline</option>
+                          {authorOptions.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label} · {option.secondary}
+                            </option>
+                          ))}
+                        </select>
+                        <input
+                          value={authorName}
+                          onChange={(event) => {
+                            setAuthorName(event.target.value);
+                            setAuthorUserId("");
+                          }}
+                          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800"
+                          placeholder={getDefaultAuthorName() || "Editor name"}
+                        />
+                      </div>
+                      <div className="mt-1 text-[11px] text-slate-500">
+                        Choose an active author, or type a custom byline if
+                        needed.
+                      </div>
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                        <FaTag className="text-[10px]" />
+                        Tags / Keywords
+                      </label>
+                      <input
+                        value={tagsInput}
+                        onChange={(event) => setTagsInput(event.target.value)}
+                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800"
+                        placeholder="news, launch, smartphone, samsung"
+                      />
+                      <div className="mt-1 text-[11px] text-slate-500">
+                        Separate tags with commas. They are used for searching,
+                        filters, and related story grouping.
+                      </div>
+                    </div>
+                    <div className="md:col-span-2">
+                      <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                        Story Flags
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {[
+                          {
+                            key: "featured",
+                            label: "Featured",
+                            icon: FaStar,
+                            active: featured,
+                            onClick: () => setFeatured((prev) => !prev),
+                            activeClass:
+                              "border-amber-300 bg-amber-50 text-amber-800",
+                          },
+                          {
+                            key: "trending",
+                            label: "Trending",
+                            icon: FaFire,
+                            active: trending,
+                            onClick: () => setTrending((prev) => !prev),
+                            activeClass:
+                              "border-rose-300 bg-rose-50 text-rose-800",
+                          },
+                          {
+                            key: "pinned",
+                            label: "Pinned",
+                            icon: FaThumbtack,
+                            active: pinned,
+                            onClick: () => setPinned((prev) => !prev),
+                            activeClass:
+                              "border-sky-300 bg-sky-50 text-sky-800",
+                          },
+                        ].map((item) => {
+                          const Icon = item.icon;
+                          return (
+                            <button
+                              key={item.key}
+                              type="button"
+                              onClick={item.onClick}
+                              className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold transition ${
+                                item.active
+                                  ? item.activeClass
+                                  : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-100"
+                              }`}
+                            >
+                              <Icon className="text-[10px]" />
+                              {item.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="hidden mb-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
+                  <div className="mb-3 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                    <FaCalendarAlt className="text-xs text-slate-400" />
+                    Publishing & SEO
+                  </div>
+
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div>
+                      <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">
+                        Publish State
+                      </label>
+                      <select
+                        value={status}
+                        onChange={(event) => setStatus(event.target.value)}
+                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800"
+                      >
+                        <option value="draft">Draft</option>
+                        <option value="published">Publish</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                        <FaCalendarAlt className="text-[10px]" />
+                        Publish At
+                      </label>
+                      <input
+                        type="datetime-local"
+                        value={publishedAt}
+                        onChange={(event) => setPublishedAt(event.target.value)}
+                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800"
+                      />
+                      <div className="mt-1 text-[11px] text-slate-500">
+                        Leave blank to publish immediately. Use a future time to
+                        schedule an article.
+                      </div>
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">
+                        SEO Title
+                      </label>
+                      <input
+                        value={metaTitle}
+                        onChange={(event) => setMetaTitle(event.target.value)}
+                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800"
+                        placeholder="Title used for search engines"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">
+                        SEO Description
+                      </label>
+                      <textarea
+                        value={metaDescription}
+                        onChange={(event) =>
+                          setMetaDescription(event.target.value)
+                        }
+                        rows={2}
+                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800"
+                        placeholder="Short description used in search previews"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-3xl border border-slate-200 bg-gradient-to-br from-blue-50 to-white p-4 shadow-sm">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-900 text-sm font-semibold text-white">
+                        2
+                      </div>
+                      <div>
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                          Body Editor
+                        </div>
+                        <p className="mt-1 text-sm text-slate-600">
+                          Write naturally, then use the guided writing tools to shape the article.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600 shadow-sm">
+                      Visual editor
+                    </div>
+                  </div>
+                  <p className="mt-3 text-xs leading-6 text-slate-600">
+                    No HTML is needed here. Type like a document editor, then use
+                    the buttons for headings, bold text, lists, quotes, links, and
+                    tables. You can also type `**important words**` to make them
+                    bold in preview and on the live story page.
+                  </p>
+                </div>
+
+                <div className="mb-3 rounded-3xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                        Writing Tools
+                      </div>
+                      <div className="mt-1 text-sm text-slate-600">
+                        Choose what you want to add to the article. Each button explains itself in plain language.
+                      </div>
+                    </div>
+                    <div className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-500 shadow-sm">
+                      {hasStructuredPreview
+                        ? "Rich article formatting detected"
+                        : "Plain paragraph mode"}
+                    </div>
+                  </div>
+
+                  <div className="mt-4 grid gap-3 xl:grid-cols-2">
+                    {toolbarGroups.map((group) => (
+                      <div
+                        key={group.title}
+                        className="rounded-2xl border border-slate-200 bg-white p-3"
+                      >
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                          {group.title}
+                        </div>
+                        <p className="mt-1 text-xs leading-5 text-slate-500">
+                          {group.hint}
+                        </p>
+                        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                          {group.tools.map((tool) => (
+                            <button
+                              key={tool.key}
+                              type="button"
+                              onPointerDown={(event) =>
+                                handleToolbarAction(event, tool.onClick)
+                              }
+                              className="flex min-h-[4rem] flex-col items-start justify-center rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-left hover:border-slate-300 hover:bg-white"
+                            >
+                              <span className="text-xs font-semibold text-slate-800">
+                                {tool.label}
+                              </span>
+                              <span className="mt-1 text-[11px] leading-4 text-slate-500">
+                                {tool.description}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="mt-4 rounded-2xl border border-dashed border-slate-300 bg-white px-3 py-3 text-[11px] leading-6 text-slate-500">
+                    Tip: write the article in normal text first, then use these buttons only when you want to add a heading, list, link, image, or emphasis. Product facts on the right can still be inserted at the cursor.
+                  </div>
+                  <input
+                    ref={inlineImageInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={async (event) => {
+                      const markerId =
+                        pendingInlineImageDialogMarkerRef.current;
+                      pendingInlineImageDialogMarkerRef.current = "";
+                      clearPendingInlineImageDialogWatcher();
+                      const file = event.target.files?.[0] || null;
+                      await handleInlineImageUpload(file, markerId);
+                      event.target.value = "";
+                    }}
+                  />
+                </div>
+
+                <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+                  <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    <span>Writing Surface</span>
+                    <span>
+                      {hasStructuredPreview
+                        ? "Formatted article"
+                        : "Simple article"}
+                    </span>
+                  </div>
+                  <div className="relative">
+                    {!editorHasContent ? (
+                      <div className="pointer-events-none absolute left-4 top-4 right-4 text-[15px] leading-7 text-slate-400">
+                        Start writing the full story here. Add headings, lists,
+                        links, inline images, and tables using the toolbar
+                        above.
+                      </div>
+                    ) : null}
+                    <div
+                      ref={contentRef}
+                      contentEditable
+                      suppressContentEditableWarning
+                      onFocus={() => {
+                        if (typeof document === "undefined") return;
+                        document.execCommand(
+                          "defaultParagraphSeparator",
+                          false,
+                          "p",
+                        );
+                        rememberEditorSelection();
+                      }}
+                      onInput={() => {
+                        syncEditorStateFromDom();
+                        rememberEditorSelection();
+                      }}
+                      onBlur={() => {
+                        const nextValue = syncEditorStateFromDom();
+                        if (
+                          contentRef.current &&
+                          !pendingEditorMarkerIdRef.current &&
+                          !suspendEditorNormalizationRef.current
+                        ) {
+                          contentRef.current.innerHTML = nextValue;
+                        }
+                        lastEditorHtmlRef.current = nextValue;
+                      }}
+                      onKeyUp={rememberEditorSelection}
+                      onMouseUp={rememberEditorSelection}
+                      onPaste={(event) => {
+                        const pastedText =
+                          event.clipboardData?.getData("text/plain");
+                        if (!pastedText) return;
+                        event.preventDefault();
+                        pastePlainTextIntoEditor(pastedText);
+                      }}
+                      className="mb-0 min-h-[420px] w-full overflow-auto border-0 bg-white px-4 py-4 text-[15px] leading-7 text-slate-800 outline-none [&_a]:font-semibold [&_a]:text-sky-700 [&_a]:underline [&_a]:underline-offset-4 [&_blockquote]:my-5 [&_blockquote]:border-l-4 [&_blockquote]:border-sky-500 [&_blockquote]:bg-sky-50 [&_blockquote]:px-4 [&_blockquote]:py-3 [&_blockquote]:text-slate-700 [&_figure]:my-6 [&_figure]:overflow-hidden [&_figure]:rounded-2xl [&_figure]:border [&_figure]:border-slate-200 [&_figure]:bg-slate-50 [&_figure_figcaption]:border-t [&_figure_figcaption]:border-slate-200 [&_figure_figcaption]:px-4 [&_figure_figcaption]:py-3 [&_figure_figcaption]:text-xs [&_figure_figcaption]:leading-5 [&_figure_figcaption]:text-slate-500 [&_figure_img]:w-full [&_figure_img]:bg-slate-100 [&_figure_img]:object-cover [&_h2]:mt-7 [&_h2]:text-[24px] [&_h2]:font-black [&_h2]:leading-tight [&_h2]:tracking-[-0.03em] [&_h2]:text-slate-950 [&_h3]:mt-6 [&_h3]:text-[18px] [&_h3]:font-bold [&_h3]:text-slate-900 [&_img]:my-6 [&_img]:w-full [&_img]:rounded-2xl [&_ol]:my-4 [&_ol]:list-decimal [&_ol]:space-y-2 [&_ol]:pl-6 [&_p]:my-4 [&_strong]:font-bold [&_strong]:text-slate-950 [&_table]:my-5 [&_table]:w-full [&_table]:border-collapse [&_table]:text-left [&_table]:text-sm [&_td]:border [&_td]:border-slate-200 [&_td]:px-3 [&_td]:py-2 [&_th]:border [&_th]:border-slate-200 [&_th]:bg-slate-50 [&_th]:px-3 [&_th]:py-2 [&_th]:font-semibold [&_ul]:my-4 [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-6"
+                    />
+                  </div>
+                </div>
+
+                <div className="mb-4 text-[11px] text-slate-500">
+                  The editor saves clean story markup behind the scenes, and the
+                  live preview below uses the same article rendering rules as
+                  the public news page.
+                </div>
+
+                <div className="rounded-3xl border border-slate-200 bg-gradient-to-br from-violet-50 to-white p-4 shadow-sm">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-violet-600 text-sm font-semibold text-white">
+                      3
+                    </div>
+                    <div>
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                        Live Preview
+                      </div>
+                      <p className="mt-1 text-sm text-slate-600">
+                        Review the article exactly as the newsroom renderer understands it.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div
+                  id="story-preview-panel"
+                  className="mb-4 rounded-[24px] border border-slate-200 bg-slate-50 p-4 shadow-sm"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <h4 className="text-sm font-semibold text-slate-900">
+                        Live Preview
+                      </h4>
+                      <p className="mt-1 text-xs text-slate-600">
+                        Title, standfirst, and body preview with token
+                        replacement.
+                      </p>
+                    </div>
+                    <div className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600">
+                      {hasStructuredPreview ? "Rich layout" : "Simple layout"}
+                    </div>
+                  </div>
+
+                  <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
+                    {previewHeroImage ? (
+                      <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
+                        <img
+                          src={previewHeroImage}
+                          alt={previewHeroAlt}
+                          className="h-56 w-full object-cover sm:h-72"
+                        />
+                      </div>
+                    ) : null}
+
+                    <div className={previewHeroImage ? "mt-5" : ""}>
+                      {title ? (
+                        <h2 className="text-2xl font-black leading-tight tracking-[-0.03em] text-slate-950">
+                          {title}
+                        </h2>
+                      ) : (
+                        <div className="rounded-md border border-dashed border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-500">
+                          Add a headline to preview the article header.
+                        </div>
+                      )}
+
+                      {excerpt ? (
+                        <p className="mt-3 text-sm leading-7 text-slate-600 sm:text-[15px]">
+                          {excerpt}
+                        </p>
+                      ) : null}
+
+                      <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-slate-500">
+                        <span className="font-semibold text-blue-700">
+                          {getCategoryLabel(category)}
+                        </span>
+                        <span className="h-1 w-1 rounded-full bg-slate-300" />
+                        <span>{authorName || "No byline set"}</span>
+                      </div>
+
+                      {articlePreviewHtml ? (
+                        <div
+                          className="mt-5 text-[15px] leading-7 text-slate-700 [&_p]:mb-5 [&_p:last-child]:mb-0 [&_p:first-of-type]:text-[16px] [&_p:first-of-type]:leading-8 [&_p:first-of-type]:text-slate-800 sm:[&_p:first-of-type]:text-[17px] sm:[&_p:first-of-type]:leading-8 [&_h2]:mt-8 [&_h2]:text-[22px] [&_h2]:font-black [&_h2]:leading-tight [&_h2]:tracking-[-0.03em] [&_h2]:text-slate-950 [&_h3]:mt-7 [&_h3]:text-[18px] [&_h3]:font-bold [&_h3]:text-slate-900 [&_h4]:mt-6 [&_h4]:text-[16px] [&_h4]:font-bold [&_h4]:text-slate-900 [&_ul]:my-5 [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-5 [&_ol]:my-5 [&_ol]:list-decimal [&_ol]:space-y-2 [&_ol]:pl-5 [&_blockquote]:my-6 [&_blockquote]:border-l-4 [&_blockquote]:border-sky-500 [&_blockquote]:bg-sky-50 [&_blockquote]:px-4 [&_blockquote]:py-3 [&_blockquote]:text-slate-700 [&_a]:font-semibold [&_a]:text-sky-700 [&_a]:underline [&_a]:underline-offset-4 [&_strong]:font-bold [&_strong]:text-slate-950 [&_figure]:my-7 [&_figure]:overflow-hidden [&_figure]:rounded-2xl [&_figure]:border [&_figure]:border-slate-200 [&_figure]:bg-slate-50 [&_figure_figcaption]:border-t [&_figure_figcaption]:border-slate-200 [&_figure_figcaption]:px-4 [&_figure_figcaption]:py-3 [&_figure_figcaption]:text-xs [&_figure_figcaption]:uppercase [&_figure_figcaption]:tracking-[0.14em] [&_figure_figcaption]:text-slate-500 [&_figure_img]:w-full [&_figure_img]:bg-slate-100 [&_figure_img]:object-cover [&_img]:my-6 [&_img]:w-full [&_img]:rounded-2xl [&_div.article-table-wrap]:my-5 [&_div.article-table-wrap]:overflow-x-auto [&_table]:min-w-[520px] [&_table]:w-full [&_table]:border-collapse [&_table]:text-left [&_table]:text-sm [&_thead]:bg-slate-50 [&_th]:border [&_th]:border-slate-200 [&_th]:px-3 [&_th]:py-2 [&_th]:font-semibold [&_th]:text-slate-800 [&_td]:border [&_td]:border-slate-200 [&_td]:px-3 [&_td]:py-2 [&_td]:align-top"
+                          dangerouslySetInnerHTML={{
+                            __html: articlePreviewHtml,
+                          }}
+                        />
+                      ) : (
+                        <div className="mt-5 rounded-md border border-dashed border-slate-300 bg-slate-50 px-3 py-3 text-sm text-slate-500">
+                          Start writing the story body to see the rendered
+                          preview.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                  Use the right publish rail or top action buttons to save
+                  drafts, preview the article, and publish when ready.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-3 xl:sticky xl:top-4 xl:space-y-4 xl:self-start">
+            <div className="rounded-3xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-4 shadow-sm xl:hidden">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                Mobile Editor Mode
+              </div>
+              <div className="mt-2 text-base font-semibold text-slate-900">
+                Open only the panel you need
+              </div>
+              <p className="mt-1 text-sm text-slate-600">
+                Use the panels below for settings, SEO, images, and product facts. The story editor stays cleaner on smaller screens.
+              </p>
+              <div className="mt-3 grid grid-cols-3 gap-2">
+                <div className="rounded-2xl border border-slate-200 bg-white px-3 py-3 text-center">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    Status
+                  </div>
+                  <div className="mt-1 text-sm font-semibold text-slate-900">
+                    {status === "published" ? "Published" : "Draft"}
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-white px-3 py-3 text-center">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    Mode
+                  </div>
+                  <div className="mt-1 text-sm font-semibold text-slate-900">
+                    {blogMode === "product" ? "Product" : "General"}
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-white px-3 py-3 text-center">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    Progress
+                  </div>
+                  <div className="mt-1 text-sm font-semibold text-slate-900">
+                    {workflowCompletedCount}/{workflowChecklist.length}
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="ui-form-shell rounded-3xl p-4 shadow-sm md:p-5">
+              <button
+                type="button"
+                onClick={() => toggleMobileComposerPanel("publish")}
+                className="flex w-full items-start justify-between gap-3 text-left xl:hidden"
+              >
+                <div>
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    Publish & Preview
+                  </div>
+                  <div className="mt-1 text-sm font-semibold text-slate-900">
+                    Save, preview, or publish this article
+                  </div>
+                </div>
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold text-slate-600">
+                  {mobileComposerPanels.publish ? "Hide" : "Open"}
+                </span>
+              </button>
+
+              <div className="hidden items-start justify-between gap-3 xl:flex">
+                <div>
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    Publish Center
+                  </div>
+                  <div className="mt-2 text-base font-semibold text-slate-900">
+                    {activeEditorSummary}
+                  </div>
+                  <div className="mt-1 text-sm text-slate-600">
+                    {currentModeLabel}
+                    {blogId ? ` - ID ${blogId}` : " - New draft"}
+                  </div>
+                </div>
+                <span
+                  className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold capitalize ${
+                    STATUS_BADGES[status] || STATUS_BADGES.draft
+                  }`}
+                >
+                  {status}
+                </span>
+              </div>
+
+              <div
+                className={`${
+                  mobileComposerPanels.publish ? "mt-4 block" : "hidden"
+                } xl:mt-0 xl:block`}
+              >
+                {message ? (
+                  <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+                    {message}
+                  </div>
+                ) : null}
+
+                <div className="mt-4 grid gap-2 sm:grid-cols-3 xl:grid-cols-1">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      document
+                        .getElementById("story-preview-panel")
+                        ?.scrollIntoView({ behavior: "smooth", block: "start" })
+                    }
+                    className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:border-slate-400 hover:bg-slate-50"
+                  >
+                    Preview Article
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => saveBlog("draft")}
+                    disabled={saving}
+                    className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:border-slate-400 hover:bg-slate-50 disabled:opacity-60"
+                  >
+                    Save Draft
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => saveBlog("published")}
+                    disabled={saving}
+                    className="rounded-xl bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+                  >
+                    {saving && status === "published"
+                      ? "Publishing..."
+                      : "Publish"}
+                  </button>
+                </div>
+
+                <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    Permalink
+                  </div>
+                  <div className="mt-1 break-all text-sm font-medium text-blue-700">
+                    {currentPermalink}
+                  </div>
+                </div>
+
+                <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    Workflow Notes
+                  </div>
+                  <div className="mt-2 text-sm text-slate-700">
+                    {currentModeHelp}
+                  </div>
+                  {blogId ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        deleteBlog({
+                          id: blogId,
+                          title,
+                          product_id:
+                            blogMode === "product" ? selectedProductId : null,
+                          product_type:
+                            blogMode === "product" ? productType : null,
+                        })
+                      }
+                      disabled={deletingId === blogId}
+                      className="mt-4 inline-flex items-center gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 hover:border-red-300 hover:bg-red-100 disabled:opacity-60"
+                    >
+                      <FaTrashAlt className="text-[11px]" />
+                      {deletingId === blogId
+                        ? "Deleting entry..."
+                        : "Delete current entry"}
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+
+            <div className="ui-form-shell rounded-3xl p-4 shadow-sm md:p-5">
+              <button
+                type="button"
+                onClick={() => toggleMobileComposerPanel("workflow")}
+                className="flex w-full items-center justify-between gap-3 text-left xl:hidden"
+              >
+                <div>
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    Workflow Checklist
+                  </div>
+                  <div className="mt-1 text-sm font-semibold text-slate-900">
+                    Track what is ready before publishing
+                  </div>
+                </div>
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold text-slate-600">
+                  {mobileComposerPanels.workflow ? "Hide" : "Open"}
+                </span>
+              </button>
+
+              <div className="mb-3 hidden items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 xl:flex">
+                <FaCheckCircle className="text-xs text-emerald-500" />
+                Workflow Checklist
+              </div>
+
+              <div
+                className={`space-y-3 ${
+                  mobileComposerPanels.workflow ? "block" : "hidden"
+                } xl:block`}
+              >
+                {workflowChecklist.map((item) => (
+                  <div
+                    key={item.label}
+                    className={`rounded-2xl border px-3 py-3 ${
+                      item.done
+                        ? "border-emerald-200 bg-emerald-50"
+                        : "border-slate-200 bg-slate-50"
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div
+                        className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
+                          item.done
+                            ? "bg-emerald-600 text-white"
+                            : "bg-white text-slate-500"
+                        }`}
+                      >
+                        {item.done ? <FaCheckCircle className="text-xs" /> : "•"}
+                      </div>
+                      <div>
+                        <div className="text-sm font-semibold text-slate-900">
+                          {item.label}
+                        </div>
+                        <p className="mt-1 text-xs leading-5 text-slate-600">
+                          {item.detail}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="ui-form-shell rounded-3xl p-4 shadow-sm md:p-5">
+              <button
+                type="button"
+                onClick={() => toggleMobileComposerPanel("settings")}
+                className="flex w-full items-center justify-between gap-3 text-left xl:hidden"
+              >
+                <div>
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    Story Details
+                  </div>
+                  <div className="mt-1 text-sm font-semibold text-slate-900">
+                    Category, author, tags, and flags
+                  </div>
+                </div>
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold text-slate-600">
+                  {mobileComposerPanels.settings ? "Hide" : "Open"}
+                </span>
+              </button>
+
+              <div className="mb-3 hidden items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 xl:flex">
+                <FaTag className="text-xs text-slate-400" />
+                Story Settings
+              </div>
+              <p className="mb-4 hidden text-sm text-slate-600 xl:block">
+                Manage editorial labels, author details, and visibility flags for this article.
+              </p>
+
+              <div
+                className={`space-y-3 ${
+                  mobileComposerPanels.settings ? "mt-4 block" : "hidden"
+                } xl:mt-0 xl:block`}
+              >
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                  <label className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    <FaTag className="text-[10px]" />
+                    Category
+                  </label>
+                  <select
+                    value={category}
+                    onChange={(event) => setCategory(event.target.value)}
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800"
+                  >
+                    {STORY_CATEGORY_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                  <label className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    <FaUser className="text-[10px]" />
+                    Byline / Author
+                  </label>
+                  <div className="space-y-2">
+                    <select
+                      value={authorUserId}
+                      onChange={(event) => {
+                        const nextAuthorId = event.target.value;
+                        setAuthorUserId(nextAuthorId);
+                        const selectedAuthor = authorOptions.find(
+                          (option) =>
+                            String(option.value) === String(nextAuthorId),
+                        );
+                        setAuthorName(
+                          selectedAuthor?.label || getDefaultAuthorName() || "",
+                        );
+                      }}
+                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800"
+                    >
+                      <option value="">Custom byline</option>
+                      {authorOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label} | {option.secondary}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      value={authorName}
+                      onChange={(event) => {
+                        setAuthorName(event.target.value);
+                        setAuthorUserId("");
+                      }}
+                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800"
+                      placeholder={getDefaultAuthorName() || "Editor name"}
+                    />
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                  <label className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    <FaTag className="text-[10px]" />
+                    Tags / Keywords
+                  </label>
+                  <input
+                    value={tagsInput}
+                    onChange={(event) => setTagsInput(event.target.value)}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800"
+                    placeholder="news, launch, smartphone, samsung"
+                  />
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    Story Flags
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {[
+                      {
+                        key: "featured",
+                        label: "Featured",
+                        icon: FaStar,
+                        active: featured,
+                        onClick: () => setFeatured((prev) => !prev),
+                        activeClass:
+                          "border-amber-300 bg-amber-50 text-amber-800",
+                      },
+                      {
+                        key: "trending",
+                        label: "Trending",
+                        icon: FaFire,
+                        active: trending,
+                        onClick: () => setTrending((prev) => !prev),
+                        activeClass: "border-rose-300 bg-rose-50 text-rose-800",
+                      },
+                      {
+                        key: "pinned",
+                        label: "Pinned",
+                        icon: FaThumbtack,
+                        active: pinned,
+                        onClick: () => setPinned((prev) => !prev),
+                        activeClass: "border-sky-300 bg-sky-50 text-sky-800",
+                      },
+                    ].map((item) => {
+                      const Icon = item.icon;
+                      return (
+                        <button
+                          key={item.key}
+                          type="button"
+                          onClick={item.onClick}
+                          className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold transition ${
+                            item.active
+                              ? item.activeClass
+                              : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-100"
+                          }`}
+                        >
+                          <Icon className="text-[10px]" />
+                          {item.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="ui-form-shell rounded-3xl p-4 shadow-sm md:p-5">
+              <button
+                type="button"
+                onClick={() => toggleMobileComposerPanel("seo")}
+                className="flex w-full items-center justify-between gap-3 text-left xl:hidden"
+              >
+                <div>
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    SEO & Schedule
+                  </div>
+                  <div className="mt-1 text-sm font-semibold text-slate-900">
+                    Publish timing and search details
+                  </div>
+                </div>
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold text-slate-600">
+                  {mobileComposerPanels.seo ? "Hide" : "Open"}
+                </span>
+              </button>
+
+              <div className="mb-3 hidden items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 xl:flex">
+                <FaCalendarAlt className="text-xs text-slate-400" />
+                Publishing & SEO
+              </div>
+              <p className="mb-4 hidden text-sm text-slate-600 xl:block">
+                Control when the article goes live and what search engines will read first.
+              </p>
+
+              <div
+                className={`space-y-3 ${
+                  mobileComposerPanels.seo ? "mt-4 block" : "hidden"
+                } xl:mt-0 xl:block`}
+              >
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    Publish State
+                  </label>
+                  <select
+                    value={status}
+                    onChange={(event) => setStatus(event.target.value)}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800"
+                  >
+                    <option value="draft">Draft</option>
+                    <option value="published">Publish</option>
+                  </select>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                  <label className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    <FaCalendarAlt className="text-[10px]" />
+                    Publish At
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={publishedAt}
+                    onChange={(event) => setPublishedAt(event.target.value)}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800"
+                  />
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    SEO Title
+                  </label>
+                  <input
+                    value={metaTitle}
+                    onChange={(event) => setMetaTitle(event.target.value)}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800"
+                    placeholder="Title used for search engines"
+                  />
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    SEO Description
+                  </label>
+                  <textarea
+                    value={metaDescription}
+                    onChange={(event) => setMetaDescription(event.target.value)}
+                    rows={3}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800"
+                    placeholder="Short description used in search previews"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+              <button
+                type="button"
+                onClick={() => toggleMobileComposerPanel("source")}
+                className="flex w-full items-center justify-between gap-3 text-left xl:hidden"
+              >
+                <div>
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    Source & Images
+                  </div>
+                  <div className="mt-1 text-sm font-semibold text-slate-900">
+                    Product source, hero image, and image details
+                  </div>
+                </div>
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold text-slate-600">
+                  {mobileComposerPanels.source ? "Hide" : "Open"}
+                </span>
+              </button>
+
+              <h2 className="hidden text-sm font-semibold text-gray-900 xl:block">
+                Source & Assets
+              </h2>
+              <p className="mt-1 hidden text-xs text-slate-600 xl:block">
+                Pick the story source, review the content reference, and control
+                the hero image from here.
+              </p>
+
+              <div
+                className={`${
+                  mobileComposerPanels.source ? "mt-4 block" : "hidden"
+                } xl:mt-0 xl:block`}
+              >
+              {blogMode === "product" ? (
+                <>
+                  <label className="mt-4 mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Candidate Product
+                  </label>
+                  <select
+                    value={selectedProductId || ""}
+                    onChange={(event) =>
+                      setSelectedProductId(Number(event.target.value))
+                    }
+                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700"
+                    disabled={candidatesLoading || candidates.length === 0}
+                  >
+                    {candidates.length === 0 ? (
+                      <option value="">
+                        {candidatesLoading ? "Loading..." : "No candidates"}
+                      </option>
+                    ) : null}
+                    {candidates.map((row) => (
+                      <option key={row.product_id} value={row.product_id}>
+                        {row.name} ({row.brand_name || "Brand"})
+                      </option>
+                    ))}
+                  </select>
+
+                  <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700">
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                      Product Snapshot
+                    </div>
+                    <div className="mt-2 font-semibold text-slate-900">
+                      {selectedProduct?.name || "-"}
+                    </div>
+                    <div className="mt-1">
+                      {selectedProduct?.brand_name || "-"}
+                    </div>
+                    <div className="mt-1">{selectedProduct?.price || "-"}</div>
+                  </div>
+                </>
+              ) : (
+                <div className="mt-4 rounded-2xl border border-indigo-200 bg-indigo-50 px-3 py-3 text-sm text-indigo-800">
+                  General article mode is ideal for launch roundups, trend
+                  reports, and custom newsroom posts.
+                </div>
+              )}
+
+              <div className="mt-4">
+                <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Hero Image
+                </label>
+                <p className="mt-1 text-xs text-slate-500">
+                  Choose an attached product image or switch to a custom URL for
+                  a fresh cover. We store the source with the blog.
+                </p>
+
+                {blogMode === "product" ? (
+                  <div className="mt-3 inline-flex overflow-hidden rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-600">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setHeroImageSource(HERO_IMAGE_SOURCE.ASSET)
+                      }
+                      className={`px-3 py-2 ${
+                        heroImageSource === HERO_IMAGE_SOURCE.ASSET
+                          ? "bg-blue-600 text-white"
+                          : "text-slate-600 hover:bg-slate-50"
+                      }`}
+                    >
+                      Product assets
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setHeroImageSource(HERO_IMAGE_SOURCE.URL)}
+                      className={`px-3 py-2 ${
+                        heroImageSource === HERO_IMAGE_SOURCE.URL
+                          ? "bg-blue-600 text-white"
+                          : "text-slate-600 hover:bg-slate-50"
+                      }`}
+                    >
+                      Custom URL / upload
+                    </button>
+                  </div>
+                ) : null}
+
+                {heroImage ? (
+                  <div className="mt-3 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
+                    <img
+                      src={heroImage}
+                      alt={heroImageAlt || title || "Selected hero"}
+                      className="h-36 w-full object-cover"
+                    />
+                    <div className="flex items-center justify-between gap-3 border-t border-slate-200 px-3 py-2 text-xs text-slate-600">
+                      <span>
+                        Current hero image
+                        {blogMode === "product" ? (
+                          <span className="ml-2 text-[10px] uppercase tracking-wide text-slate-400">
+                            (
+                            {heroImageSource === HERO_IMAGE_SOURCE.ASSET
+                              ? "Product asset"
+                              : "Custom URL"}
+                            )
+                          </span>
+                        ) : null}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setHeroImage("")}
+                        className="font-semibold text-slate-500 hover:text-slate-900"
+                      >
+                        Clear
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-3 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-3 py-3 text-xs text-slate-500">
+                    No hero image selected yet.
+                  </div>
+                )}
+
+                {blogMode === "product" &&
+                heroImageSource === HERO_IMAGE_SOURCE.ASSET ? (
+                  heroImageChoices.length > 0 ? (
+                    <div className="mt-4">
+                      <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                        Select from product images
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                        {heroImageChoices.map((img, idx) => {
+                          const selected = heroImage === img;
+                          return (
+                            <button
+                              key={`${img}-${idx}`}
+                              type="button"
+                              onClick={() => {
+                                setHeroImage(img);
+                                setHeroImageSource(HERO_IMAGE_SOURCE.ASSET);
+                              }}
+                            className={`overflow-hidden rounded-xl border text-left transition ${
+                                selected
+                                  ? "border-slate-900 ring-1 ring-slate-900"
+                                  : "border-slate-200 hover:border-slate-400"
+                              }`}
+                            >
+                              <img
+                                src={img}
+                                alt={`product-${idx + 1}`}
+                                className="h-20 w-full object-cover"
+                              />
+                              <div className="flex items-center justify-between gap-2 border-t border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-600">
+                                <span>
+                                  {selected ? "Selected" : "Use image"}
+                                </span>
+                                <span>#{idx + 1}</span>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : (
+                  <div className="mt-4 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-3 py-3 text-xs text-slate-500">
+                      No product images are attached yet. Add images to the
+                      product first, then select one here. You can still switch
+                      to a custom URL below.
+                    </div>
+                  )
+                ) : (
+                  <div className="mt-4 space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                    <div>
+                      <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                        Image URL
+                      </label>
+                      <input
+                        type="url"
+                        value={heroImage}
+                        onChange={(event) => {
+                          setHeroImage(event.target.value);
+                          setHeroImageSource(HERO_IMAGE_SOURCE.URL);
+                        }}
+                        className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800"
+                        placeholder="https://example.com/article-image.jpg"
+                      />
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => heroImageInputRef.current?.click()}
+                        disabled={uploadingHeroImage}
+                        className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+                      >
+                        <FaUpload className="text-[11px]" />
+                        {uploadingHeroImage ? "Uploading..." : "Upload image"}
+                      </button>
+                      <input
+                        ref={heroImageInputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={async (event) => {
+                          const file = event.target.files?.[0] || null;
+                          await handleHeroImageUpload(file);
+                          event.target.value = "";
+                        }}
+                      />
+                      {heroImage ? (
+                        <button
+                          type="button"
+                          onClick={() => setHeroImage("")}
+                          className="text-xs font-semibold text-slate-500 hover:text-slate-900"
+                        >
+                          Remove image
+                        </button>
+                      ) : null}
+                    </div>
+
+                    <div className="text-[11px] leading-5 text-slate-500">
+                      Use this for blogs and news articles when you want a fresh
+                      cover image instead of a product image.
+                    </div>
+                  </div>
+                )}
+
+                <div className="mt-4 grid gap-3 md:grid-cols-2">
+                  <div className="md:col-span-2">
+                    <label className="mb-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                      <FaImage className="text-[10px]" />
+                      Hero Image Alt Text
+                    </label>
+                    <input
+                      type="text"
+                      value={heroImageAlt}
+                      onChange={(event) => setHeroImageAlt(event.target.value)}
+                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800"
+                      placeholder="Describe the image for accessibility and SEO"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="mb-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                      <FaImage className="text-[10px]" />
+                      Image Caption / Credit
+                    </label>
+                    <input
+                      type="text"
+                      value={heroImageCaption}
+                      onChange={(event) =>
+                        setHeroImageCaption(event.target.value)
+                      }
+                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800"
+                      placeholder="Image credit shown below the hero image"
+                    />
+                  </div>
+                </div>
+              </div>
+              </div>
+            </div>
+
+            <div className="ui-form-shell rounded-3xl p-3 shadow-sm">
+              <button
+                type="button"
+                onClick={() => toggleMobileComposerPanel("facts")}
+                className="flex w-full items-center justify-between gap-3 px-1 py-1 text-left xl:hidden"
+              >
+                <div>
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    Product Facts
+                  </div>
+                  <div className="mt-1 text-sm font-semibold text-slate-900">
+                    Insert stored facts into the story
+                  </div>
+                </div>
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold text-slate-600">
+                  {mobileComposerPanels.facts ? "Hide" : "Open"}
+                </span>
+              </button>
+
+              <h2 className="mb-2 hidden text-sm font-semibold text-gray-900 xl:block">
+                Product Facts
+              </h2>
+              <p className="mb-3 hidden text-xs text-slate-600 xl:block">
+                Insert product-specific facts into the story body when you need
+                them. These are most useful for product-linked stories.
+              </p>
+              <div
+                className={`${
+                  mobileComposerPanels.facts ? "mt-4 block" : "hidden"
+                } xl:mt-0 xl:block`}
+              >
+              <div className="flex max-h-48 flex-wrap gap-2 overflow-y-auto">
+                {blogMode !== "product" ? (
+                  <span className="text-xs text-slate-500">
+                    Switch to a product-linked story to use dynamic product
+                    facts.
+                  </span>
+                ) : tokenKeys.length === 0 ? (
+                  <span className="text-xs text-slate-500">
+                    No product facts available
+                  </span>
+                ) : (
+                  tokenKeys.map((tokenKey) => (
+                    <button
+                      key={tokenKey}
+                      type="button"
+                      onPointerDown={(event) =>
+                        handleToolbarAction(event, () => insertToken(tokenKey))
+                      }
+                      className="rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-semibold text-slate-700 hover:border-slate-300 hover:bg-slate-100"
+                    >
+                      {`{{${tokenKey}}}`}
+                    </button>
+                  ))
+                )}
+              </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {workspaceView === "composer" ? (
+        <div className="fixed inset-x-3 bottom-3 z-30 xl:hidden">
+          <div className="rounded-3xl border border-slate-200 bg-white/95 p-3 shadow-[0_24px_60px_rgba(15,23,42,0.18)] backdrop-blur">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div>
+                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  Quick Actions
+                </div>
+                <div className="mt-1 text-sm font-semibold text-slate-900">
+                  Save or publish without leaving the editor
+                </div>
+              </div>
+              <span
+                className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold capitalize ${
+                  STATUS_BADGES[status] || STATUS_BADGES.draft
+                }`}
+              >
+                {status}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() =>
+                  document
+                    .getElementById("story-preview-panel")
+                    ?.scrollIntoView({ behavior: "smooth", block: "start" })
+                }
+                className="rounded-2xl border border-slate-300 bg-white px-3 py-3 text-sm font-medium text-slate-700 hover:border-slate-400 hover:bg-slate-50"
+              >
+                Preview
+              </button>
+              <button
+                type="button"
+                onClick={() => saveBlog("draft")}
+                disabled={saving}
+                className="rounded-2xl border border-slate-300 bg-white px-3 py-3 text-sm font-medium text-slate-700 hover:border-slate-400 hover:bg-slate-50 disabled:opacity-60"
+              >
+                Save
+              </button>
+              <button
+                type="button"
+                onClick={() => saveBlog("published")}
+                disabled={saving}
+                className="rounded-2xl bg-blue-600 px-3 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+              >
+                Publish
+              </button>
+            </div>
+          </div>
+        </div>
       ) : null}
     </div>
   );

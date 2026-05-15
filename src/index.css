@@ -354,6 +354,19 @@ a:focus-visible {
   -webkit-backdrop-filter: none;
 }
 
+.ui-form-shell.hero-panel {
+  background: linear-gradient(
+    135deg,
+    rgba(15, 23, 42, 0.96),
+    rgba(37, 99, 235, 0.9) 55%,
+    rgba(99, 102, 241, 0.88)
+  );
+  color: #fff;
+  border: none;
+  border-radius: 0.5rem;
+  box-shadow: none;
+}
+
 .ui-form-header {
   border-bottom: 1px solid rgba(148, 163, 184, 0.14);
   background: linear-gradient(
