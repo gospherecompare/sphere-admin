@@ -109,9 +109,9 @@ const GlobalSearchResults = () => {
   );
 
   return (
-    <div className="page-stack">
+    <div className="flex flex-col gap-6">
       <div className="surface-panel rounded-[24px] p-4 sm:p-5">
-        <p className="page-kicker">Global Search</p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-700/80">Global Search</p>
         <h1 className="mt-1 text-2xl font-bold text-slate-900">
           Search Results
         </h1>
@@ -126,7 +126,7 @@ const GlobalSearchResults = () => {
               value={inputValue}
               onChange={(event) => setInputValue(event.target.value)}
               placeholder="Search products or brands"
-              className="w-full rounded-2xl border border-slate-200 bg-white/85 py-3 pl-11 pr-4 text-sm text-slate-800 shadow-sm focus:border-sky-300 focus:ring-4 focus:ring-sky-100"
+              className="w-full rounded-2xl border border-slate-200 bg-white/85 py-3 pl-11 pr-4 text-sm text-slate-800 shadow-sm focus:border-blue-300 focus:ring-4 focus:ring-blue-100"
             />
           </div>
         </form>
@@ -170,7 +170,7 @@ const GlobalSearchResults = () => {
                     key={`product-${item.id}`}
                     type="button"
                     onClick={() => openResult(item)}
-                    className="group w-full rounded-2xl border border-slate-200/70 bg-white/80 p-3 text-left transition hover:border-sky-300 hover:bg-white hover:shadow-sm"
+                    className="group w-full rounded-2xl border border-slate-200/70 bg-white/80 p-3 text-left transition hover:border-blue-300 hover:bg-white hover:shadow-sm"
                   >
                     <div className="flex items-center gap-3">
                       <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-slate-100 ring-1 ring-slate-200">
@@ -193,7 +193,7 @@ const GlobalSearchResults = () => {
                           {formatProductType(item.product_type)}
                         </p>
                       </div>
-                      <FaArrowRight className="flex-shrink-0 text-xs text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-sky-500" />
+                      <FaArrowRight className="flex-shrink-0 text-xs text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-blue-500" />
                     </div>
                   </button>
                 ))}
@@ -212,7 +212,7 @@ const GlobalSearchResults = () => {
                     key={`brand-${item.id}`}
                     type="button"
                     onClick={() => openResult(item)}
-                    className="group w-full rounded-2xl border border-slate-200/70 bg-white/80 p-3 text-left transition hover:border-sky-300 hover:bg-white hover:shadow-sm"
+                    className="group w-full rounded-2xl border border-slate-200/70 bg-white/80 p-3 text-left transition hover:border-blue-300 hover:bg-white hover:shadow-sm"
                   >
                     <div className="flex items-center gap-3">
                       <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl bg-indigo-100 text-indigo-700 ring-1 ring-indigo-200">
@@ -226,7 +226,7 @@ const GlobalSearchResults = () => {
                           Open brand management
                         </p>
                       </div>
-                      <FaArrowRight className="flex-shrink-0 text-xs text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-sky-500" />
+                      <FaArrowRight className="flex-shrink-0 text-xs text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-blue-500" />
                     </div>
                   </button>
                 ))}
@@ -240,3 +240,5 @@ const GlobalSearchResults = () => {
 };
 
 export default GlobalSearchResults;
+
+

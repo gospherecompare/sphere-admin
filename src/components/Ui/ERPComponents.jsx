@@ -1,5 +1,16 @@
 import React from "react";
-import { CheckCircle, AlertCircle, Info, X } from "react-icons/fa";
+import {
+  FaCheckCircle,
+  FaExclamationCircle,
+  FaInfoCircle,
+  FaTimes,
+} from "react-icons/fa";
+
+const shellClass =
+  "rounded-[24px] border border-slate-200/80 bg-white/95 shadow-[0_18px_48px_rgba(15,23,42,0.08)] backdrop-blur-sm";
+
+const inputClass =
+  "w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 disabled:cursor-not-allowed disabled:bg-slate-100";
 
 /**
  * ERP Button Component
@@ -16,40 +27,39 @@ export const Button = ({
   ...props
 }) => {
   const variants = {
-    primary: "bg-purple-600 hover:bg-purple-700 text-white",
-    secondary: "bg-blue-600 hover:bg-blue-700 text-white",
-    outline: "border border-gray-300 text-gray-700 hover:bg-gray-50",
-    ghost: "text-gray-700 hover:bg-gray-100",
-    danger: "bg-red-600 hover:bg-red-700 text-white",
-    success: "bg-green-600 hover:bg-green-700 text-white",
+    primary:
+      "bg-slate-950 text-white shadow-lg shadow-slate-900/10 hover:bg-slate-800",
+    secondary:
+      "bg-blue-600 text-white shadow-lg shadow-blue-600/20 hover:bg-blue-500",
+    outline:
+      "border border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50",
+    ghost: "text-slate-700 hover:bg-slate-100",
+    danger: "bg-rose-600 text-white hover:bg-rose-500",
+    success: "bg-emerald-600 text-white hover:bg-emerald-500",
   };
 
   const sizes = {
-    sm: "px-3 py-1.5 text-sm",
-    md: "px-4 py-2 text-base",
-    lg: "px-6 py-3 text-lg",
+    sm: "px-3 py-2 text-sm",
+    md: "px-4 py-2.5 text-sm",
+    lg: "px-6 py-3 text-base",
   };
 
   const baseClass =
-    "btn-responsive font-medium rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed";
+    "inline-flex items-center justify-center gap-2 rounded-2xl font-semibold transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-50";
 
   return (
     <button
       className={`${baseClass} ${variants[variant]} ${sizes[size]} ${
         fullWidth ? "w-full" : ""
-      } ${className}`}
+      } ${className}`.trim()}
       disabled={disabled || loading}
       onClick={onClick}
       {...props}
     >
-      {loading ? (
-        <span className="flex items-center gap-2">
-          <span className="animate-spin">⏳</span>
-          Loading...
-        </span>
-      ) : (
-        children
+      {loading && (
+        <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-r-transparent" />
       )}
+      {children}
     </button>
   );
 };
@@ -67,20 +77,24 @@ export const Input = ({
   ...props
 }) => {
   return (
-    <div className="form-group w-full">
+    <div className="w-full space-y-2">
       {label && (
-        <label className="text-sm font-medium text-gray-900">
+        <label className="text-sm font-semibold text-slate-800">
           {label}
-          {required && <span className="text-red-500 ml-1">*</span>}
+          {required && <span className="ml-1 text-rose-500">*</span>}
         </label>
       )}
       <input
-        className={`form-input ${error ? "border-red-500" : ""} ${className}`}
+        className={`${inputClass} ${
+          error
+            ? "border-rose-300 focus:border-rose-500 focus:ring-rose-500/10"
+            : ""
+        } ${className}`.trim()}
         disabled={disabled}
         {...props}
       />
-      {error && <p className="text-sm text-red-600 mt-1">{error}</p>}
-      {hint && !error && <p className="text-sm text-gray-500 mt-1">{hint}</p>}
+      {error && <p className="text-sm text-rose-600">{error}</p>}
+      {hint && !error && <p className="text-sm text-slate-500">{hint}</p>}
     </div>
   );
 };
@@ -99,15 +113,19 @@ export const Select = ({
   ...props
 }) => {
   return (
-    <div className="form-group w-full">
+    <div className="w-full space-y-2">
       {label && (
-        <label className="text-sm font-medium text-gray-900">
+        <label className="text-sm font-semibold text-slate-800">
           {label}
-          {required && <span className="text-red-500 ml-1">*</span>}
+          {required && <span className="ml-1 text-rose-500">*</span>}
         </label>
       )}
       <select
-        className={`form-select ${error ? "border-red-500" : ""} ${className}`}
+        className={`${inputClass} appearance-none ${
+          error
+            ? "border-rose-300 focus:border-rose-500 focus:ring-rose-500/10"
+            : ""
+        } ${className}`.trim()}
         disabled={disabled}
         {...props}
       >
@@ -118,8 +136,8 @@ export const Select = ({
           </option>
         ))}
       </select>
-      {error && <p className="text-sm text-red-600 mt-1">{error}</p>}
-      {hint && !error && <p className="text-sm text-gray-500 mt-1">{hint}</p>}
+      {error && <p className="text-sm text-rose-600">{error}</p>}
+      {hint && !error && <p className="text-sm text-slate-500">{hint}</p>}
     </div>
   );
 };
@@ -137,31 +155,31 @@ export const Alert = ({
 }) => {
   const types = {
     success: {
-      bg: "bg-green-50",
-      border: "border-green-200",
-      text: "text-green-800",
-      icon: CheckCircle,
-      iconColor: "text-green-600",
+      bg: "bg-emerald-50",
+      border: "border-emerald-200",
+      text: "text-emerald-900",
+      icon: FaCheckCircle,
+      iconColor: "text-emerald-600",
     },
     error: {
-      bg: "bg-red-50",
-      border: "border-red-200",
-      text: "text-red-800",
-      icon: AlertCircle,
-      iconColor: "text-red-600",
+      bg: "bg-rose-50",
+      border: "border-rose-200",
+      text: "text-rose-900",
+      icon: FaExclamationCircle,
+      iconColor: "text-rose-600",
     },
     warning: {
       bg: "bg-amber-50",
       border: "border-amber-200",
-      text: "text-amber-800",
-      icon: AlertCircle,
+      text: "text-amber-900",
+      icon: FaExclamationCircle,
       iconColor: "text-amber-600",
     },
     info: {
       bg: "bg-blue-50",
       border: "border-blue-200",
-      text: "text-blue-800",
-      icon: Info,
+      text: "text-blue-900",
+      icon: FaInfoCircle,
       iconColor: "text-blue-600",
     },
   };
@@ -171,21 +189,21 @@ export const Alert = ({
 
   return (
     <div
-      className={`${config.bg} border ${config.border} ${config.text} px-4 py-3 rounded-lg flex items-start gap-3 ${className}`}
+      className={`${config.bg} ${config.border} ${config.text} flex items-start gap-3 rounded-2xl border px-4 py-3 ${className}`.trim()}
       role="alert"
     >
-      <Icon className={`${config.iconColor} mt-0.5 flex-shrink-0`} size={20} />
+      <Icon className={`${config.iconColor} mt-0.5 shrink-0`} size={18} />
       <div className="flex-1">
         {title && <p className="font-semibold">{title}</p>}
-        {message && <p className="text-sm mt-1">{message}</p>}
+        {message && <p className="mt-1 text-sm">{message}</p>}
       </div>
       {closeable && (
         <button
           onClick={onClose}
-          className="text-gray-500 hover:text-gray-700 flex-shrink-0"
+          className="shrink-0 text-slate-400 transition-colors hover:text-slate-700"
           aria-label="Close alert"
         >
-          <X size={16} />
+          <FaTimes size={14} />
         </button>
       )}
     </div>
@@ -202,12 +220,12 @@ export const Badge = ({
   className = "",
 }) => {
   const variants = {
-    default: "bg-gray-100 text-gray-900",
-    primary: "bg-purple-100 text-purple-900",
-    secondary: "bg-blue-100 text-blue-900",
-    success: "bg-green-100 text-green-900",
-    warning: "bg-amber-100 text-amber-900",
-    error: "bg-red-100 text-red-900",
+    default: "border border-slate-200 bg-slate-100 text-slate-700",
+    primary: "border border-blue-200 bg-blue-50 text-blue-800",
+    secondary: "border border-blue-200 bg-blue-50 text-blue-800",
+    success: "border border-emerald-200 bg-emerald-50 text-emerald-800",
+    warning: "border border-amber-200 bg-amber-50 text-amber-800",
+    error: "border border-rose-200 bg-rose-50 text-rose-800",
   };
 
   const sizes = {
@@ -218,7 +236,7 @@ export const Badge = ({
 
   return (
     <span
-      className={`inline-flex items-center rounded-full font-medium ${variants[variant]} ${sizes[size]} ${className}`}
+      className={`inline-flex items-center rounded-full font-semibold ${variants[variant]} ${sizes[size]} ${className}`.trim()}
     >
       {children}
     </span>
@@ -233,33 +251,41 @@ export const StatCard = ({
   value,
   change,
   icon: Icon,
-  color = "purple",
+  color = "primary",
 }) => {
   const colorClass = {
-    purple: "bg-purple-50 text-purple-600",
-    blue: "bg-blue-50 text-blue-600",
-    green: "bg-green-50 text-green-600",
-    red: "bg-red-50 text-red-600",
+    primary: "bg-blue-50 text-blue-600 ring-blue-100",
+    cyan: "bg-blue-50 text-blue-600 ring-blue-100",
+    blue: "bg-blue-50 text-blue-600 ring-blue-100",
+    green: "bg-emerald-50 text-emerald-600 ring-emerald-100",
+    red: "bg-rose-50 text-rose-600 ring-rose-100",
+    slate: "bg-slate-100 text-slate-700 ring-slate-200",
+    purple: "bg-indigo-50 text-indigo-600 ring-indigo-100",
   }[color];
 
   return (
-    <div className="card-responsive">
-      <div className="flex items-start justify-between mb-4">
+    <div className={`${shellClass} p-5`}>
+      <div className="mb-4 flex items-start justify-between gap-4">
         <div>
-          <p className="text-gray-600 text-sm font-medium">{title}</p>
-          <p className="text-2xl font-bold text-gray-900 mt-2">{value}</p>
+          <p className="text-sm font-medium text-slate-500">{title}</p>
+          <p className="mt-2 text-2xl font-bold tracking-[-0.03em] text-slate-950">
+            {value}
+          </p>
         </div>
         {Icon && (
-          <div className={`${colorClass} p-3 rounded-lg`}>
-            <Icon size={24} />
+          <div className={`rounded-2xl p-3 ring-1 ${colorClass}`}>
+            <Icon size={20} />
           </div>
         )}
       </div>
       {change && (
         <p
-          className={`text-sm font-medium ${change.positive ? "text-green-600" : "text-red-600"}`}
+          className={`text-sm font-semibold ${
+            change.positive ? "text-emerald-600" : "text-rose-600"
+          }`}
         >
-          {change.positive ? "↑" : "↓"} {change.value} {change.label}
+          {change.positive ? "+ " : "- "}
+          {change.value} {change.label}
         </p>
       )}
     </div>
@@ -274,16 +300,18 @@ export const ProgressBar = ({
   max = 100,
   label,
   showValue = true,
-  color = "purple",
+  color = "primary",
   size = "md",
 }) => {
   const percentage = (value / max) * 100;
 
   const colorClass = {
-    purple: "bg-purple-600",
-    blue: "bg-blue-600",
-    green: "bg-green-600",
-    red: "bg-red-600",
+    primary: "bg-blue-500",
+    cyan: "bg-blue-500",
+    blue: "bg-blue-500",
+    green: "bg-emerald-500",
+    red: "bg-rose-500",
+    purple: "bg-indigo-500",
   }[color];
 
   const sizeClass = {
@@ -295,15 +323,17 @@ export const ProgressBar = ({
   return (
     <div className="w-full">
       {label && (
-        <div className="flex justify-between items-center mb-2">
-          <p className="text-sm font-medium text-gray-700">{label}</p>
+        <div className="mb-2 flex items-center justify-between">
+          <p className="text-sm font-medium text-slate-700">{label}</p>
           {showValue && (
-            <p className="text-sm text-gray-600">{percentage.toFixed(0)}%</p>
+            <p className="text-sm font-medium text-slate-500">
+              {percentage.toFixed(0)}%
+            </p>
           )}
         </div>
       )}
       <div
-        className={`w-full bg-gray-200 rounded-full overflow-hidden ${sizeClass}`}
+        className={`w-full overflow-hidden rounded-full bg-slate-100 ${sizeClass}`}
       >
         <div
           className={`${colorClass} h-full rounded-full transition-all duration-300`}
@@ -317,24 +347,26 @@ export const ProgressBar = ({
 /**
  * ERP Loading Spinner Component
  */
-export const Spinner = ({ size = "md", color = "purple", label }) => {
+export const Spinner = ({ size = "md", color = "primary", label }) => {
   const sizes = {
-    sm: "w-4 h-4",
-    md: "w-8 h-8",
-    lg: "w-12 h-12",
+    sm: "h-4 w-4",
+    md: "h-8 w-8",
+    lg: "h-12 w-12",
   };
 
   const colorClass = {
-    purple: "text-purple-600",
+    primary: "text-blue-600",
+    cyan: "text-blue-600",
     blue: "text-blue-600",
-    gray: "text-gray-400",
+    gray: "text-slate-400",
+    purple: "text-indigo-600",
   }[color];
 
   return (
     <div className="flex flex-col items-center gap-2">
       <div className={`${sizes[size]} ${colorClass} animate-spin`}>
         <svg
-          className="w-full h-full"
+          className="h-full w-full"
           xmlns="http://www.w3.org/2000/svg"
           fill="none"
           viewBox="0 0 24 24"
@@ -354,7 +386,7 @@ export const Spinner = ({ size = "md", color = "purple", label }) => {
           />
         </svg>
       </div>
-      {label && <p className="text-gray-600 text-sm">{label}</p>}
+      {label && <p className="text-sm text-slate-500">{label}</p>}
     </div>
   );
 };
@@ -369,3 +401,4 @@ export default {
   ProgressBar,
   Spinner,
 };
+

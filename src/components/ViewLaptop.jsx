@@ -457,7 +457,7 @@ const ViewLaptops = () => {
   const unpublishedLaptops = laptops.filter((l) => !l.published).length;
 
   return (
-    <div className="page-shell page-stack py-2 sm:py-3">
+    <div className="mx-auto w-full max-w-[1720px] flex flex-col gap-6 py-2 sm:py-3">
       {/* Toast Container */}
       <div className="fixed top-4 right-4 z-50 space-y-2">
         {toasts.map((toast) => (
@@ -516,7 +516,7 @@ const ViewLaptops = () => {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-6">
-          <div className="ui-stat-card">
+          <div className="rounded-[24px] border border-slate-200/80 bg-white/95 p-5 shadow-[0_14px_40px_rgba(15,23,42,0.08)] backdrop-blur-sm">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500">Total Laptops</p>
@@ -530,7 +530,7 @@ const ViewLaptops = () => {
             </div>
           </div>
 
-          <div className="ui-stat-card">
+          <div className="rounded-[24px] border border-slate-200/80 bg-white/95 p-5 shadow-[0_14px_40px_rgba(15,23,42,0.08)] backdrop-blur-sm">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500">Published</p>
@@ -544,7 +544,7 @@ const ViewLaptops = () => {
             </div>
           </div>
 
-          <div className="ui-stat-card">
+          <div className="rounded-[24px] border border-slate-200/80 bg-white/95 p-5 shadow-[0_14px_40px_rgba(15,23,42,0.08)] backdrop-blur-sm">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500">Drafts</p>
@@ -568,8 +568,8 @@ const ViewLaptops = () => {
         </div>
       )}
 
-      <div className="ui-form-shell">
-        <div className="ui-form-header px-4 py-3">
+      <div className="rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm">
+        <div className="border-b border-slate-200/70 bg-gradient-to-r from-blue-50/90 via-white to-purple-50/80 px-4 py-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center space-x-2">
               <h2 className="font-semibold text-gray-800">Laptops List</h2>
@@ -648,7 +648,7 @@ const ViewLaptops = () => {
 
         {/* Table */}
         <div className="overflow-x-auto">
-          <table className="ui-table min-w-full divide-y divide-gray-200">
+          <table className="text-sm text-slate-700 min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
                 <th
@@ -982,5 +982,7 @@ const ViewLaptops = () => {
 };
 
 export default ViewLaptops;
+
+
 
 

@@ -577,7 +577,7 @@ const CategoryManagement = () => {
               <p className="text-gray-600">Loading categories...</p>
             </div>
           ) : filteredAndSortedCategories.length > 0 ? (
-            <div className="overflow-x-auto scrollbar-hide">
+            <div className="overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               <div className="flex gap-4 pb-2 min-w-min">
                 {paginatedCategories.map((category, idx) => (
                   <div
@@ -761,5 +761,6 @@ const CategoryManagement = () => {
 };
 
 export default CategoryManagement;
+
 
 

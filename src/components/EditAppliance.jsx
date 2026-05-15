@@ -2704,7 +2704,7 @@ const EditHomeAppliance = () => {
             <div className="p-4">
               {/* Specification Tabs */}
               <div className="mb-4">
-                <div className="flex overflow-x-auto pb-2 scrollbar-hide">
+                <div className="flex overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                   {specTabs.map((tab) => {
                     const Icon = tab.icon;
                     return (
@@ -2899,5 +2899,6 @@ const EditHomeAppliance = () => {
 };
 
 export default EditHomeAppliance;
+
 
 

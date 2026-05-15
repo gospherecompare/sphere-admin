@@ -13,28 +13,28 @@ export const PageContainer = ({
   actions,
   className = "",
 }) => (
-  <div className={`page-shell page-stack ${className}`.trim()}>
+  <div className={`mx-auto w-full max-w-[1720px] flex flex-col gap-6 ${className}`.trim()}>
     {/* Page Header */}
     {(title || description || actions) && (
-      <div className="ui-form-shell p-4 md:p-6">
+      <div className="rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm p-4 md:p-6">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="flex-1">
             {title && (
-              <h1 className="page-title text-2xl md:text-3xl">{title}</h1>
+              <h1 className="font-semibold tracking-[-0.03em] text-slate-950 text-2xl md:text-3xl">{title}</h1>
             )}
             {description && (
-              <p className="page-copy mt-2 text-sm md:text-base">
+              <p className="text-[15px] leading-6 text-slate-600 mt-2 text-sm md:text-base">
                 {description}
               </p>
             )}
           </div>
-          {actions && <div className="ui-toolbar-actions">{actions}</div>}
+          {actions && <div className="flex flex-wrap items-center gap-3">{actions}</div>}
         </div>
       </div>
     )}
 
     {/* Page Content */}
-    <main className="page-stack">{children}</main>
+    <main className="flex flex-col gap-6">{children}</main>
   </div>
 );
 
@@ -47,12 +47,12 @@ export const ContentSection = ({
   children,
   className = "",
 }) => (
-  <div className={`ui-form-shell p-4 md:p-6 ${className}`.trim()}>
+  <div className={`rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm p-4 md:p-6 ${className}`.trim()}>
     {title && (
       <div className="mb-6">
-        <p className="page-kicker mb-1">Section</p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-700/80 mb-1">Section</p>
         <h2 className="text-lg md:text-xl font-bold text-slate-900">{title}</h2>
-        {subtitle && <p className="page-copy mt-1 text-sm">{subtitle}</p>}
+        {subtitle && <p className="text-[15px] leading-6 text-slate-600 mt-1 text-sm">{subtitle}</p>}
       </div>
     )}
     {children}
@@ -97,12 +97,12 @@ export const ThreeColumnLayout = ({ columns, gap = 6, className = "" }) => (
  * Stats Card Layout
  */
 export const StatsGrid = ({ stats }) => (
-  <div className="ui-stat-grid">
+  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
     {stats.map((stat, idx) => (
-      <div key={idx} className="ui-stat-card transition-transform hover:-translate-y-0.5">
+      <div key={idx} className="rounded-[24px] border border-slate-200/80 bg-white/95 p-5 shadow-[0_14px_40px_rgba(15,23,42,0.08)] backdrop-blur-sm transition-transform hover:-translate-y-0.5">
         <div className="flex items-center justify-between">
           <div>
-            <p className="page-kicker">{stat.label}</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-700/80">{stat.label}</p>
             <p className="mt-2 text-2xl md:text-3xl font-bold text-slate-900">
               {stat.value}
             </p>
@@ -135,13 +135,13 @@ export const EmptyState = ({
   action,
   className = "",
 }) => (
-  <div className={`ui-form-shell p-8 text-center md:p-12 ${className}`.trim()}>
+  <div className={`rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm p-8 text-center md:p-12 ${className}`.trim()}>
     {icon && <div className="mb-4 text-4xl opacity-50 md:text-6xl">{icon}</div>}
     <h3 className="mb-2 text-lg font-semibold text-slate-900 md:text-xl">
       {title}
     </h3>
     {description && (
-      <p className="page-copy mb-6 text-sm md:text-base">{description}</p>
+      <p className="text-[15px] leading-6 text-slate-600 mb-6 text-sm md:text-base">{description}</p>
     )}
     {action && <div>{action}</div>}
   </div>
@@ -165,8 +165,8 @@ export const SkeletonBox = ({ count = 3, height = "h-12" }) => (
  * Tab Navigation
  */
 export const TabNavigation = ({ tabs, activeTab, onTabChange }) => (
-  <div className="ui-form-shell overflow-hidden">
-    <div className="flex gap-1 overflow-x-auto p-2 md:gap-2 scrollbar-hide">
+  <div className="rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm overflow-hidden">
+    <div className="flex gap-1 overflow-x-auto p-2 md:gap-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       {tabs.map((tab) => (
         <button
           key={tab.id}
@@ -194,3 +194,5 @@ export default {
   SkeletonBox,
   TabNavigation,
 };
+
+

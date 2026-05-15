@@ -974,7 +974,7 @@ const UserManagement = () => {
               type="button"
               title="View details"
               onClick={() => handleOpenUserDetails(user)}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-sky-700 transition hover:border-sky-200 hover:bg-sky-50"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-blue-700 transition hover:border-blue-200 hover:bg-blue-50"
             >
               <FaEye className="text-sm" />
             </button>
@@ -1015,7 +1015,7 @@ const UserManagement = () => {
   };
 
   return (
-    <div className="page-shell page-stack py-2 sm:py-3">
+    <div className="mx-auto w-full max-w-[1720px] flex flex-col gap-6 py-2 sm:py-3">
       <div className="fixed right-4 top-4 z-40 space-y-3">
         {error ? (
           <div className="w-full max-w-sm rounded-2xl border border-rose-200 bg-white px-4 py-3 text-sm shadow-lg">
@@ -1070,9 +1070,9 @@ const UserManagement = () => {
         <div className="p-5 sm:p-6">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
             <div className="max-w-3xl">
-              <p className="page-kicker">Administration</p>
-              <h1 className="page-title mt-2">User & Access Management</h1>
-              <p className="page-copy mt-3 max-w-2xl">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-700/80">Administration</p>
+              <h1 className="font-semibold tracking-[-0.03em] text-slate-950 mt-2">User & Access Management</h1>
+              <p className="text-[15px] leading-6 text-slate-600 mt-3 max-w-2xl">
                 Manage people, role coverage, and permission overrides from one
                 Tailwind-styled workspace built for quick access reviews.
               </p>
@@ -1984,3 +1984,5 @@ const UserManagement = () => {
 };
 
 export default UserManagement;
+
+

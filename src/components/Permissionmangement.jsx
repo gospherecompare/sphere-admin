@@ -410,7 +410,7 @@ const PermissionManagement = () => {
   ];
 
   return (
-    <div className="page-shell page-stack py-2 sm:py-3">
+    <div className="mx-auto w-full max-w-[1720px] flex flex-col gap-6 py-2 sm:py-3">
       <div className="fixed right-4 top-4 z-40 space-y-3">
         {error ? (
           <div className="w-full max-w-sm rounded-2xl border border-rose-200 bg-white px-4 py-3 text-sm shadow-lg">
@@ -466,9 +466,9 @@ const PermissionManagement = () => {
         <div className="p-5 sm:p-6">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
             <div className="max-w-3xl">
-              <p className="page-kicker">Administration</p>
-              <h1 className="page-title mt-2">Roles & Permission Management</h1>
-              <p className="page-copy mt-3 max-w-2xl">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-700/80">Administration</p>
+              <h1 className="font-semibold tracking-[-0.03em] text-slate-950 mt-2">Roles & Permission Management</h1>
+              <p className="text-[15px] leading-6 text-slate-600 mt-3 max-w-2xl">
                 Create role presets, review the permission catalog, and manage the
                 access matrix from one Tailwind-styled admin workspace.
               </p>
@@ -915,3 +915,5 @@ const PermissionManagement = () => {
 };
 
 export default PermissionManagement;
+
+

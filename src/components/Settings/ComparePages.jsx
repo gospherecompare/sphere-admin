@@ -910,7 +910,7 @@ export default function ComparePages() {
           </div>
         </div>
         <div className="overflow-x-auto">
-          <table className="ui-table min-w-[1180px] w-full divide-y divide-slate-200">
+          <table className="text-sm text-slate-700 min-w-[1180px] w-full divide-y divide-slate-200">
             <thead className="bg-slate-50">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">
@@ -1161,7 +1161,7 @@ export default function ComparePages() {
                           No smartphone results found.
                         </div>
                       ) : (
-                        <table className="ui-table min-w-full divide-y divide-slate-200">
+                        <table className="text-sm text-slate-700 min-w-full divide-y divide-slate-200">
                           <thead className="bg-slate-50">
                             <tr>
                               <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">
@@ -1243,7 +1243,7 @@ export default function ComparePages() {
                     </div>
                   ) : (
                     <div className="overflow-x-auto rounded-2xl border border-slate-200">
-                      <table className="ui-table min-w-full divide-y divide-slate-200">
+                      <table className="text-sm text-slate-700 min-w-full divide-y divide-slate-200">
                         <thead className="bg-slate-50">
                           <tr>
                             <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">
@@ -1378,7 +1378,7 @@ export default function ComparePages() {
                       </div>
                     ) : (
                       <div className="overflow-x-auto rounded-2xl border border-slate-200">
-                        <table className="ui-table min-w-full divide-y divide-slate-200">
+                        <table className="text-sm text-slate-700 min-w-full divide-y divide-slate-200">
                           <thead className="bg-slate-50">
                             <tr>
                               <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">
@@ -1683,3 +1683,4 @@ export default function ComparePages() {
     </div>
   );
 }
+

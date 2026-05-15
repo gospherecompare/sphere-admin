@@ -42,11 +42,11 @@ const ResponsiveNavbar = ({
   const ToggleIcon = toggleIcon;
 
   return (
-    <nav className="ui-form-shell sticky top-0 z-20 flex h-16 items-center justify-between gap-4 border-b-0 px-4 md:h-20 md:px-6">
+    <nav className="rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm sticky top-0 z-20 flex h-16 items-center justify-between gap-4 border-b-0 px-4 md:h-20 md:px-6">
       <div className="flex items-center gap-3">
         <button
           onClick={onToggleSidebar}
-          className="soft-pill hover:bg-white"
+          className="inline-flex items-center gap-2 rounded-2xl border border-slate-200/80 bg-slate-50/90 px-3 py-2 font-medium text-slate-600 shadow-sm transition-colors hover:border-slate-300 hover:bg-white hover:text-slate-900 hover:bg-white"
           aria-label="Toggle sidebar"
         >
           <ToggleIcon className="text-lg text-slate-700" />
@@ -75,14 +75,14 @@ const ResponsiveNavbar = ({
       <div className="flex items-center gap-2 md:gap-4">
         <button
           onClick={() => setSearchActive((prev) => !prev)}
-          className="soft-pill md:hidden"
+          className="inline-flex items-center gap-2 rounded-2xl border border-slate-200/80 bg-slate-50/90 px-3 py-2 font-medium text-slate-600 shadow-sm transition-colors hover:border-slate-300 hover:bg-white hover:text-slate-900 md:hidden"
           aria-label="Search"
         >
           <FaSearch className="text-base text-slate-700" />
         </button>
 
         <button
-          className="soft-pill relative"
+          className="inline-flex items-center gap-2 rounded-2xl border border-slate-200/80 bg-slate-50/90 px-3 py-2 font-medium text-slate-600 shadow-sm transition-colors hover:border-slate-300 hover:bg-white hover:text-slate-900 relative"
           aria-label="Notifications"
         >
           <FaBell className="text-base text-slate-700" />
@@ -92,7 +92,7 @@ const ResponsiveNavbar = ({
         <div className="relative" ref={userMenuRef}>
           <button
             onClick={() => setShowUserMenu((prev) => !prev)}
-            className="soft-pill"
+            className="inline-flex items-center gap-2 rounded-2xl border border-slate-200/80 bg-slate-50/90 px-3 py-2 font-medium text-slate-600 shadow-sm transition-colors hover:border-slate-300 hover:bg-white hover:text-slate-900"
             aria-label="User menu"
           >
             <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white">
@@ -104,7 +104,7 @@ const ResponsiveNavbar = ({
           </button>
 
           {showUserMenu && (
-            <div className="ui-form-shell absolute right-0 mt-2 w-48 overflow-hidden p-1 shadow-[0_24px_80px_rgba(15,23,42,0.16)]">
+            <div className="rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm absolute right-0 mt-2 w-48 overflow-hidden p-1 shadow-[0_24px_80px_rgba(15,23,42,0.16)]">
               <div className="border-b border-slate-200 px-4 py-3">
                 <p className="text-sm font-semibold text-slate-900">Admin User</p>
                 <p className="text-xs text-slate-500">admin@hook.com</p>
@@ -132,7 +132,7 @@ const ResponsiveNavbar = ({
       </div>
 
       {searchActive && isMobile && (
-        <div className="ui-form-shell absolute left-3 right-3 top-16 z-30 p-3 md:hidden">
+        <div className="rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm absolute left-3 right-3 top-16 z-30 p-3 md:hidden">
           <div className="flex gap-2">
             <input
               type="text"
@@ -142,7 +142,7 @@ const ResponsiveNavbar = ({
             />
             <button
               onClick={() => setSearchActive(false)}
-              className="soft-pill"
+              className="inline-flex items-center gap-2 rounded-2xl border border-slate-200/80 bg-slate-50/90 px-3 py-2 font-medium text-slate-600 shadow-sm transition-colors hover:border-slate-300 hover:bg-white hover:text-slate-900"
             >
               <FaTimes className="text-sm" />
             </button>
@@ -162,3 +162,4 @@ ResponsiveNavbar.propTypes = {
 };
 
 export default ResponsiveNavbar;
+

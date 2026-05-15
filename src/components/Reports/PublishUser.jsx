@@ -208,7 +208,7 @@ const PublishedByUserReport = () => {
       "bg-red-100 text-red-700",
       "bg-indigo-100 text-indigo-700",
       "bg-pink-100 text-pink-700",
-      "bg-teal-100 text-teal-700",
+      "bg-purple-100 text-purple-700",
     ];
     const index = name?.length % colors.length || 0;
     return colors[index];
@@ -884,5 +884,6 @@ const PublishedByUserReport = () => {
 };
 
 export default PublishedByUserReport;
+
 
 

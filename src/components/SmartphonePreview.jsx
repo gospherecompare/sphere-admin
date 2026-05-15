@@ -36,7 +36,7 @@ const SPEC_SECTIONS = [
 const STATUS_STYLES = {
   upcoming: "bg-amber-100 text-amber-800 border-amber-200",
   available: "bg-emerald-100 text-emerald-800 border-emerald-200",
-  released: "bg-sky-100 text-sky-800 border-sky-200",
+  released: "bg-blue-100 text-blue-800 border-blue-200",
   rumored: "bg-slate-100 text-slate-800 border-slate-200",
   announced: "bg-indigo-100 text-indigo-800 border-indigo-200",
 };
@@ -94,7 +94,7 @@ const Section = ({ title, icon: Icon, children, subtitle }) => (
   <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
     <div className="border-b border-slate-200 px-5 py-4 sm:px-6">
       <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-50 text-sky-700">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-700">
           <Icon className="text-base" />
         </div>
         <div>
@@ -397,7 +397,7 @@ function SmartphonePreview() {
                                   {isFilled(store.url) ? (
                                     <div className="rounded-lg bg-slate-50 p-3">
                                       <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Affiliate URL</div>
-                                      <a href={store.url} target="_blank" rel="noreferrer" className="mt-1 block break-all text-sm text-sky-700 hover:underline">
+                                      <a href={store.url} target="_blank" rel="noreferrer" className="mt-1 block break-all text-sm text-blue-700 hover:underline">
                                         {store.url}
                                       </a>
                                     </div>
@@ -496,3 +496,4 @@ function SmartphonePreview() {
 }
 
 export default SmartphonePreview;
+

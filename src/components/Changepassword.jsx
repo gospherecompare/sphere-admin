@@ -222,7 +222,7 @@ const ChangePasswordModal = ({ isOpen, onClose }) => {
       {/* Modal Container */}
       <div className="flex min-h-screen items-center justify-center p-4">
         <div
-          className="ui-form-shell relative w-full max-w-md transform overflow-hidden transition-all"
+          className="rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm relative w-full max-w-md transform overflow-hidden transition-all"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
@@ -797,3 +797,4 @@ const ChangePasswordModal = ({ isOpen, onClose }) => {
 };
 
 export default ChangePasswordModal;
+

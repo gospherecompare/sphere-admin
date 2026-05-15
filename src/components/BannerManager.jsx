@@ -338,7 +338,7 @@ const BannerManager = () => {
   };
 
   return (
-    <div className="page-shell page-stack py-2 sm:py-3">
+    <div className="mx-auto w-full max-w-[1720px] flex flex-col gap-6 py-2 sm:py-3">
       <div className="flex items-center gap-3 mb-6">
         <div className="p-2 rounded-lg bg-purple-100 text-purple-700">
           <FaBullhorn />
@@ -352,7 +352,7 @@ const BannerManager = () => {
       </div>
 
       {/* Form */}
-      <div className="ui-form-shell p-5 mb-8">
+      <div className="rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm p-5 mb-8">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
             <FaPlus className="text-purple-600" />
@@ -599,13 +599,13 @@ const BannerManager = () => {
       </div>
 
       {/* Banner List */}
-      <div className="ui-table-shell">
-        <div className="ui-form-header p-4 flex items-center justify-between">
+      <div className="rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm">
+        <div className="border-b border-slate-200/70 bg-gradient-to-r from-blue-50/90 via-white to-purple-50/80 p-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-gray-900">All Banners</h2>
           {loading && <FaSpinner className="animate-spin text-gray-500" />}
         </div>
         <div className="overflow-x-auto">
-          <table className="ui-table min-w-full text-sm">
+          <table className="text-sm text-slate-700 min-w-full text-sm">
             <thead className="bg-gray-50 text-gray-600">
               <tr>
                 <th className="text-left px-4 py-3">Placement</th>
@@ -739,3 +739,5 @@ const BannerManager = () => {
 };
 
 export default BannerManager;
+
+

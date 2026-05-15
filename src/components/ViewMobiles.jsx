@@ -961,13 +961,13 @@ const ViewMobiles = ({
   };
 
   return (
-    <div className="page-shell page-stack py-2 sm:py-3">
+    <div className="mx-auto flex w-full max-w-[1720px] flex-col gap-6 rounded-[32px] bg-[linear-gradient(180deg,_#f8fafc_0%,_#eef2ff_50%,_#ffffff_100%)] px-3 py-3 sm:px-4 sm:py-4">
       {/* Toast Container */}
       <div className="fixed top-4 right-4 z-50 w-full max-w-xs space-y-2">
         {toasts.map((toast) => (
           <div
             key={toast.id}
-            className={`ui-form-shell flex items-start space-x-3 p-4 ${
+            className={`rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm flex items-start space-x-3 p-4 ${
               toast.type === "success"
                 ? "border-emerald-200 bg-emerald-50/90"
                 : toast.type === "error"
@@ -996,19 +996,19 @@ const ViewMobiles = ({
       </div>
 
       {/* Header */}
-      <div className="ui-form-shell p-4 md:p-6">
+      <div className="rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm p-4 md:p-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
           <div>
-            <p className="page-kicker mb-1">Inventory</p>
-            <h1 className="page-title text-2xl sm:text-3xl">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-700/80 mb-1">Inventory</p>
+            <h1 className="font-semibold tracking-[-0.03em] text-slate-950 text-2xl sm:text-3xl">
               {title}
             </h1>
-            <p className="page-copy mt-2 text-xs sm:text-sm">
+            <p className="mt-2 text-sm leading-6 text-slate-600">
               {subtitle}
             </p>
           </div>
 
-          <div className="ui-toolbar-actions">
+          <div className="flex flex-wrap items-center gap-3">
             <button
               onClick={() => navigate("/create-mobile")}
               className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30"
@@ -1020,11 +1020,11 @@ const ViewMobiles = ({
         </div>
 
         {/* Stats Cards */}
-        <div className="ui-stat-grid mt-6">
-          <div className="ui-stat-card">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 mt-6">
+          <div className="rounded-[24px] border border-slate-200/80 bg-white/95 p-5 shadow-[0_14px_40px_rgba(15,23,42,0.08)] backdrop-blur-sm">
             <div className="flex items-center justify-between">
               <div>
-                <p className="page-kicker">{totalLabel}</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-700/80">{totalLabel}</p>
                 <p className="mt-2 text-2xl font-bold text-slate-900">
                   <CountUp end={totalMobiles} duration={1.0} />
                 </p>
@@ -1035,24 +1035,24 @@ const ViewMobiles = ({
             </div>
           </div>
 
-          <div className="ui-stat-card">
+          <div className="rounded-[24px] border border-slate-200/80 bg-white/95 p-5 shadow-[0_14px_40px_rgba(15,23,42,0.08)] backdrop-blur-sm">
             <div className="flex items-center justify-between">
               <div>
-                <p className="page-kicker">Published</p>
-                <p className="mt-2 text-2xl font-bold text-emerald-600">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-700/80">Published</p>
+                <p className="mt-2 text-2xl font-bold text-purple-600">
                   <CountUp end={publishedMobiles} duration={1.0} />
                 </p>
               </div>
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600">
-                <FaEye className="text-emerald-600" />
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-purple-100 text-purple-600">
+                <FaEye className="text-purple-600" />
               </div>
             </div>
           </div>
 
-          <div className="ui-stat-card">
+          <div className="rounded-[24px] border border-slate-200/80 bg-white/95 p-5 shadow-[0_14px_40px_rgba(15,23,42,0.08)] backdrop-blur-sm">
             <div className="flex items-center justify-between">
               <div>
-                <p className="page-kicker">Drafts</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-700/80">Drafts</p>
                 <p className="mt-2 text-2xl font-bold text-slate-600">
                   <CountUp end={unpublishedMobiles} duration={1.0} />
                 </p>
@@ -1065,37 +1065,37 @@ const ViewMobiles = ({
         </div>
       </div>
 
-      <div className="ui-form-shell p-4 md:p-6">
+      <div className="rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm p-4 md:p-6">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <div className="max-w-3xl">
             <div className="flex flex-wrap items-center gap-2">
-              <p className="page-kicker mb-1">Storage Intelligence</p>
-              <span className="soft-pill text-[11px] uppercase tracking-[0.18em]">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-700/80 mb-1">Storage Intelligence</p>
+              <span className="inline-flex items-center gap-2 rounded-2xl border border-slate-200/80 bg-slate-50/90 px-3 py-2 font-medium text-slate-600 shadow-sm transition-colors hover:border-slate-300 hover:bg-white hover:text-slate-900 text-[11px] uppercase tracking-[0.18em]">
                 Live inventory signal
               </span>
             </div>
             <h2 className="text-lg font-bold text-slate-900 sm:text-xl">
               Capacity, storage tech, and variant health in one place
             </h2>
-            <p className="page-copy mt-2 text-sm">
+            <p className="text-[15px] leading-6 text-slate-600 mt-2 text-sm">
               Filter by storage capacity or storage technology such as UFS, then
               inspect which products have complete store data.
             </p>
 
             <div className="mt-4 flex flex-wrap gap-2">
-              <span className="soft-pill text-xs sm:text-sm">
+              <span className="inline-flex items-center gap-2 rounded-2xl border border-slate-200/80 bg-slate-50/90 px-3 py-2 font-medium text-slate-600 shadow-sm transition-colors hover:border-slate-300 hover:bg-white hover:text-slate-900 text-xs sm:text-sm">
                 <CountUp end={storageTechs.length} duration={1.0} /> storage technologies
               </span>
-              <span className="soft-pill text-xs sm:text-sm">
+              <span className="inline-flex items-center gap-2 rounded-2xl border border-slate-200/80 bg-slate-50/90 px-3 py-2 font-medium text-slate-600 shadow-sm transition-colors hover:border-slate-300 hover:bg-white hover:text-slate-900 text-xs sm:text-sm">
                 <CountUp end={storageTechCoverage} duration={1.0} suffix="%" /> tech coverage
               </span>
-              <span className="soft-pill text-xs sm:text-sm">
+              <span className="inline-flex items-center gap-2 rounded-2xl border border-slate-200/80 bg-slate-50/90 px-3 py-2 font-medium text-slate-600 shadow-sm transition-colors hover:border-slate-300 hover:bg-white hover:text-slate-900 text-xs sm:text-sm">
                 <CountUp end={completeVariantMobiles} duration={1.0} /> complete variants
               </span>
             </div>
           </div>
 
-          <div className="ui-toolbar-actions xl:justify-end">
+          <div className="flex flex-wrap items-center gap-3 xl:justify-end">
             <button
               onClick={() => setReloadKey((value) => value + 1)}
               disabled={loading}
@@ -1125,7 +1125,7 @@ const ViewMobiles = ({
           <div className="rounded-md bg-slate-50/80 p-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <p className="page-kicker">Storage Techniques</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-700/80">Storage Techniques</p>
                 <p className="mt-1 text-sm text-slate-600">
                   Tap a technique to isolate matching devices
                 </p>
@@ -1164,20 +1164,20 @@ const ViewMobiles = ({
                   </button>
                 ))
               ) : (
-                <span className="soft-pill text-xs text-slate-500">
+                <span className="inline-flex items-center gap-2 rounded-2xl border border-slate-200/80 bg-slate-50/90 px-3 py-2 font-medium text-slate-600 shadow-sm transition-colors hover:border-slate-300 hover:bg-white hover:text-slate-900 text-xs text-slate-500">
                   No storage-tech metadata yet
                 </span>
               )}
             </div>
 
             <div className="mt-4 flex flex-wrap gap-2">
-              <span className="soft-pill text-xs sm:text-sm">
+              <span className="inline-flex items-center gap-2 rounded-2xl border border-slate-200/80 bg-slate-50/90 px-3 py-2 font-medium text-slate-600 shadow-sm transition-colors hover:border-slate-300 hover:bg-white hover:text-slate-900 text-xs sm:text-sm">
                 <CountUp end={storageTechMobiles} duration={1.0} /> tagged rows
               </span>
-              <span className="soft-pill text-xs sm:text-sm">
+              <span className="inline-flex items-center gap-2 rounded-2xl border border-slate-200/80 bg-slate-50/90 px-3 py-2 font-medium text-slate-600 shadow-sm transition-colors hover:border-slate-300 hover:bg-white hover:text-slate-900 text-xs sm:text-sm">
                 <CountUp end={totalMobiles - storageTechMobiles} duration={1.0} /> missing tech data
               </span>
-              <span className="soft-pill text-xs sm:text-sm">
+              <span className="inline-flex items-center gap-2 rounded-2xl border border-slate-200/80 bg-slate-50/90 px-3 py-2 font-medium text-slate-600 shadow-sm transition-colors hover:border-slate-300 hover:bg-white hover:text-slate-900 text-xs sm:text-sm">
                 {storageTechFilter === "all"
                   ? "No active tech filter"
                   : `Filtering by ${storageTechFilter}`}
@@ -1188,12 +1188,12 @@ const ViewMobiles = ({
           <div className="rounded-md bg-slate-50/80 p-4">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="page-kicker">Health Snapshot</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-700/80">Health Snapshot</p>
                 <p className="mt-1 text-sm text-slate-600">
                   Variant store completeness and storage coverage
                 </p>
               </div>
-              <span className="soft-pill text-xs">Live</span>
+              <span className="inline-flex items-center gap-2 rounded-2xl border border-slate-200/80 bg-slate-50/90 px-3 py-2 font-medium text-slate-600 shadow-sm transition-colors hover:border-slate-300 hover:bg-white hover:text-slate-900 text-xs">Live</span>
             </div>
 
             <div className="mt-4 space-y-4">
@@ -1236,20 +1236,20 @@ const ViewMobiles = ({
 
       {/* Error Message */}
       {error && (
-        <div className="ui-form-shell flex items-center space-x-3 border border-rose-200 bg-rose-50/90 p-4">
+        <div className="rounded-[20px] border border-rose-200 bg-rose-50/90 p-4 flex items-center space-x-3">
           <FaExclamationCircle className="text-red-500 flex-shrink-0" />
           <span className="text-rose-700">{error}</span>
         </div>
       )}
 
-      <div className="ui-table-shell overflow-hidden">
-        <div className="ui-form-header px-4 py-3">
+      <div className="rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm overflow-hidden">
+        <div className="border-b border-slate-200/70 bg-gradient-to-r from-blue-50/90 via-white to-purple-50/80 px-4 py-3">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-2">
               <h2 className="text-sm font-semibold text-slate-800 sm:text-base">
                 {listTitle}
               </h2>
-              <span className="soft-pill text-xs sm:text-sm">
+              <span className="inline-flex items-center gap-2 rounded-2xl border border-slate-200/80 bg-slate-50/90 px-3 py-2 font-medium text-slate-600 shadow-sm transition-colors hover:border-slate-300 hover:bg-white hover:text-slate-900 text-xs sm:text-sm">
                 {filteredAndSortedMobiles.length}
               </span>
             </div>
@@ -1390,7 +1390,7 @@ const ViewMobiles = ({
             <div className="grid w-full grid-cols-2 gap-2 sm:w-auto sm:flex sm:items-center sm:justify-end">
               <button
                 onClick={() => handleExport()}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-emerald-600 px-3 py-2.5 text-xs font-semibold text-white shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/30 sm:w-auto sm:text-sm"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 px-3 py-2.5 text-xs font-semibold text-white shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 sm:w-auto sm:text-sm"
               >
                 <FaDownload className="text-xs sm:text-sm" />
                 <span>Export</span>
@@ -1412,7 +1412,7 @@ const ViewMobiles = ({
             </div>
           </div>
           {/* Desktop Table View */}
-          <table className="ui-table hidden md:table w-full divide-y divide-gray-200">
+          <table className="text-sm text-slate-700 hidden md:table w-full divide-y divide-gray-200">
             <thead>
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">
@@ -1650,7 +1650,7 @@ const ViewMobiles = ({
                     mobile.raw?.id ||
                     `mobile-${startIndex + idx}`
                   }
-                  className="ui-form-shell p-4 transition-transform hover:-translate-y-0.5"
+                  className="rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm p-4 transition-transform hover:-translate-y-0.5"
                 >
                   <div className="flex gap-3">
                         <div className="flex-shrink-0 h-16 w-16">
@@ -1808,7 +1808,7 @@ const ViewMobiles = ({
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="ui-form-header px-4 py-3">
+          <div className="border-b border-slate-200/70 bg-gradient-to-r from-blue-50/90 via-white to-purple-50/80 px-4 py-3">
             <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
               <div className="text-xs text-slate-700 sm:text-sm">
                 Showing <span className="font-medium">{startIndex + 1}</span> to{" "}
@@ -1878,7 +1878,7 @@ const ViewMobiles = ({
       </div>
 
       {/* Help Text */}
-      <div className="ui-form-shell mt-4 border border-blue-200 bg-blue-50/80 p-4">
+      <div className="rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm mt-4 border border-blue-200 bg-blue-50/80 p-4">
         <p className="text-xs sm:text-sm text-blue-700">
           <strong>Note:</strong> Click on status buttons to toggle between
           Published and Draft states. Use storage-tech filters, export tools,
@@ -1890,6 +1890,10 @@ const ViewMobiles = ({
 };
 
 export default ViewMobiles;
+
+
+
+
 
 
 

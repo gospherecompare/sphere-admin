@@ -4,7 +4,6 @@ import React, {
   useMemo,
   useRef,
   useState,
-  useCallback,
 } from "react";
 import { useParams } from "react-router-dom";
 import Cookies from "js-cookie";
@@ -27,6 +26,7 @@ import {
 import { buildUrl, getAuthToken } from "../../api";
 import { uploadToCloudinary } from "../../config/cloudinary";
 import { getAuthorOptions, syncRbacState } from "../../utils/rbacStore";
+import TiptapStoryEditor from "./TiptapStoryEditor";
 
 const DEFAULT_PRODUCT_TEMPLATE = [
   "{{product_name}} is powered by {{processor}} and features {{display}}.",
@@ -62,8 +62,6 @@ const HERO_IMAGE_SOURCE = {
   ASSET: "asset",
   URL: "url",
 };
-
-const EDITOR_INSERT_MARKER_ATTR = "data-editor-insert-marker";
 
 const normalizeHeroImageSource = (value) => {
   const text = String(value || "")
@@ -347,14 +345,12 @@ const buildInlineImageHtml = (source, { alt = "", caption = "" } = {}) => {
   const normalizedCaption = String(caption || "").trim();
 
   return [
-    "<figure>",
     `<img src="${escapeHtml(normalizedSource)}" alt="${escapeHtml(
       normalizedAlt,
     )}" />`,
     normalizedCaption
-      ? `<figcaption>${escapeHtml(normalizedCaption)}</figcaption>`
+      ? `<p><em>${escapeHtml(normalizedCaption)}</em></p>`
       : "",
-    "</figure>",
     "<p><br /></p>",
   ].join("");
 };
@@ -506,13 +502,7 @@ const BlogEditor = () => {
     source: true,
     facts: false,
   });
-  const contentRef = useRef(null);
-  const lastEditorHtmlRef = useRef("");
-  const savedEditorRangeRef = useRef(null);
-  const pendingEditorMarkerIdRef = useRef("");
-  const suspendEditorNormalizationRef = useRef(false);
-  const pendingInlineImageDialogMarkerRef = useRef("");
-  const pendingInlineImageDialogCleanupRef = useRef(null);
+  const storyEditorRef = useRef(null);
   const heroImageInputRef = useRef(null);
   const inlineImageInputRef = useRef(null);
   const deferredLibraryQuery = useDeferredValue(libraryQuery);
@@ -659,16 +649,7 @@ const BlogEditor = () => {
   );
 
   const prepareEditorForExternalContent = () => {
-    lastEditorHtmlRef.current = "";
-    savedEditorRangeRef.current = null;
-    pendingEditorMarkerIdRef.current = "";
-    pendingInlineImageDialogMarkerRef.current = "";
-    suspendEditorNormalizationRef.current = false;
-
-    const editor = contentRef.current;
-    if (editor) {
-      editor.innerHTML = "";
-    }
+    storyEditorRef.current?.clearSavedSelection?.();
   };
 
   const loadEditorTemplate = (nextContent) => {
@@ -991,7 +972,6 @@ const BlogEditor = () => {
     source,
     alt = "",
     caption = "",
-    markerId = "",
   }) => {
     const markup = buildInlineImageHtml(source, {
       alt: alt || title || "Article image",
@@ -999,30 +979,18 @@ const BlogEditor = () => {
     });
     if (!markup) return false;
 
-    if (markerId && replaceEditorMarkerWithHtml(markerId, markup)) {
-      return true;
-    }
-
-    insertEditorHtml(markup);
-    return true;
+    return Boolean(storyEditorRef.current?.insertHtml?.(markup));
   };
 
   const insertInlineImageFromUrl = () => {
     if (typeof window === "undefined") return;
 
     runEditorPromptTask(() => {
-      const markerId = createEditorInsertionMarker();
       const requestedUrl = window.prompt("Enter the inline image URL");
-      if (requestedUrl === null) {
-        clearEditorInsertionMarker(markerId);
-        return;
-      }
+      if (requestedUrl === null) return;
 
       const normalizedUrl = String(requestedUrl || "").trim();
-      if (!normalizedUrl) {
-        clearEditorInsertionMarker(markerId);
-        return;
-      }
+      if (!normalizedUrl) return;
 
       const fallbackAlt = title || "Article image";
       const requestedAlt = window.prompt(
@@ -1035,16 +1003,12 @@ const BlogEditor = () => {
         source: normalizedUrl,
         alt: String(requestedAlt || fallbackAlt).trim() || fallbackAlt,
         caption: String(requestedCaption || "").trim(),
-        markerId,
       });
     });
   };
 
-  const handleInlineImageUpload = async (file, markerId = "") => {
-    if (!file) {
-      clearEditorInsertionMarker(markerId);
-      return;
-    }
+  const handleInlineImageUpload = async (file) => {
+    if (!file) return;
 
     setUploadingInlineImage(true);
     setError("");
@@ -1080,11 +1044,9 @@ const BlogEditor = () => {
         source: data.secure_url,
         alt: String(requestedAlt || fallbackAlt).trim() || fallbackAlt,
         caption: String(requestedCaption || "").trim(),
-        markerId,
       });
       setMessage("Inline image inserted into the story.");
     } catch (err) {
-      clearEditorInsertionMarker(markerId);
       setError(err?.message || "Failed to upload inline image");
     } finally {
       setUploadingInlineImage(false);
@@ -1092,33 +1054,9 @@ const BlogEditor = () => {
   };
 
   const openInlineImagePicker = () => {
-    const markerId = createEditorInsertionMarker();
     const input = inlineImageInputRef.current;
-
-    if (!input) {
-      clearEditorInsertionMarker(markerId);
-      return;
-    }
-
-    clearPendingInlineImageDialogWatcher();
-    pendingInlineImageDialogMarkerRef.current = markerId;
-
-    if (typeof window !== "undefined") {
-      const handleWindowFocus = () => {
-        window.setTimeout(() => {
-          if (pendingInlineImageDialogMarkerRef.current !== markerId) return;
-          pendingInlineImageDialogMarkerRef.current = "";
-          clearPendingInlineImageDialogWatcher();
-          clearEditorInsertionMarker(markerId);
-        }, 0);
-      };
-
-      window.addEventListener("focus", handleWindowFocus, true);
-      pendingInlineImageDialogCleanupRef.current = () => {
-        window.removeEventListener("focus", handleWindowFocus, true);
-      };
-    }
-
+    if (!input) return;
+    storyEditorRef.current?.saveSelection?.();
     input.click();
   };
 
@@ -1220,296 +1158,19 @@ const BlogEditor = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [blogMode, selectedProductId]);
 
-  useEffect(() => {
-    const editor = contentRef.current;
-    if (!editor) return;
+  const insertEditorHtml = (html) =>
+    Boolean(storyEditorRef.current?.insertHtml?.(html));
 
-    const nextHtml = buildEditorSurfaceHtml(contentTemplate);
-    if (
-      lastEditorHtmlRef.current === nextHtml &&
-      editor.innerHTML === nextHtml
-    ) {
-      return;
-    }
-
-    editor.innerHTML = nextHtml;
-    lastEditorHtmlRef.current = nextHtml;
-  }, [contentTemplate]);
-
-  const isRangeInsideEditor = (range) => {
-    const editor = contentRef.current;
-    const container = range?.commonAncestorContainer || null;
-    return Boolean(editor && container && editor.contains(container));
-  };
-
-  const setEditorSelection = (range) => {
-    if (typeof window === "undefined" || !range) return false;
-    const selection = window.getSelection();
-    if (!selection) return false;
-    selection.removeAllRanges();
-    selection.addRange(range);
-    return true;
-  };
-
-  const focusEditorAtEnd = () => {
-    if (typeof document === "undefined") return null;
-
-    const editor = contentRef.current;
-    if (!editor) return null;
-
-    editor.focus();
-
-    const range = document.createRange();
-    range.selectNodeContents(editor);
-    range.collapse(false);
-    setEditorSelection(range);
-    savedEditorRangeRef.current = range.cloneRange();
-    return range;
-  };
-
-  const findEditorInsertionMarker = (markerId = pendingEditorMarkerIdRef.current) => {
-    const editor = contentRef.current;
-    if (!editor || !markerId) return null;
-
-    return Array.from(editor.querySelectorAll(`[${EDITOR_INSERT_MARKER_ATTR}]`)).find(
-      (element) => element.getAttribute(EDITOR_INSERT_MARKER_ATTR) === markerId,
-    );
-  };
-
-  const clearEditorInsertionMarker = (markerId = pendingEditorMarkerIdRef.current) => {
-    const marker = findEditorInsertionMarker(markerId);
-    if (!marker) {
-      if (pendingEditorMarkerIdRef.current === markerId) {
-        pendingEditorMarkerIdRef.current = "";
-      }
-      return false;
-    }
-
-    const parent = marker.parentNode;
-    const previousSibling = marker.previousSibling;
-    const nextSibling = marker.nextSibling;
-    marker.remove();
-
-    if (pendingEditorMarkerIdRef.current === markerId) {
-      pendingEditorMarkerIdRef.current = "";
-    }
-
-    if (typeof document === "undefined" || !parent) return true;
-
-    const range = document.createRange();
-    if (nextSibling && nextSibling.parentNode === parent) {
-      range.setStartBefore(nextSibling);
-    } else if (previousSibling && previousSibling.parentNode === parent) {
-      range.setStartAfter(previousSibling);
-    } else if (parent.nodeType === 1) {
-      range.selectNodeContents(parent);
-    } else {
-      const fallbackRange = focusEditorAtEnd();
-      return Boolean(fallbackRange);
-    }
-
-    range.collapse(true);
-    contentRef.current?.focus();
-    setEditorSelection(range);
-    savedEditorRangeRef.current = range.cloneRange();
-    return true;
-  };
-
-  const createEditorInsertionMarker = () => {
-    if (typeof document === "undefined") return "";
-
-    const editor = contentRef.current;
-    if (!editor) return "";
-
-    if (pendingEditorMarkerIdRef.current) {
-      clearEditorInsertionMarker(pendingEditorMarkerIdRef.current);
-    }
-
-    restoreEditorSelection();
-
-    const selection =
-      typeof window !== "undefined" ? window.getSelection() : null;
-    let range =
-      selection && selection.rangeCount > 0
-        ? selection.getRangeAt(0).cloneRange()
-        : null;
-
-    if (!isRangeInsideEditor(range)) {
-      range = focusEditorAtEnd();
-    }
-
-    if (!range) return "";
-
-    const markerId = `editor-marker-${Date.now()}-${Math.random()
-      .toString(36)
-      .slice(2, 8)}`;
-    const marker = document.createElement("span");
-    marker.setAttribute(EDITOR_INSERT_MARKER_ATTR, markerId);
-    marker.setAttribute("aria-hidden", "true");
-
-    range.deleteContents();
-    range.insertNode(marker);
-
-    const caretRange = document.createRange();
-    caretRange.setStartAfter(marker);
-    caretRange.collapse(true);
-    editor.focus();
-    setEditorSelection(caretRange);
-    savedEditorRangeRef.current = caretRange.cloneRange();
-    pendingEditorMarkerIdRef.current = markerId;
-    return markerId;
-  };
-
-  const replaceEditorMarkerWithHtml = (markerId, html) => {
-    if (typeof document === "undefined" || !html) return false;
-
-    const marker = findEditorInsertionMarker(markerId);
-    if (!marker) return false;
-
-    const template = document.createElement("template");
-    template.innerHTML = html;
-    const insertedNodes = Array.from(template.content.childNodes);
-
-    marker.replaceWith(template.content);
-
-    if (pendingEditorMarkerIdRef.current === markerId) {
-      pendingEditorMarkerIdRef.current = "";
-    }
-
-    const range = document.createRange();
-    const lastNode = insertedNodes[insertedNodes.length - 1] || null;
-
-    if (lastNode && lastNode.parentNode) {
-      if (lastNode.nodeType === 3) {
-        range.setStart(lastNode, lastNode.textContent?.length || 0);
-      } else {
-        range.setStartAfter(lastNode);
-      }
-      range.collapse(true);
-      contentRef.current?.focus();
-      setEditorSelection(range);
-      savedEditorRangeRef.current = range.cloneRange();
-    }
-
-    syncEditorStateFromDom();
-    rememberEditorSelection();
-    return true;
-  };
-
-  const clearPendingInlineImageDialogWatcher = () => {
-    const cleanup = pendingInlineImageDialogCleanupRef.current;
-    pendingInlineImageDialogCleanupRef.current = null;
-    if (cleanup) cleanup();
-  };
+  const insertEditorText = (text) =>
+    Boolean(storyEditorRef.current?.insertText?.(text));
 
   const runEditorPromptTask = (task) => {
-    suspendEditorNormalizationRef.current = true;
-    rememberEditorSelection();
-    try {
-      return task();
-    } finally {
-      suspendEditorNormalizationRef.current = false;
-    }
+    storyEditorRef.current?.saveSelection?.();
+    return typeof task === "function" ? task() : undefined;
   };
 
-  const rememberEditorSelection = () => {
-    if (typeof window === "undefined") return;
-
-    const editor = contentRef.current;
-    const selection = window.getSelection();
-    if (!editor || !selection || selection.rangeCount === 0) return;
-
-    const range = selection.getRangeAt(0);
-    if (!isRangeInsideEditor(range)) return;
-    savedEditorRangeRef.current = range.cloneRange();
-  };
-
-  const restoreEditorSelection = () => {
-    if (typeof window === "undefined") return;
-
-    const editor = contentRef.current;
-    const selection = window.getSelection();
-    if (!editor || !selection) return;
-
-    editor.focus();
-
-    if (!savedEditorRangeRef.current) {
-      focusEditorAtEnd();
-      return;
-    }
-
-    if (!isRangeInsideEditor(savedEditorRangeRef.current)) {
-      focusEditorAtEnd();
-      return;
-    }
-
-    try {
-      selection.removeAllRanges();
-      selection.addRange(savedEditorRangeRef.current);
-    } catch {
-      focusEditorAtEnd();
-    }
-  };
-
-  const syncEditorStateFromDom = () => {
-    const editor = contentRef.current;
-    if (!editor) return "";
-
-    const nextValue = buildEditorSurfaceHtml(editor.innerHTML);
-    lastEditorHtmlRef.current = nextValue;
-    setContentTemplate(nextValue);
-    return nextValue;
-  };
-
-  const runEditorCommand = (command, value = null) => {
-    if (typeof document === "undefined") return;
-
-    restoreEditorSelection();
-    document.execCommand("defaultParagraphSeparator", false, "p");
-    document.execCommand(command, false, value);
-    syncEditorStateFromDom();
-    rememberEditorSelection();
-  };
-
-  const insertEditorHtml = (html) => {
-    if (typeof document === "undefined") return;
-
-    restoreEditorSelection();
-    document.execCommand("defaultParagraphSeparator", false, "p");
-    document.execCommand("insertHTML", false, html);
-    syncEditorStateFromDom();
-    rememberEditorSelection();
-  };
-
-  const insertEditorText = (text) => {
-    if (typeof document === "undefined") return;
-
-    restoreEditorSelection();
-    document.execCommand("defaultParagraphSeparator", false, "p");
-    const inserted = document.execCommand("insertText", false, text);
-    if (!inserted) {
-      document.execCommand("insertHTML", false, escapeHtml(text));
-    }
-    syncEditorStateFromDom();
-    rememberEditorSelection();
-  };
-
-  const getSavedEditorSelectionText = () => {
-    if (typeof window !== "undefined") {
-      const selection = window.getSelection();
-      if (selection && selection.rangeCount > 0) {
-        const activeRange = selection.getRangeAt(0);
-        const activeText = isRangeInsideEditor(activeRange)
-          ? String(activeRange.toString() || "").trim()
-          : "";
-        if (activeText) return activeText;
-      }
-    }
-
-    return isRangeInsideEditor(savedEditorRangeRef.current)
-      ? String(savedEditorRangeRef.current.toString() || "").trim()
-      : "";
-  };
+  const getSavedEditorSelectionText = () =>
+    String(storyEditorRef.current?.getSelectedText?.() || "").trim();
 
   const applyLink = () => {
     if (typeof window === "undefined") return;
@@ -1523,7 +1184,7 @@ const BlogEditor = () => {
 
       const selectionText = getSavedEditorSelectionText();
       if (selectionText) {
-        runEditorCommand("createLink", normalizedUrl);
+        storyEditorRef.current?.setLink?.(normalizedUrl);
         return;
       }
 
@@ -1633,23 +1294,9 @@ const BlogEditor = () => {
     insertEditorText(`{{${tokenKey}}}`);
   };
 
-  const pastePlainTextIntoEditor = (text) => {
-    const html = String(text || "")
-      .split(/\n\s*\n/)
-      .map((paragraph) => paragraph.trim())
-      .filter(Boolean)
-      .map(
-        (paragraph) =>
-          `<p>${escapeHtml(paragraph).replace(/\n/g, "<br />")}</p>`,
-      )
-      .join("");
-
-    if (!html) return;
-    insertEditorHtml(html);
-  };
-
   const handleToolbarAction = (event, action) => {
     event.preventDefault();
+    storyEditorRef.current?.saveSelection?.();
     action();
   };
 
@@ -1670,37 +1317,37 @@ const BlogEditor = () => {
       key: "h2",
       label: "Big heading",
       description: "Use for a main section title.",
-      onClick: () => runEditorCommand("formatBlock", "<h2>"),
+      onClick: () => storyEditorRef.current?.toggleHeading?.(2),
     },
     {
       key: "h3",
       label: "Small heading",
       description: "Use under a main section heading.",
-      onClick: () => runEditorCommand("formatBlock", "<h3>"),
+      onClick: () => storyEditorRef.current?.toggleHeading?.(3),
     },
     {
       key: "paragraph",
       label: "Normal text",
       description: "Switch back to regular paragraph text.",
-      onClick: () => runEditorCommand("formatBlock", "<p>"),
+      onClick: () => storyEditorRef.current?.setParagraph?.(),
     },
     {
       key: "bullets",
       label: "Bullet list",
       description: "Show points as simple bullet items.",
-      onClick: () => runEditorCommand("insertUnorderedList"),
+      onClick: () => storyEditorRef.current?.toggleBulletList?.(),
     },
     {
       key: "numbers",
       label: "Numbered list",
       description: "Show steps in order with numbers.",
-      onClick: () => runEditorCommand("insertOrderedList"),
+      onClick: () => storyEditorRef.current?.toggleOrderedList?.(),
     },
     {
       key: "quote",
       label: "Highlight quote",
       description: "Pull out an important statement or note.",
-      onClick: () => runEditorCommand("formatBlock", "<blockquote>"),
+      onClick: () => storyEditorRef.current?.toggleBlockquote?.(),
     },
     {
       key: "link",
@@ -1724,19 +1371,19 @@ const BlogEditor = () => {
       key: "bold",
       label: "Bold text",
       description: "Make selected words stand out more.",
-      onClick: () => runEditorCommand("bold"),
+      onClick: () => storyEditorRef.current?.toggleBold?.(),
     },
     {
       key: "italic",
       label: "Italic text",
       description: "Add lighter emphasis to selected words.",
-      onClick: () => runEditorCommand("italic"),
+      onClick: () => storyEditorRef.current?.toggleItalic?.(),
     },
     {
       key: "underline",
       label: "Underline text",
       description: "Underline selected words or phrases.",
-      onClick: () => runEditorCommand("underline"),
+      onClick: () => storyEditorRef.current?.toggleUnderline?.(),
     },
     {
       key: "table",
@@ -2107,9 +1754,9 @@ const BlogEditor = () => {
         blogMode === "product"
           ? selectedProduct?.brand_name || currentModeHelp
           : currentPermalink,
-      cardClassName: "border-sky-200 bg-sky-50",
-      labelClassName: "text-sky-700",
-      valueClassName: "text-base leading-6 text-sky-900",
+      cardClassName: "border-blue-200 bg-blue-50",
+      labelClassName: "text-blue-700",
+      valueClassName: "text-base leading-6 text-blue-900",
     },
     {
       label: "Workflow Progress",
@@ -2214,8 +1861,8 @@ const BlogEditor = () => {
         ];
 
   return (
-    <div className="inventory-form-page page-shell page-stack px-3 py-3 sm:px-6 sm:py-4">
-      <div className="ui-form-shell hero-panel overflow-hidden p-3 sm:p-4 md:p-6">
+    <div className="relative isolate overflow-hidden rounded-[32px] bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.08),_transparent_24%),radial-gradient(circle_at_top_right,_rgba(139,92,246,0.10),_transparent_24%),linear-gradient(180deg,_#f8fafc_0%,_#eef2ff_48%,_#ffffff_100%)] mx-auto w-full max-w-[1720px] flex flex-col gap-6 px-3 py-3 sm:px-6 sm:py-4">
+      <div className="rounded-[32px] border border-blue-200/30 bg-[radial-gradient(circle_at_top_left,_rgba(96,165,250,0.22),_transparent_24%),radial-gradient(circle_at_bottom_right,_rgba(168,85,247,0.18),_transparent_28%),linear-gradient(135deg,_#0f172a_0%,_#1d4ed8_42%,_#6d28d9_100%)] text-white shadow-[0_32px_90px_rgba(37,99,235,0.28)] overflow-hidden p-3 sm:p-4 md:p-6">
         <div className="grid gap-4 sm:gap-5 2xl:grid-cols-[minmax(0,1fr)_380px]">
           <div className="flex flex-col gap-4 sm:gap-5">
             <div className="flex flex-col gap-4 sm:gap-5 xl:flex-row xl:items-start xl:justify-between">
@@ -2225,22 +1872,22 @@ const BlogEditor = () => {
                 </div>
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <p className="page-kicker text-white/80">Editorial ERP</p>
-                    <span className="dashboard-pill border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/80">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/80">Editorial ERP</p>
+                    <span className="inline-flex items-center rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/80">
                       {workspaceView === "listing"
                         ? "Library view"
                         : "Composer view"}
                     </span>
                     {workspaceView === "composer" ? (
-                      <span className="dashboard-pill border border-emerald-200/40 bg-emerald-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-100">
+                      <span className="inline-flex items-center rounded-full border border-emerald-200/40 bg-emerald-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-100">
                         {workflowCompletedCount} / {workflowChecklist.length} steps ready
                       </span>
                     ) : null}
                   </div>
-                  <h1 className="page-title mt-1.5 text-white sm:mt-2">
+                  <h1 className="mt-1.5 text-3xl font-semibold tracking-[-0.03em] text-white sm:mt-2">
                     News and Articles Studio
                   </h1>
-                  <p className="page-copy mt-2 max-w-3xl text-sm text-slate-100/90 sm:mt-3">
+                  <p className="mt-2 max-w-3xl text-sm leading-7 text-slate-100/90 sm:mt-3">
                     Manage product linked stories and general editorial content from
                     one ERP workspace with a registry view, editor controls, live
                     preview, and publish actions in one place.
@@ -2248,7 +1895,7 @@ const BlogEditor = () => {
                 </div>
               </div>
 
-              <div className="ui-toolbar-actions w-full flex-col items-stretch sm:w-auto sm:flex-row sm:items-center">
+              <div className="flex flex-wrap items-center gap-3 w-full flex-col items-stretch sm:w-auto sm:flex-row sm:items-center">
                 <div className="grid grid-cols-2 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm sm:inline-flex">
                   <button
                     type="button"
@@ -2384,11 +2031,11 @@ const BlogEditor = () => {
         </div>
       </div>
 
-      <div className="ui-stat-grid gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         {activeOverviewCards.map((card) => (
           <div
             key={card.label}
-            className={`ui-stat-card rounded-2xl border shadow-sm ${card.cardClassName}`}
+            className={`rounded-[24px] border border-slate-200/80 bg-white/95 p-5 shadow-[0_14px_40px_rgba(15,23,42,0.08)] backdrop-blur-sm ${card.cardClassName}`}
           >
             <div
               className={`text-xs font-semibold uppercase tracking-wide ${card.labelClassName}`}
@@ -2404,18 +2051,18 @@ const BlogEditor = () => {
       </div>
 
       {error ? (
-        <div className="ui-form-shell border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <div className="rounded-[20px] border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
           {error}
         </div>
       ) : null}
 
       <div className="mb-5">
         {workspaceView === "listing" ? (
-          <div className="ui-table-shell overflow-hidden">
-            <div className="ui-form-header px-4 py-4 md:px-6">
+          <div className="rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm overflow-hidden">
+            <div className="border-b border-slate-200/70 bg-gradient-to-r from-blue-50/90 via-white to-purple-50/80 px-4 py-4 md:px-6">
               <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                 <div>
-                  <p className="page-kicker">Registry</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-700/80">Registry</p>
                   <h2 className="mt-1 text-base font-semibold text-slate-900">
                     Content Library
                   </h2>
@@ -2475,7 +2122,7 @@ const BlogEditor = () => {
               </div>
             </div>
 
-            <div className="ui-form-body space-y-4">
+            <div className="p-4 md:p-6 space-y-4">
               {libraryError ? (
                 <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
                   {libraryError}
@@ -2627,7 +2274,7 @@ const BlogEditor = () => {
                                 </span>
                               ) : null}
                               {row.pinned ? (
-                                <span className="inline-flex items-center gap-1 rounded-full border border-sky-200 bg-sky-50 px-2 py-1 text-[11px] font-semibold text-sky-800">
+                                <span className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2 py-1 text-[11px] font-semibold text-blue-800">
                                   <FaThumbtack className="text-[10px]" />
                                   Pinned
                                 </span>
@@ -2801,26 +2448,26 @@ const BlogEditor = () => {
       </div>
 
       {workspaceView === "composer" ? (
-        <div className="ui-form-shell overflow-hidden p-4 md:p-6">
+        <div className="rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm overflow-hidden p-4 md:p-6">
           <div className="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_420px]">
             <div>
-              <p className="page-kicker">Editorial Workspace</p>
-              <h2 className="page-title mt-2 text-2xl sm:text-3xl">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-700/80">Editorial Workspace</p>
+              <h2 className="font-semibold tracking-[-0.03em] text-slate-950 mt-2 text-2xl sm:text-3xl">
                 Editorial Composer
               </h2>
-              <p className="page-copy mt-2 max-w-2xl text-sm">
+              <p className="text-[15px] leading-6 text-slate-600 mt-2 max-w-2xl text-sm">
                 Use this workspace like an ERP desk: source on the right,
                 writing in the center, preview below, and publish actions always
                 within reach.
               </p>
               <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
-                <span className="soft-pill px-2.5 py-1">
+                <span className="inline-flex items-center gap-2 rounded-2xl border border-slate-200/80 bg-slate-50/90 px-3 py-2 font-medium text-slate-600 shadow-sm transition-colors hover:border-slate-300 hover:bg-white hover:text-slate-900 px-2.5 py-1">
                   {currentModeLabel}
                 </span>
-                <span className="soft-pill px-2.5 py-1">
+                <span className="inline-flex items-center gap-2 rounded-2xl border border-slate-200/80 bg-slate-50/90 px-3 py-2 font-medium text-slate-600 shadow-sm transition-colors hover:border-slate-300 hover:bg-white hover:text-slate-900 px-2.5 py-1">
                   {status === "published" ? "Published" : "Draft"}
                 </span>
-                <span className="soft-pill px-2.5 py-1">
+                <span className="inline-flex items-center gap-2 rounded-2xl border border-slate-200/80 bg-slate-50/90 px-3 py-2 font-medium text-slate-600 shadow-sm transition-colors hover:border-slate-300 hover:bg-white hover:text-slate-900 px-2.5 py-1">
                   {workflowCompletedCount} / {workflowChecklist.length} workflow checks
                 </span>
                 <span className="break-all text-blue-700">
@@ -2946,11 +2593,11 @@ const BlogEditor = () => {
       {workspaceView === "composer" ? (
         <div className="grid gap-5 pb-28 xl:grid-cols-[minmax(0,1fr)_360px] xl:pb-0">
           <div className="space-y-4">
-            <div className="ui-form-shell overflow-hidden">
-              <div className="ui-form-header px-5 py-5">
+            <div className="rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm overflow-hidden">
+              <div className="border-b border-slate-200/70 bg-gradient-to-r from-blue-50/90 via-white to-purple-50/80 px-5 py-5">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div>
-                    <p className="page-kicker">Writing Desk</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-700/80">Writing Desk</p>
                     <h3 className="mt-2 text-base font-semibold text-slate-900">
                       Write the core story first
                     </h3>
@@ -3163,7 +2810,7 @@ const BlogEditor = () => {
                             active: pinned,
                             onClick: () => setPinned((prev) => !prev),
                             activeClass:
-                              "border-sky-300 bg-sky-50 text-sky-800",
+                              "border-blue-300 bg-blue-50 text-blue-800",
                           },
                         ].map((item) => {
                           const Icon = item.icon;
@@ -3340,12 +2987,8 @@ const BlogEditor = () => {
                     accept="image/*"
                     className="hidden"
                     onChange={async (event) => {
-                      const markerId =
-                        pendingInlineImageDialogMarkerRef.current;
-                      pendingInlineImageDialogMarkerRef.current = "";
-                      clearPendingInlineImageDialogWatcher();
                       const file = event.target.files?.[0] || null;
-                      await handleInlineImageUpload(file, markerId);
+                      await handleInlineImageUpload(file);
                       event.target.value = "";
                     }}
                   />
@@ -3368,44 +3011,11 @@ const BlogEditor = () => {
                         above.
                       </div>
                     ) : null}
-                    <div
-                      ref={contentRef}
-                      contentEditable
-                      suppressContentEditableWarning
-                      onFocus={() => {
-                        if (typeof document === "undefined") return;
-                        document.execCommand(
-                          "defaultParagraphSeparator",
-                          false,
-                          "p",
-                        );
-                        rememberEditorSelection();
-                      }}
-                      onInput={() => {
-                        syncEditorStateFromDom();
-                        rememberEditorSelection();
-                      }}
-                      onBlur={() => {
-                        const nextValue = syncEditorStateFromDom();
-                        if (
-                          contentRef.current &&
-                          !pendingEditorMarkerIdRef.current &&
-                          !suspendEditorNormalizationRef.current
-                        ) {
-                          contentRef.current.innerHTML = nextValue;
-                        }
-                        lastEditorHtmlRef.current = nextValue;
-                      }}
-                      onKeyUp={rememberEditorSelection}
-                      onMouseUp={rememberEditorSelection}
-                      onPaste={(event) => {
-                        const pastedText =
-                          event.clipboardData?.getData("text/plain");
-                        if (!pastedText) return;
-                        event.preventDefault();
-                        pastePlainTextIntoEditor(pastedText);
-                      }}
-                      className="mb-0 min-h-[420px] w-full overflow-auto border-0 bg-white px-4 py-4 text-[15px] leading-7 text-slate-800 outline-none [&_a]:font-semibold [&_a]:text-sky-700 [&_a]:underline [&_a]:underline-offset-4 [&_blockquote]:my-5 [&_blockquote]:border-l-4 [&_blockquote]:border-sky-500 [&_blockquote]:bg-sky-50 [&_blockquote]:px-4 [&_blockquote]:py-3 [&_blockquote]:text-slate-700 [&_figure]:my-6 [&_figure]:overflow-hidden [&_figure]:rounded-2xl [&_figure]:border [&_figure]:border-slate-200 [&_figure]:bg-slate-50 [&_figure_figcaption]:border-t [&_figure_figcaption]:border-slate-200 [&_figure_figcaption]:px-4 [&_figure_figcaption]:py-3 [&_figure_figcaption]:text-xs [&_figure_figcaption]:leading-5 [&_figure_figcaption]:text-slate-500 [&_figure_img]:w-full [&_figure_img]:bg-slate-100 [&_figure_img]:object-cover [&_h2]:mt-7 [&_h2]:text-[24px] [&_h2]:font-black [&_h2]:leading-tight [&_h2]:tracking-[-0.03em] [&_h2]:text-slate-950 [&_h3]:mt-6 [&_h3]:text-[18px] [&_h3]:font-bold [&_h3]:text-slate-900 [&_img]:my-6 [&_img]:w-full [&_img]:rounded-2xl [&_ol]:my-4 [&_ol]:list-decimal [&_ol]:space-y-2 [&_ol]:pl-6 [&_p]:my-4 [&_strong]:font-bold [&_strong]:text-slate-950 [&_table]:my-5 [&_table]:w-full [&_table]:border-collapse [&_table]:text-left [&_table]:text-sm [&_td]:border [&_td]:border-slate-200 [&_td]:px-3 [&_td]:py-2 [&_th]:border [&_th]:border-slate-200 [&_th]:bg-slate-50 [&_th]:px-3 [&_th]:py-2 [&_th]:font-semibold [&_ul]:my-4 [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-6"
+                    <TiptapStoryEditor
+                      ref={storyEditorRef}
+                      value={contentTemplate}
+                      onChange={setContentTemplate}
+                      normalizeContent={buildEditorSurfaceHtml}
                     />
                   </div>
                 </div>
@@ -3489,7 +3099,7 @@ const BlogEditor = () => {
 
                       {articlePreviewHtml ? (
                         <div
-                          className="mt-5 text-[15px] leading-7 text-slate-700 [&_p]:mb-5 [&_p:last-child]:mb-0 [&_p:first-of-type]:text-[16px] [&_p:first-of-type]:leading-8 [&_p:first-of-type]:text-slate-800 sm:[&_p:first-of-type]:text-[17px] sm:[&_p:first-of-type]:leading-8 [&_h2]:mt-8 [&_h2]:text-[22px] [&_h2]:font-black [&_h2]:leading-tight [&_h2]:tracking-[-0.03em] [&_h2]:text-slate-950 [&_h3]:mt-7 [&_h3]:text-[18px] [&_h3]:font-bold [&_h3]:text-slate-900 [&_h4]:mt-6 [&_h4]:text-[16px] [&_h4]:font-bold [&_h4]:text-slate-900 [&_ul]:my-5 [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-5 [&_ol]:my-5 [&_ol]:list-decimal [&_ol]:space-y-2 [&_ol]:pl-5 [&_blockquote]:my-6 [&_blockquote]:border-l-4 [&_blockquote]:border-sky-500 [&_blockquote]:bg-sky-50 [&_blockquote]:px-4 [&_blockquote]:py-3 [&_blockquote]:text-slate-700 [&_a]:font-semibold [&_a]:text-sky-700 [&_a]:underline [&_a]:underline-offset-4 [&_strong]:font-bold [&_strong]:text-slate-950 [&_figure]:my-7 [&_figure]:overflow-hidden [&_figure]:rounded-2xl [&_figure]:border [&_figure]:border-slate-200 [&_figure]:bg-slate-50 [&_figure_figcaption]:border-t [&_figure_figcaption]:border-slate-200 [&_figure_figcaption]:px-4 [&_figure_figcaption]:py-3 [&_figure_figcaption]:text-xs [&_figure_figcaption]:uppercase [&_figure_figcaption]:tracking-[0.14em] [&_figure_figcaption]:text-slate-500 [&_figure_img]:w-full [&_figure_img]:bg-slate-100 [&_figure_img]:object-cover [&_img]:my-6 [&_img]:w-full [&_img]:rounded-2xl [&_div.article-table-wrap]:my-5 [&_div.article-table-wrap]:overflow-x-auto [&_table]:min-w-[520px] [&_table]:w-full [&_table]:border-collapse [&_table]:text-left [&_table]:text-sm [&_thead]:bg-slate-50 [&_th]:border [&_th]:border-slate-200 [&_th]:px-3 [&_th]:py-2 [&_th]:font-semibold [&_th]:text-slate-800 [&_td]:border [&_td]:border-slate-200 [&_td]:px-3 [&_td]:py-2 [&_td]:align-top"
+                          className="mt-5 text-[15px] leading-7 text-slate-700 [&_p]:mb-5 [&_p:last-child]:mb-0 [&_p:first-of-type]:text-[16px] [&_p:first-of-type]:leading-8 [&_p:first-of-type]:text-slate-800 sm:[&_p:first-of-type]:text-[17px] sm:[&_p:first-of-type]:leading-8 [&_h2]:mt-8 [&_h2]:text-[22px] [&_h2]:font-black [&_h2]:leading-tight [&_h2]:tracking-[-0.03em] [&_h2]:text-slate-950 [&_h3]:mt-7 [&_h3]:text-[18px] [&_h3]:font-bold [&_h3]:text-slate-900 [&_h4]:mt-6 [&_h4]:text-[16px] [&_h4]:font-bold [&_h4]:text-slate-900 [&_ul]:my-5 [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-5 [&_ol]:my-5 [&_ol]:list-decimal [&_ol]:space-y-2 [&_ol]:pl-5 [&_blockquote]:my-6 [&_blockquote]:border-l-4 [&_blockquote]:border-blue-500 [&_blockquote]:bg-blue-50 [&_blockquote]:px-4 [&_blockquote]:py-3 [&_blockquote]:text-slate-700 [&_a]:font-semibold [&_a]:text-blue-700 [&_a]:underline [&_a]:underline-offset-4 [&_strong]:font-bold [&_strong]:text-slate-950 [&_figure]:my-7 [&_figure]:overflow-hidden [&_figure]:rounded-2xl [&_figure]:border [&_figure]:border-slate-200 [&_figure]:bg-slate-50 [&_figure_figcaption]:border-t [&_figure_figcaption]:border-slate-200 [&_figure_figcaption]:px-4 [&_figure_figcaption]:py-3 [&_figure_figcaption]:text-xs [&_figure_figcaption]:uppercase [&_figure_figcaption]:tracking-[0.14em] [&_figure_figcaption]:text-slate-500 [&_figure_img]:w-full [&_figure_img]:bg-slate-100 [&_figure_img]:object-cover [&_img]:my-6 [&_img]:w-full [&_img]:rounded-2xl [&_div.article-table-wrap]:my-5 [&_div.article-table-wrap]:overflow-x-auto [&_table]:min-w-[520px] [&_table]:w-full [&_table]:border-collapse [&_table]:text-left [&_table]:text-sm [&_thead]:bg-slate-50 [&_th]:border [&_th]:border-slate-200 [&_th]:px-3 [&_th]:py-2 [&_th]:font-semibold [&_th]:text-slate-800 [&_td]:border [&_td]:border-slate-200 [&_td]:px-3 [&_td]:py-2 [&_td]:align-top"
                           dangerouslySetInnerHTML={{
                             __html: articlePreviewHtml,
                           }}
@@ -3550,7 +3160,7 @@ const BlogEditor = () => {
                 </div>
               </div>
             </div>
-            <div className="ui-form-shell rounded-3xl p-4 shadow-sm md:p-5">
+            <div className="rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm rounded-3xl p-4 shadow-sm md:p-5">
               <button
                 type="button"
                 onClick={() => toggleMobileComposerPanel("publish")}
@@ -3676,7 +3286,7 @@ const BlogEditor = () => {
               </div>
             </div>
 
-            <div className="ui-form-shell rounded-3xl p-4 shadow-sm md:p-5">
+            <div className="rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm rounded-3xl p-4 shadow-sm md:p-5">
               <button
                 type="button"
                 onClick={() => toggleMobileComposerPanel("workflow")}
@@ -3738,7 +3348,7 @@ const BlogEditor = () => {
               </div>
             </div>
 
-            <div className="ui-form-shell rounded-3xl p-4 shadow-sm md:p-5">
+            <div className="rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm rounded-3xl p-4 shadow-sm md:p-5">
               <button
                 type="button"
                 onClick={() => toggleMobileComposerPanel("settings")}
@@ -3870,7 +3480,7 @@ const BlogEditor = () => {
                         icon: FaThumbtack,
                         active: pinned,
                         onClick: () => setPinned((prev) => !prev),
-                        activeClass: "border-sky-300 bg-sky-50 text-sky-800",
+                        activeClass: "border-blue-300 bg-blue-50 text-blue-800",
                       },
                     ].map((item) => {
                       const Icon = item.icon;
@@ -3895,7 +3505,7 @@ const BlogEditor = () => {
               </div>
             </div>
 
-            <div className="ui-form-shell rounded-3xl p-4 shadow-sm md:p-5">
+            <div className="rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm rounded-3xl p-4 shadow-sm md:p-5">
               <button
                 type="button"
                 onClick={() => toggleMobileComposerPanel("seo")}
@@ -4266,7 +3876,7 @@ const BlogEditor = () => {
               </div>
             </div>
 
-            <div className="ui-form-shell rounded-3xl p-3 shadow-sm">
+            <div className="rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm rounded-3xl p-3 shadow-sm">
               <button
                 type="button"
                 onClick={() => toggleMobileComposerPanel("facts")}
@@ -4385,3 +3995,7 @@ const BlogEditor = () => {
 };
 
 export default BlogEditor;
+
+
+
+

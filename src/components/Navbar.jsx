@@ -100,7 +100,7 @@ const SearchSuggestions = ({
           onClick={() => onSelect(suggestion)}
           onMouseEnter={() => {}}
           className={`group flex w-full items-center gap-3 rounded-md px-3 py-3 text-left transition-colors hover:bg-slate-50 ${
-            idx === activeIndex ? "bg-sky-50/90 ring-1 ring-sky-200" : ""
+            idx === activeIndex ? "bg-blue-50/90 ring-1 ring-blue-200" : ""
           }`}
         >
           <div className="flex-shrink-0">
@@ -129,7 +129,7 @@ const SearchSuggestions = ({
             {suggestion.type === "product" ? (
               <div className="mt-1 flex items-center gap-2">
                 {suggestion.brand_name ? (
-                  <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-semibold text-sky-700">
+                  <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-semibold text-blue-700">
                     {suggestion.brand_name}
                   </span>
                 ) : null}
@@ -155,7 +155,7 @@ const SearchSuggestions = ({
       <div className="border-t border-slate-100 bg-slate-50/80 p-3">
         <button
           onClick={onViewAll}
-          className="w-full rounded-md border border-sky-200 bg-white px-4 py-2.5 text-sm font-semibold text-sky-700 transition-colors hover:bg-sky-50"
+          className="w-full rounded-md border border-blue-200 bg-white px-4 py-2.5 text-sm font-semibold text-blue-700 transition-colors hover:bg-blue-50"
         >
           View all results for "{searchQuery}"
         </button>
@@ -334,7 +334,7 @@ const NotificationPanel = ({
           <button
             type="button"
             onClick={onRefresh}
-            className="mt-4 rounded-md border border-sky-200 bg-white px-4 py-2 text-xs font-semibold text-sky-700 transition hover:bg-sky-50"
+            className="mt-4 rounded-md border border-blue-200 bg-white px-4 py-2 text-xs font-semibold text-blue-700 transition hover:bg-blue-50"
           >
             Try again
           </button>
@@ -764,7 +764,7 @@ const Navbar = ({ isMobile, sidebarOpen, onToggleSidebar, onLogout }) => {
     <nav className="sticky top-0 z-50 border-b border-slate-200 bg-white">
       <div className="mx-auto flex w-full max-w-[1720px] items-center gap-3 px-4 py-3 sm:px-6 sm:py-4 lg:px-8">
         <div className="flex w-full items-center gap-3 lg:gap-4">
-          <div className="admin-nav-left flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
+          <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
             {isMobile ? (
               <button
                 type="button"
@@ -784,7 +784,7 @@ const Navbar = ({ isMobile, sidebarOpen, onToggleSidebar, onLogout }) => {
             ) : null}
 
             <div
-              className="header-search relative min-w-0 flex-1"
+              className="relative min-w-0 flex-1"
               ref={searchContainerRef}
             >
               <form onSubmit={handleSearchSubmit} className="relative">
@@ -801,7 +801,7 @@ const Navbar = ({ isMobile, sidebarOpen, onToggleSidebar, onLogout }) => {
                       setShowSuggestions(true);
                     }
                   }}
-                  className="search-input h-11 w-full rounded-md border border-slate-200 bg-white pl-11 pr-4 text-sm text-slate-800 placeholder:text-slate-400 shadow-none focus:border-sky-300 focus:outline-none focus:ring-0"
+                  className="h-11 w-full rounded-md border border-slate-200 bg-white pl-11 pr-4 text-sm text-slate-800 placeholder:text-slate-400 shadow-none focus:border-blue-300 focus:outline-none focus:ring-0"
                 />
 
                 {showSuggestions ? (
@@ -864,7 +864,7 @@ const Navbar = ({ isMobile, sidebarOpen, onToggleSidebar, onLogout }) => {
                 onClick={toggleUserMenu}
                 className="flex items-center gap-2 rounded-md bg-white px-2 py-1.5 transition hover:bg-slate-50 sm:gap-3 sm:px-3 sm:py-2"
               >
-                <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-cyan-500 via-blue-600 to-indigo-600 text-white">
+                <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-600 text-white">
                   <FaUser className="text-xs sm:text-sm" />
                 </div>
                 <div className="hidden min-w-0 lg:block">
@@ -897,3 +897,5 @@ const Navbar = ({ isMobile, sidebarOpen, onToggleSidebar, onLogout }) => {
 };
 
 export default Navbar;
+
+

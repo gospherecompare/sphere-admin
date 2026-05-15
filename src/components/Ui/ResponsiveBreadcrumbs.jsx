@@ -55,14 +55,14 @@ const ResponsiveBreadcrumbs = ({ maxItemsOnMobile = 2 }) => {
 
   return (
     <nav
-      className="ui-form-shell overflow-x-auto px-4 py-3 md:px-6 md:py-4"
+      className="rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm overflow-x-auto px-4 py-3 md:px-6 md:py-4"
       aria-label="Breadcrumb"
     >
       <ol className="flex min-w-max items-center gap-1 text-xs md:min-w-0 md:gap-2 md:text-sm">
         <li>
           <Link
             to="/"
-            className="soft-pill text-slate-600 transition hover:text-slate-900"
+            className="inline-flex items-center gap-2 rounded-2xl border border-slate-200/80 bg-slate-50/90 px-3 py-2 font-medium text-slate-600 shadow-sm transition-colors hover:border-slate-300 hover:bg-white hover:text-slate-900 text-slate-600 transition hover:text-slate-900"
             title="Home"
           >
             <FaHome className="text-base md:text-lg" />
@@ -103,3 +103,4 @@ ResponsiveBreadcrumbs.propTypes = {
 };
 
 export default ResponsiveBreadcrumbs;
+

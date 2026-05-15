@@ -297,7 +297,7 @@ export const ERPDataTable = ({
                           {onShare && (
                             <button
                               onClick={() => onShare(row)}
-                              className="p-2 text-teal-600 hover:bg-teal-50 rounded-lg transition-colors"
+                              className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
                               title="Share"
                             >
                               <Share2 size={18} />
@@ -399,7 +399,7 @@ export const ERPDataTable = ({
                     {onShare && (
                       <button
                         onClick={() => onShare(row)}
-                        className="flex-1 px-3 py-2 text-sm font-medium text-teal-600 bg-teal-50 hover:bg-teal-100 rounded-lg transition-colors"
+                        className="flex-1 px-3 py-2 text-sm font-medium text-purple-600 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors"
                       >
                         <Share2 size={16} className="inline mr-1" />
                         Share
@@ -501,3 +501,4 @@ export const ERPDataTable = ({
 };
 
 export default ERPDataTable;
+

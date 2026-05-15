@@ -288,7 +288,7 @@ const ResponsiveSidebar = ({
           {isMobile && (
             <button
               onClick={onClose}
-              className="soft-pill"
+              className="inline-flex items-center gap-2 rounded-2xl border border-slate-200/80 bg-slate-50/90 px-3 py-2 font-medium text-slate-600 shadow-sm transition-colors hover:border-slate-300 hover:bg-white hover:text-slate-900"
               aria-label="Close sidebar"
             >
               <FaTimes className="text-sm text-slate-700" />
@@ -324,3 +324,4 @@ ResponsiveSidebar.propTypes = {
 };
 
 export default ResponsiveSidebar;
+

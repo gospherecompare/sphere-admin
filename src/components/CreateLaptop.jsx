@@ -2125,7 +2125,7 @@ const CreateLaptop = () => {
             <div className="p-4">
               {/* Specification Tabs */}
               <div className="mb-4">
-                <div className="flex overflow-x-auto pb-2 scrollbar-hide">
+                <div className="flex overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                   {specTabs.map((tab) => {
                     const Icon = tab.icon;
                     return (
@@ -2226,8 +2226,8 @@ const CreateLaptop = () => {
             className="w-full px-4 py-3 border-b border-gray-200 flex items-center justify-between hover:bg-gray-50"
           >
             <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-teal-100 rounded-lg flex items-center justify-center">
-                <FaShieldAlt className="text-teal-600" />
+              <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                <FaShieldAlt className="text-purple-600" />
               </div>
               <div className="text-left">
                 <h2 className="font-semibold text-gray-800">
@@ -2414,5 +2414,7 @@ const CreateLaptop = () => {
 };
 
 export default CreateLaptop;
+
+
 
 

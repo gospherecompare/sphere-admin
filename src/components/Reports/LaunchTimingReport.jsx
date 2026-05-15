@@ -47,15 +47,15 @@ import {
 const PRODUCT_META = {
   all: {
     icon: FaLayerGroup,
-    accent: "text-cyan-700",
-    badge: "bg-cyan-600 text-white border-cyan-600",
-    inactiveBadge: "bg-white text-cyan-700 border-cyan-200",
+    accent: "text-blue-700",
+    badge: "bg-blue-600 text-white border-blue-600",
+    inactiveBadge: "bg-white text-blue-700 border-blue-200",
   },
   smartphone: {
     icon: FaMobileAlt,
-    accent: "text-sky-600",
-    badge: "bg-sky-600 text-white border-sky-600",
-    inactiveBadge: "bg-white text-sky-700 border-sky-200",
+    accent: "text-blue-600",
+    badge: "bg-blue-600 text-white border-blue-600",
+    inactiveBadge: "bg-white text-blue-700 border-blue-200",
   },
   laptop: {
     icon: FaLaptop,
@@ -92,23 +92,23 @@ const BREAKDOWN_VIEW_OPTIONS = [
 const COMPARE_LIMIT = 4;
 
 const BREAKDOWN_GRADIENTS = [
-  "bg-gradient-to-r from-sky-500 to-sky-400",
+  "bg-gradient-to-r from-blue-500 to-blue-400",
   "bg-gradient-to-r from-indigo-500 to-violet-500",
-  "bg-gradient-to-r from-emerald-500 to-teal-400",
+  "bg-gradient-to-r from-emerald-500 to-purple-400",
   "bg-gradient-to-r from-amber-500 to-orange-400",
   "bg-gradient-to-r from-rose-500 to-pink-400",
-  "bg-gradient-to-r from-cyan-500 to-blue-400",
+  "bg-gradient-to-r from-blue-500 to-blue-400",
   "bg-gradient-to-r from-fuchsia-500 to-purple-400",
   "bg-gradient-to-r from-lime-500 to-green-400",
 ];
 
 const BREAKDOWN_SOLID = [
-  "bg-sky-500",
+  "bg-blue-500",
   "bg-indigo-500",
   "bg-emerald-500",
   "bg-amber-500",
   "bg-rose-500",
-  "bg-cyan-500",
+  "bg-blue-500",
   "bg-fuchsia-500",
   "bg-lime-500",
 ];
@@ -246,7 +246,7 @@ const SelectionGroup = ({
   options,
   value,
   onChange,
-  activeClass = "border-sky-600 bg-sky-600 text-white",
+  activeClass = "border-blue-600 bg-blue-600 text-white",
   inactiveClass = "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50",
 }) => (
   <div className="flex flex-wrap gap-2">
@@ -281,7 +281,7 @@ const StatCard = ({
 }) => {
   const toneClasses =
     tone === "sky"
-      ? "bg-sky-50 border-sky-200 text-sky-700"
+      ? "bg-blue-50 border-blue-200 text-blue-700"
       : tone === "emerald"
         ? "bg-emerald-50 border-emerald-200 text-emerald-700"
         : tone === "indigo"
@@ -291,14 +291,14 @@ const StatCard = ({
             : tone === "rose"
               ? "bg-rose-50 border-rose-200 text-rose-700"
               : tone === "cyan"
-                ? "bg-cyan-50 border-cyan-200 text-cyan-700"
+                ? "bg-blue-50 border-blue-200 text-blue-700"
                 : "bg-slate-50 border-slate-200 text-slate-700";
 
   const numericValue = Number(value);
   const canAnimate = Number.isFinite(numericValue);
 
   return (
-    <div className="ui-stat-card">
+    <div className="rounded-[24px] border border-slate-200/80 bg-white/95 p-5 shadow-[0_14px_40px_rgba(15,23,42,0.08)] backdrop-blur-sm">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <p className="text-sm font-medium text-slate-500">{label}</p>
@@ -357,7 +357,7 @@ const TimelineChart = ({ series, maxValue, view }) => {
             >
               <div className="flex h-56 w-full items-end">
                 <div
-                  className="w-full rounded-t-xl bg-gradient-to-b from-sky-400 via-sky-500 to-indigo-600 shadow-[0_12px_24px_rgba(14,165,233,0.18)]"
+                  className="w-full rounded-t-xl bg-gradient-to-b from-blue-400 via-blue-500 to-indigo-600 shadow-[0_12px_24px_rgba(14,165,233,0.18)]"
                   style={{
                     height: `${Math.max((item.count / maxValue) * 100, 8)}%`,
                   }}
@@ -967,7 +967,7 @@ const LaunchTimingReport = () => {
   };
 
   return (
-    <div className="page-shell page-stack py-2 sm:py-3">
+    <div className="mx-auto w-full max-w-[1720px] flex flex-col gap-6 py-2 sm:py-3">
       <div className="fixed right-4 top-4 z-50 space-y-2">
         {toasts.map((toast) => (
           <div
@@ -998,13 +998,13 @@ const LaunchTimingReport = () => {
         ))}
       </div>
 
-      <section className="ui-form-shell overflow-hidden">
-        <div className="ui-form-header px-4 py-5 sm:px-6">
+      <section className="rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm overflow-hidden">
+        <div className="border-b border-slate-200/70 bg-gradient-to-r from-blue-50/90 via-white to-purple-50/80 px-4 py-5 sm:px-6">
           <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
             <div className="max-w-3xl">
-              <p className="page-kicker">Reports</p>
-              <h1 className="page-title mt-2">Launch Timing Report</h1>
-              <p className="page-copy mt-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-700/80">Reports</p>
+              <h1 className="font-semibold tracking-[-0.03em] text-slate-950 mt-2">Launch Timing Report</h1>
+              <p className="text-[15px] leading-6 text-slate-600 mt-3">
                 Track launch volume across year, month, and week, compare brands
                 side by side, export the visible dataset, and surface timing data
                 quality issues before they affect the rest of the dashboard.
@@ -1025,7 +1025,7 @@ const LaunchTimingReport = () => {
                 type="button"
                 onClick={fetchReportData}
                 disabled={loading}
-                className="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-white px-4 py-2 text-sm font-semibold text-sky-700 transition hover:border-sky-300 hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-white px-4 py-2 text-sm font-semibold text-blue-700 transition hover:border-blue-300 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <FaSyncAlt className={loading ? "animate-spin" : ""} />
                 {loading ? "Refreshing..." : "Refresh"}
@@ -1083,7 +1083,7 @@ const LaunchTimingReport = () => {
                     type="date"
                     value={customStartDate}
                     onChange={(event) => setCustomStartDate(event.target.value)}
-                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 outline-none transition focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 outline-none transition focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
                   />
                 </label>
 
@@ -1095,7 +1095,7 @@ const LaunchTimingReport = () => {
                     type="date"
                     value={customEndDate}
                     onChange={(event) => setCustomEndDate(event.target.value)}
-                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 outline-none transition focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 outline-none transition focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
                   />
                 </label>
               </div>
@@ -1132,7 +1132,7 @@ const LaunchTimingReport = () => {
                 <select
                   value={brandFilter}
                   onChange={(event) => setBrandFilter(event.target.value)}
-                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 outline-none transition focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 outline-none transition focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
                 >
                   <option value="all">All brands</option>
                   {brandOptions.map((option) => (
@@ -1154,9 +1154,9 @@ const LaunchTimingReport = () => {
       ) : null}
 
       {loading ? (
-        <div className="ui-form-shell px-4 py-14 text-center sm:px-6">
+        <div className="rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm px-4 py-14 text-center sm:px-6">
           <div className="flex flex-col items-center justify-center">
-            <FaSpinner className="mb-4 animate-spin text-3xl text-sky-500" />
+            <FaSpinner className="mb-4 animate-spin text-3xl text-blue-500" />
             <p className="font-semibold text-slate-800">
               Loading launch timing analytics...
             </p>
@@ -1168,7 +1168,7 @@ const LaunchTimingReport = () => {
         </div>
       ) : (
         <>
-          <div className="ui-stat-grid">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard
               icon={FaLayerGroup}
               label="Tracked devices"
@@ -1247,8 +1247,8 @@ const LaunchTimingReport = () => {
           </div>
 
           <div className="grid gap-4 xl:grid-cols-[1.7fr_1fr]">
-            <section className="ui-form-shell overflow-hidden">
-              <div className="ui-form-header px-4 py-4 sm:px-6">
+            <section className="rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm overflow-hidden">
+              <div className="border-b border-slate-200/70 bg-gradient-to-r from-blue-50/90 via-white to-purple-50/80 px-4 py-4 sm:px-6">
                 <div className="flex flex-col gap-4">
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                     <div>
@@ -1272,7 +1272,7 @@ const LaunchTimingReport = () => {
                       options={TIMELINE_VIEW_OPTIONS}
                       value={timelineView}
                       onChange={setTimelineView}
-                      activeClass="border-sky-600 bg-sky-600 text-white"
+                      activeClass="border-blue-600 bg-blue-600 text-white"
                     />
                   </div>
 
@@ -1299,8 +1299,8 @@ const LaunchTimingReport = () => {
               </div>
             </section>
 
-            <section className="ui-form-shell overflow-hidden">
-              <div className="ui-form-header px-4 py-4 sm:px-6">
+            <section className="rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm overflow-hidden">
+              <div className="border-b border-slate-200/70 bg-gradient-to-r from-blue-50/90 via-white to-purple-50/80 px-4 py-4 sm:px-6">
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <h2 className="text-lg font-semibold text-slate-900">
@@ -1328,7 +1328,7 @@ const LaunchTimingReport = () => {
                       {
                         label: "Within 7 days",
                         value: prediction.within7Days,
-                        color: "bg-sky-500",
+                        color: "bg-blue-500",
                       },
                       {
                         label: "Within 30 days",
@@ -1394,8 +1394,8 @@ const LaunchTimingReport = () => {
           </div>
 
           <div className="grid gap-4 xl:grid-cols-[1fr_1fr]">
-            <section className="ui-form-shell overflow-hidden">
-              <div className="ui-form-header px-4 py-4 sm:px-6">
+            <section className="rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm overflow-hidden">
+              <div className="border-b border-slate-200/70 bg-gradient-to-r from-blue-50/90 via-white to-purple-50/80 px-4 py-4 sm:px-6">
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <h2 className="text-lg font-semibold text-slate-900">
@@ -1440,8 +1440,8 @@ const LaunchTimingReport = () => {
               </div>
             </section>
 
-            <section className="ui-form-shell overflow-hidden">
-              <div className="ui-form-header px-4 py-4 sm:px-6">
+            <section className="rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm overflow-hidden">
+              <div className="border-b border-slate-200/70 bg-gradient-to-r from-blue-50/90 via-white to-purple-50/80 px-4 py-4 sm:px-6">
                 <div className="flex flex-col gap-4">
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                     <div>
@@ -1511,8 +1511,8 @@ const LaunchTimingReport = () => {
           </div>
 
           <div className="grid gap-4 xl:grid-cols-[1.1fr_1fr]">
-            <section className="ui-form-shell overflow-hidden">
-              <div className="ui-form-header px-4 py-4 sm:px-6">
+            <section className="rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm overflow-hidden">
+              <div className="border-b border-slate-200/70 bg-gradient-to-r from-blue-50/90 via-white to-purple-50/80 px-4 py-4 sm:px-6">
                 <div className="flex flex-col gap-4">
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                     <div>
@@ -1540,8 +1540,8 @@ const LaunchTimingReport = () => {
                             onClick={() => handleCompareBrandToggle(brand)}
                             className={`rounded-full border px-3 py-1.5 text-sm font-semibold transition ${
                               active
-                                ? "border-cyan-600 bg-cyan-600 text-white"
-                                : "border-cyan-200 bg-white text-cyan-700 hover:border-cyan-300 hover:bg-cyan-50"
+                                ? "border-blue-600 bg-blue-600 text-white"
+                                : "border-blue-200 bg-white text-blue-700 hover:border-blue-300 hover:bg-blue-50"
                             }`}
                           >
                             {brand}
@@ -1648,8 +1648,8 @@ const LaunchTimingReport = () => {
               </div>
             </section>
 
-            <section className="ui-form-shell overflow-hidden">
-              <div className="ui-form-header px-4 py-4 sm:px-6">
+            <section className="rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm overflow-hidden">
+              <div className="border-b border-slate-200/70 bg-gradient-to-r from-blue-50/90 via-white to-purple-50/80 px-4 py-4 sm:px-6">
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                   <div>
                     <h2 className="text-lg font-semibold text-slate-900">
@@ -1760,8 +1760,8 @@ const LaunchTimingReport = () => {
             </section>
           </div>
 
-          <section className="ui-form-shell overflow-hidden">
-            <div className="ui-form-header px-4 py-4 sm:px-6">
+          <section className="rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm overflow-hidden">
+            <div className="border-b border-slate-200/70 bg-gradient-to-r from-blue-50/90 via-white to-purple-50/80 px-4 py-4 sm:px-6">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <h2 className="text-lg font-semibold text-slate-900">
@@ -1858,3 +1858,6 @@ const LaunchTimingReport = () => {
 };
 
 export default LaunchTimingReport;
+
+
+

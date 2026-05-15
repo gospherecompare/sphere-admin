@@ -345,7 +345,7 @@ const ViewCustomers = () => {
   }
 
   return (
-    <div className="page-shell page-stack py-2 sm:py-3">
+    <div className="mx-auto w-full max-w-[1720px] flex flex-col gap-6 py-2 sm:py-3">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
@@ -358,7 +358,7 @@ const ViewCustomers = () => {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="ui-stat-card border-l-4 border-blue-600">
+        <div className="rounded-[24px] border border-slate-200/80 bg-white/95 p-5 shadow-[0_14px_40px_rgba(15,23,42,0.08)] backdrop-blur-sm border-l-4 border-blue-600">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-gray-500 text-sm">Total Customers</p>
@@ -370,7 +370,7 @@ const ViewCustomers = () => {
           </div>
         </div>
 
-        <div className="ui-stat-card border-l-4 border-green-600">
+        <div className="rounded-[24px] border border-slate-200/80 bg-white/95 p-5 shadow-[0_14px_40px_rgba(15,23,42,0.08)] backdrop-blur-sm border-l-4 border-green-600">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-gray-500 text-sm">This Month</p>
@@ -388,7 +388,7 @@ const ViewCustomers = () => {
           </div>
         </div>
 
-        <div className="ui-stat-card border-l-4 border-purple-600">
+        <div className="rounded-[24px] border border-slate-200/80 bg-white/95 p-5 shadow-[0_14px_40px_rgba(15,23,42,0.08)] backdrop-blur-sm border-l-4 border-purple-600">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-gray-500 text-sm">Active</p>
@@ -432,7 +432,7 @@ const ViewCustomers = () => {
       </div>
 
       {/* Search and Filter */}
-      <div className="ui-form-shell p-4 md:p-6 space-y-4">
+      <div className="rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm p-4 md:p-6 space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {/* Search */}
           <div className="md:col-span-2">
@@ -517,11 +517,11 @@ const ViewCustomers = () => {
       </div>
 
       {/* Table */}
-      <div className="ui-table-shell overflow-hidden">
+      <div className="rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm overflow-hidden">
         {paginatedCustomers.length > 0 ? (
           <>
             <div className="overflow-x-auto">
-              <table className="ui-table w-full">
+              <table className="text-sm text-slate-700 w-full">
                 <thead className="bg-gray-100 border-b border-gray-200">
                   <tr>
                     <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
@@ -865,3 +865,5 @@ const ViewCustomers = () => {
 };
 
 export default ViewCustomers;
+
+

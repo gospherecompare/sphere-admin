@@ -19,9 +19,9 @@ const MIN_PIN_LENGTH = 4;
 const MAX_PIN_LENGTH = 7;
 
 const FIELD =
-  "w-full appearance-none border-0 bg-transparent px-0 py-3 text-base text-slate-800 shadow-none outline-none placeholder:text-slate-400 ring-0 transition focus:outline-none focus:ring-0 disabled:cursor-not-allowed disabled:opacity-60";
+  "w-full appearance-none rounded-2xl border border-slate-200 bg-white/90 px-4 py-3 text-base text-slate-800 shadow-sm outline-none placeholder:text-slate-400 ring-0 transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 disabled:cursor-not-allowed disabled:opacity-60";
 const PRIMARY =
-  "w-full border border-blue-700 bg-blue-600 py-3.5 text-sm font-semibold uppercase tracking-[0.14em] text-white transition hover:bg-blue-700 disabled:opacity-50";
+  "w-full rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 py-3.5 text-sm font-semibold uppercase tracking-[0.14em] text-white shadow-lg shadow-blue-500/20 transition hover:shadow-blue-500/30 disabled:opacity-50";
 
 const PinBoxesField = ({
   label,
@@ -404,19 +404,19 @@ const Login = ({ onLogin }) => {
     <div className="relative min-h-screen overflow-hidden">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.18),transparent_26%),radial-gradient(circle_at_bottom_right,rgba(255,255,255,0.14),transparent_24%)]" />
 
-      <div className="relative mx-auto  flex min-h-screen max-w-6xl items-center px-4 py-8 sm:px-6 lg:px-8">
-        <div className="relative grid w-full overflow-hidden border border-white/25  bg-[linear-gradient(135deg,#1e5bff_0%,#2b67ff_34%,#4ba8ff_100%)] shadow-[0_30px_90px_rgba(16,24,40,0.28)] lg:grid-cols-[1.15fr_0.85fr]">
+      <div className="relative mx-auto flex min-h-screen max-w-6xl items-center px-4 py-8 sm:px-6 lg:px-8">
+        <div className="relative grid w-full overflow-hidden rounded-[32px] border border-white/25 bg-[linear-gradient(135deg,#1d4ed8_0%,#2563eb_30%,#4f46e5_68%,#7c3aed_100%)] shadow-[0_30px_90px_rgba(37,99,235,0.24)] lg:grid-cols-[1.15fr_0.85fr]">
           <div className="relative overflow-hidden border-b border-white/15 bg-[linear-gradient(180deg,rgba(255,255,255,0.12)_0%,rgba(255,255,255,0.05)_100%)] px-6 py-8 text-white sm:px-8 sm:py-10 lg:border-b-0 lg:border-r">
             <div className="relative z-10">
               <HookLogo className="h-10 w-auto" />
               <div className="mt-10 max-w-md">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.26em] text-blue-100/85">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.26em] text-indigo-100/85">
                   Hooks Admin
                 </div>
                 <h2 className="mt-4 text-4xl font-bold leading-tight tracking-[-0.03em]">
-                  Welcome to your blue access workspace
+                  Welcome to your admin access workspace
                 </h2>
-                <p className="mt-4 text-sm leading-7 text-blue-50/88">
+                <p className="mt-4 text-sm leading-7 text-indigo-50/90">
                   Sign in to manage content, products, and publishing with a
                   simple two-step admin flow designed for your Hooks team.
                 </p>
@@ -445,13 +445,13 @@ const Login = ({ onLogin }) => {
                       key={item.title}
                       className="border border-white/18 bg-white/10 px-4 py-4 backdrop-blur-sm"
                     >
-                      <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-blue-100/80">
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-indigo-100/80">
                         {item.kicker}
                       </div>
                       <div className="mt-4 text-sm font-semibold text-white">
                         {item.title}
                       </div>
-                      <p className="mt-2 text-xs leading-6 text-blue-50/82">
+                      <p className="mt-2 text-xs leading-6 text-indigo-50/84">
                         {item.copy}
                       </p>
                     </div>
@@ -464,7 +464,7 @@ const Login = ({ onLogin }) => {
               {[0, 1, 2].map((item) => (
                 <div
                   key={item}
-                  className="h-28 w-10 -skew-x-[28deg] bg-[linear-gradient(180deg,rgba(255,161,84,0.15)_0%,rgba(255,159,67,0.9)_100%)] shadow-[0_0_24px_rgba(255,159,67,0.28)]"
+                  className="h-28 w-10 -skew-x-[28deg] bg-[linear-gradient(180deg,rgba(168,85,247,0.12)_0%,rgba(99,102,241,0.92)_100%)] shadow-[0_0_24px_rgba(99,102,241,0.28)]"
                   style={{
                     transform: `translateY(${item * 18}px) skewX(-28deg)`,
                   }}
@@ -477,7 +477,7 @@ const Login = ({ onLogin }) => {
             <div className={isPinOverlayOpen ? "opacity-50 blur-[1px]" : ""}>
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-blue-600">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-purple-600">
                     User Login
                   </div>
                   <h3 className="mt-3 text-3xl font-bold tracking-[-0.03em] text-slate-950">
@@ -582,7 +582,7 @@ const Login = ({ onLogin }) => {
                   </label>
                   <button
                     type="button"
-                    className="font-medium text-blue-600 transition hover:text-blue-700"
+                    className="font-medium text-purple-600 transition hover:text-purple-700"
                   >
                     Forgot password?
                   </button>

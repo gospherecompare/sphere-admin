@@ -69,7 +69,7 @@ const LoginStatusPoster = ({
           <div className="relative border-b border-slate-200/70 px-6 py-6 sm:px-8">
             <div className="flex items-start justify-between gap-4">
               <div className="max-w-2xl">
-                <div className="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-white/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-700">
+                <div className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-white/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-700">
                   <FaCalendarAlt className="text-[10px]" />
                   Login Update Poster
                 </div>
@@ -96,7 +96,7 @@ const LoginStatusPoster = ({
           <div className="relative px-6 py-6 sm:px-8 sm:py-7">
             {loading ? (
               <div className="flex min-h-[16rem] flex-col items-center justify-center text-center">
-                <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-white/85 text-sky-600 shadow-sm">
+                <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-white/85 text-blue-600 shadow-sm">
                   <FaSpinner className="animate-spin text-xl" />
                 </div>
                 <p className="mt-4 text-base font-semibold text-slate-900">
@@ -119,7 +119,7 @@ const LoginStatusPoster = ({
                   <button
                     type="button"
                     onClick={onRefresh}
-                    className="rounded-2xl bg-sky-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-700"
+                    className="rounded-2xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
                   >
                     Retry
                   </button>
@@ -216,7 +216,7 @@ const LoginStatusPoster = ({
                     <button
                       type="button"
                       onClick={onRefresh}
-                      className="rounded-2xl bg-sky-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-700"
+                      className="rounded-2xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
                     >
                       Refresh
                     </button>
@@ -232,3 +232,4 @@ const LoginStatusPoster = ({
 };
 
 export default LoginStatusPoster;
+

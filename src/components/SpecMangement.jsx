@@ -270,7 +270,7 @@ const SpecificationsManager = () => {
   };
 
   return (
-    <div className="page-shell page-stack py-2 sm:py-3">
+    <div className="mx-auto w-full max-w-[1720px] flex flex-col gap-6 py-2 sm:py-3">
       {/* Toast Notification */}
       <Toast toast={toast} />
 
@@ -301,7 +301,7 @@ const SpecificationsManager = () => {
 
         {/* Stats Cards */}
         <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-3">
-          <div className="ui-stat-card hover:-translate-y-0.5 transition-transform">
+          <div className="rounded-[24px] border border-slate-200/80 bg-white/95 p-5 shadow-[0_14px_40px_rgba(15,23,42,0.08)] backdrop-blur-sm hover:-translate-y-0.5 transition-transform">
             <div className="p-5">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
@@ -321,7 +321,7 @@ const SpecificationsManager = () => {
             </div>
           </div>
 
-          <div className="ui-stat-card hover:-translate-y-0.5 transition-transform">
+          <div className="rounded-[24px] border border-slate-200/80 bg-white/95 p-5 shadow-[0_14px_40px_rgba(15,23,42,0.08)] backdrop-blur-sm hover:-translate-y-0.5 transition-transform">
             <div className="p-5">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
@@ -341,7 +341,7 @@ const SpecificationsManager = () => {
             </div>
           </div>
 
-          <div className="ui-stat-card hover:-translate-y-0.5 transition-transform">
+          <div className="rounded-[24px] border border-slate-200/80 bg-white/95 p-5 shadow-[0_14px_40px_rgba(15,23,42,0.08)] backdrop-blur-sm hover:-translate-y-0.5 transition-transform">
             <div className="p-5">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
@@ -363,8 +363,8 @@ const SpecificationsManager = () => {
         </div>
 
         {/* Table Section */}
-        <div className="ui-table-shell mt-8">
-          <div className="ui-form-header px-4 py-5 sm:px-6">
+        <div className="rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm mt-8">
+          <div className="border-b border-slate-200/70 bg-gradient-to-r from-blue-50/90 via-white to-purple-50/80 px-4 py-5 sm:px-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
               <h3 className="text-lg font-medium text-gray-900 mb-4 sm:mb-0">
                 All Specifications
@@ -426,7 +426,7 @@ const SpecificationsManager = () => {
           {!loading && filteredSpecs.length > 0 && (
             <>
               <div className="overflow-x-auto">
-                <table className="ui-table min-w-full divide-y divide-gray-200">
+                <table className="text-sm text-slate-700 min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -737,3 +737,5 @@ const SpecificationsManager = () => {
 };
 
 export default SpecificationsManager;
+
+

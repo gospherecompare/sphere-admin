@@ -466,7 +466,7 @@ const Brand = () => {
   const inactiveBrands = brands.filter((b) => b.status === "inactive").length;
 
   return (
-    <div className="page-shell page-stack py-2 sm:py-3">
+    <div className="mx-auto w-full max-w-[1720px] flex flex-col gap-6 py-2 sm:py-3">
       {/* Header */}
       <div className="mb-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
@@ -492,7 +492,7 @@ const Brand = () => {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-6">
-          <div className="ui-stat-card">
+          <div className="rounded-[24px] border border-slate-200/80 bg-white/95 p-5 shadow-[0_14px_40px_rgba(15,23,42,0.08)] backdrop-blur-sm">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500">Total Brands</p>
@@ -506,7 +506,7 @@ const Brand = () => {
             </div>
           </div>
 
-          <div className="ui-stat-card">
+          <div className="rounded-[24px] border border-slate-200/80 bg-white/95 p-5 shadow-[0_14px_40px_rgba(15,23,42,0.08)] backdrop-blur-sm">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500">Active Brands</p>
@@ -520,7 +520,7 @@ const Brand = () => {
             </div>
           </div>
 
-          <div className="ui-stat-card">
+          <div className="rounded-[24px] border border-slate-200/80 bg-white/95 p-5 shadow-[0_14px_40px_rgba(15,23,42,0.08)] backdrop-blur-sm">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500">Inactive Brands</p>
@@ -567,8 +567,8 @@ const Brand = () => {
       <div className="space-y-6">
         {/* Left Side - Form */}
         <div className="w-full">
-          <div className="ui-form-shell max-w-4xl">
-            <div className="ui-form-header px-4 py-3">
+          <div className="rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm max-w-4xl">
+            <div className="border-b border-slate-200/70 bg-gradient-to-r from-blue-50/90 via-white to-purple-50/80 px-4 py-3">
               <h2 className="font-semibold text-gray-800">
                 {isEditing ? "Edit Brand" : "Create New Brand"}
               </h2>
@@ -577,7 +577,7 @@ const Brand = () => {
               </p>
             </div>
 
-            <form onSubmit={handleSubmit} className="ui-form-body space-y-4">
+            <form onSubmit={handleSubmit} className="p-4 md:p-6 space-y-4">
               {/* Brand Name */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1130,5 +1130,7 @@ const Brand = () => {
 };
 
 export default Brand;
+
+
 
 

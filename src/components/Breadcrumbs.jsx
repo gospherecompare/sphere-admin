@@ -362,7 +362,7 @@ const Breadcrumbs = () => {
               <li key={key} className="inline-flex items-center">
                 {idx === 0 && (
                   <span
-                    className="mr-2 inline-flex h-7 w-7 items-center justify-center  text-sky-600"
+                    className="mr-2 inline-flex h-7 w-7 items-center justify-center  text-blue-600"
                     aria-hidden="true"
                   >
                     <FaHome className="text-[11px]" />
@@ -397,3 +397,4 @@ const Breadcrumbs = () => {
 };
 
 export default Breadcrumbs;
+

@@ -13,8 +13,8 @@ export const LoadingSpinner = ({ message = "Loading...", fullPage = true }) => {
     <div className={containerClasses}>
       <div className="surface-panel-strong flex max-w-sm flex-col items-center rounded-[28px] px-6 py-5 text-center">
         <div className="relative flex h-16 w-16 items-center justify-center">
-          <div className="absolute inset-0 rounded-full border border-cyan-200/70" />
-          <div className="h-12 w-12 animate-spin rounded-full border-4 border-cyan-200 border-t-blue-600" />
+          <div className="absolute inset-0 rounded-full border border-blue-200/70" />
+          <div className="h-12 w-12 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600" />
         </div>
         <p className="mt-4 text-sm font-semibold text-slate-800">{message}</p>
         <p className="mt-1 text-xs text-slate-500">
@@ -43,3 +43,4 @@ export const SkeletonLoader = ({ count = 3, height = "h-12" }) => {
 };
 
 export default LoadingSpinner;
+

@@ -327,7 +327,7 @@ function App() {
     }, [showLoginPosterIfNeeded]);
 
     return (
-      <div className="dashboard-root flex h-screen bg-white">
+      <div className="relative isolate flex h-screen bg-white">
         {/* Mobile Overlay */}
         {isMobile && sidebarOpen && (
           <div
@@ -839,3 +839,4 @@ function App() {
 }
 
 export default App;
+

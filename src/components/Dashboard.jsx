@@ -110,7 +110,7 @@ const Dashboard = () => {
         subtitle: `${counts.appliances_published} published`,
         subtitleNum: counts.appliances_published,
         icon: FaGlobe,
-        color: "emerald",
+        color: "indigo",
         path: "/home-appliance",
         trend: "+15%",
         trendDirection: "up",
@@ -128,7 +128,7 @@ const Dashboard = () => {
         subtitle: `${counts.networking_published} published`,
         subtitleNum: counts.networking_published,
         icon: FaGlobe,
-        color: "orange",
+        color: "violet",
         path: "/network",
         trend: "+5%",
         trendDirection: "up",
@@ -144,7 +144,7 @@ const Dashboard = () => {
         value: counts.categories.toLocaleString(),
         valueNum: counts.categories,
         icon: FaFolderOpen,
-        color: "indigo",
+        color: "purple",
         path: "/category",
         trend: "+3",
         trendDirection: "neutral",
@@ -154,7 +154,7 @@ const Dashboard = () => {
         value: counts.brands.toLocaleString(),
         valueNum: counts.brands,
         icon: FaShoppingBag,
-        color: "pink",
+        color: "blue",
         path: "/brands",
         trend: "+2",
         trendDirection: "neutral",
@@ -176,14 +176,14 @@ const Dashboard = () => {
       {
         icon: FaListAlt,
         label: "View All",
-        color: "emerald",
+        color: "indigo",
         path: "/products",
         description: "Browse all product inventory",
       },
       {
         icon: FaMobileAlt,
         label: "View Inventory",
-        color: "emerald",
+        color: "purple",
         path: "/products/smartphones/inventory",
         description: "Browse smartphones",
       },
@@ -197,7 +197,7 @@ const Dashboard = () => {
       {
         icon: FaUsers,
         label: "Users",
-        color: "orange",
+        color: "violet",
         path: "/user-management",
         description: "Manage users",
       },
@@ -288,15 +288,7 @@ const Dashboard = () => {
         text: "text-blue-700",
         border: "border-blue-200",
         hover: "hover:bg-blue-50",
-        gradient: "from-blue-500 to-blue-600",
-      },
-      emerald: {
-        bg: "bg-emerald-50 border border-emerald-100",
-        lightBg: "bg-emerald-100 border border-emerald-200",
-        text: "text-emerald-700",
-        border: "border-emerald-200",
-        hover: "hover:bg-emerald-50",
-        gradient: "from-emerald-500 to-emerald-600",
+        gradient: "from-blue-500 to-indigo-600",
       },
       purple: {
         bg: "bg-purple-50 border border-purple-100",
@@ -304,15 +296,7 @@ const Dashboard = () => {
         text: "text-purple-700",
         border: "border-purple-200",
         hover: "hover:bg-purple-50",
-        gradient: "from-purple-500 to-purple-600",
-      },
-      orange: {
-        bg: "bg-orange-50 border border-orange-100",
-        lightBg: "bg-orange-100 border border-orange-200",
-        text: "text-orange-700",
-        border: "border-orange-200",
-        hover: "hover:bg-orange-50",
-        gradient: "from-orange-500 to-orange-600",
+        gradient: "from-purple-500 to-violet-600",
       },
       indigo: {
         bg: "bg-indigo-50 border border-indigo-100",
@@ -320,15 +304,15 @@ const Dashboard = () => {
         text: "text-indigo-700",
         border: "border-indigo-200",
         hover: "hover:bg-indigo-50",
-        gradient: "from-indigo-500 to-indigo-600",
+        gradient: "from-indigo-500 to-purple-600",
       },
-      pink: {
-        bg: "bg-pink-50 border border-pink-100",
-        lightBg: "bg-pink-100 border border-pink-200",
-        text: "text-pink-700",
-        border: "border-pink-200",
-        hover: "hover:bg-pink-50",
-        gradient: "from-pink-500 to-pink-600",
+      violet: {
+        bg: "bg-violet-50 border border-violet-100",
+        lightBg: "bg-violet-100 border border-violet-200",
+        text: "text-violet-700",
+        border: "border-violet-200",
+        hover: "hover:bg-violet-50",
+        gradient: "from-violet-500 to-purple-600",
       },
       gray: {
         bg: "bg-slate-50 border border-slate-200",
@@ -347,8 +331,8 @@ const Dashboard = () => {
     const configs = {
       mobile: { icon: FaMobileAlt, color: "text-blue-500" },
       laptop: { icon: FaLaptop, color: "text-purple-500" },
-      appliance: { icon: FaGlobe, color: "text-emerald-500" },
-      networking: { icon: FaGlobe, color: "text-orange-500" },
+      appliance: { icon: FaGlobe, color: "text-indigo-500" },
+      networking: { icon: FaGlobe, color: "text-violet-500" },
       default: { icon: FaFolderOpen, color: "text-gray-500" },
     };
 
@@ -535,14 +519,14 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="dashboard-root space-y-6 rounded-lg bg-white p-4 sm:p-6 lg:p-8">
+    <div className="relative isolate space-y-6 rounded-[32px] bg-[linear-gradient(180deg,_#f8fafc_0%,_#eef2ff_46%,_#ffffff_100%)] p-4 sm:p-6 lg:p-8">
       {/* Header Section */}
-      <div className="mb-6 rounded-lg bg-white p-4 sm:mb-8 sm:p-6">
+      <div className="mb-6 rounded-[28px] border border-slate-200/80 bg-white/95 p-4 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm sm:mb-8 sm:p-6">
         <div className="mb-6 flex flex-col justify-between gap-4 sm:gap-6 lg:flex-row lg:items-center sm:mb-8">
           <div>
             <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3 sm:mb-2">
-              <div className="flex w-fit items-center justify-center rounded-2xl border border-slate-200 bg-sky-50 p-2">
-                <FaHome className="text-xl text-sky-600 sm:text-2xl" />
+              <div className="flex w-fit items-center justify-center rounded-2xl border border-slate-200 bg-blue-50 p-2">
+                <FaHome className="text-xl text-blue-600 sm:text-2xl" />
               </div>
               <div>
                 <h1 className="text-xl font-bold text-slate-900 sm:text-2xl md:text-3xl">
@@ -597,7 +581,7 @@ const Dashboard = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs text-slate-600 sm:text-sm">Published</p>
-                <p className="mt-1 text-lg font-bold text-emerald-600 sm:text-xl md:text-2xl">
+                <p className="mt-1 text-lg font-bold text-purple-600 sm:text-xl md:text-2xl">
                   <CountUp
                     end={
                       counts.mobiles_published +
@@ -609,7 +593,7 @@ const Dashboard = () => {
                   />
                 </p>
               </div>
-              <FaCheckCircle className="flex-shrink-0 text-lg text-emerald-500 sm:text-xl" />
+              <FaCheckCircle className="flex-shrink-0 text-lg text-purple-500 sm:text-xl" />
             </div>
           </div>
           <div className="rounded-2xl border border-slate-200 bg-white p-3 sm:p-4">
@@ -649,11 +633,11 @@ const Dashboard = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs text-slate-600 sm:text-sm">Categories</p>
-                <p className="mt-1 text-lg font-bold text-orange-600 sm:text-xl md:text-2xl">
+                <p className="mt-1 text-lg font-bold text-indigo-600 sm:text-xl md:text-2xl">
                   <CountUp end={counts.categories} duration={1.5} />
                 </p>
               </div>
-              <FaFolderOpen className="flex-shrink-0 text-lg text-orange-500 sm:text-xl" />
+              <FaFolderOpen className="flex-shrink-0 text-lg text-indigo-500 sm:text-xl" />
             </div>
           </div>
         </div>
@@ -904,7 +888,7 @@ const Dashboard = () => {
                 <select
                   value={trendingType}
                   onChange={(e) => setTrendingType(e.target.value)}
-                  className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 focus:border-sky-300 focus:outline-none focus:ring-4 focus:ring-sky-100 md:flex-none sm:text-sm"
+                  className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 focus:border-blue-300 focus:outline-none focus:ring-4 focus:ring-blue-100 md:flex-none sm:text-sm"
                   aria-label="Trending type"
                 >
                   {trendingTypeOptions.map((opt) => (
@@ -1260,3 +1244,5 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
+
+

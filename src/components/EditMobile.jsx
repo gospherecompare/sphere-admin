@@ -2542,7 +2542,7 @@ const EditMobile = () => {
           </div>
         </div>
 
-        <div className="border border-gray-200 rounded-lg p-4 bg-gradient-to-br from-cyan-50 to-white">
+        <div className="border border-gray-200 rounded-lg p-4 bg-gradient-to-br from-blue-50 to-white">
           <h3 className="font-semibold text-gray-800 mb-4">
             Media Formats & Features
           </h3>
@@ -2559,7 +2559,7 @@ const EditMobile = () => {
                   handleMultimediaChange("image_formats", e.target.value)
                 }
                 placeholder={`e.g., JPEG, PNG, RAW, HEIF`}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500 text-sm"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               />
             </div>
 
@@ -2574,7 +2574,7 @@ const EditMobile = () => {
                   handleMultimediaChange("audio_formats", e.target.value)
                 }
                 placeholder={`e.g., MP3, AAC, FLAC, WAV`}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500 text-sm"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               />
             </div>
 
@@ -2589,7 +2589,7 @@ const EditMobile = () => {
                   handleMultimediaChange("video_formats", e.target.value)
                 }
                 placeholder={`e.g., MP4, WebM, MKV`}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500 text-sm"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               />
             </div>
 
@@ -2604,7 +2604,7 @@ const EditMobile = () => {
                   handleMultimediaChange("streaming_apps", e.target.value)
                 }
                 placeholder={`e.g., Netflix, Prime Video, YouTube`}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500 text-sm"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               />
             </div>
 
@@ -2619,7 +2619,7 @@ const EditMobile = () => {
                   handleMultimediaChange("special_features", e.target.value)
                 }
                 placeholder={`e.g., HDR10, Refresh rate support, Gaming mode`}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500 text-sm"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               />
             </div>
           </div>
@@ -3300,7 +3300,7 @@ const EditMobile = () => {
   }
 
   return (
-    <div className="inventory-form-page page-shell min-h-full bg-white p-3 sm:p-4 md:p-6">
+    <div className="relative isolate overflow-hidden rounded-[32px] bg-[radial-gradient(circle_at_top_left,_rgba(34,211,238,0.08),_transparent_24%),radial-gradient(circle_at_top_right,_rgba(14,165,233,0.08),_transparent_22%),linear-gradient(180deg,_#f8fafc_0%,_#ffffff_42%,_#f8fafc_100%)] mx-auto w-full max-w-[1720px] min-h-full bg-white p-3 sm:p-4 md:p-6">
       {/* Toast Container */}
       <div className="fixed top-4 right-4 z-50 space-y-2 max-w-xs">
         {toasts.map((toast) => (
@@ -3312,11 +3312,11 @@ const EditMobile = () => {
       <div className="mb-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-6">
           <div>
-            <p className="page-kicker mb-1">Inventory</p>
-            <h1 className="page-title text-xl sm:text-2xl md:text-3xl">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-700/80 mb-1">Inventory</p>
+            <h1 className="font-semibold tracking-[-0.03em] text-slate-950 text-xl sm:text-2xl md:text-3xl">
               Edit Mobile
             </h1>
-            <p className="page-copy mt-2 text-xs sm:text-sm">
+            <p className="text-[15px] leading-6 text-slate-600 mt-2 text-xs sm:text-sm">
               Update {formData?.name || "smartphone"} details
             </p>
           </div>
@@ -4056,7 +4056,7 @@ const EditMobile = () => {
             <div className="p-3 sm:p-4">
               {/* Specification Tabs */}
               <div className="mb-4">
-                <div className="flex overflow-x-auto pb-2 scrollbar-hide">
+                <div className="flex overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                   {specTabs.map((tab) => {
                     const Icon = tab.icon;
                     return (
@@ -4899,5 +4899,7 @@ const EditMobile = () => {
 };
 
 export default EditMobile;
+
+
 
 

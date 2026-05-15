@@ -36,7 +36,7 @@ export const ResponsiveDashboard = () => {
   return (
     <ResponsiveContainer>
       <div className="mb-8">
-        <h1 className="text-responsive-h1 text-gray-900">Dashboard</h1>
+        <h1 className="text-3xl font-semibold tracking-[-0.03em] text-slate-950 md:text-4xl">Dashboard</h1>
         <p className="text-gray-600 mt-2">Welcome back to your admin panel</p>
       </div>
 
@@ -117,7 +117,7 @@ export const ResponsiveDataTable = () => {
   return (
     <ResponsiveContainer>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-        <h2 className="text-responsive-h2 text-gray-900">Users</h2>
+        <h2 className="text-2xl font-semibold tracking-[-0.03em] text-slate-950">Users</h2>
         <Button variant="primary" onClick={() => setIsModalOpen(true)}>
           Add User
         </Button>
@@ -220,7 +220,7 @@ export const ResponsiveForm = () => {
   return (
     <ResponsiveContainer>
       <ResponsiveCard>
-        <h2 className="text-responsive-h2 text-gray-900 mb-6">
+        <h2 className="mb-6 text-2xl font-semibold tracking-[-0.03em] text-slate-950">
           Create New Item
         </h2>
 
@@ -234,9 +234,9 @@ export const ResponsiveForm = () => {
           />
         )}
 
-        <form onSubmit={handleSubmit} className="form-responsive">
+        <form onSubmit={handleSubmit} className="space-y-6">
           {/* Two Column Row */}
-          <div className="form-row">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Input
               label="First Name"
               placeholder="Enter first name"
@@ -293,7 +293,7 @@ export const ResponsiveForm = () => {
 export const ResponsiveSettingsPage = () => {
   return (
     <ResponsiveContainer>
-      <h1 className="text-responsive-h1 text-gray-900 mb-8">Settings</h1>
+      <h1 className="mb-8 text-3xl font-semibold tracking-[-0.03em] text-slate-950 md:text-4xl">Settings</h1>
 
       <Tabs
         tabs={[

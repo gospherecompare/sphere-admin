@@ -3,6 +3,27 @@
  * Professional form inputs with mobile-first design
  */
 
+const gridCols = {
+  1: "grid-cols-1",
+  2: "grid-cols-2",
+  3: "grid-cols-3",
+  4: "grid-cols-4",
+};
+
+const mdGridCols = {
+  1: "md:grid-cols-1",
+  2: "md:grid-cols-2",
+  3: "md:grid-cols-3",
+  4: "md:grid-cols-4",
+};
+
+const lgGridCols = {
+  1: "lg:grid-cols-1",
+  2: "lg:grid-cols-2",
+  3: "lg:grid-cols-3",
+  4: "lg:grid-cols-4",
+};
+
 /**
  * Responsive Form Wrapper
  */
@@ -178,25 +199,31 @@ export const ResponsiveGrid = ({
   children,
   columns = { mobile: 1, tablet: 2, desktop: 3 },
   gap = 4,
-}) => (
-  <div
-    className="ui-responsive-grid"
-    style={{
-      "--grid-mobile-cols": columns.mobile,
-      "--grid-tablet-cols": columns.tablet,
-      "--grid-desktop-cols": columns.desktop,
-      "--grid-gap": `${gap * 0.25}rem`,
-    }}
-  >
-    {children}
-  </div>
-);
+}) => {
+  const gapClass = {
+    2: "gap-2",
+    3: "gap-3",
+    4: "gap-4",
+    5: "gap-5",
+    6: "gap-6",
+  }[gap] || "gap-4";
+
+  return (
+    <div
+      className={`grid ${gridCols[columns.mobile] || "grid-cols-1"} ${
+        mdGridCols[columns.tablet] || "md:grid-cols-2"
+      } ${lgGridCols[columns.desktop] || "lg:grid-cols-3"} ${gapClass}`}
+    >
+      {children}
+    </div>
+  );
+};
 
 /**
  * Responsive Card
  */
 export const Card = ({ children, className = "" }) => (
-  <div className={`ui-form-shell p-4 md:p-6 ${className}`.trim()}>{children}</div>
+  <div className={`rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm p-4 md:p-6 ${className}`.trim()}>{children}</div>
 );
 
 export default {
@@ -211,3 +238,4 @@ export default {
   ResponsiveGrid,
   Card,
 };
+

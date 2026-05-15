@@ -649,10 +649,11 @@ export const getGapTone = (value) => {
     return "bg-emerald-50 text-emerald-700 border-emerald-200";
   }
   if (gap <= 14) {
-    return "bg-sky-50 text-sky-700 border-sky-200";
+    return "bg-blue-50 text-blue-700 border-blue-200";
   }
   if (gap <= 30) {
     return "bg-indigo-50 text-indigo-700 border-indigo-200";
   }
   return "bg-rose-50 text-rose-700 border-rose-200";
 };
+
