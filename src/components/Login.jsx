@@ -1,8 +1,21 @@
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Cookies from "js-cookie";
+import { FaMicrosoft } from "react-icons/fa6";
+import { FcGoogle } from "react-icons/fc";
+import {
+  HiOutlineArrowRight,
+  HiOutlineBackspace,
+  HiOutlineCheckBadge,
+  HiOutlineClock,
+  HiOutlineEnvelope,
+  HiOutlineEye,
+  HiOutlineEyeSlash,
+  HiOutlineLockClosed,
+  HiOutlinePresentationChartLine,
+  HiOutlineShieldCheck,
+} from "react-icons/hi2";
 import { buildUrl } from "../api";
-import HookLogo from "./Ui/hooklogo";
 
 const AUTH_NOTICE_STORAGE_KEY = "hooksAdminAuthNotice";
 const POST_LOGIN_REDIRECT_KEY = "hooksAdminPostLoginRedirect";
@@ -18,10 +31,545 @@ const STEPS = {
 const MIN_PIN_LENGTH = 4;
 const MAX_PIN_LENGTH = 7;
 
-const FIELD =
-  "w-full appearance-none rounded-2xl border border-slate-200 bg-white/90 px-4 py-3 text-base text-slate-800 shadow-sm outline-none placeholder:text-slate-400 ring-0 transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 disabled:cursor-not-allowed disabled:opacity-60";
-const PRIMARY =
-  "w-full rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 py-3.5 text-sm font-semibold uppercase tracking-[0.14em] text-white shadow-lg shadow-blue-500/20 transition hover:shadow-blue-500/30 disabled:opacity-50";
+const INPUT_WRAPPER =
+  "group relative overflow-hidden rounded-2xl border border-[#dbe3ef] bg-white transition duration-200 focus-within:border-[#4b61ff] focus-within:shadow-[0_0_0_4px_rgba(75,97,255,0.08)]";
+const INPUT_ICON =
+  "pointer-events-none absolute left-4 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-[#98a1bd] transition group-focus-within:text-[#4b61ff]";
+const INPUT_FIELD =
+  "h-[46px] w-full bg-transparent pl-12 pr-4 text-[15px] text-[#4f5b86] outline-none placeholder:text-[#98a1bd] disabled:cursor-not-allowed disabled:text-slate-400";
+const PRIMARY_BUTTON =
+  "inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#3458ff] via-[#5d58ff] to-[#c13bf8] px-5 text-[15px] font-semibold text-white shadow-[0_18px_34px_rgba(98,71,255,0.24)] transition duration-200 hover:translate-y-[-1px] hover:shadow-[0_22px_44px_rgba(86,91,255,0.3)] disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60";
+const PIN_PRIMARY_BUTTON =
+  "inline-flex h-[64px] w-full items-center justify-center gap-3 rounded-xl bg-gradient-to-r from-[#4c2fff] via-[#5a27ff] to-[#7a1fff] px-6 text-[1.05rem] font-semibold text-white shadow-[0_20px_45px_rgba(97,59,255,0.3)] transition duration-200 hover:translate-y-[-1px] hover:shadow-[0_24px_52px_rgba(97,59,255,0.34)] disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60";
+
+const promoFeatures = [
+  {
+    icon: HiOutlinePresentationChartLine,
+    title: "Data-driven insights",
+    description: "Get accurate analytics and trends to guide better decisions.",
+    iconClass:
+      "bg-[linear-gradient(135deg,rgba(109,83,255,0.14)_0%,rgba(75,112,255,0.08)_100%)] text-[#5b38ff]",
+  },
+  {
+    icon: HiOutlineShieldCheck,
+    title: "Secure & reliable",
+    description: "Enterprise-grade protection to keep your workflows safe.",
+    iconClass:
+      "bg-[linear-gradient(135deg,rgba(70,119,255,0.14)_0%,rgba(127,97,255,0.08)_100%)] text-[#3458ff]",
+  },
+];
+
+const pinAccessFeatures = [
+  {
+    icon: HiOutlineLockClosed,
+    title: "Secure",
+    description: "Protected admin area with 7-digit PIN",
+  },
+  {
+    icon: HiOutlineCheckBadge,
+    title: "Fast Access",
+    description: "Quick & secure authentication",
+  },
+  {
+    icon: HiOutlineClock,
+    title: "Session Protected",
+    description: "Auto-logout for inactivity",
+  },
+];
+
+const pinAccessBadges = ["Encrypted", "Verified", "Admin Only"];
+const pinPadLayout = [
+  ["1", "2", "3"],
+  ["4", "5", "6"],
+  ["7", "8", "9"],
+  ["empty", "0", "backspace"],
+];
+
+const StatusMessage = ({ tone = "info", children }) => {
+  const tones = {
+    info: "border-blue-200 bg-blue-50 text-blue-700",
+    success: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    warning: "border-amber-200 bg-amber-50 text-amber-800",
+    error: "border-rose-200 bg-rose-50 text-rose-700",
+  };
+
+  return (
+    <div
+      className={`rounded-2xl border px-4 py-3 text-sm leading-6 ${tones[tone]}`}
+    >
+      {children}
+    </div>
+  );
+};
+
+const HeroBrand = ({ dark = true, compact = false }) => (
+  <div className="flex items-center gap-3">
+    <svg
+      viewBox="0 0 72 72"
+      aria-hidden="true"
+      className={`${compact ? "h-10 w-10" : "h-12 w-12"} shrink-0`}
+    >
+      <defs>
+        <linearGradient
+          id="hooks-login-brand-gradient"
+          x1="8%"
+          y1="8%"
+          x2="92%"
+          y2="92%"
+        >
+          <stop offset="0%" stopColor="#7c3cff" />
+          <stop offset="52%" stopColor="#3d5cff" />
+          <stop offset="100%" stopColor="#1ab8ff" />
+        </linearGradient>
+      </defs>
+
+      <rect
+        x="7"
+        y="8"
+        width="15"
+        height="56"
+        rx="7.5"
+        fill="url(#hooks-login-brand-gradient)"
+      />
+      <rect
+        x="50"
+        y="8"
+        width="15"
+        height="56"
+        rx="7.5"
+        fill="url(#hooks-login-brand-gradient)"
+      />
+      <path
+        d="M22 39.5C27.8 35.8 32.6 31.5 37.9 24.9C42.3 19.6 45.4 15 50 12.6V29.5C44.2 33 39.6 37.5 34.4 44.1C30.5 48.9 26.7 53 22 56V39.5Z"
+        fill="url(#hooks-login-brand-gradient)"
+      />
+    </svg>
+
+    <div>
+      <div
+        className={`${compact ? "text-[2rem]" : "text-[2.35rem]"} font-semibold leading-none tracking-[-0.06em] ${
+          dark ? "text-[#101633]" : "text-white"
+        }`}
+      >
+        hooks
+      </div>
+      <div
+        className={`mt-1 text-[10px] uppercase tracking-[0.24em] ${
+          dark ? "text-[#6f7897]" : "text-white/75"
+        }`}
+      >
+        Gadget Intelligence
+      </div>
+    </div>
+  </div>
+);
+
+const PinAccessBrand = () => (
+  <div className="flex items-center gap-4">
+    <svg
+      viewBox="0 0 72 72"
+      aria-hidden="true"
+      className="h-[58px] w-[58px] shrink-0"
+    >
+      <defs>
+        <linearGradient
+          id="hooks-login-pin-access-gradient"
+          x1="8%"
+          y1="8%"
+          x2="92%"
+          y2="92%"
+        >
+          <stop offset="0%" stopColor="#7c3cff" />
+          <stop offset="52%" stopColor="#3d5cff" />
+          <stop offset="100%" stopColor="#1ab8ff" />
+        </linearGradient>
+      </defs>
+
+      <rect
+        x="7"
+        y="8"
+        width="15"
+        height="56"
+        rx="7.5"
+        fill="url(#hooks-login-pin-access-gradient)"
+      />
+      <rect
+        x="50"
+        y="8"
+        width="15"
+        height="56"
+        rx="7.5"
+        fill="url(#hooks-login-pin-access-gradient)"
+      />
+      <path
+        d="M22 39.5C27.8 35.8 32.6 31.5 37.9 24.9C42.3 19.6 45.4 15 50 12.6V29.5C44.2 33 39.6 37.5 34.4 44.1C30.5 48.9 26.7 53 22 56V39.5Z"
+        fill="url(#hooks-login-pin-access-gradient)"
+      />
+    </svg>
+
+    <div className="font-heading text-[3.1rem] font-semibold leading-none tracking-[-0.08em] text-[#0f1437]">
+      hookscore
+    </div>
+  </div>
+);
+
+const PromoFeature = ({ icon: Icon, title, description, iconClass }) => (
+  <div className="flex items-start gap-4">
+    <div
+      className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl shadow-[0_14px_28px_rgba(77,92,152,0.08)] ${iconClass}`}
+    >
+      <Icon className="h-5 w-5" />
+    </div>
+    <div className="min-w-0">
+      <div className="text-[15px] font-semibold leading-6 text-[#111936]">
+        {title}
+      </div>
+      <p className="mt-1 text-[14px] leading-6 text-[#66708f]">{description}</p>
+    </div>
+  </div>
+);
+
+const PinAccessFeatureCard = ({ icon: Icon, title, description }) => (
+  <div className="rounded-xl border border-white/80 bg-white/80 px-6 py-7 shadow-[0_18px_40px_rgba(100,106,170,0.08)] backdrop-blur-sm">
+    <div className="mx-auto flex h-[58px] w-[58px] items-center justify-center rounded-xl bg-[linear-gradient(180deg,rgba(121,91,255,0.2)_0%,rgba(105,75,255,0.08)_100%)] text-[#5b31ff] shadow-[0_14px_28px_rgba(103,73,255,0.12)]">
+      <Icon className="h-8 w-8" />
+    </div>
+    <div className="mt-5 text-center text-[1.05rem] font-semibold text-[#131a39]">
+      {title}
+    </div>
+    <p className="mt-3 text-center text-[15px] leading-7 text-[#5b648c]">
+      {description}
+    </p>
+  </div>
+);
+
+const PinPadButton = ({ children, onClick, disabled, className = "" }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    disabled={disabled}
+    className={`flex h-[68px] items-center justify-center rounded-xl border border-[#e4defe] bg-white text-[2rem] font-semibold text-[#111936] shadow-[0_12px_30px_rgba(111,116,182,0.08)] transition duration-150 hover:border-[#cfc3ff] hover:bg-[#fbfaff] disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
+  >
+    {children}
+  </button>
+);
+
+const HeroDeviceArt = () => (
+  <div className="mt-auto flex justify-center pt-3 md:pt-4 lg:pt-5">
+    <svg
+      viewBox="0 0 760 420"
+      aria-hidden="true"
+      className="h-[120px] w-full max-w-[420px] md:h-[150px] md:max-w-[500px] lg:h-[170px] lg:max-w-[560px]"
+    >
+      <defs>
+        <linearGradient
+          id="hooks-login-platform"
+          x1="0%"
+          y1="0%"
+          x2="100%"
+          y2="100%"
+        >
+          <stop offset="0%" stopColor="#23164f" />
+          <stop offset="100%" stopColor="#090d24" />
+        </linearGradient>
+        <linearGradient
+          id="hooks-login-platform-ring"
+          x1="0%"
+          y1="0%"
+          x2="100%"
+          y2="0%"
+        >
+          <stop offset="0%" stopColor="#3b6dff" />
+          <stop offset="60%" stopColor="#8b5cff" />
+          <stop offset="100%" stopColor="#d14cff" />
+        </linearGradient>
+        <linearGradient
+          id="hooks-login-laptop-body"
+          x1="0%"
+          y1="0%"
+          x2="100%"
+          y2="100%"
+        >
+          <stop offset="0%" stopColor="#1f233d" />
+          <stop offset="45%" stopColor="#746da2" />
+          <stop offset="100%" stopColor="#12172b" />
+        </linearGradient>
+        <linearGradient
+          id="hooks-login-screen"
+          x1="0%"
+          y1="0%"
+          x2="100%"
+          y2="100%"
+        >
+          <stop offset="0%" stopColor="#040814" />
+          <stop offset="45%" stopColor="#15123c" />
+          <stop offset="100%" stopColor="#351377" />
+        </linearGradient>
+        <linearGradient
+          id="hooks-login-phone-metal"
+          x1="0%"
+          y1="0%"
+          x2="100%"
+          y2="100%"
+        >
+          <stop offset="0%" stopColor="#68577f" />
+          <stop offset="55%" stopColor="#2c203f" />
+          <stop offset="100%" stopColor="#19182a" />
+        </linearGradient>
+        <linearGradient
+          id="hooks-login-phone-screen"
+          x1="0%"
+          y1="0%"
+          x2="100%"
+          y2="100%"
+        >
+          <stop offset="0%" stopColor="#120c27" />
+          <stop offset="55%" stopColor="#361266" />
+          <stop offset="100%" stopColor="#7b3cff" />
+        </linearGradient>
+        <radialGradient id="hooks-login-wave" cx="50%" cy="50%" r="70%">
+          <stop offset="0%" stopColor="#7c8fff" />
+          <stop offset="35%" stopColor="#b35cff" />
+          <stop offset="100%" stopColor="rgba(28,14,64,0)" />
+        </radialGradient>
+        <radialGradient id="hooks-login-shadow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="rgba(177,98,255,0.46)" />
+          <stop offset="55%" stopColor="rgba(26,16,66,0.85)" />
+          <stop offset="100%" stopColor="rgba(5,7,22,0)" />
+        </radialGradient>
+      </defs>
+
+      <ellipse
+        cx="380"
+        cy="396"
+        rx="286"
+        ry="22"
+        fill="url(#hooks-login-shadow)"
+      />
+      <ellipse
+        cx="380"
+        cy="360"
+        rx="328"
+        ry="54"
+        fill="url(#hooks-login-platform)"
+      />
+      <ellipse
+        cx="380"
+        cy="336"
+        rx="312"
+        ry="43"
+        fill="#12152d"
+        stroke="rgba(255,255,255,0.08)"
+      />
+      <ellipse
+        cx="380"
+        cy="342"
+        rx="300"
+        ry="9"
+        fill="url(#hooks-login-platform-ring)"
+      />
+
+      <g transform="translate(146 160)">
+        <rect
+          x="0"
+          y="0"
+          width="300"
+          height="166"
+          rx="14"
+          fill="#0a0f1f"
+          stroke="rgba(255,255,255,0.18)"
+        />
+        <rect
+          x="8"
+          y="8"
+          width="284"
+          height="150"
+          rx="10"
+          fill="url(#hooks-login-screen)"
+        />
+        <path
+          d="M42 102C88 66 125 74 164 109C206 144 239 115 260 82"
+          fill="none"
+          stroke="#9066ff"
+          strokeWidth="8"
+          strokeLinecap="round"
+        />
+        <path
+          d="M54 113C96 82 134 92 170 124C199 151 230 137 259 104"
+          fill="none"
+          stroke="#4b72ff"
+          strokeWidth="6"
+          strokeLinecap="round"
+          opacity="0.92"
+        />
+        <path
+          d="M-28 170H328L294 190H8Z"
+          fill="url(#hooks-login-laptop-body)"
+          stroke="rgba(255,255,255,0.12)"
+        />
+        <rect
+          x="114"
+          y="174"
+          width="76"
+          height="7"
+          rx="3.5"
+          fill="#d5d7e4"
+          opacity="0.95"
+        />
+      </g>
+
+      <g transform="translate(516 72)">
+        <rect
+          x="0"
+          y="0"
+          width="104"
+          height="206"
+          rx="26"
+          fill="url(#hooks-login-phone-metal)"
+          stroke="rgba(255,255,255,0.16)"
+        />
+        <circle
+          cx="24"
+          cy="34"
+          r="11"
+          fill="#171b31"
+          stroke="rgba(255,255,255,0.24)"
+        />
+        <circle
+          cx="24"
+          cy="67"
+          r="11"
+          fill="#171b31"
+          stroke="rgba(255,255,255,0.24)"
+        />
+        <circle
+          cx="57"
+          cy="34"
+          r="11"
+          fill="#171b31"
+          stroke="rgba(255,255,255,0.24)"
+        />
+        <circle
+          cx="57"
+          cy="67"
+          r="11"
+          fill="#171b31"
+          stroke="rgba(255,255,255,0.24)"
+        />
+        <circle cx="78" cy="49" r="6" fill="rgba(255,255,255,0.46)" />
+      </g>
+
+      <g transform="translate(582 122)">
+        <rect
+          x="0"
+          y="0"
+          width="118"
+          height="212"
+          rx="30"
+          fill="#0a0e22"
+          stroke="rgba(255,255,255,0.18)"
+        />
+        <rect
+          x="8"
+          y="10"
+          width="102"
+          height="192"
+          rx="24"
+          fill="url(#hooks-login-phone-screen)"
+        />
+        <rect
+          x="40"
+          y="14"
+          width="38"
+          height="5"
+          rx="2.5"
+          fill="rgba(255,255,255,0.18)"
+        />
+        <path
+          d="M22 122C38 87 76 80 92 58C96 50 101 40 108 28"
+          fill="none"
+          stroke="#a758ff"
+          strokeWidth="7"
+          strokeLinecap="round"
+          opacity="0.94"
+        />
+        <path
+          d="M18 152C39 136 58 138 76 114C89 96 98 84 111 72"
+          fill="none"
+          stroke="#5a7cff"
+          strokeWidth="5"
+          strokeLinecap="round"
+          opacity="0.95"
+        />
+      </g>
+
+      <g transform="translate(492 258)">
+        <rect
+          x="0"
+          y="0"
+          width="58"
+          height="96"
+          rx="20"
+          fill="#111628"
+          stroke="rgba(255,255,255,0.12)"
+        />
+        <rect x="5" y="6" width="48" height="84" rx="16" fill="#080d1b" />
+        <text
+          x="29"
+          y="42"
+          fill="white"
+          fontSize="18"
+          fontWeight="700"
+          textAnchor="middle"
+          fontFamily="Inter, sans-serif"
+        >
+          10
+        </text>
+        <text
+          x="29"
+          y="62"
+          fill="#b76dff"
+          fontSize="18"
+          fontWeight="700"
+          textAnchor="middle"
+          fontFamily="Inter, sans-serif"
+        >
+          09
+        </text>
+      </g>
+
+      <g transform="translate(574 314)">
+        <rect
+          x="0"
+          y="18"
+          width="66"
+          height="42"
+          rx="18"
+          fill="#f4f6ff"
+          stroke="rgba(42,42,56,0.15)"
+        />
+        <rect
+          x="4"
+          y="0"
+          width="34"
+          height="50"
+          rx="16"
+          fill="#f5f7ff"
+          stroke="rgba(42,42,56,0.15)"
+        />
+        <circle cx="21" cy="21" r="9" fill="#171b2f" />
+        <circle cx="22" cy="22" r="4" fill="#29345b" />
+        <rect x="11" y="32" width="18" height="14" rx="7" fill="#d4d8f4" />
+        <circle cx="17" cy="39" r="3.2" fill="#ffffff" />
+        <circle cx="23" cy="39" r="3.2" fill="#ffffff" />
+        <circle cx="17" cy="39" r="1.2" fill="#171b2f" />
+        <circle cx="23" cy="39" r="1.2" fill="#171b2f" />
+        <circle cx="48" cy="38" r="8" fill="#171b2f" />
+        <circle cx="48" cy="38" r="3.6" fill="#29345b" />
+      </g>
+    </svg>
+  </div>
+);
 
 const PinBoxesField = ({
   label,
@@ -29,6 +577,9 @@ const PinBoxesField = ({
   onChange,
   disabled,
   autoFocus = false,
+  masked = false,
+  isActive = true,
+  onActivate,
 }) => {
   const normalized = String(value || "")
     .replace(/\D/g, "")
@@ -37,37 +588,18 @@ const PinBoxesField = ({
   return (
     <div>
       {label ? (
-        <label className="mb-3 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+        <button
+          type="button"
+          onClick={onActivate}
+          className={`mb-3 block text-left text-sm font-semibold transition ${
+            isActive ? "text-[#4d35ff]" : "text-[#59638c]"
+          }`}
+        >
           {label}
-        </label>
+        </button>
       ) : null}
 
-      <div className="relative border border-slate-200 bg-slate-50 p-4">
-        <div className="grid grid-cols-7 gap-2.5 sm:gap-3">
-          {Array.from({ length: MAX_PIN_LENGTH }).map((_, index) => {
-            const digit = normalized[index] || "";
-            const filled = Boolean(digit);
-            const active =
-              !disabled &&
-              index === Math.min(normalized.length, MAX_PIN_LENGTH - 1);
-
-            return (
-              <div
-                key={`${label}-${index}`}
-                className={`flex h-14 min-w-0 items-center justify-center border text-base font-semibold transition sm:h-16 sm:text-lg ${
-                  filled
-                    ? "border-blue-400 bg-white text-slate-950 shadow-[0_10px_20px_rgba(37,99,235,0.12)]"
-                    : active
-                      ? "border-blue-500 bg-white text-slate-400 ring-4 ring-blue-100"
-                      : "border-slate-200 bg-white text-slate-300"
-                }`}
-              >
-                {filled ? digit : ""}
-              </div>
-            );
-          })}
-        </div>
-
+      <div className="relative" onClick={onActivate}>
         <input
           type="text"
           inputMode="numeric"
@@ -81,10 +613,37 @@ const PinBoxesField = ({
               event.target.value.replace(/\D/g, "").slice(0, MAX_PIN_LENGTH),
             )
           }
+          onFocus={onActivate}
           disabled={disabled}
-          className="absolute inset-0 cursor-text opacity-0"
-          aria-label={label}
+          className="absolute inset-0 z-10 h-full w-full cursor-text opacity-0 disabled:cursor-not-allowed"
+          aria-label={label || "Organization PIN"}
         />
+
+        <div className="grid grid-cols-7 gap-2 sm:gap-3">
+          {Array.from({ length: MAX_PIN_LENGTH }).map((_, index) => {
+            const digit = normalized[index] || "";
+            const filled = Boolean(digit);
+            const active =
+              isActive &&
+              !disabled &&
+              index === Math.min(normalized.length, MAX_PIN_LENGTH - 1);
+
+            return (
+              <div
+                key={`${label || "pin"}-${index}`}
+                className={`flex h-[78px] items-center justify-center rounded-xl border text-[2rem] font-semibold transition sm:h-[82px] ${
+                  filled
+                    ? "border-[#cfc4ff] bg-white text-[#101734] shadow-[0_14px_30px_rgba(105,96,196,0.08)]"
+                    : active
+                      ? "border-[#5d34ff] bg-white text-[#5d34ff] shadow-[0_0_0_4px_rgba(108,75,255,0.08)]"
+                      : "border-[#ddd7ff] bg-white text-transparent"
+                }`}
+              >
+                {digit ? (masked ? "\u2022" : digit) : active ? "|" : ""}
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
@@ -105,6 +664,8 @@ const Login = ({ onLogin }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [showPinValue, setShowPinValue] = useState(false);
+  const [activePinField, setActivePinField] = useState("pin");
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -128,9 +689,19 @@ const Login = ({ onLogin }) => {
         sessionStorage.removeItem(AUTH_NOTICE_STORAGE_KEY);
       }
     } catch {
-      // Ignore storage access issues and continue with the login form.
+      // Continue with the login form when storage access is unavailable.
     }
   }, [location.state]);
+
+  useEffect(() => {
+    if (step === STEPS.pin) {
+      setActivePinField("pin");
+      setShowPinValue(false);
+    } else if (step === STEPS.pinSetup) {
+      setActivePinField("newPin");
+      setShowPinValue(false);
+    }
+  }, [step]);
 
   const normalizeRedirect = (path) =>
     path &&
@@ -139,6 +710,50 @@ const Login = ({ onLogin }) => {
     !path.startsWith("/login")
       ? path
       : null;
+
+  const normalizePinValue = (nextValue) =>
+    String(nextValue || "")
+      .replace(/\D/g, "")
+      .slice(0, MAX_PIN_LENGTH);
+
+  const updatePinField = (field, nextValue) => {
+    const normalized = normalizePinValue(nextValue);
+
+    setForm((value) => ({
+      ...value,
+      [field]: normalized,
+    }));
+    setError("");
+  };
+
+  const currentPinField = step === STEPS.pin ? "pin" : activePinField;
+
+  const appendPinDigit = (digit) => {
+    if (loading) return;
+
+    const field = currentPinField || "pin";
+    const currentValue = String(form[field] || "");
+    if (currentValue.length >= MAX_PIN_LENGTH) return;
+
+    updatePinField(field, `${currentValue}${digit}`);
+
+    if (
+      step === STEPS.pinSetup &&
+      field === "newPin" &&
+      currentValue.length + 1 >= MAX_PIN_LENGTH &&
+      !String(form.confirmPin || "").length
+    ) {
+      setActivePinField("confirmPin");
+    }
+  };
+
+  const removePinDigit = () => {
+    if (loading) return;
+
+    const field = currentPinField || "pin";
+    const currentValue = String(form[field] || "");
+    updatePinField(field, currentValue.slice(0, -1));
+  };
 
   const validatePinSetup = () => {
     const newPin = String(form.newPin || "").trim();
@@ -261,7 +876,7 @@ const Login = ({ onLogin }) => {
         localStorage.removeItem("savedEmail");
       }
     } catch {
-      // Ignore storage access issues and fall back to the default redirect.
+      // Fall back to the default redirect when storage writes fail.
     }
 
     let redirect = normalizeRedirect(location.state?.from) || "/dashboard";
@@ -280,7 +895,7 @@ const Login = ({ onLogin }) => {
       sessionStorage.removeItem(POST_LOGIN_REDIRECT_KEY);
       sessionStorage.removeItem(AUTH_NOTICE_STORAGE_KEY);
     } catch {
-      // Ignore invalid stored redirect data and continue to the default route.
+      // Ignore invalid stored redirect data and continue normally.
     }
 
     clearAll(true);
@@ -389,7 +1004,6 @@ const Login = ({ onLogin }) => {
         await submitCredentials();
       }
     } catch {
-      // Ignore network response parsing failures and show the fallback message.
       setError("Network error. Please try again.");
     } finally {
       setLoading(false);
@@ -397,315 +1011,478 @@ const Login = ({ onLogin }) => {
   };
 
   const isPinOverlayOpen = step === STEPS.pin || step === STEPS.pinSetup;
-  const overlayTitle =
-    step === STEPS.pin ? "Enter organization PIN" : "Create organization PIN";
+  const isPinSetupStep = step === STEPS.pinSetup;
+  const pinStepTitle = isPinSetupStep
+    ? "Create 7-Digit PIN"
+    : "Enter 7-Digit PIN";
+  const pinStepSubtitle = isPinSetupStep
+    ? "Create and confirm your admin PIN to finish securing dashboard access"
+    : "Please enter your admin PIN to access the dashboard";
+  const pinStepButtonLabel = loading
+    ? step === STEPS.pin
+      ? "Verifying admin PIN..."
+      : "Creating admin PIN..."
+    : step === STEPS.pin
+      ? "Access Admin Dashboard"
+      : "Create PIN and Sign In";
 
   return (
-    <div className="relative min-h-screen overflow-hidden">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.18),transparent_26%),radial-gradient(circle_at_bottom_right,rgba(255,255,255,0.14),transparent_24%)]" />
+    <div className="min-h-dvh bg-[linear-gradient(180deg,#f7f9ff_0%,#eef3ff_100%)] lg:h-screen lg:overflow-hidden">
+      <div className="mx-auto flex min-h-dvh max-w-[1560px] flex-col px-4 py-4 sm:px-5 sm:py-5 md:px-6 lg:h-screen lg:justify-center lg:px-6 lg:py-5">
+        <div className="grid w-full overflow-hidden rounded-2xl bg-white/65 backdrop-blur-sm md:min-h-[calc(100dvh-2.5rem)] md:grid-rows-[auto_1fr] lg:h-[calc(100dvh-2.5rem)] lg:min-h-0 lg:grid-cols-[2.28fr_2.72fr] lg:grid-rows-1 xl:grid-cols-[2.38fr_2.62fr]">
+          <section className="relative hidden overflow-hidden border-b border-[#edf1f7] bg-[linear-gradient(180deg,#ffffff_0%,#f6f7ff_100%)] md:flex md:flex-col md:justify-between md:px-8 md:py-7 lg:border-b-0 lg:border-r lg:px-10 lg:py-8">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_16%_18%,rgba(72,122,255,0.08)_0%,transparent_26%),radial-gradient(circle_at_82%_20%,rgba(151,92,255,0.12)_0%,transparent_24%),radial-gradient(circle_at_34%_90%,rgba(106,132,255,0.08)_0%,transparent_28%)]" />
+            <div className="pointer-events-none absolute inset-y-10 right-8 hidden w-[140px] opacity-30 lg:block">
+              <div className="h-full w-full bg-[radial-gradient(circle,rgba(131,129,202,0.32)_1px,transparent_1px)] [background-size:16px_16px]" />
+            </div>
 
-      <div className="relative mx-auto flex min-h-screen max-w-6xl items-center px-4 py-8 sm:px-6 lg:px-8">
-        <div className="relative grid w-full overflow-hidden rounded-[32px] border border-white/25 bg-[linear-gradient(135deg,#1d4ed8_0%,#2563eb_30%,#4f46e5_68%,#7c3aed_100%)] shadow-[0_30px_90px_rgba(37,99,235,0.24)] lg:grid-cols-[1.15fr_0.85fr]">
-          <div className="relative overflow-hidden border-b border-white/15 bg-[linear-gradient(180deg,rgba(255,255,255,0.12)_0%,rgba(255,255,255,0.05)_100%)] px-6 py-8 text-white sm:px-8 sm:py-10 lg:border-b-0 lg:border-r">
             <div className="relative z-10">
-              <HookLogo className="h-10 w-auto" />
-              <div className="mt-10 max-w-md">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.26em] text-indigo-100/85">
-                  Hooks Admin
-                </div>
-                <h2 className="mt-4 text-4xl font-bold leading-tight tracking-[-0.03em]">
-                  Welcome to your admin access workspace
-                </h2>
-                <p className="mt-4 text-sm leading-7 text-indigo-50/90">
-                  Sign in to manage content, products, and publishing with a
-                  simple two-step admin flow designed for your Hooks team.
+              <HeroBrand dark />
+
+              <div className="mt-7 max-w-[470px]">
+                <h1 className="text-[2.35rem] font-semibold leading-[1.08] tracking-[-0.05em] text-[#101633] lg:text-[3rem]">
+                  Intelligent insights.
+                  <span className="block bg-gradient-to-r from-[#5A35FF] via-[#7E4CFF] to-[#4F7BFF] bg-clip-text text-transparent">
+                    Smarter decisions.
+                  </span>
+                </h1>
+                <p className="mt-4 max-w-[390px] text-[15px] leading-7 text-[#66708f] lg:text-base">
+                  Hooks helps you discover, compare and analyze gadgets with
+                  powerful insights.
                 </p>
               </div>
 
-              <div className="mt-10 grid gap-4 sm:grid-cols-3 lg:max-w-xl">
-                {[
-                  {
-                    kicker: "01",
-                    title: "Fast access",
-                    copy: "Open the admin panel quickly with a clear email and password flow.",
-                  },
-                  {
-                    kicker: "02",
-                    title: "Secure step",
-                    copy: "Organization PIN verification adds one focused security layer.",
-                  },
-                  {
-                    kicker: "03",
-                    title: "Team ready",
-                    copy: "Shared admin access stays easier to manage across your workspace.",
-                  },
-                ].map((item) => {
-                  return (
-                    <div
-                      key={item.title}
-                      className="border border-white/18 bg-white/10 px-4 py-4 backdrop-blur-sm"
-                    >
-                      <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-indigo-100/80">
-                        {item.kicker}
-                      </div>
-                      <div className="mt-4 text-sm font-semibold text-white">
-                        {item.title}
-                      </div>
-                      <p className="mt-2 text-xs leading-6 text-indigo-50/84">
-                        {item.copy}
-                      </p>
-                    </div>
-                  );
-                })}
+              <div className="mt-7 grid max-w-[480px] gap-5 lg:mt-8">
+                {promoFeatures.map((item) => (
+                  <PromoFeature key={item.title} {...item} />
+                ))}
               </div>
             </div>
 
-            <div className="pointer-events-none absolute -bottom-6 left-6 flex gap-5 opacity-90">
-              {[0, 1, 2].map((item) => (
+            <div className="relative z-10 mt-7 md:mt-5 lg:mt-6">
+              <HeroDeviceArt />
+            </div>
+          </section>
+
+          <section className="relative flex flex-col bg-[linear-gradient(180deg,#fcfdff_0%,#f4f7ff_100%)] px-4 py-4 sm:px-5 sm:py-5 md:px-7 md:py-7 lg:px-10 lg:py-8">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(127,147,255,0.12)_0%,transparent_28%),radial-gradient(circle_at_80%_18%,rgba(193,123,255,0.12)_0%,transparent_20%),radial-gradient(circle_at_26%_88%,rgba(97,128,255,0.08)_0%,transparent_22%)]" />
+
+            <div className="relative z-10 md:hidden">
+              <div className="sticky top-0 mb-4 rounded-2xl border border-white/70 bg-white/80 px-4 py-3 shadow-[0_14px_35px_rgba(74,93,163,0.08)] backdrop-blur-sm">
+                <HeroBrand dark compact />
+              </div>
+            </div>
+
+            <div className="relative z-10 mx-auto flex w-full max-w-[760px] flex-1 flex-col justify-center lg:max-w-[700px] xl:max-w-[680px]">
+              <div className="w-full rounded-2xl border border-[#e7ecf5] bg-white/92 px-5 py-6 shadow-[0_22px_60px_rgba(71,95,162,0.1)] backdrop-blur-sm sm:px-7 sm:py-7 md:px-9 md:py-8 lg:px-10 lg:py-8">
                 <div
-                  key={item}
-                  className="h-28 w-10 -skew-x-[28deg] bg-[linear-gradient(180deg,rgba(168,85,247,0.12)_0%,rgba(99,102,241,0.92)_100%)] shadow-[0_0_24px_rgba(99,102,241,0.28)]"
-                  style={{
-                    transform: `translateY(${item * 18}px) skewX(-28deg)`,
-                  }}
-                />
-              ))}
-            </div>
-          </div>
-
-          <div className="relative bg-white px-6 py-8 sm:px-8 sm:py-10">
-            <div className={isPinOverlayOpen ? "opacity-50 blur-[1px]" : ""}>
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-purple-600">
-                    User Login
-                  </div>
-                  <h3 className="mt-3 text-3xl font-bold tracking-[-0.03em] text-slate-950">
-                    Welcome back
-                  </h3>
-                  <p className="mt-3 max-w-sm text-sm leading-7 text-slate-600">
-                    Enter your credentials to continue to the Hooks admin
-                    dashboard.
+                  className={
+                    isPinOverlayOpen
+                      ? "pointer-events-none opacity-50 blur-[1px]"
+                      : ""
+                  }
+                >
+                  <p className="text-[15px] font-semibold text-[#3458ff]">
+                    Welcome back! <span className="align-middle">👋</span>
                   </p>
-                </div>
-                <HookLogo className="hidden h-10 w-auto shrink-0 sm:block" />
-              </div>
+                  <h2 className="mt-3 text-[2rem] font-semibold leading-tight tracking-[-0.045em] text-[#141b37] sm:text-[2.25rem]">
+                    Sign in to your account
+                  </h2>
+                  <p className="mt-2 text-[15px] leading-7 text-[#6f7897]">
+                    Enter your credentials to access your dashboard.
+                  </p>
 
-              {!isPinOverlayOpen && notice ? (
-                <div className="mt-6 border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-                  {notice}
-                </div>
-              ) : null}
+                  <div className="mt-5 space-y-3">
+                    {!isPinOverlayOpen && notice ? (
+                      <StatusMessage tone="warning">{notice}</StatusMessage>
+                    ) : null}
 
-              {!isPinOverlayOpen && error ? (
-                <div className="mt-6 border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-                  {error}
-                </div>
-              ) : null}
+                    {!isPinOverlayOpen && error ? (
+                      <StatusMessage tone="error">{error}</StatusMessage>
+                    ) : null}
 
-              {isPinOverlayOpen ? (
-                <div className="mt-6 border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-                  Password verified for{" "}
-                  <span className="font-semibold text-emerald-950">
-                    {form.email || "your account"}
-                  </span>
-                  . Complete the organization PIN step in the security panel.
-                </div>
-              ) : null}
-
-              <form onSubmit={submit} className="mt-8 space-y-5">
-                <div>
-                  <label className="mb-2 block text-xs  font-semibold uppercase tracking-[0.18em] text-slate-500">
-                    Email
-                  </label>
-                  <div>
-                    <input
-                      type="email"
-                      value={form.email}
-                      onChange={(event) => {
-                        setForm((value) => ({
-                          ...value,
-                          email: event.target.value,
-                        }));
-                        setError("");
-                      }}
-                      placeholder="Enter your email"
-                      autoComplete="email"
-                      required
-                      disabled={loading || isPinOverlayOpen}
-                      className={FIELD}
-                    />
+                    {isPinOverlayOpen ? (
+                      <StatusMessage tone="success">
+                        Password verified for{" "}
+                        <span className="font-semibold text-emerald-900">
+                          {form.email || "your account"}
+                        </span>
+                        . Complete the organization PIN step in the security
+                        window.
+                      </StatusMessage>
+                    ) : null}
                   </div>
-                </div>
 
-                <div>
-                  <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                    Password
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      value={form.password}
-                      onChange={(event) => {
-                        setForm((value) => ({
-                          ...value,
-                          password: event.target.value,
-                        }));
-                        setError("");
-                      }}
-                      placeholder="Enter your password"
-                      autoComplete="current-password"
-                      required
+                  <form onSubmit={submit} className="mt-6 space-y-5">
+                    <div>
+                      <label className="mb-2 block text-[14px] font-semibold text-[#1c2542]">
+                        Email address
+                      </label>
+                      <div className={INPUT_WRAPPER}>
+                        <HiOutlineEnvelope className={INPUT_ICON} />
+                        <input
+                          type="email"
+                          value={form.email}
+                          onChange={(event) => {
+                            setForm((value) => ({
+                              ...value,
+                              email: event.target.value,
+                            }));
+                            setError("");
+                          }}
+                          placeholder="admin@hooks.com"
+                          autoComplete="email"
+                          required
+                          disabled={loading || isPinOverlayOpen}
+                          className={INPUT_FIELD}
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block text-[14px] font-semibold text-[#1c2542]">
+                        Password
+                      </label>
+                      <div className={INPUT_WRAPPER}>
+                        <HiOutlineLockClosed className={INPUT_ICON} />
+                        <input
+                          type={showPassword ? "text" : "password"}
+                          value={form.password}
+                          onChange={(event) => {
+                            setForm((value) => ({
+                              ...value,
+                              password: event.target.value,
+                            }));
+                            setError("");
+                          }}
+                          placeholder="Enter your password"
+                          autoComplete="current-password"
+                          required
+                          disabled={loading || isPinOverlayOpen}
+                          className="h-12 w-full bg-transparent pl-12 pr-12 text-[15px] text-slate-900 outline-none placeholder:text-slate-400 disabled:cursor-not-allowed disabled:text-slate-400"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword((value) => !value)}
+                          disabled={loading || isPinOverlayOpen}
+                          className="absolute right-4 top-1/2 -translate-y-1/2 text-[#98a1bd] transition hover:text-[#4b61ff] disabled:cursor-not-allowed disabled:opacity-50"
+                          aria-label={
+                            showPassword ? "Hide password" : "Show password"
+                          }
+                        >
+                          {showPassword ? (
+                            <HiOutlineEyeSlash className="h-5 w-5" />
+                          ) : (
+                            <HiOutlineEye className="h-5 w-5" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-3 text-[14px] text-[#5f6786] sm:flex-row sm:items-center sm:justify-between">
+                      <label className="inline-flex cursor-pointer items-center gap-3">
+                        <input
+                          type="checkbox"
+                          checked={rememberMe}
+                          onChange={(event) =>
+                            setRememberMe(event.target.checked)
+                          }
+                          disabled={loading || isPinOverlayOpen}
+                          className="h-4 w-4 rounded border-slate-300 accent-[#4560ff] disabled:cursor-not-allowed"
+                        />
+                        <span className="font-medium text-[#202845]">
+                          Remember me
+                        </span>
+                      </label>
+
+                      <button
+                        type="button"
+                        className="text-left font-medium text-[#3458ff] transition hover:text-[#253ee3]"
+                      >
+                        Forgot password?
+                      </button>
+                    </div>
+
+                    <button
+                      type="submit"
                       disabled={loading || isPinOverlayOpen}
-                      className={`${FIELD} pr-14`}
-                    />
+                      className={PRIMARY_BUTTON}
+                    >
+                      <span>
+                        {loading && !isPinOverlayOpen
+                          ? "Checking credentials..."
+                          : "Sign in"}
+                      </span>
+                      <HiOutlineArrowRight className="h-4 w-4" />
+                    </button>
+                  </form>
+
+                  <div className="mt-6 flex items-center gap-4">
+                    <div className="h-px flex-1 bg-[#e9edf5]" />
+                    <span className="text-[14px] text-[#8c94ae]">
+                      or continue with
+                    </span>
+                    <div className="h-px flex-1 bg-[#e9edf5]" />
+                  </div>
+
+                  <div className="mt-6 grid gap-3 sm:grid-cols-2">
                     <button
                       type="button"
-                      onClick={() => setShowPassword((value) => !value)}
-                      disabled={loading || isPinOverlayOpen}
-                      className="absolute right-0 top-1/2 -translate-y-1/2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 transition hover:text-slate-700 disabled:opacity-50"
+                      className="inline-flex h-12 items-center justify-center gap-3 rounded-2xl border border-[#dbe3ef] bg-white px-4 text-[15px] font-medium text-[#4b5677] transition hover:border-slate-300 hover:bg-slate-50"
                     >
-                      {showPassword ? "Hide" : "Show"}
+                      <FcGoogle className="h-5 w-5" />
+                      <span>Continue with Google</span>
                     </button>
+
+                    <button
+                      type="button"
+                      className="inline-flex h-12 items-center justify-center gap-3 rounded-2xl border border-[#dbe3ef] bg-white px-4 text-[15px] font-medium text-[#4b5677] transition hover:border-slate-300 hover:bg-slate-50"
+                    >
+                      <FaMicrosoft className="h-5 w-5 text-[#2563eb]" />
+                      <span>Continue with Microsoft</span>
+                    </button>
+                  </div>
+
+                  <p className="mt-6 text-center text-[14px] text-[#66708f]">
+                    Need help?{" "}
+                    <a
+                      href="#"
+                      className="font-semibold text-[#3458ff] transition hover:text-[#253ee3]"
+                    >
+                      Contact support
+                    </a>
+                  </p>
+                </div>
+              </div>
+
+              <p className="mt-4 text-center text-[14px] text-[#8a92ab]">
+                &copy; 2024{" "}
+                <span className="font-semibold text-[#3458ff]">Hooks</span>. All
+                rights reserved.
+              </p>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      {isPinOverlayOpen ? (
+        <div className="fixed inset-0 z-[120] overflow-y-auto bg-[linear-gradient(180deg,rgba(249,250,255,0.98)_0%,rgba(241,234,255,0.98)_100%)] p-3 sm:p-5 lg:p-8">
+          <form
+            onSubmit={submit}
+            className="relative mx-auto w-full max-w-[1500px] overflow-hidden rounded-xl border border-white/80 bg-[linear-gradient(135deg,rgba(255,255,255,0.96)_0%,rgba(246,243,255,0.96)_100%)] shadow-[0_32px_100px_rgba(115,114,195,0.16)]"
+          >
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_22%_18%,rgba(128,106,255,0.12)_0%,transparent_28%),radial-gradient(circle_at_82%_16%,rgba(155,122,255,0.14)_0%,transparent_24%),radial-gradient(circle_at_70%_88%,rgba(120,155,255,0.08)_0%,transparent_22%)]" />
+
+            <div className="relative flex justify-end px-4 pb-0 pt-4 sm:px-6 sm:pt-6 lg:px-8 lg:pt-8">
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/80 bg-white/80 px-4 py-2 text-sm font-semibold text-[#2e2a77] shadow-[0_10px_24px_rgba(107,111,182,0.1)] backdrop-blur-sm">
+                <HiOutlineShieldCheck className="h-5 w-5 text-[#6241ff]" />
+                <span>Secure Connection</span>
+              </div>
+            </div>
+
+            <div className="relative grid gap-6 px-4 pb-4 pt-4 sm:px-6 sm:pb-6 lg:grid-cols-[1.02fr_0.98fr] lg:gap-10 lg:px-8 lg:pb-8 lg:pt-2 xl:px-10 xl:pb-10">
+              <div className="hidden lg:flex lg:flex-col lg:justify-between lg:py-6">
+                <div>
+                  <PinAccessBrand />
+
+                  <div className="mt-16 text-center">
+                    <div className="inline-flex items-center gap-4">
+                      <h2 className="font-heading text-[4rem] font-semibold leading-[1.02] tracking-[-0.08em] text-[#0d1333]">
+                        {isPinSetupStep
+                          ? "Create Admin PIN"
+                          : "Admin Access Gate"}
+                      </h2>
+                      <div className="flex h-20 w-20 items-center justify-center rounded-xl bg-[linear-gradient(180deg,rgba(115,82,255,0.16)_0%,rgba(102,62,255,0.06)_100%)] text-[#5d31ff] shadow-[0_16px_35px_rgba(99,74,255,0.12)]">
+                        <HiOutlineShieldCheck className="h-11 w-11" />
+                      </div>
+                    </div>
+                    <p className="mt-6 text-[2rem] font-semibold tracking-[-0.04em] text-[#3f4678]">
+                      {isPinSetupStep
+                        ? "Create your 7-digit PIN to continue"
+                        : "Enter your 7-digit PIN to continue"}
+                    </p>
+                  </div>
+
+                  <div className="mt-16 grid grid-cols-3 gap-6">
+                    {pinAccessFeatures.map((item) => (
+                      <PinAccessFeatureCard key={item.title} {...item} />
+                    ))}
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between gap-3 text-sm text-slate-600">
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={rememberMe}
-                      onChange={(event) => setRememberMe(event.target.checked)}
-                      disabled={loading || isPinOverlayOpen}
-                    />
-                    <span>Remember me</span>
-                  </label>
-                  <button
-                    type="button"
-                    className="font-medium text-purple-600 transition hover:text-purple-700"
-                  >
-                    Forgot password?
-                  </button>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={loading || isPinOverlayOpen}
-                  className={PRIMARY}
-                >
-                  {loading && !isPinOverlayOpen
-                    ? "Checking credentials..."
-                    : "Login"}
-                </button>
-              </form>
-
-              <p className="mt-8 text-center text-xs leading-6 text-slate-500">
-                By signing in, you agree to our{" "}
-                <a href="#" className="font-medium text-blue-600">
-                  Terms of Service
-                </a>{" "}
-                and{" "}
-                <a href="#" className="font-medium text-blue-600">
-                  Privacy Policy
-                </a>
-                .
-              </p>
-            </div>
-          </div>
-
-          {isPinOverlayOpen ? (
-            <div className="fixed inset-0 z-[120] flex items-center justify-center bg-[rgba(5,17,55,0.82)] p-4 sm:p-6">
-              <form
-                onSubmit={submit}
-                className="w-full max-w-lg overflow-hidden border border-slate-200 bg-white shadow-[0_30px_90px_rgba(0,0,0,0.45)]"
-              >
-                <div className="relative border-b border-slate-200 bg-white px-6 py-8 text-center sm:px-8">
-                  <div className="pointer-events-none absolute left-0 top-0 h-1 w-full bg-[linear-gradient(90deg,#275DFF_0%,#57BCFF_100%)]" />
-                  <h3 className="text-[34px] font-bold tracking-[-0.03em] text-slate-950">
-                    {step === STEPS.pin
-                      ? "Secure PIN Verification"
-                      : "Create Security PIN"}
-                  </h3>
-                  <p className="mt-3 text-sm leading-7 text-slate-500">
-                    {step === STEPS.pin
-                      ? "Enter your 7-digit organization verification code."
-                      : "Create your 7-digit organization security code."}
-                  </p>
-                </div>
-
-                <div className="p-6 sm:p-8">
-                  {error ? (
-                    <div className="mb-4 border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-                      {error}
+                <div className="mt-16">
+                  <div className="flex items-center gap-4 text-[#7e73ce]">
+                    <div className="h-px flex-1 bg-[linear-gradient(90deg,rgba(134,126,201,0)_0%,rgba(134,126,201,0.5)_100%)]" />
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/80 shadow-[0_10px_24px_rgba(98,105,181,0.08)]">
+                      <HiOutlineShieldCheck className="h-6 w-6" />
                     </div>
-                  ) : null}
+                    <div className="h-px flex-1 bg-[linear-gradient(90deg,rgba(134,126,201,0.5)_0%,rgba(134,126,201,0)_100%)]" />
+                  </div>
 
-                  <div className="space-y-5">
+                  <div className="mt-8 flex items-center justify-center gap-8 text-[1.05rem] font-semibold text-[#2f3563]">
+                    {pinAccessBadges.map((item) => (
+                      <div
+                        key={item}
+                        className="inline-flex items-center gap-2"
+                      >
+                        <HiOutlineCheckBadge className="h-5 w-5 text-[#5d31ff]" />
+                        <span>{item}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="w-full rounded-xl border border-white/80 bg-white/92 px-5 py-6 shadow-[0_28px_70px_rgba(116,118,187,0.12)] backdrop-blur-sm sm:px-7 sm:py-8 lg:px-10 lg:py-10">
+                <div className="mx-auto max-w-[640px]">
+                  <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-xl bg-[linear-gradient(180deg,rgba(111,75,255,0.22)_0%,rgba(102,63,255,0.08)_100%)] text-[#5f33ff] shadow-[0_20px_40px_rgba(106,77,255,0.14)]">
+                    <HiOutlineLockClosed className="h-12 w-12" />
+                  </div>
+
+                  <h3 className="mt-8 text-center font-heading text-[2.5rem] font-semibold tracking-[-0.06em] text-[#0f1438] sm:text-[3rem]">
+                    {pinStepTitle}
+                  </h3>
+                  <p className="mt-4 text-center text-[1.2rem] leading-8 text-[#4d5688]">
+                    {pinStepSubtitle}
+                  </p>
+
+                  <div className="mt-8 space-y-4">
+                    {notice ? (
+                      <StatusMessage tone="info">{notice}</StatusMessage>
+                    ) : null}
+                    {error ? (
+                      <StatusMessage tone="error">{error}</StatusMessage>
+                    ) : null}
+                  </div>
+
+                  <div className="mt-8 space-y-5">
                     {step === STEPS.pin ? (
                       <PinBoxesField
-                        label=""
                         value={form.pin}
-                        onChange={(nextPin) => {
-                          setForm((value) => ({ ...value, pin: nextPin }));
-                          setError("");
-                        }}
+                        onChange={(nextPin) => updatePinField("pin", nextPin)}
                         disabled={loading}
                         autoFocus
+                        masked={!showPinValue}
+                        onActivate={() => setActivePinField("pin")}
                       />
                     ) : (
-                      <>
+                      <div className="space-y-5">
                         <PinBoxesField
                           label="New PIN"
                           value={form.newPin}
-                          onChange={(nextPin) => {
-                            setForm((value) => ({
-                              ...value,
-                              newPin: nextPin,
-                            }));
-                            setError("");
-                          }}
+                          onChange={(nextPin) =>
+                            updatePinField("newPin", nextPin)
+                          }
                           disabled={loading}
                           autoFocus
+                          masked={!showPinValue}
+                          isActive={activePinField === "newPin"}
+                          onActivate={() => setActivePinField("newPin")}
                         />
+
                         <PinBoxesField
                           label="Confirm PIN"
                           value={form.confirmPin}
-                          onChange={(nextPin) => {
-                            setForm((value) => ({
-                              ...value,
-                              confirmPin: nextPin,
-                            }));
-                            setError("");
-                          }}
+                          onChange={(nextPin) =>
+                            updatePinField("confirmPin", nextPin)
+                          }
                           disabled={loading}
+                          masked={!showPinValue}
+                          isActive={activePinField === "confirmPin"}
+                          onActivate={() => setActivePinField("confirmPin")}
                         />
-                      </>
+                      </div>
                     )}
                   </div>
 
-                  <p className="mt-5 text-center text-sm text-slate-500">
-                    Use the organization PIN shared with your admin team.
-                  </p>
+                  <div className="mt-6 grid grid-cols-3 gap-3 sm:gap-4">
+                    {pinPadLayout.flat().map((key, index) => {
+                      if (key === "empty") {
+                        return (
+                          <div
+                            key={`empty-${index}`}
+                            className="hidden sm:block"
+                          />
+                        );
+                      }
+
+                      if (key === "backspace") {
+                        return (
+                          <PinPadButton
+                            key={key}
+                            onClick={removePinDigit}
+                            disabled={loading}
+                            className="text-[#4b3bcb]"
+                          >
+                            <HiOutlineBackspace className="h-9 w-9" />
+                          </PinPadButton>
+                        );
+                      }
+
+                      return (
+                        <PinPadButton
+                          key={key}
+                          onClick={() => appendPinDigit(key)}
+                          disabled={loading}
+                        >
+                          {key}
+                        </PinPadButton>
+                      );
+                    })}
+                  </div>
+
+                  <div className="mt-7 flex flex-col gap-4 text-[1rem] text-[#4b5683] sm:flex-row sm:items-center sm:justify-between">
+                    <button
+                      type="button"
+                      onClick={() => setShowPinValue((value) => !value)}
+                      className="inline-flex items-center gap-2 font-medium transition hover:text-[#5d31ff]"
+                    >
+                      {showPinValue ? (
+                        <HiOutlineEyeSlash className="h-5 w-5" />
+                      ) : (
+                        <HiOutlineEye className="h-5 w-5" />
+                      )}
+                      <span>{showPinValue ? "Hide PIN" : "Show PIN"}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      className="font-semibold text-[#4f47bb] transition hover:text-[#5d31ff]"
+                    >
+                      Forgot PIN?
+                    </button>
+                  </div>
+
+                  <div className="mt-6 rounded-xl border border-[#ece6ff] bg-[linear-gradient(180deg,#ffffff_0%,#faf8ff_100%)] px-5 py-4 text-[15px] text-[#5d648d] shadow-[0_12px_24px_rgba(117,121,184,0.06)]">
+                    Signing in as{" "}
+                    <span className="font-semibold text-[#13193c]">
+                      {form.email || "your account"}
+                    </span>
+                    {isPinSetupStep ? (
+                      <span className="block pt-1 text-[13px] text-[#7a80a5]">
+                        Active field:{" "}
+                        {activePinField === "confirmPin"
+                          ? "Confirm PIN"
+                          : "New PIN"}
+                      </span>
+                    ) : null}
+                  </div>
 
                   <button
                     type="submit"
                     disabled={loading}
-                    className="mt-6 w-full border border-blue-700 bg-blue-600 py-4 text-sm font-semibold uppercase tracking-[0.14em] text-white transition hover:bg-blue-700 disabled:opacity-50"
+                    className={`mt-7 ${PIN_PRIMARY_BUTTON}`}
                   >
-                    {loading
-                      ? step === STEPS.pin
-                        ? "Verifying organization PIN..."
-                        : "Creating organization PIN..."
-                      : step === STEPS.pin
-                        ? "Verify Organization PIN"
-                        : "Create PIN and Sign In"}
+                    <HiOutlineLockClosed className="h-6 w-6" />
+                    <span>{pinStepButtonLabel}</span>
+                    <HiOutlineArrowRight className="h-5 w-5" />
                   </button>
                 </div>
-              </form>
+              </div>
             </div>
-          ) : null}
+          </form>
         </div>
-      </div>
+      ) : null}
     </div>
   );
 };

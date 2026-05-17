@@ -1,1248 +1,782 @@
-// components/Dashboard.js
-import React, { useEffect, useState, useCallback, useMemo } from "react";
-import CountUp from "react-countup";
+import React from "react";
 import Cookies from "js-cookie";
-import { hasBlogAccess } from "../utils/access";
+import { useNavigate } from "react-router-dom";
 import {
-  FaHome,
-  FaMobileAlt,
-  FaGlobe,
-  FaLaptop,
-  FaFolderOpen,
-  FaPlus,
-  FaListAlt,
-  FaEdit,
-  FaChartLine,
   FaArrowRight,
   FaArrowUp,
-  FaArrowDown,
-  FaShoppingBag,
-  FaUsers,
-  FaCog,
-  FaBell,
-  FaSearch,
-  FaDownload,
   FaCalendarAlt,
-  FaFilter,
-  FaChevronRight,
-  FaChevronUp,
-  FaTrophy,
-  FaStar,
+  FaChartLine,
   FaCheckCircle,
-  FaClock,
-  FaUserCircle,
-  FaQuestionCircle,
-  FaBolt, // Added FaBolt
-  FaExclamationCircle, // Already imported but confirming
-  FaMinus,
-  FaNewspaper,
+  FaChevronDown,
+  FaDollarSign,
+  FaEllipsisH,
+  FaEye,
+  FaFire,
+  FaImage,
+  FaInfoCircle,
+  FaListAlt,
+  FaPenNib,
+  FaPlus,
+  FaShoppingBag,
+  FaUpload,
+  FaUsers,
 } from "react-icons/fa";
-import { useNavigate } from "react-router-dom";
-import { buildUrl } from "../api";
 
-const Dashboard = () => {
-  const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
-  const [counts, setCounts] = useState({
-    mobiles: 0,
-    mobiles_published: 0,
-    laptops: 0,
-    laptops_published: 0,
-    appliances: 0,
-    appliances_published: 0,
-    networking: 0,
-    networking_published: 0,
-    categories: 0,
-    brands: 0,
-  });
-  const [recentItems, setRecentItems] = useState([]);
-  const [error, setError] = useState(null);
-  const [timeFilter, setTimeFilter] = useState("today");
+const DESKTOP_DATE_RANGE = "May 12 - May 18, 2024";
+const MOBILE_DATE_RANGE = "May 14, 2024 - May 20, 2024";
 
-  const [trendingType, setTrendingType] = useState("smartphone");
-  const [trendingSnapshot, setTrendingSnapshot] = useState({
-    updated_at: null,
-    results: [],
-  });
-  const [trendingLoading, setTrendingLoading] = useState(false);
-  const [trendingError, setTrendingError] = useState(null);
-  const currentRole = String(Cookies.get("role") || "").trim().toLowerCase();
+const DESKTOP_SUMMARY_CARDS = [
+  {
+    title: "Total Published Products",
+    value: "4,812",
+    delta: "12.5%",
+    icon: FaShoppingBag,
+    iconWrapClass: "bg-blue-50 text-blue-600",
+  },
+  {
+    title: "Upcoming Launches",
+    value: "157",
+    delta: "8.7%",
+    icon: FaCalendarAlt,
+    iconWrapClass: "bg-violet-50 text-violet-600",
+  },
+  {
+    title: "Trending Products",
+    value: "326",
+    delta: "15.3%",
+    icon: FaFire,
+    iconWrapClass: "bg-orange-50 text-orange-500",
+  },
+  {
+    title: "Compare Page Views",
+    value: "2.45M",
+    delta: "18.6%",
+    icon: FaEye,
+    iconWrapClass: "bg-blue-50 text-blue-600",
+  },
+  {
+    title: "Avg. Hook Score",
+    value: "78.6",
+    delta: "6.4%",
+    icon: FaChartLine,
+    iconWrapClass: "bg-indigo-50 text-indigo-600",
+  },
+  {
+    title: "SEO Health Score",
+    value: "88%",
+    delta: "9.2%",
+    icon: FaCheckCircle,
+    iconWrapClass: "bg-emerald-50 text-emerald-600",
+  },
+];
 
-  // Enhanced stats with more data
-  const stats = useMemo(
-    () => [
-      {
-        title: "Smartphones",
-        value: counts.mobiles.toLocaleString(),
-        valueNum: counts.mobiles,
-        subtitle: `${counts.mobiles_published} published`,
-        subtitleNum: counts.mobiles_published,
-        icon: FaMobileAlt,
-        color: "blue",
-        path: "/view-mobiles",
-        trend: "+12%",
-        trendDirection: "up",
-        percentage:
-          counts.mobiles > 0
-            ? Math.round((counts.mobiles_published / counts.mobiles) * 100)
-            : 0,
-      },
-      {
-        title: "Laptops",
-        value: counts.laptops.toLocaleString(),
-        valueNum: counts.laptops,
-        subtitle: `${counts.laptops_published} published`,
-        subtitleNum: counts.laptops_published,
-        icon: FaLaptop,
-        color: "purple",
-        path: "/laptop",
-        trend: "+8%",
-        trendDirection: "up",
-        percentage:
-          counts.laptops > 0
-            ? Math.round((counts.laptops_published / counts.laptops) * 100)
-            : 0,
-      },
-      {
-        title: "Appliances",
-        value: counts.appliances.toLocaleString(),
-        valueNum: counts.appliances,
-        subtitle: `${counts.appliances_published} published`,
-        subtitleNum: counts.appliances_published,
-        icon: FaGlobe,
-        color: "indigo",
-        path: "/home-appliance",
-        trend: "+15%",
-        trendDirection: "up",
-        percentage:
-          counts.appliances > 0
-            ? Math.round(
-                (counts.appliances_published / counts.appliances) * 100,
-              )
-            : 0,
-      },
-      {
-        title: "Networking",
-        value: counts.networking.toLocaleString(),
-        valueNum: counts.networking,
-        subtitle: `${counts.networking_published} published`,
-        subtitleNum: counts.networking_published,
-        icon: FaGlobe,
-        color: "violet",
-        path: "/network",
-        trend: "+5%",
-        trendDirection: "up",
-        percentage:
-          counts.networking > 0
-            ? Math.round(
-                (counts.networking_published / counts.networking) * 100,
-              )
-            : 0,
-      },
-      {
-        title: "Categories",
-        value: counts.categories.toLocaleString(),
-        valueNum: counts.categories,
-        icon: FaFolderOpen,
-        color: "purple",
-        path: "/category",
-        trend: "+3",
-        trendDirection: "neutral",
-      },
-      {
-        title: "Brands",
-        value: counts.brands.toLocaleString(),
-        valueNum: counts.brands,
-        icon: FaShoppingBag,
-        color: "blue",
-        path: "/brands",
-        trend: "+2",
-        trendDirection: "neutral",
-      },
-    ],
-    [counts],
-  );
+const PERFORMANCE_METRICS = [
+  { label: "Total Page Views", value: "8.62M", delta: "12.3%" },
+  { label: "Unique Visitors", value: "3.25M", delta: "18.7%" },
+  { label: "Search Impressions", value: "6.31M", delta: "16.2%" },
+  { label: "Affiliate Revenue", value: "$48,650", delta: "14.8%" },
+];
 
-  // Enhanced quick actions
-  const quickActions = useMemo(
-    () => [
-      {
-        icon: FaPlus,
-        label: "Add Mobile",
-        color: "blue",
-        path: "/products/smartphones/create",
-        description: "Create a new smartphone",
-      },
-      {
-        icon: FaListAlt,
-        label: "View All",
-        color: "indigo",
-        path: "/products",
-        description: "Browse all product inventory",
-      },
-      {
-        icon: FaMobileAlt,
-        label: "View Inventory",
-        color: "purple",
-        path: "/products/smartphones/inventory",
-        description: "Browse smartphones",
-      },
-      {
-        icon: FaEdit,
-        label: "Manage Categories",
-        color: "purple",
-        path: "/specifications/categories/create",
-        description: "Organize categories",
-      },
-      {
-        icon: FaUsers,
-        label: "Users",
-        color: "violet",
-        path: "/user-management",
-        description: "Manage users",
-      },
-      {
-        icon: FaChartLine,
-        label: "Reports",
-        color: "indigo",
-        path: "/reports/productpublishstatus",
-        description: "View reports",
-      },
-      ...(hasBlogAccess(currentRole)
-        ? [
-            {
-              icon: FaNewspaper,
-              label: "News Desk",
-              color: "gray",
-              path: "/content/news-articles",
-              description: "Manage articles",
-            },
-          ]
-        : []),
-    ],
-    [currentRole],
-  );
+const PERFORMANCE_LABELS = ["May 12", "May 13", "May 14", "May 15", "May 16", "May 17", "May 18"];
+const PAGE_VIEW_SERIES = [980, 1000, 1420, 1040, 1330, 1190, 1840];
+const VISITOR_SERIES = [560, 690, 840, 600, 860, 790, 1270];
 
-  // Time filters for activity
-  const timeFilters = [
-    { id: "today", label: "Today" },
-    { id: "week", label: "This Week" },
-    { id: "month", label: "This Month" },
-    { id: "all", label: "All Time" },
-  ];
+const TOP_SEARCH_DEVICES = [
+  {
+    id: "iphone-15-pro-max",
+    name: "iPhone 15 Pro Max",
+    subtitle: "135K searches",
+    pct: 12.4,
+    color: "from-amber-400 to-orange-500",
+  },
+  {
+    id: "galaxy-s24-ultra",
+    name: "Samsung Galaxy S24 Ultra",
+    subtitle: "109K searches",
+    pct: 9.8,
+    color: "from-orange-400 to-rose-500",
+  },
+  {
+    id: "oneplus-12",
+    name: "OnePlus 12",
+    subtitle: "87K searches",
+    pct: 7.6,
+    color: "from-red-400 to-pink-500",
+  },
+  {
+    id: "pixel-8",
+    name: "Google Pixel 8",
+    subtitle: "63K searches",
+    pct: 5.4,
+    color: "from-indigo-400 to-violet-500",
+  },
+  {
+    id: "nothing-2",
+    name: "Nothing Phone (2)",
+    subtitle: "48K searches",
+    pct: 4.1,
+    color: "from-slate-400 to-slate-500",
+  },
+];
 
-  const trendingTypeOptions = useMemo(
-    () => [
-      { value: "smartphone", label: "Smartphones" },
-      { value: "laptop", label: "Laptops" },
-      { value: "tv", label: "TVs" },
-      { value: "networking", label: "Networking" },
-      { value: "accessories", label: "Accessories" },
-    ],
-    [],
-  );
+const DESKTOP_QUICK_ACTIONS = [
+  { label: "Add New Product", icon: FaPlus, path: "/products/smartphones/create" },
+  { label: "Add Blog / Article", icon: FaPenNib, path: "/content/news-articles" },
+  { label: "Create Compare Page", icon: FaChartLine, path: "/settings/compare-pages" },
+  { label: "Upload Banner", icon: FaImage, path: "/marketing/banners" },
+  { label: "Import Products", icon: FaUpload, path: "/products/smartphones/inventory" },
+  { label: "View All Drafts", icon: FaListAlt, path: "/reports/productpublishstatus" },
+];
 
-  const fetchTrendingSnapshot = useCallback(async () => {
-    setTrendingLoading(true);
-    setTrendingError(null);
+const RECENT_ACTIVITY = [
+  { id: "a1", title: "iPhone 15 Pro Max published", subtitle: "by Mike Johnson", time: "2m ago", accent: "bg-violet-500" },
+  { id: "a2", title: "Samsung Galaxy S24 FE added", subtitle: "by Sarah Wilson", time: "15m ago", accent: "bg-blue-500" },
+  { id: "a3", title: "OnePlus 12 review published", subtitle: "by David Lee", time: "45m ago", accent: "bg-indigo-500" },
+  { id: "a4", title: "New compare page created", subtitle: "iPhone 15 vs Galaxy S24", time: "1h ago", accent: "bg-pink-500" },
+  { id: "a5", title: "SEO update for Pixel 8a", subtitle: "by Lisa Brown", time: "2h ago", accent: "bg-orange-500" },
+];
 
-    try {
-      const token = Cookies.get("authToken");
-      const headers = token
-        ? {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          }
-        : { "Content-Type": "application/json" };
+const TRENDING_WEEK = [
+  { id: "t1", name: "iPhone 15 Pro Max", score: 92, color: "from-amber-400 to-orange-500" },
+  { id: "t2", name: "Samsung Galaxy S24 Ultra", score: 90, color: "from-orange-400 to-rose-500" },
+  { id: "t3", name: "OnePlus 12", score: 88, color: "from-red-400 to-pink-500" },
+  { id: "t4", name: "Nothing Phone (2a)", score: 83, color: "from-indigo-400 to-violet-500" },
+  { id: "t5", name: "POCO X6 Pro 5G", score: 81, color: "from-sky-500 to-blue-500" },
+];
 
-      const qs = new URLSearchParams();
-      qs.set("type", trendingType);
-      qs.set("limit", "5");
+const FEATURE_CLICKS = [
+  { label: "Camera", value: 28.6 },
+  { label: "Performance", value: 23.4 },
+  { label: "Battery", value: 18.7 },
+  { label: "Display", value: 12.9 },
+  { label: "Price", value: 9.1 },
+  { label: "Design", value: 7.3 },
+];
 
-      const res = await fetch(buildUrl(`/api/admin/trending?${qs}`), {
-        method: "GET",
-        headers,
-      });
+const UPCOMING_LAUNCHES = [
+  { name: "Nothing Phone (3)", date: "Jul 01, 2024", left: "23 days left", accent: "from-slate-900 to-slate-700" },
+  { name: "Samsung Galaxy Z Fold 6", date: "Jul 10, 2024", left: "32 days left", accent: "from-slate-300 to-slate-500" },
+  { name: "Pixel 9 Pro", date: "Aug 01, 2024", left: "54 days left", accent: "from-zinc-900 to-zinc-700" },
+  { name: "iPhone 16 Series", date: "Sep 10, 2024", left: "94 days left", accent: "from-blue-900 to-indigo-700" },
+  { name: "OnePlus 13", date: "Oct 15, 2024", left: "129 days left", accent: "from-sky-700 to-blue-500" },
+];
 
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
+const MOBILE_OVERVIEW_CARDS = [
+  {
+    label: "Total Sales",
+    value: "$128,742",
+    delta: "18.6%",
+    compareLabel: "vs May 7 - May 13",
+    icon: FaDollarSign,
+    iconWrapClass: "bg-violet-50 text-violet-600",
+  },
+  {
+    label: "Orders",
+    value: "2,543",
+    delta: "14.2%",
+    compareLabel: "vs May 7 - May 13",
+    icon: FaShoppingBag,
+    iconWrapClass: "bg-emerald-50 text-emerald-600",
+  },
+  {
+    label: "Customers",
+    value: "1,789",
+    delta: "8.7%",
+    compareLabel: "vs May 7 - May 13",
+    icon: FaUsers,
+    iconWrapClass: "bg-indigo-50 text-indigo-600",
+  },
+  {
+    label: "Conversion Rate",
+    value: "3.24%",
+    delta: "7.4%",
+    compareLabel: "vs May 7 - May 13",
+    icon: FaChartLine,
+    iconWrapClass: "bg-amber-50 text-amber-500",
+  },
+];
 
-      setTrendingSnapshot({
-        updated_at: data.updated_at || null,
-        results: Array.isArray(data.results) ? data.results : [],
-      });
-    } catch (err) {
-      console.error("Dashboard trending fetch error:", err);
-      setTrendingError(err.message || "Failed to load trending snapshot");
-    } finally {
-      setTrendingLoading(false);
-    }
-  }, [trendingType]);
+const MOBILE_CHART_LABELS = ["May 14", "May 15", "May 16", "May 17", "May 18", "May 19", "May 20"];
+const MOBILE_CHART_SERIES = [42000, 56000, 43000, 57000, 48000, 61000, 52000];
 
-  // Get color classes with softer panel fills
-  const getColorClasses = useCallback((color) => {
-    const colors = {
-      blue: {
-        bg: "bg-blue-50 border border-blue-100",
-        lightBg: "bg-blue-100 border border-blue-200",
-        text: "text-blue-700",
-        border: "border-blue-200",
-        hover: "hover:bg-blue-50",
-        gradient: "from-blue-500 to-indigo-600",
-      },
-      purple: {
-        bg: "bg-purple-50 border border-purple-100",
-        lightBg: "bg-purple-100 border border-purple-200",
-        text: "text-purple-700",
-        border: "border-purple-200",
-        hover: "hover:bg-purple-50",
-        gradient: "from-purple-500 to-violet-600",
-      },
-      indigo: {
-        bg: "bg-indigo-50 border border-indigo-100",
-        lightBg: "bg-indigo-100 border border-indigo-200",
-        text: "text-indigo-700",
-        border: "border-indigo-200",
-        hover: "hover:bg-indigo-50",
-        gradient: "from-indigo-500 to-purple-600",
-      },
-      violet: {
-        bg: "bg-violet-50 border border-violet-100",
-        lightBg: "bg-violet-100 border border-violet-200",
-        text: "text-violet-700",
-        border: "border-violet-200",
-        hover: "hover:bg-violet-50",
-        gradient: "from-violet-500 to-purple-600",
-      },
-      gray: {
-        bg: "bg-slate-50 border border-slate-200",
-        lightBg: "bg-slate-100 border border-slate-200",
-        text: "text-slate-700",
-        border: "border-slate-200",
-        hover: "hover:bg-slate-50",
-        gradient: "from-slate-500 to-slate-600",
-      },
-    };
-    return colors[color] || colors.blue;
-  }, []);
+const getInitials = (name) =>
+  String(name || "")
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() || "")
+    .join("");
 
-  // Get activity icon and color
-  const getActivityConfig = useCallback((type, action) => {
-    const configs = {
-      mobile: { icon: FaMobileAlt, color: "text-blue-500" },
-      laptop: { icon: FaLaptop, color: "text-purple-500" },
-      appliance: { icon: FaGlobe, color: "text-indigo-500" },
-      networking: { icon: FaGlobe, color: "text-violet-500" },
-      default: { icon: FaFolderOpen, color: "text-gray-500" },
-    };
+const buildLinePath = (values, width, height, padding) => {
+  if (!Array.isArray(values) || values.length === 0) return "";
 
-    const config = configs[type] || configs.default;
-    const bgColor =
-      action === "created"
-        ? "bg-blue-50 border border-blue-100"
-        : "bg-slate-50 border border-slate-200";
-    const textColor = action === "created" ? "text-blue-700" : "text-slate-700";
+  const maxValue = Math.max(...values, 1);
+  const minValue = Math.min(...values, 0);
+  const usableWidth = width - padding * 2;
+  const usableHeight = height - padding * 2;
 
-    return { ...config, bgColor, textColor };
-  }, []);
+  return values
+    .map((value, index) => {
+      const x =
+        padding +
+        (values.length === 1 ? usableWidth / 2 : (usableWidth / (values.length - 1)) * index);
+      const normalized = (value - minValue) / (maxValue - minValue || 1);
+      const y = height - padding - normalized * usableHeight;
+      return `${index === 0 ? "M" : "L"} ${x.toFixed(2)} ${y.toFixed(2)}`;
+    })
+    .join(" ");
+};
 
-  // Handle navigation
-  const handleActionClick = useCallback(
-    (path) => {
-      navigate(path);
-    },
-    [navigate],
-  );
+const deltaLabel = (value) => `${"\u2191"} ${value}`;
 
-  const handleStatClick = useCallback(
-    (path) => {
-      if (path) navigate(path);
-    },
-    [navigate],
-  );
+const SectionCard = ({ className = "", children }) => (
+  <div
+    className={`rounded-xl border border-slate-200 bg-white p-4 shadow-[0_16px_40px_rgba(15,23,42,0.04)] sm:p-5 ${className}`}
+  >
+    {children}
+  </div>
+);
 
-  // Fetch data
-  useEffect(() => {
-    let mounted = true;
-    const token = Cookies.get("authToken");
+const SummaryCard = ({ icon: Icon, iconWrapClass, title, value, delta }) => (
+  <div className="rounded-xl border border-slate-200 bg-white px-4 py-4 shadow-[0_12px_30px_rgba(15,23,42,0.04)]">
+    <div className="flex items-start gap-3">
+      <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${iconWrapClass}`}>
+        <Icon className="text-lg" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-xs font-medium text-slate-500">{title}</p>
+        <p className="mt-1 text-[1.7rem] font-bold tracking-tight text-slate-950">{value}</p>
+        <p className="mt-1 text-xs text-slate-500">
+          <span className="font-semibold text-emerald-600">{deltaLabel(delta)}</span> vs last 7 days
+        </p>
+      </div>
+    </div>
+  </div>
+);
 
-    const headers = token
-      ? { "Content-Type": "application/json", Authorization: `Bearer ${token}` }
-      : { "Content-Type": "application/json" };
+const MobileStatCard = ({ icon: Icon, iconWrapClass, label, value, delta, compareLabel }) => (
+  <div className="rounded-xl border border-slate-200 bg-white px-4 py-4 shadow-[0_14px_30px_rgba(15,23,42,0.05)]">
+    <div className="flex items-start gap-3">
+      <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${iconWrapClass}`}>
+        <Icon className="text-base" />
+      </div>
+      <div className="min-w-0">
+        <p className="text-[11px] font-medium text-slate-500">{label}</p>
+        <p className="mt-1 text-[1.75rem] font-bold leading-none tracking-tight text-slate-950">{value}</p>
+        <p className="mt-1 text-[11px] text-slate-500">
+          <span className="font-semibold text-emerald-600">{deltaLabel(delta)}</span> {compareLabel}
+        </p>
+      </div>
+    </div>
+  </div>
+);
 
-    const fetchAll = async () => {
-      setLoading(true);
-      try {
-        const [
-          catsRes,
-          brandsRes,
-          mobilesRes,
-          laptopsRes,
-          appliancesRes,
-          networkingRes,
-        ] = await Promise.all([
-          fetch(buildUrl("/api/categories"), { headers }),
-          fetch(buildUrl("/api/brands"), { headers }),
-          fetch(buildUrl("/api/smartphone"), { headers }),
-          fetch(buildUrl("/api/laptop"), { headers }),
-          fetch(buildUrl("/api/tv"), { headers }),
-          fetch(buildUrl("/api/networking"), { headers }),
-        ]);
-
-        const [
-          catsData,
-          brandsData,
-          mobilesData,
-          laptopsData,
-          appliancesData,
-          networkingData,
-        ] = await Promise.all([
-          catsRes.ok ? catsRes.json() : { data: [] },
-          brandsRes.ok ? brandsRes.json() : { brands: [] },
-          mobilesRes.ok ? mobilesRes.json() : { smartphones: [] },
-          laptopsRes.ok ? laptopsRes.json() : { laptops: [] },
-          appliancesRes.ok ? appliancesRes.json() : { tvs: [] },
-          networkingRes.ok ? networkingRes.json() : { networking: [] },
-        ]);
-
-        if (!mounted) return;
-
-        const mobiles = mobilesData.smartphones || [];
-        const laptops = laptopsData.laptops || [];
-        const appliances = appliancesData.tvs || [];
-        const networking = networkingData.networking || [];
-
-        setCounts({
-          mobiles: mobiles.length,
-          mobiles_published: mobiles.filter((m) => m.is_published).length || 0,
-          laptops: laptops.length,
-          laptops_published: laptops.filter((l) => l.is_published).length || 0,
-          appliances: appliances.length,
-          appliances_published:
-            appliances.filter((a) => a.is_published).length || 0,
-          networking: networking.length,
-          networking_published:
-            networking.filter((n) => n.is_published).length || 0,
-          categories: (catsData.data || []).length,
-          brands: (brandsData.brands || []).length,
-        });
-
-        // Build recent items
-        const combined = [];
-        mobiles.forEach((m) =>
-          combined.push({
-            type: "mobile",
-            name: m.name,
-            created_at: m.created_at,
-            updated_at: m.updated_at,
-            action: "created",
-            typeLabel: "Smartphone",
-            status: m.is_published ? "Published" : "Draft",
-          }),
-        );
-        laptops.forEach((l) =>
-          combined.push({
-            type: "laptop",
-            name: l.name,
-            created_at: l.created_at,
-            updated_at: l.updated_at,
-            action: "created",
-            typeLabel: "Laptop",
-            status: l.is_published ? "Published" : "Draft",
-          }),
-        );
-        appliances.forEach((a) =>
-          combined.push({
-            type: "appliance",
-            name: a.name,
-            created_at: a.created_at,
-            updated_at: a.updated_at,
-            action: "created",
-            typeLabel: "Appliance",
-            status: a.is_published ? "Published" : "Draft",
-          }),
-        );
-
-        combined.sort(
-          (a, b) => new Date(b.created_at) - new Date(a.created_at),
-        );
-        setRecentItems(combined.slice(0, 8));
-      } catch (err) {
-        console.error("Dashboard fetch error:", err);
-        setError(err.message || "Failed to load dashboard data");
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    };
-
-    fetchAll();
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    fetchTrendingSnapshot();
-  }, [fetchTrendingSnapshot]);
-
-  // Format date to relative time
-  const formatRelativeTime = (dateString) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now - date;
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-
-    if (diffMins < 1) return "Just now";
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
-    return date.toLocaleDateString();
-  };
-
-  const formatDateTime = (value) => {
-    if (!value) return "-";
-    const d = new Date(value);
-    if (Number.isNaN(d.getTime())) return String(value);
-
-    return new Intl.DateTimeFormat(undefined, {
-      year: "numeric",
-      month: "short",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      timeZoneName: "short",
-    }).format(d);
-  };
+const DesktopPerformanceChart = () => {
+  const width = 760;
+  const height = 250;
+  const padding = 24;
+  const pagePath = buildLinePath(PAGE_VIEW_SERIES, width, height, padding);
+  const visitorPath = buildLinePath(VISITOR_SERIES, width, height, padding);
+  const yLabels = ["0", "500K", "1M", "1.5M", "2M"];
 
   return (
-    <div className="relative isolate space-y-6 rounded-[32px] bg-[linear-gradient(180deg,_#f8fafc_0%,_#eef2ff_46%,_#ffffff_100%)] p-4 sm:p-6 lg:p-8">
-      {/* Header Section */}
-      <div className="mb-6 rounded-[28px] border border-slate-200/80 bg-white/95 p-4 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm sm:mb-8 sm:p-6">
-        <div className="mb-6 flex flex-col justify-between gap-4 sm:gap-6 lg:flex-row lg:items-center sm:mb-8">
-          <div>
-            <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3 sm:mb-2">
-              <div className="flex w-fit items-center justify-center rounded-2xl border border-slate-200 bg-blue-50 p-2">
-                <FaHome className="text-xl text-blue-600 sm:text-2xl" />
-              </div>
-              <div>
-                <h1 className="text-xl font-bold text-slate-900 sm:text-2xl md:text-3xl">
-                  Dashboard
-                </h1>
-                <p className="mt-1 text-sm text-slate-600 sm:text-base">
-                  Welcome back! Here's your inventory overview
-                </p>
-              </div>
-            </div>
-            <div className="mt-3 flex items-center sm:mt-4">
-              <div
-                onClick={() => navigate("/dashboard")}
-                className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-600 transition-colors hover:border-slate-300 hover:bg-white hover:text-slate-900 sm:text-sm"
-                role="button"
-                tabIndex={0}
-              >
-                <FaUserCircle className="text-slate-400" />
-                <span>Admin Dashboard</span>
-              </div>
-            </div>
-          </div>
-
-          {/* header actions placeholder */}
-          <div className="flex items-center gap-3" />
-        </div>
-
-        {/* Stats Summary Bar */}
-        <div className="mb-6 grid grid-cols-2 gap-2 sm:grid-cols-2 sm:gap-3 md:gap-4">
-          <div className="rounded-2xl border border-slate-200 bg-white p-3 sm:p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-slate-600 sm:text-sm">
-                  Total Products
-                </p>
-                <p className="mt-1 text-lg font-bold text-slate-900 sm:text-xl md:text-2xl">
-                  <CountUp
-                    end={
-                      counts.mobiles +
-                      counts.laptops +
-                      counts.appliances +
-                      counts.networking
-                    }
-                    duration={1.5}
-                  />
-                </p>
-              </div>
-              <FaShoppingBag className="flex-shrink-0 text-lg text-blue-500 sm:text-xl" />
-            </div>
-          </div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-3 sm:p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-slate-600 sm:text-sm">Published</p>
-                <p className="mt-1 text-lg font-bold text-purple-600 sm:text-xl md:text-2xl">
-                  <CountUp
-                    end={
-                      counts.mobiles_published +
-                      counts.laptops_published +
-                      counts.appliances_published +
-                      counts.networking_published
-                    }
-                    duration={1.5}
-                  />
-                </p>
-              </div>
-              <FaCheckCircle className="flex-shrink-0 text-lg text-purple-500 sm:text-xl" />
-            </div>
-          </div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-3 sm:p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-slate-600 sm:text-sm">Publish Rate</p>
-                <p className="mt-1 text-lg font-bold text-purple-600 sm:text-xl md:text-2xl">
-                  <CountUp
-                    end={
-                      counts.mobiles +
-                        counts.laptops +
-                        counts.appliances +
-                        counts.networking >
-                      0
-                        ? Math.round(
-                            ((counts.mobiles_published +
-                              counts.laptops_published +
-                              counts.appliances_published +
-                              counts.networking_published) /
-                              (counts.mobiles +
-                                counts.laptops +
-                                counts.appliances +
-                                counts.networking)) *
-                              100,
-                          )
-                        : 0
-                    }
-                    duration={1.5}
-                    suffix="%"
-                  />
-                </p>
-              </div>
-              <FaChartLine className="flex-shrink-0 text-lg text-purple-500 sm:text-xl" />
-            </div>
-          </div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-3 sm:p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-slate-600 sm:text-sm">Categories</p>
-                <p className="mt-1 text-lg font-bold text-indigo-600 sm:text-xl md:text-2xl">
-                  <CountUp end={counts.categories} duration={1.5} />
-                </p>
-              </div>
-              <FaFolderOpen className="flex-shrink-0 text-lg text-indigo-500 sm:text-xl" />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-        {/* Left Column - Detailed Stats */}
-        <div className="lg:col-span-2">
-          {/* Stats Grid */}
-          <div className="mb-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4">
-              <h2 className="text-lg sm:text-xl font-bold text-gray-900">
-                Product Overview
-              </h2>
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-xs sm:text-sm">
-                <span className="text-gray-600">Sorted by:</span>
-                <select className="text-xs sm:text-sm border border-gray-200 rounded-md px-2 sm:px-3 py-1.5 bg-white">
-                  <option>Most Products</option>
-                  <option>Highest Publish Rate</option>
-                  <option>Recently Added</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-              {stats.map((stat, index) => {
-                const IconComponent = stat.icon;
-                const colors = getColorClasses(stat.color);
-                return (
-                  <div
-                    key={index}
-                    onClick={() => handleStatClick(stat.path)}
-                    className={`
-                      rounded-2xl border border-slate-200 bg-white p-3 sm:p-4 
-                      cursor-pointer group transition-colors
-                      hover:border-slate-300 hover:bg-slate-50/60
-                    `}
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <div className={`p-2 rounded-lg ${colors.bg}`}>
-                        <IconComponent
-                          className={`text-lg sm:text-xl ${colors.text}`}
-                        />
-                      </div>
-                      <div className="flex items-center space-x-1">
-                        {stat.trendDirection === "up" && (
-                          <FaArrowUp className="text-emerald-500 text-xs sm:text-sm" />
-                        )}
-                        <span
-                          className={`text-xs font-semibold ${
-                            stat.trendDirection === "up"
-                              ? "text-emerald-600"
-                              : "text-gray-600"
-                          }`}
-                        >
-                          {stat.trend}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="mb-3">
-                      <h3 className="text-xl sm:text-2xl font-bold text-gray-900">
-                        {typeof stat.valueNum === "number" ? (
-                          <CountUp end={stat.valueNum} duration={1.2} />
-                        ) : (
-                          stat.value
-                        )}
-                      </h3>
-                      <p className="text-xs sm:text-sm text-gray-600 font-medium">
-                        {stat.title}
-                      </p>
-                    </div>
-
-                    {stat.percentage !== undefined && (
-                      <div className="mb-3">
-                        <div className="flex justify-between text-xs sm:text-sm mb-1">
-                          <span className="text-gray-600">Publish Rate</span>
-                          <span className="font-semibold">
-                            {stat.percentage}%
-                          </span>
-                        </div>
-                        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                          <div
-                            className={`h-full bg-gradient-to-r ${colors.gradient} rounded-full`}
-                            style={{ width: `${stat.percentage}%` }}
-                          />
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="flex items-center justify-between border-t border-slate-200 pt-3">
-                      <span className="text-xs text-slate-600 sm:text-sm">
-                        {stat.subtitle}
-                      </span>
-                      {stat.path && (
-                        <FaChevronRight
-                          className={`${colors.text} opacity-0 group-hover:opacity-100 transition-opacity text-xs sm:text-sm`}
-                        />
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Recent Activity with Filters */}
-          <div className="rounded-lg bg-white p-4 sm:p-6">
-            <div className="mb-4 flex flex-col justify-between gap-3 sm:gap-4 sm:mb-6 sm:flex-row sm:items-center">
-              <div>
-                <h2 className="mb-1 text-lg font-bold text-slate-900 sm:text-xl">
-                  Recent Activity
-                </h2>
-                <p className="text-xs text-slate-600 sm:text-sm">
-                  Latest updates across your inventory
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2 overflow-x-auto">
-                <div className="flex whitespace-nowrap rounded-full border border-slate-200 bg-slate-50 p-1">
-                  {timeFilters.map((filter) => (
-                    <button
-                      key={filter.id}
-                      onClick={() => setTimeFilter(filter.id)}
-                      className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm rounded-md transition-all ${
-                        timeFilter === filter.id
-                          ? "border border-slate-200 bg-white text-slate-900"
-                          : "text-slate-600 hover:text-slate-900"
-                      }`}
-                    >
-                      {filter.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-3 sm:space-y-4">
-              {recentItems.map((item, index) => {
-                const config = getActivityConfig(item.type, item.action);
-                const IconComponent = config.icon;
-                const time = item.updated_at || item.created_at;
-
-                return (
-                  <div
-                    key={index}
-                    className="group flex items-start gap-3 rounded-xl border border-slate-200 bg-white p-3 transition-colors hover:border-slate-300 hover:bg-slate-50 sm:gap-4 sm:p-3"
-                  >
-                    <div
-                      className={`flex-shrink-0 rounded-lg p-2 ${config.bgColor}`}
-                    >
-                      <IconComponent
-                        className={`text-sm sm:text-lg ${config.color}`}
-                      />
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2 mb-1">
-                        <p className="truncate text-sm font-medium text-slate-900 sm:text-base">
-                          {item.name}
-                        </p>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span
-                            className={`px-2 py-0.5 text-xs rounded-full whitespace-nowrap ${
-                              item.status === "Published"
-                                ? "border border-emerald-100 bg-emerald-50 text-emerald-700"
-                                : "border border-amber-100 bg-amber-50 text-amber-700"
-                            }`}
-                          >
-                            {item.status}
-                          </span>
-                          <span className="whitespace-nowrap text-xs text-slate-500">
-                            {formatRelativeTime(time)}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="flex flex-col gap-2 text-xs text-slate-600 sm:flex-row sm:items-center sm:gap-3 sm:text-sm">
-                        <span className={config.textColor}>
-                          {item.action === "created" ? "Added" : "Updated"}{" "}
-                          {item.typeLabel}
-                        </span>
-                        <span className="hidden text-slate-300 sm:inline">
-                          •
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <FaClock className="text-xs flex-shrink-0" />
-                          {new Date(time).toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </span>
-                      </div>
-                    </div>
-
-                    <FaChevronRight className="text-slate-300 transition-colors group-hover:text-slate-500 text-xs sm:text-sm" />
-                  </div>
-                );
-              })}
-            </div>
-
-            {recentItems.length === 0 && (
-              <div className="text-center py-6 sm:py-8">
-                <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full border border-dashed border-slate-200 bg-slate-50 sm:mb-3 sm:h-16 sm:w-16">
-                  <FaClock className="text-lg text-slate-400 sm:text-2xl" />
-                </div>
-                <p className="text-sm font-medium text-slate-700 sm:text-base">
-                  No recent activity
-                </p>
-                <p className="mt-1 text-xs text-slate-500 sm:text-sm">
-                  Activity will appear here as you add products
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Right Column - Quick Actions & Insights */}
-        <div className="space-y-4 sm:space-y-6">
-          {/* Trending Snapshot */}
-          <div className="rounded-lg bg-white p-4 sm:p-6">
-            <div className="mb-4 flex flex-col justify-between gap-4 md:flex-row md:items-center">
-              <div className="min-w-0">
-                <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900 sm:text-xl">
-                  <FaChartLine className="text-blue-600" />
-                  Trending Snapshot
-                </h2>
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <span className="inline-flex items-center rounded-full border border-blue-100 bg-blue-50 px-2 py-1 text-[11px] font-semibold text-blue-700">
-                    7d momentum
-                  </span>
-                  <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-semibold text-slate-700">
-                    Top 5
-                  </span>
-                  {trendingSnapshot.updated_at && (
-                    <span
-                      className="text-[11px] text-slate-500"
-                      title={`Updated at ${formatDateTime(trendingSnapshot.updated_at)}`}
-                    >
-                      Updated {formatRelativeTime(trendingSnapshot.updated_at)}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex w-full items-center gap-2 md:w-auto">
-                <select
-                  value={trendingType}
-                  onChange={(e) => setTrendingType(e.target.value)}
-                  className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 focus:border-blue-300 focus:outline-none focus:ring-4 focus:ring-blue-100 md:flex-none sm:text-sm"
-                  aria-label="Trending type"
-                >
-                  {trendingTypeOptions.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  onClick={fetchTrendingSnapshot}
-                  className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 transition-colors hover:bg-white disabled:opacity-60 sm:text-sm"
-                  disabled={trendingLoading}
-                  title="Refresh trending snapshot"
-                >
-                  {trendingLoading ? "Loading..." : "Refresh"}
-                </button>
-              </div>
-            </div>
-
-            {trendingError && (
-              <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-                {trendingError}
-              </div>
-            )}
-
-            {trendingLoading && trendingSnapshot.results.length === 0 ? (
-              <div className="py-6 text-center text-sm text-slate-600">
-                Loading trending...
-              </div>
-            ) : trendingSnapshot.results.length === 0 ? (
-              <div className="text-sm text-slate-600">
-                <p>No trending data yet.</p>
-                <button
-                  onClick={() => navigate("/reports/trending")}
-                  className="mt-3 inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-white px-3 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-50"
-                >
-                  Open Trending Manager <FaArrowRight />
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {(() => {
-                  const maxScore = Math.max(
-                    ...trendingSnapshot.results.map((r) =>
-                      Number.isFinite(Number(r.trending_score))
-                        ? Number(r.trending_score)
-                        : 0,
-                    ),
-                    0,
-                  );
-
-                  return trendingSnapshot.results.map((r) => {
-                    const current = Number(r.views_7d ?? 0);
-                    const prev = Number(r.views_prev_7d ?? 0);
-                    const delta = current - prev;
-
-                    const trendPill =
-                      delta > 0
-                        ? "bg-green-50 text-green-700 border-green-200"
-                        : delta < 0
-                          ? "bg-red-50 text-red-700 border-red-200"
-                          : "bg-gray-50 text-gray-600 border-gray-200";
-
-                    const score = Number(r.trending_score ?? 0);
-                    const pct =
-                      maxScore > 0 && Number.isFinite(score)
-                        ? Math.min(100, Math.max(0, (score / maxScore) * 100))
-                        : 0;
-
-                    return (
-                      <div
-                        key={r.product_id}
-                        className="rounded-xl border border-slate-200 bg-white p-3 transition-colors hover:border-slate-300 hover:bg-slate-50"
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="font-semibold text-gray-900 truncate">
-                              {r.name}
-                            </p>
-                            <div className="mt-0.5 flex items-center gap-2 min-w-0">
-                              <p className="truncate text-xs text-slate-600">
-                                {r.brand || "Unknown brand"}
-                              </p>
-                              {r.manual_boost && (
-                                <span className="inline-flex items-center whitespace-nowrap rounded-full border border-orange-100 bg-orange-50 px-2 py-0.5 text-[11px] font-semibold text-orange-700">
-                                  Manual
-                                </span>
-                              )}
-                            </div>
-
-                            <div className="mt-3 grid grid-cols-2 gap-2">
-                              <div className="flex items-center justify-between rounded-lg border border-blue-100 bg-blue-50 px-2 py-1.5">
-                                <span className="text-[10px] font-semibold uppercase tracking-wide text-blue-700">
-                                  UV7d
-                                </span>
-                                <span className="text-xs font-bold text-blue-900">
-                                  {Number(r.views_7d ?? 0).toLocaleString()}
-                                </span>
-                              </div>
-                              <div className="flex items-center justify-between rounded-lg border border-purple-100 bg-purple-50 px-2 py-1.5">
-                                <span className="text-[10px] font-semibold uppercase tracking-wide text-purple-700">
-                                  Cmp7d
-                                </span>
-                                <span className="text-xs font-bold text-purple-900">
-                                  {Number(r.compares_7d ?? 0).toLocaleString()}
-                                </span>
-                              </div>
-                              <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5">
-                                <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-700">
-                                  Total UV
-                                </span>
-                                <span className="text-xs font-bold text-slate-900">
-                                  {Number(
-                                    r.unique_visitors_total ?? 0,
-                                  ).toLocaleString()}
-                                </span>
-                              </div>
-                              <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5">
-                                <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-700">
-                                  Total Cmp
-                                </span>
-                                <span className="text-xs font-bold text-slate-900">
-                                  {Number(
-                                    r.compares_total ?? 0,
-                                  ).toLocaleString()}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-
-                          <span
-                            className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] font-semibold whitespace-nowrap ${trendPill}`}
-                            title="Change vs previous 7 days"
-                          >
-                            {delta > 0 ? (
-                              <FaArrowUp />
-                            ) : delta < 0 ? (
-                              <FaArrowDown />
-                            ) : (
-                              <FaMinus />
-                            )}
-                            {delta > 0 ? `+${delta}` : `${delta}`}
-                          </span>
-                        </div>
-
-                        <div className="mt-3">
-                          <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
-                            <div
-                              className="h-full bg-gradient-to-r from-blue-500 to-purple-600 rounded-full"
-                              style={{ width: `${pct}%` }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  });
-                })()}
-
-                <button
-                  onClick={() => navigate("/reports/trending")}
-                  className="mt-1 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                >
-                  Manage Trending <FaArrowRight />
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Quick Actions */}
-          <div className="rounded-lg bg-white p-4 sm:p-6">
-            <div className="mb-4 flex items-center justify-between sm:mb-6">
-              <div>
-                <h2 className="text-lg font-bold text-slate-900 sm:text-xl">
-                  Quick Actions
-                </h2>
-                <p className="mt-1 text-xs text-slate-600 sm:text-sm">
-                  Frequently used actions
-                </p>
-              </div>
-              <div className="flex-shrink-0 rounded-2xl border border-slate-200 bg-slate-50 p-2">
-                <FaBolt className="text-lg text-blue-500 sm:text-xl" />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2 sm:gap-3">
-              {quickActions.map((action, index) => {
-                const IconComponent = action.icon;
-                const colors = getColorClasses(action.color);
-                return (
-                  <button
-                    key={index}
-                    onClick={() => handleActionClick(action.path)}
-                    className={`
-                      group flex min-h-[110px] flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white p-3 text-center transition-colors hover:border-slate-300 hover:bg-slate-50/60 sm:min-h-[120px]
-                    `}
-                  >
-                    <div
-                      className={`mb-2 rounded-2xl p-2 sm:mb-3 ${colors.lightBg}`}
-                    >
-                      <IconComponent
-                        className={`text-lg sm:text-xl ${colors.text}`}
-                      />
-                    </div>
-                    <span
-                      className={`font-semibold text-xs sm:text-sm ${colors.text} mb-1`}
-                    >
-                      {action.label}
-                    </span>
-                    <p className="line-clamp-2 text-xs text-slate-600">
-                      {action.description}
-                    </p>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Performance Insights */}
-          <div className="rounded-lg bg-white p-4 sm:p-6">
-            <h3 className="mb-4 text-base font-bold text-slate-900 sm:text-lg">
-              Performance Insights
-            </h3>
-            <div className="space-y-3 sm:space-y-4">
-              <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-2 sm:p-3">
-                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                  <div className="flex-shrink-0 rounded-lg border border-blue-100 bg-blue-50 p-2">
-                    <FaTrophy className="text-blue-600 text-sm sm:text-base" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-medium text-slate-900 sm:text-sm">
-                      Top Category
-                    </p>
-                    <p className="text-xs text-slate-600">Smartphones</p>
-                  </div>
-                </div>
-                <span className="ml-2 flex-shrink-0 text-lg font-bold text-blue-600 sm:text-2xl">
-                  {counts.mobiles}
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-2 sm:p-3">
-                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                  <div className="flex-shrink-0 rounded-lg border border-emerald-100 bg-emerald-50 p-2">
-                    <FaStar className="text-emerald-600 text-sm sm:text-base" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-medium text-slate-900 sm:text-sm">
-                      Publish Rate
-                    </p>
-                    <p className="text-xs text-slate-600">Overall success</p>
-                  </div>
-                </div>
-                <span className="ml-2 flex-shrink-0 text-lg font-bold text-emerald-600 sm:text-2xl">
-                  <CountUp
-                    end={
-                      counts.mobiles +
-                        counts.laptops +
-                        counts.appliances +
-                        counts.networking >
-                      0
-                        ? Math.round(
-                            ((counts.mobiles_published +
-                              counts.laptops_published +
-                              counts.appliances_published +
-                              counts.networking_published) /
-                              (counts.mobiles +
-                                counts.laptops +
-                                counts.appliances +
-                                counts.networking)) *
-                              100,
-                          )
-                        : 0
-                    }
-                    duration={1.5}
-                    suffix="%"
-                  />
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-2 sm:p-3">
-                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                  <div className="flex-shrink-0 rounded-lg border border-purple-100 bg-purple-50 p-2">
-                    <FaChartLine className="text-purple-600 text-sm sm:text-base" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-medium text-slate-900 sm:text-sm">
-                      Growth
-                    </p>
-                    <p className="text-xs text-slate-600">This month</p>
-                  </div>
-                </div>
-                <span className="ml-2 flex-shrink-0 text-lg font-bold text-purple-600 sm:text-2xl">
-                  +24%
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Mobile FAB */}
-      <div className="lg:hidden fixed bottom-4 sm:bottom-6 right-4 sm:right-6 z-10">
+    <div className="mt-4 rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
+      <div className="mb-3 flex flex-wrap items-center gap-4 text-xs text-slate-500">
+        <span className="inline-flex items-center gap-2">
+          <span className="h-2.5 w-2.5 rounded-full bg-[#345CFF]" />
+          Page Views
+        </span>
+        <span className="inline-flex items-center gap-2">
+          <span className="h-2.5 w-2.5 rounded-full bg-[#9A46FF]" />
+          Unique Visitors
+        </span>
         <button
-          onClick={() => navigate("/products/smartphones/create")}
-          className="flex h-14 w-14 items-center justify-center rounded-full border border-slate-200 bg-white text-blue-600 transition-colors active:scale-95 sm:h-16 sm:w-16 hover:border-blue-200 hover:bg-blue-50"
-          aria-label="Quick add product"
+          type="button"
+          className="ml-auto inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600"
         >
-          <FaPlus className="text-lg sm:text-2xl" />
+          This Week <FaChevronDown className="text-[10px]" />
         </button>
       </div>
 
-      {/* Loading State */}
-      {loading && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/90 backdrop-blur-sm">
-          <div className="text-center px-4">
-            <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-4 border-slate-200 border-t-blue-500 sm:h-16 sm:w-16"></div>
-            <p className="text-sm font-medium text-slate-700 sm:text-base">
-              Loading dashboard...
-            </p>
-            <p className="mt-1 text-xs text-slate-500 sm:text-sm">
-              Fetching the latest data
-            </p>
-          </div>
-        </div>
-      )}
+      <div className="overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:h-0">
+        <div className="min-w-[620px]">
+          <svg viewBox={`0 0 ${width} ${height + 34}`} className="h-[250px] w-full">
+            {[0, 1, 2, 3, 4].map((row) => {
+              const y = padding + ((height - padding * 2) / 4) * row;
+              return (
+                <g key={row}>
+                  <line x1={padding} x2={width - padding} y1={y} y2={y} stroke="#E7EAF4" strokeWidth="1" />
+                  <text x="0" y={y + 4} fontSize="11" fill="#94A3B8">
+                    {yLabels[4 - row]}
+                  </text>
+                </g>
+              );
+            })}
 
-      {/* Error State */}
-      {error && !loading && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-50/90 backdrop-blur-sm p-4">
-          <div className="max-w-md rounded-2xl border border-red-200 bg-white p-4 sm:p-6">
-            <div className="flex items-start gap-3 sm:gap-4 mb-4">
-              <div className="flex-shrink-0 rounded-lg border border-red-100 bg-red-50 p-2">
-                <FaExclamationCircle className="text-red-600 text-lg sm:text-xl" />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-slate-900 sm:text-base">
-                  Error Loading Data
-                </h3>
-                <p className="mt-1 text-xs text-slate-600 sm:text-sm">{error}</p>
-              </div>
-            </div>
-            <button
-              onClick={() => window.location.reload()}
-              className="w-full rounded-xl border border-red-200 bg-white py-2 text-sm text-red-700 transition-colors hover:bg-red-50 sm:py-3 sm:text-base"
-            >
-              Retry
-            </button>
-          </div>
+            <path d={pagePath} fill="none" stroke="#345CFF" strokeWidth="3" strokeLinecap="round" />
+            <path d={visitorPath} fill="none" stroke="#9A46FF" strokeWidth="3" strokeLinecap="round" />
+
+            {PAGE_VIEW_SERIES.map((value, index) => {
+              const usableWidth = width - padding * 2;
+              const usableHeight = height - padding * 2;
+              const maxPage = Math.max(...PAGE_VIEW_SERIES, 1);
+              const maxVisitors = Math.max(...VISITOR_SERIES, 1);
+              const x = padding + (usableWidth / (PAGE_VIEW_SERIES.length - 1)) * index;
+              const pageY = height - padding - (value / maxPage) * usableHeight;
+              const visitorY = height - padding - (VISITOR_SERIES[index] / maxVisitors) * usableHeight;
+
+              return (
+                <g key={PERFORMANCE_LABELS[index]}>
+                  <circle cx={x} cy={pageY} r="4" fill="#345CFF" />
+                  <circle cx={x} cy={visitorY} r="4" fill="#9A46FF" />
+                  <text x={x} y={height + 20} textAnchor="middle" fontSize="11" fill="#64748B">
+                    {PERFORMANCE_LABELS[index]}
+                  </text>
+                </g>
+              );
+            })}
+          </svg>
         </div>
-      )}
+      </div>
     </div>
   );
 };
 
+const MobileSalesChart = () => {
+  const width = 320;
+  const height = 170;
+  const padding = 18;
+  const linePath = buildLinePath(MOBILE_CHART_SERIES, width, height, padding);
+  const maxValue = Math.max(...MOBILE_CHART_SERIES, 1);
+  const usableWidth = width - padding * 2;
+  const usableHeight = height - padding * 2;
+
+  return (
+    <SectionCard className="px-4 py-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-base font-semibold text-slate-950">Sales Overview</h2>
+        <button
+          type="button"
+          className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600"
+        >
+          Daily <FaChevronDown className="text-[10px]" />
+        </button>
+      </div>
+
+      <div className="mt-4">
+        <svg viewBox={`0 0 ${width} ${height + 28}`} className="h-[178px] w-full">
+          {[0, 1, 2, 3].map((row) => {
+            const y = padding + ((height - padding * 2) / 3) * row;
+            return <line key={row} x1={padding} x2={width - padding} y1={y} y2={y} stroke="#E7EAF4" strokeWidth="1" />;
+          })}
+
+          <path d={linePath} fill="none" stroke="#5A49FF" strokeWidth="3" strokeLinecap="round" />
+
+          {MOBILE_CHART_SERIES.map((value, index) => {
+            const x = padding + (usableWidth / (MOBILE_CHART_SERIES.length - 1)) * index;
+            const y = height - padding - (value / maxValue) * usableHeight;
+
+            return (
+              <g key={MOBILE_CHART_LABELS[index]}>
+                <circle cx={x} cy={y} r="3.5" fill="#5A49FF" />
+                <text x={x} y={height + 18} textAnchor="middle" fontSize="10" fill="#94A3B8">
+                  {MOBILE_CHART_LABELS[index]}
+                </text>
+              </g>
+            );
+          })}
+
+          <line x1="157" x2="157" y1="30" y2="142" stroke="#D7DDF0" strokeDasharray="4 4" />
+          <rect x="119" y="18" width="88" height="44" rx="10" fill="#FFFFFF" stroke="#E7EAF4" strokeWidth="1" />
+          <text x="130" y="35" fontSize="10" fill="#64748B">
+            May 17, 2024
+          </text>
+          <text x="130" y="51" fontSize="11" fontWeight="700" fill="#5A49FF">
+            Sales: $74,625
+          </text>
+        </svg>
+      </div>
+    </SectionCard>
+  );
+};
+
+const MobileDashboard = ({ firstName }) => (
+  <div className="space-y-4">
+    <section>
+      <h1 className="text-[2rem] font-bold tracking-tight text-slate-950">Dashboard</h1>
+      <p className="mt-1 max-w-[16rem] text-sm leading-6 text-slate-500">
+        Welcome back, {firstName}! Here&apos;s what&apos;s happening today.
+      </p>
+    </section>
+
+    <section className="space-y-3">
+      <button
+        type="button"
+        className="inline-flex w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-[0_12px_25px_rgba(15,23,42,0.04)]"
+      >
+        <span className="inline-flex items-center gap-2">
+          <FaCalendarAlt className="text-slate-400" />
+          {MOBILE_DATE_RANGE}
+        </span>
+        <FaChevronDown className="text-[11px] text-slate-400" />
+      </button>
+
+      <div className="space-y-3">
+        {MOBILE_OVERVIEW_CARDS.map((card) => (
+          <MobileStatCard key={card.label} {...card} />
+        ))}
+      </div>
+    </section>
+
+    <MobileSalesChart />
+  </div>
+);
+
+const DesktopDashboard = ({ firstName, onQuickAction }) => {
+  const publishHealth = 92;
+  const publishRingStyle = {
+    background: `conic-gradient(#ffffff 0deg ${publishHealth * 3.6}deg, rgba(255,255,255,0.28) ${publishHealth * 3.6}deg 360deg)`,
+  };
+
+  return (
+    <div className="space-y-5 lg:space-y-6">
+      <section className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <h1 className="text-[1.9rem] font-bold tracking-tight text-slate-950 sm:text-[2.2rem]">
+            Welcome back, {firstName}! <span className="inline-block">{`\u{1F44B}`}</span>
+          </h1>
+          <p className="mt-2 text-sm text-slate-500 sm:text-base">
+            Here&apos;s what&apos;s happening on your platform today.
+          </p>
+        </div>
+
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <button
+            type="button"
+            className="inline-flex items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-[0_12px_30px_rgba(15,23,42,0.04)]"
+          >
+            <FaCalendarAlt className="text-slate-500" />
+            {DESKTOP_DATE_RANGE}
+            <FaChevronDown className="text-[11px] text-slate-400" />
+          </button>
+          <button
+            type="button"
+            onClick={() => onQuickAction("/products/smartphones/create")}
+            className="inline-flex items-center justify-center gap-3 rounded-xl bg-gradient-to-r from-[#345CFF] to-[#7A2CFF] px-5 py-3 text-sm font-semibold text-white shadow-[0_18px_35px_rgba(92,76,255,0.25)]"
+          >
+            <FaPlus />
+            Quick Action
+          </button>
+        </div>
+      </section>
+
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-6">
+        {DESKTOP_SUMMARY_CARDS.map((card) => (
+          <SummaryCard key={card.title} {...card} />
+        ))}
+      </section>
+
+      <section className="grid grid-cols-1 gap-5 xl:grid-cols-[1.75fr_1.05fr_1.15fr]">
+        <SectionCard>
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg font-semibold text-slate-950">Performance Overview</h2>
+            <FaInfoCircle className="text-sm text-slate-300" />
+          </div>
+
+          <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+            {PERFORMANCE_METRICS.map((metric) => (
+              <div key={metric.label} className="rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3">
+                <p className="text-[11px] font-medium text-slate-500">{metric.label}</p>
+                <p className="mt-1 text-[1.15rem] font-bold text-slate-950">{metric.value}</p>
+                <p className="mt-1 text-xs font-semibold text-emerald-600">{deltaLabel(metric.delta)}</p>
+              </div>
+            ))}
+          </div>
+
+          <DesktopPerformanceChart />
+        </SectionCard>
+
+        <SectionCard>
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-slate-950">Top Search Devices</h2>
+            <button type="button" className="text-sm font-medium text-[#345CFF]">
+              View All
+            </button>
+          </div>
+
+          <div className="mt-5 space-y-4">
+            {TOP_SEARCH_DEVICES.map((device, index) => (
+              <div key={device.id} className="flex items-center gap-3">
+                <div
+                  className={`flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-r text-xs font-semibold text-white ${device.color}`}
+                >
+                  {index + 1}
+                </div>
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-700">
+                  {getInitials(device.name)}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-slate-900">{device.name}</p>
+                  <p className="text-xs text-slate-500">{device.subtitle}</p>
+                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-[#345CFF] to-[#8A35FF]"
+                      style={{ width: `${Math.min(device.pct * 7.2, 100)}%` }}
+                    />
+                  </div>
+                </div>
+                <p className="text-xs font-medium text-slate-500">{device.pct}%</p>
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+
+        <div className="space-y-5">
+          <div className="overflow-hidden rounded-xl bg-gradient-to-br from-[#345CFF] via-[#6243FF] to-[#9431FF] p-5 text-white shadow-[0_18px_45px_rgba(97,75,255,0.26)]">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-semibold">Today&apos;s Publish Health</h2>
+                <p className="mt-1 text-sm text-white/75">Last synced recently</p>
+              </div>
+              <button type="button" className="text-white/70">
+                <FaEllipsisH />
+              </button>
+            </div>
+
+            <div className="mt-6 flex flex-col gap-5 sm:flex-row sm:items-center">
+              <div className="relative mx-auto h-40 w-40 flex-shrink-0 rounded-full p-[14px]" style={publishRingStyle}>
+                <div className="flex h-full w-full flex-col items-center justify-center rounded-full bg-gradient-to-br from-[#456BFF] to-[#7B38FF] text-center">
+                  <p className="text-4xl font-bold">92%</p>
+                  <p className="mt-1 text-sm text-white/80">Overall Health</p>
+                </div>
+              </div>
+
+              <div className="space-y-4 text-sm">
+                <div className="flex items-center justify-between gap-6">
+                  <span className="inline-flex items-center gap-2 text-white/85">
+                    <span className="h-2.5 w-2.5 rounded-full bg-sky-300" />
+                    Published
+                  </span>
+                  <span className="font-semibold">4,415 (92%)</span>
+                </div>
+                <div className="flex items-center justify-between gap-6">
+                  <span className="inline-flex items-center gap-2 text-white/85">
+                    <span className="h-2.5 w-2.5 rounded-full bg-amber-300" />
+                    Draft
+                  </span>
+                  <span className="font-semibold">312 (6%)</span>
+                </div>
+                <div className="flex items-center justify-between gap-6">
+                  <span className="inline-flex items-center gap-2 text-white/85">
+                    <span className="h-2.5 w-2.5 rounded-full bg-fuchsia-300" />
+                    Scheduled
+                  </span>
+                  <span className="font-semibold">85 (2%)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <SectionCard>
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-slate-950">Quick Actions</h2>
+              <FaArrowRight className="text-sm text-slate-300" />
+            </div>
+
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              {DESKTOP_QUICK_ACTIONS.map((action) => {
+                const Icon = action.icon;
+                return (
+                  <button
+                    key={action.label}
+                    type="button"
+                    onClick={() => onQuickAction(action.path)}
+                    className="group rounded-xl border border-slate-200 bg-slate-50/50 p-3 text-center transition hover:border-[#8A35FF]/25 hover:bg-white"
+                  >
+                    <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#EFF3FF] to-[#F4ECFF] text-[#5A49FF]">
+                      <Icon className="text-sm" />
+                    </div>
+                    <p className="mt-3 text-xs font-semibold text-slate-700">{action.label}</p>
+                  </button>
+                );
+              })}
+            </div>
+          </SectionCard>
+
+          <SectionCard>
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-slate-950">Affiliate Insights</h2>
+              <button type="button" className="text-sm font-medium text-[#345CFF]">
+                View Report
+              </button>
+            </div>
+
+            <div className="mt-4 grid grid-cols-3 gap-3">
+              {[
+                { label: "Clicks", value: "1.26M", delta: "15.6%" },
+                { label: "Conversions", value: "18,650", delta: "11.3%" },
+                { label: "Revenue", value: "$48,650", delta: "14.8%" },
+              ].map((metric) => (
+                <div key={metric.label} className="rounded-xl border border-slate-200 bg-slate-50/60 px-4 py-3">
+                  <p className="text-[11px] text-slate-500">{metric.label}</p>
+                  <p className="mt-1 text-xl font-bold text-slate-950">{metric.value}</p>
+                  <p className="mt-1 text-xs font-semibold text-emerald-600">{deltaLabel(metric.delta)}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-4 rounded-xl border border-slate-200 bg-white px-4 py-4">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#F8F3E6] text-xl font-bold text-slate-900">
+                    a
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500">Top Performing Store</p>
+                    <p className="text-sm font-semibold text-slate-950">Amazon</p>
+                  </div>
+                </div>
+                <p className="text-right text-xl font-bold text-slate-950">
+                  $22,450 <span className="text-sm font-medium text-slate-500">(46.1%)</span>
+                </p>
+              </div>
+            </div>
+          </SectionCard>
+        </div>
+      </section>
+
+      <section className="grid grid-cols-1 gap-5 xl:grid-cols-[1.15fr_1.2fr_1fr]">
+        <SectionCard>
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-slate-950">Recent Activity</h2>
+            <button type="button" className="text-sm font-medium text-[#345CFF]">
+              View All
+            </button>
+          </div>
+
+          <div className="mt-4 space-y-3">
+            {RECENT_ACTIVITY.map((item) => (
+              <div key={item.id} className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-3">
+                <div className={`mt-0.5 flex h-9 w-9 items-center justify-center rounded-xl text-white ${item.accent}`}>
+                  <FaCheckCircle className="text-sm" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-slate-900">{item.title}</p>
+                  <p className="mt-0.5 text-xs text-slate-500">{item.subtitle}</p>
+                </div>
+                <p className="text-xs text-slate-400">{item.time}</p>
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+
+        <SectionCard>
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-slate-950">Top Trending This Week</h2>
+            <button type="button" className="inline-flex items-center gap-1 text-xs font-medium text-slate-500">
+              Score <FaChevronDown className="text-[10px]" />
+            </button>
+          </div>
+
+          <div className="mt-4 space-y-3">
+            {TRENDING_WEEK.map((item, index) => (
+              <div key={item.id} className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-3">
+                <div
+                  className={`flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-r text-[11px] font-semibold text-white ${item.color}`}
+                >
+                  {index + 1}
+                </div>
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-[11px] font-semibold text-slate-700">
+                  {getInitials(item.name)}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-slate-900">{item.name}</p>
+                  <p className="text-xs text-slate-500">Smartphone</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-2xl font-bold text-slate-950">{item.score}</p>
+                  <p className="text-xs font-semibold text-emerald-600">
+                    <FaArrowUp className="inline-block" />
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+
+        <SectionCard>
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-slate-950">Most Clicked Features</h2>
+            <button type="button" className="text-sm font-medium text-[#345CFF]">
+              View All
+            </button>
+          </div>
+
+          <div className="mt-5 space-y-4">
+            {FEATURE_CLICKS.map((feature) => (
+              <div key={feature.label}>
+                <div className="mb-1 flex items-center justify-between text-sm">
+                  <span className="font-medium text-slate-700">{feature.label}</span>
+                  <span className="text-slate-500">{feature.value}%</span>
+                </div>
+                <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-[#5A4BFF] to-[#A238FF]"
+                    style={{ width: `${feature.value * 2.7}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+      </section>
+
+      <SectionCard>
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-slate-950">Upcoming Launches</h2>
+          <button type="button" className="text-sm font-medium text-[#345CFF]">
+            View All
+          </button>
+        </div>
+
+        <div className="mt-5 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:h-0">
+          <div className="flex min-w-max gap-4">
+            {UPCOMING_LAUNCHES.map((launch) => (
+              <div
+                key={launch.name}
+                className="flex min-w-[250px] items-center gap-4 rounded-xl border border-slate-200 bg-slate-50/50 p-4"
+              >
+                <div
+                  className={`flex h-16 w-16 items-center justify-center rounded-xl bg-gradient-to-br text-lg font-bold text-white ${launch.accent}`}
+                >
+                  {getInitials(launch.name)}
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-slate-900">{launch.name}</p>
+                  <p className="mt-1 text-xs text-slate-500">{launch.date}</p>
+                  <span className="mt-2 inline-flex rounded-full bg-[#EFE9FF] px-3 py-1 text-[11px] font-semibold text-[#6A45FF]">
+                    {launch.left}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </SectionCard>
+    </div>
+  );
+};
+
+const Dashboard = ({ isMobile = false }) => {
+  const navigate = useNavigate();
+  const userName = Cookies.get("userName") || Cookies.get("username") || "John Doe";
+  const firstName = String(userName).split(" ")[0] || "John";
+
+  if (isMobile) {
+    return <MobileDashboard firstName={firstName} />;
+  }
+
+  return <DesktopDashboard firstName={firstName} onQuickAction={(path) => navigate(path)} />;
+};
+
 export default Dashboard;
-
-

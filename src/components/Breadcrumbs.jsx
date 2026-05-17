@@ -1,11 +1,14 @@
 import React, { useMemo } from "react";
 import { Link, matchPath, useLocation } from "react-router-dom";
-import { FaChevronRight, FaHome } from "react-icons/fa";
+import { FaChevronRight } from "react-icons/fa";
 
 const DASHBOARD_CRUMB = { label: "Dashboard", to: "/dashboard" };
 
 const ROUTE_TRAILS = [
-  { path: "/dashboard", trail: [{ label: "Dashboard" }] },
+  {
+    path: "/dashboard",
+    trail: [DASHBOARD_CRUMB, { label: "Overview" }],
+  },
 
   {
     path: "/products/smartphones/inventory",
@@ -225,16 +228,16 @@ const ROUTE_TRAILS = [
     path: "/content/news-articles",
     trail: [
       DASHBOARD_CRUMB,
-      { label: "Content", to: "/content/news-articles" },
-      { label: "News & Articles" },
+      { label: "Blog", to: "/content/news-articles" },
+      { label: "All Posts" },
     ],
   },
   {
     path: "/content/blogs",
     trail: [
       DASHBOARD_CRUMB,
-      { label: "Content", to: "/content/news-articles" },
-      { label: "News & Articles" },
+      { label: "Blog", to: "/content/news-articles" },
+      { label: "All Posts" },
     ],
   },
 
@@ -298,8 +301,8 @@ const ROUTE_TRAILS = [
     path: "/reports/feature-clicks",
     trail: [
       DASHBOARD_CRUMB,
-      { label: "Reports", to: "/reports/productpublishstatus" },
-      { label: "Feature Clicks" },
+      { label: "Feature Clicks", to: "/reports/feature-clicks" },
+      { label: "Reports" },
     ],
   },
   {
@@ -342,41 +345,49 @@ const Breadcrumbs = () => {
 
   const trail = useMemo(() => {
     const pathname = location.pathname || "/";
+    if (pathname === "/reports/trending") {
+      const params = new URLSearchParams(location.search || "");
+      const section = params.get("section") || "manager";
+      const sectionLabel =
+        section === "rules"
+          ? "Trending Rules"
+          : section === "history"
+            ? "Boost History"
+            : "Trending Manager";
+
+      return [
+        DASHBOARD_CRUMB,
+        { label: "Trending", to: "/reports/trending" },
+        { label: sectionLabel },
+      ];
+    }
+
     const matched = ROUTE_TRAILS.find((route) =>
       matchPath({ path: route.path, end: true }, pathname),
     );
     return matched ? matched.trail : buildFallbackTrail(pathname);
-  }, [location.pathname]);
+  }, [location.pathname, location.search]);
 
   if (!trail || trail.length === 0) return null;
 
   return (
-    <div className="rounded-lg bg-white px-4 py-3 sm:px-5 sm:py-4">
+    <div className="hidden lg:block">
       <nav aria-label="Breadcrumb" className="text-sm">
-        <ol className="flex flex-wrap items-center gap-y-1">
+        <ol className="flex flex-wrap items-center gap-y-1 text-slate-500">
           {trail.map((item, idx) => {
             const isLast = idx === trail.length - 1;
             const key = `${item.label}-${idx}`;
 
             return (
               <li key={key} className="inline-flex items-center">
-                {idx === 0 && (
-                  <span
-                    className="mr-2 inline-flex h-7 w-7 items-center justify-center  text-blue-600"
-                    aria-hidden="true"
-                  >
-                    <FaHome className="text-[11px]" />
-                  </span>
-                )}
-
                 {isLast || !item.to ? (
-                  <span className="font-semibold text-slate-900">
+                  <span className="font-medium text-slate-400">
                     {item.label}
                   </span>
                 ) : (
                   <Link
                     to={item.to}
-                    className="font-medium text-slate-500 transition-colors hover:text-slate-900"
+                    className="font-medium text-slate-600 transition-colors hover:text-slate-900"
                   >
                     {item.label}
                   </Link>
@@ -384,7 +395,7 @@ const Breadcrumbs = () => {
 
                 {!isLast && (
                   <span className="mx-2 text-slate-300" aria-hidden="true">
-                    <FaChevronRight className="text-[10px]" />
+                    <FaChevronRight className="text-[9px]" />
                   </span>
                 )}
               </li>

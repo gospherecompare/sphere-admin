@@ -1,1058 +1,870 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
-  FaArrowDown,
   FaArrowUp,
-  FaBolt,
+  FaCalendarAlt,
   FaChartLine,
-  FaCheckCircle,
-  FaExclamationCircle,
-  FaMinus,
-  FaSave,
+  FaChevronDown,
+  FaCog,
+  FaEdit,
+  FaEllipsisH,
+  FaEye,
+  FaFilter,
+  FaFire,
+  FaMousePointer,
+  FaPlus,
+  FaRedo,
+  FaRocket,
   FaSearch,
-  FaSpinner,
-  FaSyncAlt,
-  FaTimes,
-  FaTrash,
+  FaSlidersH,
 } from "react-icons/fa";
-import { buildUrl, getAuthToken } from "../../api";
-import {
-  formatDateTime,
-  formatNumber,
-  normalizeDateValue,
-  sortRows,
-} from "./reportHelpers";
 
-const TYPE_OPTIONS = [
-  { value: "smartphone", label: "Smartphone" },
-  { value: "laptop", label: "Laptop" },
-  { value: "tv", label: "TV" },
-  { value: "networking", label: "Networking" },
-  { value: "accessories", label: "Accessories" },
-];
-
-const BADGE_OPTIONS = [
-  { value: "", label: "Default (Editor Pick)" },
-  { value: "Editor Pick", label: "Editor Pick" },
-  { value: "Trending Now", label: "Trending Now" },
-  { value: "Popular This Week", label: "Popular This Week" },
-  { value: "Gaining Attention", label: "Gaining Attention" },
-  { value: "Sponsored", label: "Sponsored" },
-  { value: "New Launch", label: "New Launch" },
-  { value: "Featured", label: "Featured" },
-];
-
-const SORT_OPTIONS = [
-  { value: "calculated_at", label: "Latest calculation", type: "date" },
-  { value: "trending_score", label: "Trending score", type: "number" },
-  { value: "views_7d", label: "Visitors 7d", type: "number" },
-  { value: "unique_visitors_total", label: "Visitors total", type: "number" },
-  { value: "compares_7d", label: "Compares 7d", type: "number" },
-  { value: "compares_total", label: "Compares total", type: "number" },
-  { value: "manual_priority", label: "Manual priority", type: "number" },
-  { value: "name", label: "Product name", type: "text" },
-  { value: "brand", label: "Brand", type: "text" },
-];
-
-const getSortValue = (row, sortField) => {
-  switch (sortField) {
-    case "trending_score":
-      return row?.trending_score;
-    case "views_7d":
-      return row?.views_7d;
-    case "unique_visitors_total":
-      return row?.unique_visitors_total;
-    case "compares_7d":
-      return row?.compares_7d;
-    case "compares_total":
-      return row?.compares_total;
-    case "manual_priority":
-      return row?.manual_priority;
-    case "brand":
-      return row?.brand;
-    case "name":
-      return row?.name;
-    case "calculated_at":
-    default:
-      return row?.calculated_at;
-  }
+const HEADER_COPY = {
+  manager: {
+    title: "Trending Manager",
+    subtitle:
+      "Boost the right products. Control trending rankings, badges and visibility across the platform.",
+  },
+  rules: {
+    title: "Trending Rules",
+    subtitle:
+      "Review automatic ranking logic, active rules, and ranking boosts across the platform.",
+  },
+  history: {
+    title: "Boost History",
+    subtitle:
+      "Audit scheduled, expired and manual boost activity from one place.",
+  },
 };
 
-const getTrendData = (row) => {
-  const current = Number(row?.views_7d ?? 0);
-  const previous = Number(row?.views_prev_7d ?? 0);
-  const delta = current - previous;
-  const percentage =
-    Number.isFinite(previous) && previous > 0 ? (delta / previous) * 100 : null;
+const SUMMARY_CARDS = [
+  {
+    label: "Trending Now",
+    value: "126",
+    delta: "15.3%",
+    icon: FaFire,
+    iconClassName: "bg-violet-50 text-violet-600",
+  },
+  {
+    label: "Total Impressions",
+    value: "8.62M",
+    delta: "18.6%",
+    icon: FaEye,
+    iconClassName: "bg-blue-50 text-[#345CFF]",
+  },
+  {
+    label: "Total Clicks",
+    value: "1.26M",
+    delta: "12.7%",
+    icon: FaMousePointer,
+    iconClassName: "bg-emerald-50 text-emerald-600",
+  },
+  {
+    label: "CTR",
+    value: "14.62%",
+    delta: "2.3%",
+    icon: FaChartLine,
+    iconClassName: "bg-amber-50 text-amber-500",
+  },
+  {
+    label: "Boosted Products",
+    value: "54",
+    delta: "8.0%",
+    icon: FaRocket,
+    iconClassName: "bg-rose-50 text-rose-500",
+  },
+];
 
-  if (delta > 0) {
-    return {
-      delta,
-      percentage,
-      className: "border-emerald-200 bg-emerald-50 text-emerald-700",
-      icon: <FaArrowUp />,
-      label: "Up",
-    };
-  }
+const TAB_ITEMS = [
+  { value: "all", label: "All Trending", count: 126 },
+  { value: "active", label: "Active Boosts", count: 54 },
+  { value: "scheduled", label: "Scheduled", count: 12 },
+  { value: "expired", label: "Expired", count: 18 },
+];
 
-  if (delta < 0) {
-    return {
-      delta,
-      percentage,
-      className: "border-red-200 bg-red-50 text-red-700",
-      icon: <FaArrowDown />,
-      label: "Down",
-    };
-  }
+const TABLE_ROWS = [
+  {
+    rank: 1,
+    badgeClassName: "bg-amber-500",
+    thumbClassName: "from-slate-900 via-slate-700 to-slate-500",
+    thumbLabel: "IP",
+    name: "iPhone 15 Pro Max",
+    subtitle: "256GB",
+    brand: "Apple",
+    category: "Smartphones",
+    deviceType: "Smartphone",
+    hookScore: 92,
+    trendingScore: 98,
+    trendDirection: "up",
+    impressions: "845.2K",
+    ctr: "16.8%",
+    boostStatus: "Active",
+    boostType: "Manual Boost",
+    boostUntil: "May 25, 2024",
+    boostMeta: "7 days left",
+  },
+  {
+    rank: 2,
+    badgeClassName: "bg-slate-400",
+    thumbClassName: "from-slate-700 via-slate-500 to-slate-300",
+    thumbLabel: "SG",
+    name: "Samsung Galaxy S24 Ultra",
+    subtitle: "256GB",
+    brand: "Samsung",
+    category: "Smartphones",
+    deviceType: "Smartphone",
+    hookScore: 90,
+    trendingScore: 95,
+    trendDirection: "up",
+    impressions: "712.4K",
+    ctr: "15.3%",
+    boostStatus: "Active",
+    boostType: "Trending Rule",
+    boostUntil: "May 22, 2024",
+    boostMeta: "4 days left",
+  },
+  {
+    rank: 3,
+    badgeClassName: "bg-orange-500",
+    thumbClassName: "from-emerald-700 via-slate-800 to-slate-500",
+    thumbLabel: "OP",
+    name: "OnePlus 12",
+    subtitle: "12GB RAM",
+    brand: "OnePlus",
+    category: "Smartphones",
+    deviceType: "Smartphone",
+    hookScore: 88,
+    trendingScore: 91,
+    trendDirection: "up",
+    impressions: "512.6K",
+    ctr: "14.6%",
+    boostStatus: "Active",
+    boostType: "Manual Boost",
+    boostUntil: "May 24, 2024",
+    boostMeta: "6 days left",
+  },
+  {
+    rank: 4,
+    badgeClassName: "bg-violet-500",
+    thumbClassName: "from-slate-100 via-slate-200 to-slate-400",
+    thumbLabel: "NP",
+    name: "Nothing Phone (2)",
+    subtitle: "12GB RAM",
+    brand: "Nothing",
+    category: "Smartphones",
+    deviceType: "Smartphone",
+    hookScore: 85,
+    trendingScore: 85,
+    trendDirection: "up",
+    impressions: "421.8K",
+    ctr: "13.2%",
+    boostStatus: "Active",
+    boostType: "Trending Rule",
+    boostUntil: "May 20, 2024",
+    boostMeta: "2 days left",
+  },
+  {
+    rank: 5,
+    badgeClassName: "bg-indigo-500",
+    thumbClassName: "from-[#F59E0B] via-[#1F2937] to-[#0F172A]",
+    thumbLabel: "PX",
+    name: "POCO X6 Pro 5G",
+    subtitle: "8GB RAM",
+    brand: "POCO",
+    category: "Smartphones",
+    deviceType: "Smartphone",
+    hookScore: 82,
+    trendingScore: 83,
+    trendDirection: "up",
+    impressions: "388.7K",
+    ctr: "12.9%",
+    boostStatus: "Scheduled",
+    boostType: "Manual Boost",
+    boostUntil: "May 19, 2024",
+    boostMeta: "Starts in 1 day",
+  },
+  {
+    rank: 6,
+    badgeClassName: "bg-sky-500",
+    thumbClassName: "from-slate-800 via-blue-700 to-slate-950",
+    thumbLabel: "MB",
+    name: "MacBook Air M3",
+    subtitle: "13-inch",
+    brand: "Apple",
+    category: "Laptops",
+    deviceType: "Laptop",
+    hookScore: 91,
+    trendingScore: 81,
+    trendDirection: "down",
+    impressions: "312.4K",
+    ctr: "11.8%",
+    boostStatus: "Active",
+    boostType: "Trending Rule",
+    boostUntil: "May 21, 2024",
+    boostMeta: "3 days left",
+  },
+  {
+    rank: 7,
+    badgeClassName: "bg-slate-500",
+    thumbClassName: "from-slate-300 via-slate-500 to-slate-700",
+    thumbLabel: "SW",
+    name: "Sony WH-1000XM5",
+    subtitle: "Wireless",
+    brand: "Sony",
+    category: "Audio",
+    deviceType: "Audio",
+    hookScore: 86,
+    trendingScore: 79,
+    trendDirection: "down",
+    impressions: "285.9K",
+    ctr: "10.6%",
+    boostStatus: "Scheduled",
+    boostType: "Manual Boost",
+    boostUntil: "May 20, 2024",
+    boostMeta: "2 days left",
+  },
+  {
+    rank: 8,
+    badgeClassName: "bg-fuchsia-500",
+    thumbClassName: "from-red-500 via-white to-slate-700",
+    thumbLabel: "IQ",
+    name: "iQOO Neo 9 Pro 5G",
+    subtitle: "256GB",
+    brand: "iQOO",
+    category: "Smartphones",
+    deviceType: "Smartphone",
+    hookScore: 80,
+    trendingScore: 76,
+    trendDirection: "up",
+    impressions: "248.1K",
+    ctr: "10.3%",
+    boostStatus: "Expired",
+    boostType: "Manual Boost",
+    boostUntil: "May 11, 2024",
+    boostMeta: "Expired",
+  },
+];
 
-  return {
-    delta,
-    percentage,
-    className: "border-slate-200 bg-slate-50 text-slate-600",
-    icon: <FaMinus />,
-    label: "Flat",
-  };
+const CATEGORY_BREAKDOWN = [
+  { label: "Smartphones", value: "8.62M", delta: "18.6%", width: 78 },
+  { label: "Laptops", value: "1.24M", delta: "10.3%", width: 34 },
+  { label: "Audio", value: "945K", delta: "7.2%", width: 26 },
+  { label: "Wearables", value: "642K", delta: "5.6%", width: 18 },
+  { label: "Tablets", value: "318K", delta: "3.1%", width: 10 },
+];
+
+const HEALTH_ITEMS = [
+  { label: "Active", value: 54, percent: "42.9%", color: "#4CB663" },
+  { label: "Scheduled", value: 12, percent: "9.5%", color: "#FFAC14" },
+  { label: "Expired", value: 18, percent: "14.3%", color: "#F97316" },
+  { label: "Others", value: 42, percent: "33.3%", color: "#CBD5E1" },
+];
+
+const QUICK_ACTIONS = [
+  { label: "Create Boost", icon: FaRocket },
+  { label: "Trending Rules", icon: FaSlidersH },
+  { label: "Boost History", icon: FaRedo },
+  { label: "Settings", icon: FaCog },
+];
+
+const CHART_LABELS = ["May 12", "May 13", "May 14", "May 15", "May 16", "May 17", "May 18"];
+const CHART_VALUES = [2.4, 3.8, 3.5, 6.4, 5.9, 8.2, 8.7];
+
+const STATUS_STYLES = {
+  Active: "bg-emerald-50 text-emerald-700",
+  Scheduled: "bg-amber-50 text-amber-700",
+  Expired: "bg-slate-100 text-slate-600",
 };
+
+const BOOST_TYPE_STYLES = {
+  "Manual Boost": "bg-violet-50 text-violet-700",
+  "Trending Rule": "bg-blue-50 text-[#345CFF]",
+};
+
+const chartPoints = (values, width, height, padding) => {
+  const maxValue = Math.max(...values, 1);
+  const minValue = Math.min(...values, 0);
+  const usableWidth = width - padding * 2;
+  const usableHeight = height - padding * 2;
+
+  return values.map((value, index) => {
+    const x =
+      padding + (values.length === 1 ? usableWidth / 2 : (usableWidth / (values.length - 1)) * index);
+    const normalized = (value - minValue) / (maxValue - minValue || 1);
+    const y = height - padding - normalized * usableHeight;
+    return { x, y };
+  });
+};
+
+const linePath = (points) =>
+  points
+    .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x.toFixed(2)} ${point.y.toFixed(2)}`)
+    .join(" ");
+
+const areaPath = (points, height, padding) => {
+  if (!points.length) return "";
+
+  const lastPoint = points[points.length - 1];
+  const firstPoint = points[0];
+  return `${linePath(points)} L ${lastPoint.x.toFixed(2)} ${(height - padding).toFixed(2)} L ${firstPoint.x.toFixed(2)} ${(height - padding).toFixed(2)} Z`;
+};
+
+const SelectField = ({ value, onChange, children, className = "" }) => (
+  <select
+    value={value}
+    onChange={onChange}
+    className={`h-11 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-700 outline-none transition focus:border-[#5A49FF] focus:ring-4 focus:ring-[#5A49FF]/10 ${className}`}
+  >
+    {children}
+  </select>
+);
+
+const SummaryCard = ({ icon: Icon, iconClassName, label, value, delta }) => (
+  <div className="rounded-xl border border-slate-200 bg-white px-5 py-4 shadow-[0_14px_32px_rgba(15,23,42,0.04)]">
+    <div className="flex items-start gap-4">
+      <div className={`flex h-11 w-11 items-center justify-center rounded-full ${iconClassName}`}>
+        <Icon className="text-lg" />
+      </div>
+      <div>
+        <p className="text-sm font-medium text-slate-500">{label}</p>
+        <p className="mt-1 text-[2rem] font-bold leading-none tracking-tight text-slate-950">{value}</p>
+        <p className="mt-2 flex items-center gap-1 text-xs text-slate-500">
+          <FaArrowUp className="text-[10px] text-emerald-500" />
+          <span className="font-semibold text-emerald-600">{delta}</span>
+          <span>vs last 7 days</span>
+        </p>
+      </div>
+    </div>
+  </div>
+);
 
 const TrendingManager = () => {
-  const [type, setType] = useState("smartphone");
-  const [limit, setLimit] = useState(200);
+  const [searchParams] = useSearchParams();
+  const section = searchParams.get("section") || "manager";
+  const headerCopy = HEADER_COPY[section] || HEADER_COPY.manager;
+
+  const [activeTab, setActiveTab] = useState("all");
   const [query, setQuery] = useState("");
-  const [sortField, setSortField] = useState("calculated_at");
-  const [sortDirection, setSortDirection] = useState("desc");
-  const [loading, setLoading] = useState(false);
-  const [recomputing, setRecomputing] = useState(false);
-  const [savingById, setSavingById] = useState({});
-  const [error, setError] = useState(null);
-  const [updatedAt, setUpdatedAt] = useState(null);
-  const [rows, setRows] = useState([]);
-  const [toasts, setToasts] = useState([]);
-  const lastFetchSignatureRef = useRef("");
-
-  const showToast = useCallback((title, message, toastType = "success") => {
-    const id = Date.now() + Math.random();
-    const nextToast = { id, title, message, type: toastType };
-    setToasts((previous) => [...previous, nextToast]);
-    setTimeout(() => {
-      setToasts((previous) => previous.filter((toast) => toast.id !== id));
-    }, 5000);
-  }, []);
-
-  const removeToast = useCallback((id) => {
-    setToasts((previous) => previous.filter((toast) => toast.id !== id));
-  }, []);
-
-  const authHeaders = useCallback(() => {
-    const token = getAuthToken();
-    return {
-      Authorization: token ? `Bearer ${token}` : "",
-      "Content-Type": "application/json",
-    };
-  }, []);
-
-  const fetchTrending = useCallback(
-    async (options = {}) => {
-      const { silent = false } = options;
-      setLoading(true);
-      setError(null);
-      try {
-        const safeLimit = Number.isFinite(Number(limit))
-          ? Math.min(200, Math.max(1, Math.floor(Number(limit))))
-          : 200;
-
-        const qs = new URLSearchParams();
-        if (type) qs.set("type", type);
-        qs.set("limit", String(safeLimit));
-
-        const res = await fetch(buildUrl(`/api/admin/trending?${qs}`), {
-          method: "GET",
-          headers: authHeaders(),
-        });
-
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
-
-        setUpdatedAt(data?.updated_at || null);
-        setRows(Array.isArray(data?.results) ? data.results : []);
-
-        if (!silent) {
-          showToast("Success", "Trending report loaded", "success");
-        }
-      } catch (err) {
-        console.error("Failed to fetch trending:", err);
-        setError(err.message || "Failed to load trending report");
-        showToast("Error", "Failed to load trending report", "error");
-      } finally {
-        setLoading(false);
-      }
-    },
-    [authHeaders, limit, showToast, type],
-  );
-
-  const recompute = useCallback(async () => {
-    setRecomputing(true);
-    setError(null);
-    try {
-      const res = await fetch(buildUrl("/api/admin/trending/recompute"), {
-        method: "POST",
-        headers: authHeaders(),
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-
-      if (data?.skipped) {
-        showToast(
-          "Skipped",
-          `Recompute skipped (${data?.reason || "lock_unavailable"})`,
-          "info",
-        );
-      } else {
-        const updated = Number(data?.updated ?? 0);
-        showToast(
-          "Success",
-          `Trending recomputed (${Number.isFinite(updated) ? updated : 0} products)`,
-          "success",
-        );
-      }
-
-      await fetchTrending({ silent: true });
-    } catch (err) {
-      console.error("Failed to recompute trending:", err);
-      setError(err.message || "Failed to recompute trending");
-      showToast("Error", "Failed to recompute trending", "error");
-    } finally {
-      setRecomputing(false);
-    }
-  }, [authHeaders, fetchTrending, showToast]);
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [brandFilter, setBrandFilter] = useState("all");
+  const [deviceFilter, setDeviceFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   useEffect(() => {
-    const signature = `${type}:${limit}`;
-    if (lastFetchSignatureRef.current === signature) return;
-    lastFetchSignatureRef.current = signature;
-    fetchTrending({ silent: true });
-  }, [fetchTrending, limit, type]);
+    if (section === "rules") {
+      setActiveTab("active");
+      return;
+    }
 
-  const updateRow = useCallback((productId, patch) => {
-    setRows((previous) =>
-      previous.map((row) =>
-        row.product_id === productId ? { ...row, ...patch } : row,
-      ),
-    );
-  }, []);
+    if (section === "history") {
+      setActiveTab("expired");
+      return;
+    }
 
-  const setSaving = useCallback((productId, isSaving) => {
-    setSavingById((previous) => ({ ...previous, [productId]: isSaving }));
-  }, []);
+    setActiveTab("all");
+  }, [section]);
 
-  const saveOverride = useCallback(
-    async (row) => {
-      const productId = row?.product_id;
-      if (!productId) return;
-
-      setSaving(productId, true);
-      setError(null);
-      try {
-        const trimmedBadge = String(row?.manual_badge ?? "").trim();
-        const payload = {
-          product_id: productId,
-          manual_boost: Boolean(row?.manual_boost),
-          manual_priority: Number.isFinite(Number(row?.manual_priority))
-            ? Math.max(0, Math.floor(Number(row?.manual_priority)))
-            : 0,
-          badge: trimmedBadge || null,
-        };
-
-        const res = await fetch(buildUrl("/api/admin/trending/boost"), {
-          method: "POST",
-          headers: authHeaders(),
-          body: JSON.stringify(payload),
-        });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
-
-        updateRow(productId, {
-          manual_boost: Boolean(data?.manual_boost),
-          manual_priority: data?.manual_priority ?? payload.manual_priority,
-          manual_badge: data?.manual_badge ?? payload.badge,
-        });
-
-        showToast(
-          "Saved",
-          row?.name
-            ? `Manual override saved for ${row.name}`
-            : "Manual override saved",
-          "success",
-        );
-      } catch (err) {
-        console.error("Failed to save override:", err);
-        setError(err.message || "Failed to save override");
-        showToast(
-          "Error",
-          row?.name
-            ? `Failed to save override for ${row.name}`
-            : "Failed to save override",
-          "error",
-        );
-      } finally {
-        setSaving(productId, false);
-      }
-    },
-    [authHeaders, setSaving, showToast, updateRow],
+  const categories = useMemo(
+    () => Array.from(new Set(TABLE_ROWS.map((row) => row.category))).sort((left, right) => left.localeCompare(right)),
+    [],
   );
 
-  const clearOverride = useCallback(
-    async (row) => {
-      const productId = row?.product_id;
-      if (!productId) return;
+  const brands = useMemo(
+    () => Array.from(new Set(TABLE_ROWS.map((row) => row.brand))).sort((left, right) => left.localeCompare(right)),
+    [],
+  );
 
-      setSaving(productId, true);
-      setError(null);
-      try {
-        const res = await fetch(buildUrl("/api/admin/trending/boost"), {
-          method: "POST",
-          headers: authHeaders(),
-          body: JSON.stringify({
-            product_id: productId,
-            manual_boost: false,
-            manual_priority: 0,
-            badge: null,
-          }),
-        });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        await res.json();
-
-        updateRow(productId, {
-          manual_boost: false,
-          manual_priority: 0,
-          manual_badge: null,
-        });
-
-        showToast(
-          "Cleared",
-          row?.name
-            ? `Manual override cleared for ${row.name}`
-            : "Manual override cleared",
-          "success",
-        );
-      } catch (err) {
-        console.error("Failed to clear override:", err);
-        setError(err.message || "Failed to clear override");
-        showToast(
-          "Error",
-          row?.name
-            ? `Failed to clear override for ${row.name}`
-            : "Failed to clear override",
-          "error",
-        );
-      } finally {
-        setSaving(productId, false);
-      }
-    },
-    [authHeaders, setSaving, showToast, updateRow],
+  const deviceTypes = useMemo(
+    () => Array.from(new Set(TABLE_ROWS.map((row) => row.deviceType))).sort((left, right) => left.localeCompare(right)),
+    [],
   );
 
   const filteredRows = useMemo(() => {
-    const search = String(query || "").trim().toLowerCase();
-    if (!search) return rows;
+    const search = query.trim().toLowerCase();
 
-    return rows.filter((row) => {
-      const values = [row?.product_id, row?.name, row?.brand, row?.product_type];
-      return values.some((value) =>
-        String(value ?? "")
-          .toLowerCase()
-          .includes(search),
-      );
+    return TABLE_ROWS.filter((row) => {
+      if (activeTab !== "all" && row.boostStatus.toLowerCase() !== activeTab) return false;
+      if (statusFilter !== "all" && row.boostStatus.toLowerCase() !== statusFilter) return false;
+      if (categoryFilter !== "all" && row.category !== categoryFilter) return false;
+      if (brandFilter !== "all" && row.brand !== brandFilter) return false;
+      if (deviceFilter !== "all" && row.deviceType !== deviceFilter) return false;
+
+      if (!search) return true;
+
+      return [row.name, row.subtitle, row.brand, row.category]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(search));
     });
-  }, [query, rows]);
+  }, [activeTab, brandFilter, categoryFilter, deviceFilter, query, statusFilter]);
 
-  const sortMeta = useMemo(
-    () =>
-      SORT_OPTIONS.find((option) => option.value === sortField) ||
-      SORT_OPTIONS[0],
-    [sortField],
-  );
+  const visibleRows = useMemo(() => filteredRows.slice(0, rowsPerPage), [filteredRows, rowsPerPage]);
 
-  const sortedRows = useMemo(
-    () =>
-      sortRows(filteredRows, (row) => getSortValue(row, sortField), {
-        direction: sortDirection,
-        type: sortMeta.type,
-      }),
-    [filteredRows, sortDirection, sortField, sortMeta.type],
-  );
+  const overviewPoints = useMemo(() => chartPoints(CHART_VALUES, 420, 190, 18), []);
+  const healthBackground = useMemo(() => {
+    const total = HEALTH_ITEMS.reduce((sum, item) => sum + item.value, 0);
+    let offset = 0;
 
-  const summary = useMemo(() => {
-    const scores = rows
-      .map((row) => Number(row?.trending_score))
-      .filter(Number.isFinite);
-    const latestCalculated = rows.reduce((latest, row) => {
-      const current = normalizeDateValue(row?.calculated_at);
-      if (current === null) return latest;
-      return latest === null || current > latest ? current : latest;
-    }, null);
+    const segments = HEALTH_ITEMS.map((item) => {
+      const start = offset;
+      offset += (item.value / total) * 100;
+      return `${item.color} ${start}% ${offset}%`;
+    });
 
-    return {
-      totalRows: rows.length,
-      manualBoosts: rows.filter((row) => Boolean(row?.manual_boost)).length,
-      averageScore: scores.length
-        ? scores.reduce((sum, value) => sum + value, 0) / scores.length
-        : null,
-      latestCalculated,
-    };
-  }, [rows]);
+    return `conic-gradient(${segments.join(", ")})`;
+  }, []);
 
   return (
-    <div className="min-h-full bg-slate-50 p-2 sm:p-3">
-      <div className="fixed right-4 top-4 z-50 space-y-2">
-        {toasts.map((toast) => (
-          <div
-            key={toast.id}
-            className={`flex w-full max-w-sm items-start gap-3 rounded-2xl border bg-white p-4 shadow-lg ${
-              toast.type === "success"
-                ? "border-emerald-200 bg-emerald-50"
-                : toast.type === "error"
-                  ? "border-red-200 bg-red-50"
-                  : "border-blue-200 bg-blue-50"
-            }`}
+    <div className="space-y-6">
+      <section className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+        <div>
+          <h1 className="flex items-center gap-3 text-[2.2rem] font-bold tracking-tight text-slate-950">
+            {headerCopy.title}
+            <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-violet-50 text-violet-600">
+              <FaChartLine className="text-lg" />
+            </span>
+          </h1>
+          <p className="mt-2 max-w-3xl text-base text-slate-500">{headerCopy.subtitle}</p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            className="inline-flex h-12 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-[0_12px_24px_rgba(15,23,42,0.04)]"
           >
-            {toast.type === "success" && (
-              <FaCheckCircle className="mt-0.5 text-emerald-500" />
-            )}
-            {toast.type === "error" && (
-              <FaExclamationCircle className="mt-0.5 text-red-500" />
-            )}
-            {toast.type === "info" && (
-              <FaChartLine className="mt-0.5 text-blue-500" />
-            )}
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-slate-900">
-                {toast.title}
-              </p>
-              <p className="mt-1 text-sm text-slate-600">{toast.message}</p>
-            </div>
-            <button
-              onClick={() => removeToast(toast.id)}
-              className="text-slate-400 transition hover:text-slate-600"
-            >
-              <FaTimes className="text-sm" />
-            </button>
-          </div>
-        ))}
-      </div>
+            <FaCalendarAlt className="text-sm text-slate-500" />
+            May 12 - May 18, 2024
+            <FaChevronDown className="text-[10px] text-slate-400" />
+          </button>
 
-      <div className="mx-auto max-w-7xl space-y-6">
-        <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-          <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
-            <div className="max-w-3xl space-y-3">
-              <div className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-blue-700">
-                <FaChartLine />
-                Reports
-              </div>
-              <div className="space-y-2">
-                <h1 className="flex items-center gap-3 text-2xl font-bold text-slate-900 sm:text-3xl">
-                  <span className="rounded-2xl bg-blue-100 p-3 text-blue-600">
-                    <FaChartLine />
-                  </span>
-                  Trending Manager
-                </h1>
-                <p className="max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
-                  Manage manual boosts, compare short-term movement, and keep the
-                  trending report usable on both wide desktops and smaller admin
-                  screens.
-                </p>
-                {type === "laptop" && (
-                  <p className="text-xs font-medium text-blue-700">
-                    Laptop boosts and badges here are reflected on laptop
-                    trending cards in the client app.
-                  </p>
-                )}
-                {updatedAt && (
-                  <p className="text-xs text-slate-500">
-                    Updated at {formatDateTime(updatedAt)}
-                  </p>
-                )}
-              </div>
-            </div>
+          <button
+            type="button"
+            className="inline-flex h-12 items-center gap-2 rounded-xl bg-gradient-to-r from-[#345CFF] to-[#5C35FF] px-5 text-sm font-semibold text-white shadow-[0_18px_35px_rgba(92,76,255,0.25)]"
+          >
+            <FaPlus className="text-sm" />
+            Add Trending Boost
+          </button>
+        </div>
+      </section>
 
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <button
-                onClick={() => fetchTrending()}
-                disabled={loading}
-                className={`inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-semibold transition ${
-                  loading
-                    ? "cursor-not-allowed bg-slate-100 text-slate-400"
-                    : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-                }`}
-              >
-                {loading ? <FaSpinner className="animate-spin" /> : <FaSyncAlt />}
-                Refresh
-              </button>
+      <section className="grid gap-4 xl:grid-cols-[minmax(0,1.9fr)_360px]">
+        <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-5">
+          {SUMMARY_CARDS.map((card) => (
+            <SummaryCard key={card.label} {...card} />
+          ))}
+        </div>
 
-              <button
-                onClick={recompute}
-                disabled={recomputing}
-                className={`inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-semibold transition ${
-                  recomputing
-                    ? "cursor-not-allowed bg-blue-100 text-blue-300"
-                    : "bg-blue-600 text-white hover:bg-blue-700 hover:text-white"
-                }`}
-              >
-                {recomputing ? (
-                  <FaSpinner className="animate-spin" />
-                ) : (
-                  <FaBolt />
-                )}
-                Recompute
-              </button>
+        <div className="rounded-xl border border-slate-200 bg-white px-5 py-4 shadow-[0_14px_32px_rgba(15,23,42,0.04)]">
+          <h2 className="text-[1.05rem] font-semibold text-slate-950">Trending Overview</h2>
+          <p className="mt-1 text-sm text-slate-500">Last 7 days performance</p>
+
+          <div className="mt-6">
+            <svg viewBox="0 0 420 190" className="h-[190px] w-full">
+              {[32, 68, 104, 140].map((y) => (
+                <line key={y} x1="18" y1={y} x2="402" y2={y} stroke="#E7ECF5" strokeWidth="1" />
+              ))}
+
+              <path d={areaPath(overviewPoints, 190, 18)} fill="url(#trendingAreaGradient)" opacity="0.24" />
+              <path d={linePath(overviewPoints)} fill="none" stroke="#6D35FF" strokeWidth="3.5" strokeLinecap="round" />
+
+              {overviewPoints.map((point, index) => (
+                <circle key={CHART_LABELS[index]} cx={point.x} cy={point.y} r="4.5" fill="#6D35FF" />
+              ))}
+
+              <defs>
+                <linearGradient id="trendingAreaGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#7C3AED" />
+                  <stop offset="100%" stopColor="#7C3AED" stopOpacity="0" />
+                </linearGradient>
+              </defs>
+            </svg>
+
+            <div className="mt-2 flex items-center justify-between text-[11px] font-medium text-slate-400">
+              {CHART_LABELS.map((label) => (
+                <span key={label}>{label}</span>
+              ))}
             </div>
           </div>
-        </section>
+        </div>
+      </section>
 
-        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <p className="text-sm text-slate-500">Tracked products</p>
-            <p className="mt-2 text-2xl font-bold text-slate-900">
-              {summary.totalRows}
-            </p>
-          </div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <p className="text-sm text-slate-500">Manual boosts on</p>
-            <p className="mt-2 text-2xl font-bold text-slate-900">
-              {summary.manualBoosts}
-            </p>
-          </div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <p className="text-sm text-slate-500">Average score</p>
-            <p className="mt-2 text-2xl font-bold text-slate-900">
-              {formatNumber(summary.averageScore, 2)}
-            </p>
-          </div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <p className="text-sm text-slate-500">Latest calculation</p>
-            <p className="mt-2 text-sm font-semibold text-slate-900">
-              {formatDateTime(summary.latestCalculated || updatedAt)}
-            </p>
-          </div>
-        </section>
-
-        <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-5">
-            <div>
-              <label className="mb-2 block text-sm font-semibold text-slate-700">
-                Product type
-              </label>
-              <select
-                value={type}
-                onChange={(event) => setType(event.target.value)}
-                className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-100"
-              >
-                {TYPE_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
+      <section className="grid gap-5 xl:grid-cols-[minmax(0,1.9fr)_360px]">
+        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_14px_32px_rgba(15,23,42,0.04)]">
+          <div className="border-b border-slate-200 px-5 py-5">
+            <div className="flex flex-col gap-4 2xl:flex-row 2xl:items-center 2xl:justify-between">
+              <div className="flex flex-wrap items-center gap-2">
+                {TAB_ITEMS.map((tab) => (
+                  <button
+                    key={tab.value}
+                    type="button"
+                    onClick={() => setActiveTab(tab.value)}
+                    className={`rounded-xl px-4 py-3 text-sm font-semibold transition ${
+                      activeTab === tab.value
+                        ? "bg-[#EEF1FF] text-[#345CFF]"
+                        : "text-slate-700 hover:bg-slate-50"
+                    }`}
+                  >
+                    {tab.label} ({tab.count})
+                  </button>
                 ))}
-              </select>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3">
+                <SelectField value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)} className="min-w-[150px]">
+                  <option value="all">All Categories</option>
+                  {categories.map((category) => (
+                    <option key={category} value={category}>
+                      {category}
+                    </option>
+                  ))}
+                </SelectField>
+
+                <SelectField value={brandFilter} onChange={(event) => setBrandFilter(event.target.value)} className="min-w-[150px]">
+                  <option value="all">All Brands</option>
+                  {brands.map((brand) => (
+                    <option key={brand} value={brand}>
+                      {brand}
+                    </option>
+                  ))}
+                </SelectField>
+
+                <SelectField value={deviceFilter} onChange={(event) => setDeviceFilter(event.target.value)} className="min-w-[150px]">
+                  <option value="all">All Devices</option>
+                  {deviceTypes.map((deviceType) => (
+                    <option key={deviceType} value={deviceType}>
+                      {deviceType}
+                    </option>
+                  ))}
+                </SelectField>
+              </div>
             </div>
 
-            <div>
-              <label className="mb-2 block text-sm font-semibold text-slate-700">
-                Limit
-              </label>
-              <input
-                type="number"
-                min={1}
-                max={200}
-                value={limit}
-                onChange={(event) => setLimit(event.target.value)}
-                className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-100"
-              />
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-semibold text-slate-700">
-                Sort by
-              </label>
-              <select
-                value={sortField}
-                onChange={(event) => setSortField(event.target.value)}
-                className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-100"
-              >
-                {SORT_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-semibold text-slate-700">
-                Direction
-              </label>
-              <select
-                value={sortDirection}
-                onChange={(event) => setSortDirection(event.target.value)}
-                className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-100"
-              >
-                <option value="desc">Latest / highest first</option>
-                <option value="asc">Oldest / lowest first</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-semibold text-slate-700">
-                Search
-              </label>
-              <div className="relative">
-                <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <div className="mt-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div className="relative w-full lg:max-w-[20rem]">
+                <FaSearch className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm text-slate-400" />
                 <input
+                  type="text"
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
-                  className="w-full rounded-2xl border border-slate-200 bg-white py-2.5 pl-10 pr-3 text-sm text-slate-700 outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-100"
-                  placeholder="Search by ID, name, or brand"
+                  placeholder="Search trending products..."
+                  className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-11 pr-4 text-sm text-slate-700 outline-none transition focus:border-[#5A49FF] focus:ring-4 focus:ring-[#5A49FF]/10"
                 />
               </div>
-            </div>
-          </div>
 
-          <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-slate-500">
-            <span className="rounded-full bg-slate-100 px-3 py-1 font-medium text-slate-600">
-              Showing {sortedRows.length} of {rows.length}
-            </span>
-            <span>Missing values always stay at the bottom.</span>
-          </div>
-        </section>
+              <div className="flex flex-wrap items-center gap-3">
+                <SelectField value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="min-w-[120px]">
+                  <option value="all">All Status</option>
+                  <option value="active">Active</option>
+                  <option value="scheduled">Scheduled</option>
+                  <option value="expired">Expired</option>
+                </SelectField>
 
-        {error && (
-          <section className="rounded-2xl border border-red-200 bg-red-50 p-4 shadow-sm">
-            <div className="flex items-start gap-3">
-              <FaExclamationCircle className="mt-0.5 text-red-500" />
-              <div>
-                <p className="font-semibold text-red-700">Error</p>
-                <p className="text-sm text-red-600">{error}</p>
+                <button
+                  type="button"
+                  className="inline-flex h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700"
+                >
+                  <FaFilter className="text-sm" />
+                  Filters
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab(section === "rules" ? "active" : section === "history" ? "expired" : "all");
+                    setQuery("");
+                    setCategoryFilter("all");
+                    setBrandFilter("all");
+                    setDeviceFilter("all");
+                    setStatusFilter("all");
+                  }}
+                  className="inline-flex h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-[#345CFF]"
+                >
+                  <FaRedo className="text-sm" />
+                  Reset
+                </button>
               </div>
             </div>
-          </section>
-        )}
+          </div>
 
-        <section className="space-y-4 xl:hidden">
-          {loading && rows.length === 0 ? (
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center text-sm text-slate-600 shadow-sm">
-              <FaSpinner className="mr-2 inline animate-spin" />
-              Loading trending report...
-            </div>
-          ) : sortedRows.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-slate-600 shadow-sm">
-              No results yet. Recompute the report to generate trending data.
-            </div>
-          ) : (
-            sortedRows.map((row, index) => {
-              const trend = getTrendData(row);
-              const isSaving = Boolean(savingById[row?.product_id]);
-              const currentBadge = String(row?.manual_badge ?? "");
-              const hasCurrentBadge = BADGE_OPTIONS.some(
-                (badge) => badge.value === currentBadge,
-              );
-              const badgeOptions = hasCurrentBadge
-                ? BADGE_OPTIONS
-                : [
-                    { value: currentBadge, label: `${currentBadge} (Custom)` },
-                    ...BADGE_OPTIONS,
-                  ];
-
-              return (
-                <article
-                  key={row?.product_id ?? `${row?.name}-${index}`}
-                  className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-                        Rank #{index + 1}
-                      </p>
-                      <h2 className="mt-1 text-lg font-semibold text-slate-900">
-                        {row?.name || "Untitled product"}
-                      </h2>
-                      <p className="mt-1 text-sm text-slate-500">
-                        {[row?.brand, row?.product_type]
-                          .filter(Boolean)
-                          .join(" • ") || "No brand details"}
-                      </p>
-                    </div>
-
-                    <span
-                      className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold ${trend.className}`}
-                    >
-                      {trend.icon}
-                      <span>
-                        {trend.delta > 0 ? `+${trend.delta}` : trend.delta}
-                      </span>
-                    </span>
-                  </div>
-
-                  <div className="mt-4 grid grid-cols-2 gap-3">
-                    <div className="rounded-2xl bg-slate-50 p-3">
-                      <p className="text-xs text-slate-500">Visitors 7d</p>
-                      <p className="mt-1 text-lg font-semibold text-slate-900">
-                        {formatNumber(row?.views_7d)}
-                      </p>
-                    </div>
-                    <div className="rounded-2xl bg-slate-50 p-3">
-                      <p className="text-xs text-slate-500">Score</p>
-                      <p className="mt-1 text-lg font-semibold text-slate-900">
-                        {formatNumber(row?.trending_score, 2)}
-                      </p>
-                    </div>
-                    <div className="rounded-2xl bg-slate-50 p-3">
-                      <p className="text-xs text-slate-500">Visitors total</p>
-                      <p className="mt-1 text-lg font-semibold text-slate-900">
-                        {formatNumber(row?.unique_visitors_total)}
-                      </p>
-                    </div>
-                    <div className="rounded-2xl bg-slate-50 p-3">
-                      <p className="text-xs text-slate-500">Compares 7d</p>
-                      <p className="mt-1 text-lg font-semibold text-slate-900">
-                        {formatNumber(row?.compares_7d)}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <label className="rounded-2xl border border-slate-200 p-3">
-                      <span className="text-xs uppercase tracking-[0.16em] text-slate-400">
-                        Manual boost
-                      </span>
-                      <div className="mt-2 flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={Boolean(row?.manual_boost)}
-                          onChange={(event) =>
-                            updateRow(row.product_id, {
-                              manual_boost: event.target.checked,
-                            })
-                          }
-                          className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                        />
-                        <span className="text-sm font-medium text-slate-700">
-                          {row?.manual_boost ? "Enabled" : "Disabled"}
-                        </span>
-                      </div>
-                    </label>
-
-                    <label className="rounded-2xl border border-slate-200 p-3">
-                      <span className="text-xs uppercase tracking-[0.16em] text-slate-400">
-                        Priority
-                      </span>
-                      <input
-                        type="number"
-                        min={0}
-                        value={row?.manual_priority ?? 0}
-                        onChange={(event) =>
-                          updateRow(row.product_id, {
-                            manual_priority: event.target.value,
-                          })
-                        }
-                        className="mt-2 w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-100"
-                      />
-                    </label>
-                  </div>
-
-                  <div className="mt-3 rounded-2xl border border-slate-200 p-3">
-                    <p className="text-xs uppercase tracking-[0.16em] text-slate-400">
-                      Manual badge
-                    </p>
-                    <select
-                      value={row?.manual_badge ?? ""}
-                      onChange={(event) =>
-                        updateRow(row.product_id, {
-                          manual_badge: event.target.value,
-                        })
-                      }
-                      className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-100"
-                    >
-                      {badgeOptions.map((badge) => (
-                        <option key={`${badge.label}-${badge.value}`} value={badge.value}>
-                          {badge.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="mt-4 grid grid-cols-1 gap-3 text-sm text-slate-600 sm:grid-cols-2">
-                    <div className="rounded-2xl border border-slate-200 p-3">
-                      <p className="text-xs uppercase tracking-[0.16em] text-slate-400">
-                        Calculated
-                      </p>
-                      <p className="mt-1 font-medium text-slate-900">
-                        {formatDateTime(row?.calculated_at)}
-                      </p>
-                    </div>
-                    <div className="rounded-2xl border border-slate-200 p-3">
-                      <p className="text-xs uppercase tracking-[0.16em] text-slate-400">
-                        Trend change
-                      </p>
-                      <p className="mt-1 font-medium text-slate-900">
-                        {trend.label}
-                        {trend.percentage !== null &&
-                          ` (${trend.percentage > 0 ? "+" : ""}${Math.round(trend.percentage)}%)`}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 flex flex-col gap-3 sm:flex-row">
-                    <button
-                      onClick={() => saveOverride(row)}
-                      disabled={isSaving}
-                      className={`inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-semibold transition ${
-                        isSaving
-                          ? "cursor-not-allowed bg-slate-100 text-slate-400"
-                          : "bg-blue-600 text-white hover:bg-blue-700 hover:text-white"
-                      }`}
-                    >
-                      {isSaving ? <FaSpinner className="animate-spin" /> : <FaSave />}
-                      Save
-                    </button>
-                    <button
-                      onClick={() => clearOverride(row)}
-                      disabled={isSaving}
-                      className={`inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-semibold transition ${
-                        isSaving
-                          ? "cursor-not-allowed bg-slate-100 text-slate-400"
-                          : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-                      }`}
-                    >
-                      <FaTrash />
-                      Clear
-                    </button>
-                  </div>
-                </article>
-              );
-            })
-          )}
-        </section>
-
-        <section className="hidden overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm xl:block">
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead className="border-b border-slate-200 bg-slate-50">
-                <tr>
-                  {[
-                    "Product",
-                    "Brand",
-                    "Type",
-                    "Trend",
-                    "Visitors 7d",
-                    "Visitors total",
-                    "Compares 7d",
-                    "Compares total",
-                    "Score",
-                    "Calculated",
-                    "Manual boost",
-                    "Priority",
-                    "Badge",
-                    "Actions",
-                  ].map((heading) => (
-                    <th
-                      key={heading}
-                      className="whitespace-nowrap px-4 py-3 text-left font-semibold text-slate-700"
-                    >
-                      {heading}
-                    </th>
-                  ))}
+          <div className="overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:h-0">
+            <table className="min-w-[1220px] w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-200 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                  <th className="px-4 py-4 lg:px-5">
+                    <input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-[#345CFF] focus:ring-[#345CFF]" />
+                  </th>
+                  <th className="px-4 py-4 lg:px-5">Rank</th>
+                  <th className="px-4 py-4">Device</th>
+                  <th className="px-4 py-4">Brand</th>
+                  <th className="px-4 py-4">Category</th>
+                  <th className="px-4 py-4">Hook Score</th>
+                  <th className="px-4 py-4">Trending Score</th>
+                  <th className="px-4 py-4">Impressions</th>
+                  <th className="px-4 py-4">CTR</th>
+                  <th className="px-4 py-4">Boost Status</th>
+                  <th className="px-4 py-4">Boost Type</th>
+                  <th className="px-4 py-4">Boost Until</th>
+                  <th className="px-4 py-4 text-right lg:px-5">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
-                {loading && rows.length === 0 ? (
+
+              <tbody>
+                {visibleRows.length === 0 ? (
                   <tr>
-                    <td colSpan={14} className="px-4 py-10 text-center text-slate-600">
-                      <FaSpinner className="mr-2 inline animate-spin" />
-                      Loading trending report...
-                    </td>
-                  </tr>
-                ) : sortedRows.length === 0 ? (
-                  <tr>
-                    <td colSpan={14} className="px-4 py-10 text-center text-slate-600">
-                      No results yet. Recompute the report to generate trending data.
+                    <td colSpan="13" className="px-4 py-16 text-center text-slate-500">
+                      No trending products match the current filters.
                     </td>
                   </tr>
                 ) : (
-                  sortedRows.map((row, index) => {
-                    const trend = getTrendData(row);
-                    const isSaving = Boolean(savingById[row?.product_id]);
-                    const currentBadge = String(row?.manual_badge ?? "");
-                    const hasCurrentBadge = BADGE_OPTIONS.some(
-                      (badge) => badge.value === currentBadge,
-                    );
-                    const badgeOptions = hasCurrentBadge
-                      ? BADGE_OPTIONS
-                      : [
-                          { value: currentBadge, label: `${currentBadge} (Custom)` },
-                          ...BADGE_OPTIONS,
-                        ];
+                  visibleRows.map((row) => (
+                    <tr key={`${row.rank}-${row.name}`} className="border-b border-slate-100 transition hover:bg-slate-50/70">
+                      <td className="px-4 py-4 lg:px-5">
+                        <input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-[#345CFF] focus:ring-[#345CFF]" />
+                      </td>
 
-                    return (
-                      <tr
-                        key={row?.product_id ?? `${row?.name}-${index}`}
-                        className="align-top hover:bg-slate-50"
-                      >
-                        <td className="min-w-[240px] px-4 py-4">
-                          <div className="font-semibold text-slate-900">
-                            {row?.name || "-"}
+                      <td className="px-4 py-4 lg:px-5">
+                        <div className={`flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-semibold text-white ${row.badgeClassName}`}>
+                          {row.rank}
+                        </div>
+                      </td>
+
+                      <td className="px-4 py-4">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <div className={`flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br text-[11px] font-semibold text-white ${row.thumbClassName}`}>
+                            {row.thumbLabel}
                           </div>
-                          <div className="mt-1 text-xs text-slate-500">
-                            #{index + 1} • ID {row?.product_id ?? "-"}
+
+                          <div className="min-w-0">
+                            <p className="truncate font-semibold text-slate-950">{row.name}</p>
+                            <p className="truncate text-xs text-slate-500">{row.subtitle}</p>
                           </div>
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-4 text-slate-700">
-                          {row?.brand || "-"}
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-4 text-slate-700">
-                          {row?.product_type || "-"}
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-4">
-                          <span
-                            className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold ${trend.className}`}
-                          >
-                            {trend.icon}
-                            <span>
-                              {trend.delta > 0 ? `+${trend.delta}` : trend.delta}
-                            </span>
-                            {trend.percentage !== null && (
-                              <span>
-                                ({trend.percentage > 0 ? "+" : ""}
-                                {Math.round(trend.percentage)}%)
-                              </span>
-                            )}
-                          </span>
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-4 text-slate-700">
-                          {formatNumber(row?.views_7d)}
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-4 text-slate-700">
-                          {formatNumber(row?.unique_visitors_total)}
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-4 text-slate-700">
-                          {formatNumber(row?.compares_7d)}
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-4 text-slate-700">
-                          {formatNumber(row?.compares_total)}
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-4 font-semibold text-slate-900">
-                          {formatNumber(row?.trending_score, 2)}
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-4 text-slate-700">
-                          {formatDateTime(row?.calculated_at)}
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-4">
-                          <label className="inline-flex items-center gap-2">
-                            <input
-                              type="checkbox"
-                              checked={Boolean(row?.manual_boost)}
-                              onChange={(event) =>
-                                updateRow(row.product_id, {
-                                  manual_boost: event.target.checked,
-                                })
-                              }
-                              className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                            />
-                            <span className="text-xs font-medium text-slate-600">
-                              {row?.manual_boost ? "On" : "Off"}
-                            </span>
-                          </label>
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-4">
-                          <input
-                            type="number"
-                            min={0}
-                            value={row?.manual_priority ?? 0}
-                            onChange={(event) =>
-                              updateRow(row.product_id, {
-                                manual_priority: event.target.value,
-                              })
-                            }
-                            className="w-24 rounded-2xl border border-slate-200 px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-100"
+                        </div>
+                      </td>
+
+                      <td className="px-4 py-4 font-medium text-slate-700">{row.brand}</td>
+
+                      <td className="px-4 py-4">
+                        <span className="inline-flex rounded-full bg-[#EEF1FF] px-3 py-1 text-xs font-semibold text-[#5665FF]">
+                          {row.category}
+                        </span>
+                      </td>
+
+                      <td className="px-4 py-4">
+                        <span className="inline-flex min-w-[2.2rem] items-center justify-center rounded-full bg-emerald-50 px-3 py-1 text-sm font-semibold text-emerald-700">
+                          {row.hookScore}
+                        </span>
+                      </td>
+
+                      <td className="px-4 py-4">
+                        <div className="flex items-center gap-2 font-semibold text-slate-950">
+                          <span>{row.trendingScore}</span>
+                          <FaArrowUp
+                            className={`text-[10px] ${row.trendDirection === "down" ? "rotate-180 text-rose-500" : "text-emerald-500"}`}
                           />
-                        </td>
-                        <td className="min-w-[220px] px-4 py-4">
-                          <select
-                            value={row?.manual_badge ?? ""}
-                            onChange={(event) =>
-                              updateRow(row.product_id, {
-                                manual_badge: event.target.value,
-                              })
-                            }
-                            className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-100"
+                        </div>
+                      </td>
+
+                      <td className="px-4 py-4 text-slate-700">{row.impressions}</td>
+                      <td className="px-4 py-4 text-slate-700">{row.ctr}</td>
+
+                      <td className="px-4 py-4">
+                        <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${STATUS_STYLES[row.boostStatus]}`}>
+                          {row.boostStatus}
+                        </span>
+                      </td>
+
+                      <td className="px-4 py-4">
+                        <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${BOOST_TYPE_STYLES[row.boostType]}`}>
+                          {row.boostType}
+                        </span>
+                      </td>
+
+                      <td className="px-4 py-4">
+                        <p className="font-medium text-slate-700">{row.boostUntil}</p>
+                        <p
+                          className={`mt-1 text-xs ${
+                            row.boostStatus === "Expired"
+                              ? "text-rose-500"
+                              : row.boostStatus === "Scheduled"
+                                ? "text-amber-600"
+                                : "text-emerald-600"
+                          }`}
+                        >
+                          {row.boostMeta}
+                        </p>
+                      </td>
+
+                      <td className="px-4 py-4 text-right lg:px-5">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:border-slate-300 hover:text-slate-900"
                           >
-                            {badgeOptions.map((badge) => (
-                              <option
-                                key={`${badge.label}-${badge.value}`}
-                                value={badge.value}
-                              >
-                                {badge.label}
-                              </option>
-                            ))}
-                          </select>
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-4">
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => saveOverride(row)}
-                              disabled={isSaving}
-                              className={`inline-flex items-center gap-2 rounded-2xl px-3 py-2 text-xs font-semibold transition ${
-                                isSaving
-                                  ? "cursor-not-allowed bg-slate-100 text-slate-400"
-                                  : "bg-blue-600 text-white hover:bg-blue-700 hover:text-white"
-                              }`}
-                            >
-                              {isSaving ? (
-                                <FaSpinner className="animate-spin" />
-                              ) : (
-                                <FaSave />
-                              )}
-                              Save
-                            </button>
-                            <button
-                              onClick={() => clearOverride(row)}
-                              disabled={isSaving}
-                              className={`inline-flex items-center gap-2 rounded-2xl px-3 py-2 text-xs font-semibold transition ${
-                                isSaving
-                                  ? "cursor-not-allowed bg-slate-100 text-slate-400"
-                                  : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-                              }`}
-                            >
-                              <FaTrash />
-                              Clear
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
+                            <FaEye className="text-xs" />
+                          </button>
+                          <button
+                            type="button"
+                            className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:border-slate-300 hover:text-slate-900"
+                          >
+                            <FaEdit className="text-xs" />
+                          </button>
+                          <button
+                            type="button"
+                            className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:border-slate-300 hover:text-slate-900"
+                          >
+                            <FaEllipsisH className="text-xs" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
                 )}
               </tbody>
             </table>
           </div>
-        </section>
 
-        <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900">
-            How manual boost works
-          </h2>
-          <div className="mt-3 space-y-2 text-sm leading-6 text-slate-600">
-            <p>
-              Manual boost does not change views or compares. Those numbers still
-              come from real activity.
-            </p>
-            <p>
-              Turning on manual boost and increasing priority moves a product
-              above algorithm-only ordering.
-            </p>
-            <p>
-              Public APIs keep the clean client payload. This page stays admin
-              only for internal controls and diagnostics.
-            </p>
+          <div className="border-t border-slate-200 px-5 py-4">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <p className="text-sm text-slate-600">
+                Showing {visibleRows.length === 0 ? 0 : 1} to {visibleRows.length} of 126 results
+              </p>
+
+              <div className="flex flex-wrap items-center gap-3 lg:justify-end">
+                <SelectField value={rowsPerPage} onChange={(event) => setRowsPerPage(Number(event.target.value))} className="h-10 min-w-[120px] px-3">
+                  {[10, 20, 30].map((option) => (
+                    <option key={option} value={option}>
+                      {option} per page
+                    </option>
+                  ))}
+                </SelectField>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-400"
+                  >
+                    <FaChevronDown className="rotate-90 text-[10px]" />
+                  </button>
+
+                  {[1, 2, 3].map((page) => (
+                    <button
+                      key={page}
+                      type="button"
+                      className={`flex h-10 min-w-[2.5rem] items-center justify-center rounded-lg px-3 text-sm font-semibold transition ${
+                        page === 1
+                          ? "bg-[#345CFF] text-white shadow-[0_12px_24px_rgba(52,92,255,0.28)]"
+                          : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ))}
+
+                  <span className="px-2 text-sm text-slate-400">...</span>
+
+                  <button
+                    type="button"
+                    className="flex h-10 min-w-[2.5rem] items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                  >
+                    13
+                  </button>
+
+                  <button
+                    type="button"
+                    className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                  >
+                    <FaChevronDown className="-rotate-90 text-[10px]" />
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
-        </section>
-      </div>
+        </div>
+
+        <div className="space-y-5">
+          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-[0_14px_32px_rgba(15,23,42,0.04)]">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-slate-950">Top Trending Categories</h2>
+              <button type="button" className="text-sm font-medium text-[#345CFF]">
+                View All
+              </button>
+            </div>
+
+            <div className="mt-5 space-y-4">
+              {CATEGORY_BREAKDOWN.map((item) => (
+                <div key={item.label}>
+                  <div className="mb-1 flex items-center justify-between gap-3 text-sm">
+                    <span className="font-medium text-slate-700">{item.label}</span>
+                    <div className="flex items-center gap-3">
+                      <span className="text-slate-700">{item.value}</span>
+                      <span className="flex items-center gap-1 text-emerald-600">
+                        <FaArrowUp className="text-[10px]" />
+                        {item.delta}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-[#5A4BFF] to-[#A238FF]"
+                      style={{ width: `${item.width}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-[0_14px_32px_rgba(15,23,42,0.04)]">
+            <h2 className="text-lg font-semibold text-slate-950">Trending Health</h2>
+
+            <div className="mt-5 flex flex-col gap-6 sm:flex-row sm:items-center">
+              <div className="relative h-36 w-36 rounded-full p-[12px]" style={{ background: healthBackground }}>
+                <div className="flex h-full w-full flex-col items-center justify-center rounded-full bg-white text-center">
+                  <p className="text-3xl font-bold text-slate-950">126</p>
+                  <p className="mt-1 text-sm text-slate-500">Total</p>
+                </div>
+              </div>
+
+              <div className="flex-1 space-y-3 text-sm">
+                {HEALTH_ITEMS.map((item) => (
+                  <div key={item.label} className="flex items-center justify-between gap-4">
+                    <span className="inline-flex items-center gap-2 text-slate-600">
+                      <span className="h-3 w-3 rounded-full" style={{ backgroundColor: item.color }} />
+                      {item.label}
+                    </span>
+                    <span className="font-medium text-slate-700">
+                      {item.value} ({item.percent})
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-[0_14px_32px_rgba(15,23,42,0.04)]">
+            <h2 className="text-lg font-semibold text-slate-950">Quick Actions</h2>
+
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              {QUICK_ACTIONS.map((action) => {
+                const Icon = action.icon;
+                return (
+                  <button
+                    key={action.label}
+                    type="button"
+                    className="rounded-xl border border-slate-200 bg-slate-50/40 px-4 py-4 text-center transition hover:bg-white"
+                  >
+                    <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-[#F3F2FF] text-[#5A49FF]">
+                      <Icon className="text-base" />
+                    </div>
+                    <p className="mt-3 text-sm font-semibold text-slate-700">{action.label}</p>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
   );
 };

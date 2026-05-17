@@ -21,7 +21,7 @@ const EDITOR_SURFACE_CLASS_NAME =
   "[&_blockquote]:my-5 [&_blockquote]:border-l-4 [&_blockquote]:border-blue-500 [&_blockquote]:bg-blue-50 [&_blockquote]:px-4 [&_blockquote]:py-3 [&_blockquote]:text-slate-700 " +
   "[&_h2]:mt-7 [&_h2]:text-[24px] [&_h2]:font-black [&_h2]:leading-tight [&_h2]:tracking-[-0.03em] [&_h2]:text-slate-950 " +
   "[&_h3]:mt-6 [&_h3]:text-[18px] [&_h3]:font-bold [&_h3]:text-slate-900 " +
-  "[&_img]:my-6 [&_img]:w-full [&_img]:rounded-2xl [&_img]:bg-slate-100 [&_img]:object-cover " +
+  "[&_img]:my-6 [&_img]:mx-auto [&_img]:block [&_img]:w-auto [&_img]:max-w-[220px] sm:[&_img]:max-w-[280px] [&_img]:rounded-2xl [&_img]:bg-slate-100 [&_img]:object-cover " +
   "[&_ol]:my-4 [&_ol]:list-decimal [&_ol]:space-y-2 [&_ol]:pl-6 " +
   "[&_p]:my-4 [&_strong]:font-bold [&_strong]:text-slate-950 " +
   "[&_table]:my-5 [&_table]:w-full [&_table]:border-collapse [&_table]:text-left [&_table]:text-sm " +
@@ -47,10 +47,48 @@ const plainTextToEditorHtml = (text) =>
     )
     .join("");
 
+const escapeHtml = (value) =>
+  String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
+const getSelectionPlainText = (editor, selection) => {
+  if (!editor || !selection || selection.empty) return "";
+
+  return String(
+    editor.state.doc.textBetween(
+      selection.from,
+      selection.to,
+      "\n",
+      "\n",
+    ) || "",
+  );
+};
+
+const buildListHtmlFromText = (text, type = "bullet") => {
+  const normalizedLines = String(text || "")
+    .replace(/\r\n?/g, "\n")
+    .split(/\n+/)
+    .map((line) => String(line || "").trim())
+    .filter(Boolean);
+
+  if (normalizedLines.length < 2) return "";
+
+  const tag = type === "ordered" ? "ol" : "ul";
+
+  return `<${tag}>${normalizedLines
+    .map((line) => `<li>${escapeHtml(line)}</li>`)
+    .join("")}</${tag}>`;
+};
+
 const TiptapStoryEditor = forwardRef(function TiptapStoryEditor(
   {
     value,
     onChange,
+    onEditorStateChange,
     normalizeContent,
     className = "",
   },
@@ -116,9 +154,75 @@ const TiptapStoryEditor = forwardRef(function TiptapStoryEditor(
       focusSavedSelection(instance);
       const result = command(instance);
       rememberSelection(instance);
+      if (typeof onEditorStateChange === "function") {
+        onEditorStateChange({
+          canRedo: instance.can().chain().focus().redo().run(),
+          canUndo: instance.can().chain().focus().undo().run(),
+          hasSelection: !instance.state.selection.empty,
+          isBlockquote: instance.isActive("blockquote"),
+          isBold: instance.isActive("bold"),
+          isBulletList: instance.isActive("bulletList"),
+          isEmpty: instance.isEmpty,
+          isFocused: instance.isFocused,
+          isH2: instance.isActive("heading", { level: 2 }),
+          isH3: instance.isActive("heading", { level: 3 }),
+          isItalic: instance.isActive("italic"),
+          isLink: instance.isActive("link"),
+          isOrderedList: instance.isActive("orderedList"),
+          isParagraph: instance.isActive("paragraph"),
+          isUnderline: instance.isActive("underline"),
+        });
+      }
       return result;
     },
-    [focusSavedSelection, rememberSelection],
+    [focusSavedSelection, onEditorStateChange, rememberSelection],
+  );
+
+  const emitEditorState = useCallback(
+    (instance = editorInstanceRef.current) => {
+      if (!instance || typeof onEditorStateChange !== "function") return;
+
+      onEditorStateChange({
+        canRedo: instance.can().chain().focus().redo().run(),
+        canUndo: instance.can().chain().focus().undo().run(),
+        hasSelection: !instance.state.selection.empty,
+        isBlockquote: instance.isActive("blockquote"),
+        isBold: instance.isActive("bold"),
+        isBulletList: instance.isActive("bulletList"),
+        isEmpty: instance.isEmpty,
+        isFocused: instance.isFocused,
+        isH2: instance.isActive("heading", { level: 2 }),
+        isH3: instance.isActive("heading", { level: 3 }),
+        isItalic: instance.isActive("italic"),
+        isLink: instance.isActive("link"),
+        isOrderedList: instance.isActive("orderedList"),
+        isParagraph: instance.isActive("paragraph"),
+        isUnderline: instance.isActive("underline"),
+      });
+    },
+    [onEditorStateChange],
+  );
+
+  const toggleListWithSelectionSupport = useCallback(
+    (type = "bullet") =>
+      runWithSavedSelection((activeEditor) => {
+        const selection = activeEditor.state.selection;
+        const selectedText = getSelectionPlainText(activeEditor, selection);
+        const listHtml = buildListHtmlFromText(selectedText, type);
+
+        if (listHtml) {
+          return activeEditor
+            .chain()
+            .deleteSelection()
+            .insertContent(listHtml)
+            .run();
+        }
+
+        return type === "ordered"
+          ? activeEditor.chain().toggleOrderedList().run()
+          : activeEditor.chain().toggleBulletList().run();
+      }),
+    [runWithSavedSelection],
   );
 
   const editor = useEditor({
@@ -170,6 +274,7 @@ const TiptapStoryEditor = forwardRef(function TiptapStoryEditor(
       const normalized = normalizeValue(activeEditor.getHTML());
       lastKnownValueRef.current = normalized;
       rememberSelection(activeEditor);
+      emitEditorState(activeEditor);
     },
     onUpdate: ({ editor: activeEditor }) => {
       const normalized = normalizeValue(activeEditor.getHTML());
@@ -178,15 +283,19 @@ const TiptapStoryEditor = forwardRef(function TiptapStoryEditor(
       if (typeof onChange === "function") {
         onChange(normalized);
       }
+      emitEditorState(activeEditor);
     },
     onFocus: ({ editor: activeEditor }) => {
       rememberSelection(activeEditor);
+      emitEditorState(activeEditor);
     },
     onBlur: ({ editor: activeEditor }) => {
       rememberSelection(activeEditor);
+      emitEditorState(activeEditor);
     },
     onSelectionUpdate: ({ editor: activeEditor }) => {
       rememberSelection(activeEditor);
+      emitEditorState(activeEditor);
     },
   });
 
@@ -208,7 +317,15 @@ const TiptapStoryEditor = forwardRef(function TiptapStoryEditor(
     lastKnownValueRef.current = normalized;
     clearSavedSelection();
     rememberSelection(editor);
-  }, [clearSavedSelection, editor, normalizeValue, rememberSelection, value]);
+    emitEditorState(editor);
+  }, [
+    clearSavedSelection,
+    editor,
+    emitEditorState,
+    normalizeValue,
+    rememberSelection,
+    value,
+  ]);
 
   useImperativeHandle(
     ref,
@@ -256,6 +373,10 @@ const TiptapStoryEditor = forwardRef(function TiptapStoryEditor(
           activeEditor.chain().insertContent(String(text)).run(),
         );
       },
+      redo: () =>
+        runWithSavedSelection((activeEditor) =>
+          activeEditor.chain().focus().redo().run(),
+        ),
       saveSelection: () => rememberSelection(),
       setLink: (href) =>
         runWithSavedSelection((activeEditor) =>
@@ -277,10 +398,7 @@ const TiptapStoryEditor = forwardRef(function TiptapStoryEditor(
         runWithSavedSelection((activeEditor) =>
           activeEditor.chain().toggleBold().run(),
         ),
-      toggleBulletList: () =>
-        runWithSavedSelection((activeEditor) =>
-          activeEditor.chain().toggleBulletList().run(),
-        ),
+      toggleBulletList: () => toggleListWithSelectionSupport("bullet"),
       toggleHeading: (level) =>
         runWithSavedSelection((activeEditor) =>
           activeEditor
@@ -292,16 +410,26 @@ const TiptapStoryEditor = forwardRef(function TiptapStoryEditor(
         runWithSavedSelection((activeEditor) =>
           activeEditor.chain().toggleItalic().run(),
         ),
-      toggleOrderedList: () =>
-        runWithSavedSelection((activeEditor) =>
-          activeEditor.chain().toggleOrderedList().run(),
-        ),
+      toggleOrderedList: () => toggleListWithSelectionSupport("ordered"),
       toggleUnderline: () =>
         runWithSavedSelection((activeEditor) =>
           activeEditor.chain().toggleUnderline().run(),
         ),
+      undo: () =>
+        runWithSavedSelection((activeEditor) =>
+          activeEditor.chain().focus().undo().run(),
+        ),
+      unsetLink: () =>
+        runWithSavedSelection((activeEditor) =>
+          activeEditor.chain().focus().extendMarkRange("link").unsetLink().run(),
+        ),
     }),
-    [clearSavedSelection, rememberSelection, runWithSavedSelection],
+    [
+      clearSavedSelection,
+      rememberSelection,
+      runWithSavedSelection,
+      toggleListWithSelectionSupport,
+    ],
   );
 
   if (!editor) {

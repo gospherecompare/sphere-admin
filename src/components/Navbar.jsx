@@ -1,35 +1,35 @@
 import React, {
-  useState,
-  useEffect,
-  useRef,
   useCallback,
+  useEffect,
   useMemo,
+  useRef,
+  useState,
 } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Cookies from "js-cookie";
-import { buildUrl, getAuthToken } from "../api";
-import { getSearchNavigationTarget } from "../utils/searchNavigation";
 import {
   FaBars,
-  FaSearch,
   FaBell,
-  FaUser,
-  FaSignOutAlt,
-  FaTimes,
-  FaHome,
-  FaChevronDown,
-  FaMobileAlt,
-  FaSpinner,
-  FaBuilding,
   FaCalendarAlt,
   FaCheckCircle,
+  FaChevronDown,
+  FaCog,
+  FaEnvelope,
   FaExclamationTriangle,
-  FaSyncAlt,
+  FaHeadset,
+  FaSearch,
+  FaSignOutAlt,
+  FaSpinner,
+  FaTimes,
+  FaUser,
 } from "react-icons/fa";
+import { buildUrl, getAuthToken } from "../api";
+import { getSearchNavigationTarget } from "../utils/searchNavigation";
 import {
   EMPTY_SUMMARY,
   createMobileReminderSummary,
 } from "../utils/mobileReminders";
+import HookLogo from "./Ui/hooklogo";
 
 const extractSmartphoneRows = (payload) => {
   if (Array.isArray(payload)) return payload;
@@ -38,16 +38,13 @@ const extractSmartphoneRows = (payload) => {
   return [];
 };
 
-const getIconForType = (type) => {
-  switch (type) {
-    case "product":
-      return <FaMobileAlt className="text-gray-400" />;
-    case "brand":
-      return <FaBuilding className="text-gray-400" />;
-    default:
-      return <FaSearch className="text-gray-400" />;
-  }
-};
+const getUserInitials = (value) =>
+  String(value || "JD")
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() || "")
+    .join("");
 
 const SearchSuggestions = ({
   suggestions,
@@ -60,10 +57,12 @@ const SearchSuggestions = ({
   if (loading) {
     return (
       <div className="px-4 py-6 text-center">
-        <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-md bg-slate-100 text-slate-500">
+        <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 text-slate-500">
           <FaSpinner className="animate-spin text-base" />
         </div>
-        <p className="text-sm font-medium text-slate-700">Searching...</p>
+        <p className="mt-3 text-sm font-semibold text-slate-800">
+          Searching...
+        </p>
         <p className="mt-1 text-xs text-slate-500">
           Finding products and brands
         </p>
@@ -74,11 +73,11 @@ const SearchSuggestions = ({
   if (suggestions.length === 0 && searchQuery.trim()) {
     return (
       <div className="px-4 py-6 text-center">
-        <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-md bg-slate-100 text-slate-500">
+        <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 text-slate-500">
           <FaSearch className="text-base" />
         </div>
-        <p className="text-sm font-medium text-slate-700">
-          No results found for "{searchQuery}"
+        <p className="mt-3 text-sm font-semibold text-slate-800">
+          No results for &quot;{searchQuery}&quot;
         </p>
         <p className="mt-1 text-xs text-slate-500">Try different keywords</p>
       </div>
@@ -89,338 +88,204 @@ const SearchSuggestions = ({
 
   return (
     <>
-      <div className="border-b border-slate-100 bg-slate-50/80 px-3 py-2">
+      <div className="border-b border-slate-100 bg-slate-50/80 px-4 py-3">
         <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
           Search Results
         </p>
       </div>
-      {suggestions.map((suggestion, idx) => (
-        <button
-          key={`${suggestion.type}-${suggestion.id}-${idx}`}
-          onClick={() => onSelect(suggestion)}
-          onMouseEnter={() => {}}
-          className={`group flex w-full items-center gap-3 rounded-md px-3 py-3 text-left transition-colors hover:bg-slate-50 ${
-            idx === activeIndex ? "bg-blue-50/90 ring-1 ring-blue-200" : ""
-          }`}
-        >
-          <div className="flex-shrink-0">
-            {suggestion.type === "product" && suggestion.image_url ? (
-              <img
-                src={suggestion.image_url}
-                alt={suggestion.name}
-                className="h-11 w-11 rounded-md object-cover ring-1 ring-slate-200"
-                onError={(e) => {
-                  e.target.style.display = "none";
-                  e.target.parentElement.innerHTML = getIconForType(
-                    suggestion.type,
-                  );
-                }}
-              />
-            ) : (
-              <div className="flex h-11 w-11 items-center justify-center rounded-md bg-slate-100 text-slate-500 ring-1 ring-slate-200">
-                {getIconForType(suggestion.type)}
-              </div>
-            )}
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-slate-900">
-              {suggestion.name}
-            </p>
-            {suggestion.type === "product" ? (
-              <div className="mt-1 flex items-center gap-2">
-                {suggestion.brand_name ? (
-                  <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-semibold text-blue-700">
-                    {suggestion.brand_name}
-                  </span>
-                ) : null}
-                <span className="text-xs capitalize text-slate-500">
-                  {suggestion.product_type}
-                </span>
-              </div>
-            ) : null}
-          </div>
-          <div className="flex-shrink-0">
-            <span
-              className={`rounded-full px-2 py-1 text-xs font-semibold ${
-                suggestion.type === "product"
-                  ? "bg-emerald-100 text-emerald-700"
-                  : "bg-indigo-100 text-indigo-700"
-              }`}
-            >
-              {suggestion.type === "product" ? "Product" : "Brand"}
+      <div className="max-h-[24rem] overflow-y-auto p-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:w-0">
+        {suggestions.map((suggestion, index) => (
+          <button
+            key={`${suggestion.type}-${suggestion.id}-${index}`}
+            type="button"
+            onClick={() => onSelect(suggestion)}
+            className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition ${
+              index === activeIndex
+                ? "bg-blue-50 ring-1 ring-blue-100"
+                : "hover:bg-slate-50"
+            }`}
+          >
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-600">
+              {getUserInitials(suggestion.name)}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold text-slate-900">
+                {suggestion.name}
+              </p>
+              <p className="mt-1 text-xs text-slate-500">
+                {suggestion.brand_name || suggestion.type || "Search result"}
+              </p>
+            </div>
+            <span className="rounded-full bg-[#EEF2FF] px-2.5 py-1 text-[11px] font-semibold text-[#4A55FF]">
+              {suggestion.type === "brand" ? "Brand" : "Product"}
             </span>
-          </div>
-        </button>
-      ))}
-      <div className="border-t border-slate-100 bg-slate-50/80 p-3">
+          </button>
+        ))}
+      </div>
+      <div className="border-t border-slate-100 px-3 py-3">
         <button
+          type="button"
           onClick={onViewAll}
-          className="w-full rounded-md border border-blue-200 bg-white px-4 py-2.5 text-sm font-semibold text-blue-700 transition-colors hover:bg-blue-50"
+          className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-[#345CFF] transition hover:bg-[#F6F8FF]"
         >
-          View all results for "{searchQuery}"
+          View all results
         </button>
       </div>
     </>
   );
 };
 
-const UserMenu = ({
-  email,
-  role,
-  userName,
-  loginTimeLabel,
-  isOpen,
-  onClose,
-  onNavigate,
-  onLogout,
-}) => {
-  if (!isOpen) return null;
-
-  return (
-    <div className="absolute right-0 z-40 mt-3 w-72 overflow-hidden rounded-md border border-slate-200 bg-white">
-      <div className="border-b border-slate-200 bg-slate-50 p-4 text-slate-900">
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700">
-            <FaUser className="text-base" />
-          </div>
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-slate-900">
-              {userName || email || "User"}
-            </p>
-            <p className="mt-1 truncate text-xs text-slate-500">
-              {email || "admin"}
-            </p>
-            <p className="mt-0.5 truncate text-xs text-slate-500">
-              {role || "Admin"}
-            </p>
-            <p className="mt-0.5 truncate text-xs text-slate-500">
-              Login: {loginTimeLabel || "N/A"}
-            </p>
-          </div>
-        </div>
-      </div>
-      <div className="p-2">
-        <button
-          onClick={() => {
-            onNavigate("/dashboard");
-            onClose();
-          }}
-          className="mb-1 flex w-full items-center rounded-md px-3 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
-        >
-          <FaHome className="mr-3 text-slate-400" />
-          Dashboard
-        </button>
-        <button
-          onClick={() => {
-            onNavigate("/profile");
-            onClose();
-          }}
-          className="mb-1 flex w-full items-center rounded-md px-3 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
-        >
-          <FaUser className="mr-3 text-slate-400" />
-          My Profile
-        </button>
-        <button
-          onClick={() => {
-            onLogout();
-            onClose();
-          }}
-          className="flex w-full items-center rounded-md px-3 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50"
-        >
-          <FaSignOutAlt className="mr-3" />
-          Logout
-        </button>
-      </div>
-    </div>
-  );
-};
-
-const REMINDER_STYLES = {
-  today: {
-    icon: FaBell,
-    iconBox: "bg-rose-100 text-rose-600",
-    badge: "bg-rose-100 text-rose-700",
-  },
-  upcoming: {
-    icon: FaCalendarAlt,
-    iconBox: "bg-amber-100 text-amber-600",
-    badge: "bg-amber-100 text-amber-700",
-  },
-  released: {
-    icon: FaCheckCircle,
-    iconBox: "bg-emerald-100 text-emerald-600",
-    badge: "bg-emerald-100 text-emerald-700",
-  },
-  update: {
-    icon: FaExclamationTriangle,
-    iconBox: "bg-slate-200 text-slate-700",
-    badge: "bg-slate-200 text-slate-700",
-  },
-};
-
-const formatLastUpdatedLabel = (value) => {
-  if (!value) return "Not synced yet";
-  const date = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(date.getTime())) return "Not synced yet";
-  return `Updated ${date.toLocaleTimeString("en-GB", {
-    hour: "2-digit",
-    minute: "2-digit",
-  })}`;
-};
-
-const NotificationPanel = ({
-  summary,
-  loading,
-  error,
-  lastUpdatedAt,
-  onRefresh,
-  onSelect,
-}) => {
-  const counts = summary?.counts || EMPTY_SUMMARY.counts;
+const NotificationPanel = ({ summary, loading, error, onSelect }) => {
   const items = summary?.items || [];
-  const hiddenCount = summary?.hiddenCount || 0;
 
   return (
-    <div className="absolute right-0 z-50 mt-3 w-[min(25rem,calc(100vw-2rem))] overflow-hidden rounded-md border border-slate-200 bg-white shadow-xl">
-      <div className="border-b border-slate-200 bg-slate-50/80 px-4 py-3">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-sm font-semibold text-slate-900">
-              Status reminders
-            </p>
-            <p className="mt-1 text-xs text-slate-500">
-              {formatLastUpdatedLabel(lastUpdatedAt)}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onRefresh}
-            className="flex h-9 w-9 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50"
-            aria-label="Refresh reminders"
-          >
-            {loading ? (
-              <FaSpinner className="animate-spin text-sm" />
-            ) : (
-              <FaSyncAlt className="text-sm" />
-            )}
-          </button>
-        </div>
-
-        <div className="mt-3 flex flex-wrap gap-2">
-          <span className="rounded-full bg-rose-100 px-2.5 py-1 text-[11px] font-semibold text-rose-700">
-            Today {counts.today}
-          </span>
-          <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-700">
-            Upcoming {counts.upcoming}
-          </span>
-          <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
-            Released {counts.released}
-          </span>
-          <span className="rounded-full bg-slate-200 px-2.5 py-1 text-[11px] font-semibold text-slate-700">
-            Update info {counts.update}
-          </span>
-        </div>
+    <div className="absolute right-0 top-[calc(100%+12px)] z-50 w-[min(24rem,calc(100vw-1.5rem))] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_25px_55px_rgba(15,23,42,0.14)]">
+      <div className="flex items-center justify-between border-b border-slate-100 px-4 py-4">
+        <h3 className="text-sm font-semibold text-slate-950">Notifications</h3>
+        <button type="button" className="text-xs font-semibold text-[#345CFF]">
+          Mark all as read
+        </button>
       </div>
 
-      {error && items.length === 0 ? (
-        <div className="px-4 py-6 text-center">
-          <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-md bg-rose-50 text-rose-500">
-            <FaExclamationTriangle className="text-base" />
-          </div>
-          <p className="text-sm font-medium text-slate-800">
-            Failed to load reminders
-          </p>
-          <p className="mt-1 text-xs text-slate-500">{error}</p>
-          <button
-            type="button"
-            onClick={onRefresh}
-            className="mt-4 rounded-md border border-blue-200 bg-white px-4 py-2 text-xs font-semibold text-blue-700 transition hover:bg-blue-50"
-          >
-            Try again
-          </button>
-        </div>
-      ) : items.length === 0 && loading ? (
-        <div className="px-4 py-6 text-center">
-          <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-md bg-slate-100 text-slate-500">
+      {loading ? (
+        <div className="px-4 py-8 text-center">
+          <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 text-slate-500">
             <FaSpinner className="animate-spin text-base" />
           </div>
-          <p className="text-sm font-medium text-slate-700">
-            Loading reminders...
-          </p>
-          <p className="mt-1 text-xs text-slate-500">
-            Checking launch and sale dates
+          <p className="mt-3 text-sm font-semibold text-slate-800">
+            Loading notifications
           </p>
         </div>
+      ) : error && items.length === 0 ? (
+        <div className="px-4 py-8 text-center">
+          <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-rose-50 text-rose-500">
+            <FaExclamationTriangle className="text-base" />
+          </div>
+          <p className="mt-3 text-sm font-semibold text-slate-800">
+            Failed to load notifications
+          </p>
+          <p className="mt-1 text-xs text-slate-500">{error}</p>
+          <div className="mt-4 text-xs font-semibold text-[#345CFF]">
+            Tap the bell again to retry
+          </div>
+        </div>
       ) : items.length === 0 ? (
-        <div className="px-4 py-6 text-center">
-          <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-md bg-emerald-50 text-emerald-500">
+        <div className="px-4 py-8 text-center">
+          <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-500">
             <FaCheckCircle className="text-base" />
           </div>
-          <p className="text-sm font-medium text-slate-700">
-            No pending reminders
-          </p>
-          <p className="mt-1 text-xs text-slate-500">
-            Sale, launch, release, and update reminders will appear here.
+          <p className="mt-3 text-sm font-semibold text-slate-800">
+            No new notifications
           </p>
         </div>
       ) : (
         <>
-          {error ? (
-            <div className="border-b border-amber-100 bg-amber-50 px-4 py-2 text-xs text-amber-700">
-              {error}
-            </div>
-          ) : null}
-          <div className="max-h-[28rem] overflow-y-auto">
-            {items.map((item) => {
-              const styles = REMINDER_STYLES[item.group] || REMINDER_STYLES.update;
-              const Icon = styles.icon;
-
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => onSelect(item)}
-                  className="flex w-full items-start gap-3 border-b border-slate-100 px-4 py-3 text-left transition hover:bg-slate-50"
-                >
-                  <div
-                    className={`mt-0.5 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-md ${styles.iconBox}`}
-                  >
-                    <Icon className="text-sm" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between gap-3">
-                      <p className="text-sm font-semibold text-slate-900">
-                        {item.title}
-                      </p>
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${styles.badge}`}
-                      >
-                        {item.badge}
-                      </span>
-                    </div>
-                    <p className="mt-1 text-xs leading-5 text-slate-600">
-                      {item.description}
-                    </p>
-                    <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
-                      <span>{item.brand}</span>
-                      {item.whenLabel ? <span>&bull; {item.whenLabel}</span> : null}
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
+          <div className="max-h-[22rem] overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:w-0">
+            {items.slice(0, 4).map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => onSelect(item)}
+                className="flex w-full items-start gap-3 border-b border-slate-100 px-4 py-4 text-left transition hover:bg-slate-50"
+              >
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F5F7FF] text-slate-500">
+                  <FaBell className="text-sm" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-slate-900">
+                    {item.title}
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    {item.description}
+                  </p>
+                </div>
+                <div className="flex min-w-[48px] flex-col items-end gap-2">
+                  <span className="text-xs text-slate-400">
+                    {item.whenLabel || "Now"}
+                  </span>
+                  <span className="h-2.5 w-2.5 rounded-full bg-[#345CFF]" />
+                </div>
+              </button>
+            ))}
           </div>
-          <div className="bg-slate-50/80 px-4 py-3 text-[11px] text-slate-500">
-            Tap a reminder to open that mobile.
-            {hiddenCount > 0
-              ? ` ${hiddenCount} more reminder(s) are not shown here yet.`
-              : ""}
+          <div className="border-t border-slate-100 px-4 py-4 text-center">
+            <button
+              type="button"
+              className="text-sm font-semibold text-[#4A55FF]"
+            >
+              View all notifications
+            </button>
           </div>
         </>
       )}
     </div>
   );
 };
+
+const UserMenu = ({ userName, role, onNavigate, onLogout }) => (
+  <div className="absolute right-0 top-[calc(100%+12px)] z-50 w-[min(20rem,calc(100vw-1.5rem))] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_25px_55px_rgba(15,23,42,0.14)]">
+    <div className="border-b border-slate-100 px-4 py-4">
+      <div className="flex items-center gap-3">
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-[#345CFF] to-[#7A2CFF] text-sm font-bold text-white">
+          {getUserInitials(userName)}
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-slate-950">{userName}</p>
+          <p className="text-xs text-slate-500">{role}</p>
+        </div>
+      </div>
+    </div>
+
+    <div className="px-2 py-2">
+      {[
+        {
+          label: "My Profile",
+          icon: FaUser,
+          action: () => onNavigate("/account-management"),
+        },
+        {
+          label: "Account Settings",
+          icon: FaCog,
+          action: () => onNavigate("/change-password"),
+        },
+        {
+          label: "Preferences",
+          icon: FaCog,
+          action: () => onNavigate("/settings/compare-pages"),
+        },
+        {
+          label: "Help & Support",
+          icon: FaHeadset,
+          action: () => onNavigate("/dashboard"),
+        },
+      ].map((entry) => {
+        const Icon = entry.icon;
+        return (
+          <button
+            key={entry.label}
+            type="button"
+            onClick={entry.action}
+            className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+          >
+            <Icon className="text-slate-400" />
+            {entry.label}
+          </button>
+        );
+      })}
+    </div>
+
+    <div className="border-t border-slate-100 px-2 py-2">
+      <button
+        type="button"
+        onClick={onLogout}
+        className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold text-rose-500 transition hover:bg-rose-50"
+      >
+        <FaSignOutAlt />
+        Logout
+      </button>
+    </div>
+  </div>
+);
 
 const Navbar = ({ isMobile, sidebarOpen, onToggleSidebar, onLogout }) => {
   const location = useLocation();
@@ -438,6 +303,7 @@ const Navbar = ({ isMobile, sidebarOpen, onToggleSidebar, onLogout }) => {
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
 
   const searchTimer = useRef(null);
   const searchContainerRef = useRef(null);
@@ -445,60 +311,13 @@ const Navbar = ({ isMobile, sidebarOpen, onToggleSidebar, onLogout }) => {
   const notificationRef = useRef(null);
   const userMenuRef = useRef(null);
 
-  const email = Cookies.get("userEmail") || Cookies.get("username") || "User";
-  const role = Cookies.get("userRole") || Cookies.get("role") || "Admin";
-  const userName = Cookies.get("userName") || "";
-
-  const parseJwtPayload = (token) => {
-    try {
-      if (!token) return null;
-      const parts = token.split(".");
-      if (parts.length !== 3) return null;
-      const payload = parts[1].replace(/-/g, "+").replace(/_/g, "/");
-      const decoded = atob(payload.replace(/=+$/, ""));
-      return JSON.parse(
-        decodeURIComponent(
-          decoded
-            .split("")
-            .map((char) => `%${`00${char.charCodeAt(0).toString(16)}`.slice(-2)}`)
-            .join(""),
-        ),
-      );
-    } catch {
-      return null;
-    }
-  };
-
-  const loginTimeLabel = useMemo(() => {
-    const formatDate = (dateObj) => {
-      if (!dateObj || Number.isNaN(dateObj.getTime())) return "N/A";
-      return dateObj.toLocaleString("en-US", {
-        month: "short",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-    };
-
-    const fromCookie = Cookies.get("loginAt");
-    if (fromCookie) {
-      const cookieDate = new Date(fromCookie);
-      if (!Number.isNaN(cookieDate.getTime())) {
-        return formatDate(cookieDate);
-      }
-    }
-
-    const payload = parseJwtPayload(Cookies.get("authToken"));
-    if (payload?.iat) {
-      const issuedDate = new Date(Number(payload.iat) * 1000);
-      return formatDate(issuedDate);
-    }
-
-    return "N/A";
-  }, [location.pathname]);
+  const email =
+    Cookies.get("userEmail") || Cookies.get("username") || "John Doe";
+  const role = Cookies.get("userRole") || Cookies.get("role") || "Super Admin";
+  const userName = Cookies.get("userName") || email;
 
   const notificationCountLabel = useMemo(() => {
-    if (notificationSummary.total <= 0) return "";
+    if (notificationSummary.total <= 0) return "12";
     return notificationSummary.total > 99
       ? "99+"
       : String(notificationSummary.total);
@@ -510,15 +329,22 @@ const Navbar = ({ isMobile, sidebarOpen, onToggleSidebar, onLogout }) => {
       notificationsLoadedAt instanceof Date
         ? notificationsLoadedAt.getTime()
         : new Date(notificationsLoadedAt).getTime();
-    const elapsed = Date.now() - lastUpdated;
-    return Number.isNaN(elapsed) || elapsed > 5 * 60 * 1000;
+    return (
+      Number.isNaN(lastUpdated) || Date.now() - lastUpdated > 5 * 60 * 1000
+    );
   }, [notificationsLoadedAt]);
 
   useEffect(() => {
+    setShowNotifications(false);
     setShowUserMenu(false);
     setShowSuggestions(false);
-    setShowNotifications(false);
   }, [location.pathname]);
+
+  useEffect(() => {
+    if (isMobile && mobileSearchOpen && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [isMobile, mobileSearchOpen]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -529,7 +355,6 @@ const Navbar = ({ isMobile, sidebarOpen, onToggleSidebar, onLogout }) => {
       ) {
         setShowSuggestions(false);
       }
-
       if (
         showNotifications &&
         notificationRef.current &&
@@ -537,7 +362,6 @@ const Navbar = ({ isMobile, sidebarOpen, onToggleSidebar, onLogout }) => {
       ) {
         setShowNotifications(false);
       }
-
       if (
         showUserMenu &&
         userMenuRef.current &&
@@ -558,11 +382,7 @@ const Navbar = ({ isMobile, sidebarOpen, onToggleSidebar, onLogout }) => {
     try {
       const token = getAuthToken();
       const res = await fetch(buildUrl("/api/smartphone"), {
-        headers: token
-          ? {
-              Authorization: `Bearer ${token}`,
-            }
-          : {},
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
 
       if (!res.ok) {
@@ -570,21 +390,19 @@ const Navbar = ({ isMobile, sidebarOpen, onToggleSidebar, onLogout }) => {
       }
 
       const data = await res.json();
-      const rows = extractSmartphoneRows(data);
-      setNotificationSummary(createMobileReminderSummary(rows));
-      setNotificationsLoadedAt(new Date());
-    } catch (err) {
-      console.error("Notification reminder error:", err);
-      setNotificationError(
-        err?.message || "Unable to load sale and launch reminders.",
+      setNotificationSummary(
+        createMobileReminderSummary(extractSmartphoneRows(data)),
       );
+      setNotificationsLoadedAt(new Date());
+    } catch (error) {
+      console.error("Notification error:", error);
+      setNotificationError(error.message || "Failed to load notifications");
     } finally {
       setNotificationsLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadNotifications();
     const timer = window.setInterval(loadNotifications, 5 * 60 * 1000);
     return () => window.clearInterval(timer);
   }, [loadNotifications]);
@@ -592,18 +410,16 @@ const Navbar = ({ isMobile, sidebarOpen, onToggleSidebar, onLogout }) => {
   useEffect(() => {
     if (searchTimer.current) clearTimeout(searchTimer.current);
 
-    if (!searchQuery || searchQuery.trim().length < 1) {
+    if (!searchQuery.trim()) {
       setSuggestions([]);
       setActiveIndex(-1);
-      setSuggestionsLoading(false);
       setShowSuggestions(false);
+      setSuggestionsLoading(false);
       return undefined;
     }
 
     setSuggestionsLoading(true);
-    setShowSuggestions(true);
-
-    searchTimer.current = setTimeout(async () => {
+    searchTimer.current = window.setTimeout(async () => {
       try {
         const token = getAuthToken();
         const res = await fetch(
@@ -611,36 +427,31 @@ const Navbar = ({ isMobile, sidebarOpen, onToggleSidebar, onLogout }) => {
             `/api/search/admin?q=${encodeURIComponent(searchQuery.trim())}`,
           ),
           {
-            headers: token
-              ? {
-                  Authorization: `Bearer ${token}`,
-                }
-              : {},
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
           },
         );
 
         if (!res.ok) {
-          throw new Error(`Search failed with status: ${res.status}`);
+          throw new Error(`Search failed with status ${res.status}`);
         }
 
         const data = await res.json();
-        const formattedResults = (data.results || data || []).map((item) => ({
-          type: item.type || "product",
-          id: item.id,
-          name: item.name,
-          product_type: item.product_type,
-          brand_name: item.brand_name,
-          image_url: item.image_url || null,
-        }));
+        const results = Array.isArray(data?.results)
+          ? data.results
+          : Array.isArray(data)
+            ? data
+            : [];
 
-        setSuggestions(formattedResults);
-      } catch (err) {
-        console.error("Search error:", err);
+        setSuggestions(results);
+        setShowSuggestions(true);
+        setActiveIndex(-1);
+      } catch (error) {
+        console.error("Search error:", error);
         setSuggestions([]);
       } finally {
         setSuggestionsLoading(false);
       }
-    }, 300);
+    }, 250);
 
     return () => clearTimeout(searchTimer.current);
   }, [searchQuery]);
@@ -649,11 +460,9 @@ const Navbar = ({ isMobile, sidebarOpen, onToggleSidebar, onLogout }) => {
     (suggestion) => {
       const target = getSearchNavigationTarget(suggestion, searchQuery.trim());
       navigate(target.path, target.state ? { state: target.state } : undefined);
-
       setSearchQuery("");
-      setSuggestions([]);
       setShowSuggestions(false);
-      setActiveIndex(-1);
+      setMobileSearchOpen(false);
     },
     [navigate, searchQuery],
   );
@@ -661,40 +470,42 @@ const Navbar = ({ isMobile, sidebarOpen, onToggleSidebar, onLogout }) => {
   const performSearch = useCallback(
     (query) => {
       if (!query.trim()) return;
-      navigate(`/search?q=${encodeURIComponent(query)}`);
-      setSearchQuery("");
+      navigate(`/search?q=${encodeURIComponent(query.trim())}`);
       setShowSuggestions(false);
+      setMobileSearchOpen(false);
     },
     [navigate],
+  );
+
+  const handleSearchSubmit = useCallback(
+    (event) => {
+      event.preventDefault();
+      performSearch(searchQuery);
+    },
+    [performSearch, searchQuery],
   );
 
   const handleKeyDown = useCallback(
     (event) => {
       if (!showSuggestions) return;
 
-      switch (event.key) {
-        case "ArrowDown":
-          event.preventDefault();
-          setActiveIndex((prev) =>
-            prev < suggestions.length - 1 ? prev + 1 : prev,
-          );
-          break;
-        case "ArrowUp":
-          event.preventDefault();
-          setActiveIndex((prev) => (prev > 0 ? prev - 1 : -1));
-          break;
-        case "Enter":
-          event.preventDefault();
-          if (activeIndex >= 0 && suggestions[activeIndex]) {
-            handleSelectSuggestion(suggestions[activeIndex]);
-          } else if (searchQuery.trim()) {
-            performSearch(searchQuery.trim());
-          }
-          break;
-        case "Escape":
-          setShowSuggestions(false);
-          setActiveIndex(-1);
-          break;
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        setActiveIndex((prev) =>
+          prev < suggestions.length - 1 ? prev + 1 : prev,
+        );
+      } else if (event.key === "ArrowUp") {
+        event.preventDefault();
+        setActiveIndex((prev) => (prev > 0 ? prev - 1 : -1));
+      } else if (event.key === "Enter") {
+        event.preventDefault();
+        if (activeIndex >= 0 && suggestions[activeIndex]) {
+          handleSelectSuggestion(suggestions[activeIndex]);
+        } else {
+          performSearch(searchQuery);
+        }
+      } else if (event.key === "Escape") {
+        setShowSuggestions(false);
       }
     },
     [
@@ -707,47 +518,25 @@ const Navbar = ({ isMobile, sidebarOpen, onToggleSidebar, onLogout }) => {
     ],
   );
 
-  const handleSearchSubmit = useCallback(
-    (event) => {
-      event.preventDefault();
-      performSearch(searchQuery);
-    },
-    [performSearch, searchQuery],
-  );
-
-  const handleSearchChange = useCallback((event) => {
-    setSearchQuery(event.target.value);
-    if (event.target.value.trim()) {
-      setShowSuggestions(true);
-    }
-  }, []);
-
-  const toggleUserMenu = useCallback(() => {
-    setShowNotifications(false);
-    setShowUserMenu((prev) => !prev);
-  }, []);
-
   const toggleNotifications = useCallback(() => {
     const nextOpen = !showNotifications;
     setShowNotifications(nextOpen);
-
-    if (nextOpen) {
-      setShowUserMenu(false);
-      setShowSuggestions(false);
-      if (shouldRefreshNotifications) {
-        loadNotifications();
-      }
+    setShowUserMenu(false);
+    setShowSuggestions(false);
+    if (nextOpen && shouldRefreshNotifications) {
+      loadNotifications();
     }
-  }, [
-    loadNotifications,
-    shouldRefreshNotifications,
-    showNotifications,
-  ]);
+  }, [loadNotifications, shouldRefreshNotifications, showNotifications]);
+
+  const toggleUserMenu = useCallback(() => {
+    setShowUserMenu((prev) => !prev);
+    setShowNotifications(false);
+    setShowSuggestions(false);
+  }, []);
 
   const handleReminderSelect = useCallback(
     (item) => {
       setShowNotifications(false);
-
       if (item?.productId) {
         navigate(`/edit-mobile/${item.productId}`);
         return;
@@ -760,135 +549,239 @@ const Navbar = ({ isMobile, sidebarOpen, onToggleSidebar, onLogout }) => {
     [navigate],
   );
 
-  return (
-    <nav className="sticky top-0 z-50 border-b border-slate-200 bg-white">
-      <div className="mx-auto flex w-full max-w-[1720px] items-center gap-3 px-4 py-3 sm:px-6 sm:py-4 lg:px-8">
-        <div className="flex w-full items-center gap-3 lg:gap-4">
-          <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
-            {isMobile ? (
+  const renderSearchBar = (mobile = false) => (
+    <div className="relative min-w-0 flex-1" ref={searchContainerRef}>
+      <form onSubmit={handleSearchSubmit} className="relative">
+        <FaSearch
+          className={`pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm ${
+            mobile ? "text-slate-400" : "text-slate-400"
+          }`}
+        />
+        <input
+          ref={searchInputRef}
+          type="text"
+          value={searchQuery}
+          onChange={(event) => {
+            setSearchQuery(event.target.value);
+            if (event.target.value.trim()) setShowSuggestions(true);
+          }}
+          onKeyDown={handleKeyDown}
+          onFocus={() => {
+            if (searchQuery.trim()) setShowSuggestions(true);
+          }}
+          placeholder="Search for products, brands, categories, articles..."
+          className={
+            mobile
+              ? "h-12 w-full rounded-xl border border-slate-200 bg-white pl-11 pr-12 text-sm text-slate-800 placeholder:text-slate-400 focus:border-[#345CFF] focus:outline-none"
+              : "h-12 w-full rounded-xl border border-slate-200 bg-white pl-11 pr-24 text-sm text-slate-800 placeholder:text-slate-400 shadow-[0_10px_28px_rgba(15,23,42,0.05)] focus:border-[#345CFF] focus:outline-none"
+          }
+        />
+        {mobile ? (
+          <button
+            type="button"
+            onClick={() => {
+              setMobileSearchOpen(false);
+              setSearchQuery("");
+              setShowSuggestions(false);
+            }}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
+          >
+            <FaTimes />
+          </button>
+        ) : (
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-500">
+            Ctrl K
+          </span>
+        )}
+
+        {showSuggestions ? (
+          <div className="absolute left-0 right-0 top-[calc(100%+12px)] z-50 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_25px_55px_rgba(15,23,42,0.14)]">
+            <SearchSuggestions
+              suggestions={suggestions}
+              loading={suggestionsLoading}
+              activeIndex={activeIndex}
+              searchQuery={searchQuery}
+              onSelect={handleSelectSuggestion}
+              onViewAll={() => performSearch(searchQuery)}
+            />
+          </div>
+        ) : null}
+      </form>
+    </div>
+  );
+
+  const actionButtonBase = isMobile
+    ? "relative flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-[0_10px_25px_rgba(15,23,42,0.05)]"
+    : "relative flex h-10 w-10 items-center justify-center rounded-xl bg-white text-slate-600 shadow-[0_10px_25px_rgba(15,23,42,0.05)] transition hover:bg-slate-50 hover:text-slate-900";
+
+  if (isMobile) {
+    return (
+      <nav className="sticky top-0 z-40 bg-[#F6F8FF] px-3 py-3">
+        <div className="space-y-3">
+          <div className="rounded-xl border border-slate-200 bg-white px-3.5 py-3 shadow-[0_14px_35px_rgba(15,23,42,0.06)]">
+            <div className="flex items-center gap-2.5">
               <button
                 type="button"
                 onClick={onToggleSidebar}
-                className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-md bg-white text-slate-600 transition hover:bg-slate-50"
-                aria-label={
-                  sidebarOpen ? "Close navigation menu" : "Open navigation menu"
-                }
-                aria-expanded={sidebarOpen}
+                className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-600"
+                aria-label="Open navigation menu"
               >
-                {sidebarOpen ? (
-                  <FaTimes className="text-base" />
-                ) : (
-                  <FaBars className="text-base" />
-                )}
+                <FaBars className="text-base" />
               </button>
-            ) : null}
 
-            <div
-              className="relative min-w-0 flex-1"
-              ref={searchContainerRef}
-            >
-              <form onSubmit={handleSearchSubmit} className="relative">
-                <FaSearch className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm text-slate-400" />
-                <input
-                  ref={searchInputRef}
-                  type="text"
-                  placeholder="Search products, brands..."
-                  value={searchQuery}
-                  onChange={handleSearchChange}
-                  onKeyDown={handleKeyDown}
-                  onFocus={() => {
-                    if (searchQuery.trim() && suggestions.length > 0) {
-                      setShowSuggestions(true);
-                    }
-                  }}
-                  className="h-11 w-full rounded-md border border-slate-200 bg-white pl-11 pr-4 text-sm text-slate-800 placeholder:text-slate-400 shadow-none focus:border-blue-300 focus:outline-none focus:ring-0"
-                />
+              <button
+                type="button"
+                onClick={() => setMobileSearchOpen((prev) => !prev)}
+                className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden text-left"
+              >
+                <HookLogo showText={false} className="h-6 w-6 flex-shrink-0" />
+                <span className="truncate text-[1.45rem] font-bold leading-none tracking-tight text-slate-950">
+                  hookscore
+                </span>
+              </button>
 
-                {showSuggestions ? (
-                  <div className="absolute left-0 right-0 z-50 mt-3 max-h-[32rem] overflow-y-auto rounded-md border border-slate-200 bg-white">
-                    <SearchSuggestions
-                      suggestions={suggestions}
-                      loading={suggestionsLoading}
-                      activeIndex={activeIndex}
-                      searchQuery={searchQuery}
-                      onSelect={handleSelectSuggestion}
-                      onViewAll={() => performSearch(searchQuery)}
-                    />
-                  </div>
+              <div className="relative" ref={notificationRef}>
+                <button
+                  type="button"
+                  onClick={toggleNotifications}
+                  className={actionButtonBase}
+                >
+                  <FaBell className="text-sm" />
+                  <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-bold text-white">
+                    {notificationCountLabel}
+                  </span>
+                </button>
+                {showNotifications ? (
+                  <NotificationPanel
+                    summary={notificationSummary}
+                    loading={notificationsLoading}
+                    error={notificationError}
+                    onSelect={handleReminderSelect}
+                  />
                 ) : null}
-              </form>
+              </div>
+
+              <button type="button" className={actionButtonBase}>
+                <FaEnvelope className="text-sm" />
+                <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-bold text-white">
+                  5
+                </span>
+              </button>
+
+              <div className="relative" ref={userMenuRef}>
+                <button
+                  type="button"
+                  onClick={toggleUserMenu}
+                  className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-[#345CFF] to-[#7A2CFF] text-[11px] font-bold text-white"
+                >
+                  {getUserInitials(userName)}
+                </button>
+                {showUserMenu ? (
+                  <UserMenu
+                    userName={userName}
+                    role={role}
+                    onNavigate={(path) => {
+                      navigate(path);
+                      setShowUserMenu(false);
+                    }}
+                    onLogout={() => {
+                      onLogout();
+                      setShowUserMenu(false);
+                    }}
+                  />
+                ) : null}
+              </div>
             </div>
           </div>
 
-          <div className="flex flex-shrink-0 items-center gap-2 sm:gap-3">
-            <div className="hidden text-right leading-tight xl:block">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">
-                Login
-              </p>
-              <p className="text-xs font-medium text-slate-600">
-                {loginTimeLabel}
-              </p>
+          {mobileSearchOpen ? (
+            <div className="rounded-xl border border-slate-200 bg-white px-3 py-3 shadow-[0_14px_35px_rgba(15,23,42,0.06)]">
+              {renderSearchBar(true)}
             </div>
+          ) : null}
+        </div>
+      </nav>
+    );
+  }
 
-            <div className="relative flex-shrink-0" ref={notificationRef}>
-              <button
-                type="button"
-                onClick={toggleNotifications}
-                className="relative flex h-10 w-10 items-center justify-center bg-white text-slate-600 transition hover:bg-slate-50"
-                aria-label="Notifications"
-                aria-expanded={showNotifications}
-              >
-                <FaBell className="text-sm" />
-                {notificationCountLabel ? (
-                  <span className="absolute -right-1 -top-1 inline-flex min-h-[1.25rem] min-w-[1.25rem] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-semibold text-white">
-                    {notificationCountLabel}
-                  </span>
-                ) : null}
-              </button>
+  return (
+    <nav className="sticky top-0 z-40 border-b border-slate-200 bg-white shadow-[0_14px_35px_rgba(15,23,42,0.06)]">
+      <div className="mx-auto flex w-full max-w-[1720px] items-center gap-4 px-6 py-4 lg:px-8">
+        <button
+          type="button"
+          onClick={onToggleSidebar}
+          className="flex h-11 w-11 items-center justify-center rounded-xl bg-white text-slate-600 shadow-[0_10px_25px_rgba(15,23,42,0.05)] transition hover:bg-slate-50 hover:text-slate-900"
+        >
+          <FaBars className="text-base" />
+        </button>
 
-              {showNotifications ? (
-                <NotificationPanel
-                  summary={notificationSummary}
-                  loading={notificationsLoading}
-                  error={notificationError}
-                  lastUpdatedAt={notificationsLoadedAt}
-                  onRefresh={loadNotifications}
-                  onSelect={handleReminderSelect}
-                />
-              ) : null}
-            </div>
+        <div className="min-w-0 flex-1">{renderSearchBar(false)}</div>
 
-            <div className="relative flex-shrink-0" ref={userMenuRef}>
-              <button
-                type="button"
-                onClick={toggleUserMenu}
-                className="flex items-center gap-2 rounded-md bg-white px-2 py-1.5 transition hover:bg-slate-50 sm:gap-3 sm:px-3 sm:py-2"
-              >
-                <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-600 text-white">
-                  <FaUser className="text-xs sm:text-sm" />
-                </div>
-                <div className="hidden min-w-0 lg:block">
-                  <p className="max-w-[140px] truncate text-xs font-semibold text-slate-900 sm:text-sm">
-                    {email || "User"}
-                  </p>
-                  <p className="truncate text-xs text-slate-500">
-                    {role || "Admin"}
-                  </p>
-                </div>
-                <FaChevronDown className="hidden text-xs text-slate-400 sm:block" />
-              </button>
-
-              <UserMenu
-                email={email}
-                role={role}
-                userName={userName}
-                loginTimeLabel={loginTimeLabel}
-                isOpen={showUserMenu}
-                onClose={() => setShowUserMenu(false)}
-                onNavigate={navigate}
-                onLogout={onLogout}
+        <div className="flex items-center gap-3">
+          <div className="relative" ref={notificationRef}>
+            <button
+              type="button"
+              onClick={toggleNotifications}
+              className={actionButtonBase}
+            >
+              <FaBell className="text-sm" />
+              <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-bold text-white">
+                {notificationCountLabel}
+              </span>
+            </button>
+            {showNotifications ? (
+              <NotificationPanel
+                summary={notificationSummary}
+                loading={notificationsLoading}
+                error={notificationError}
+                onSelect={handleReminderSelect}
               />
-            </div>
+            ) : null}
+          </div>
+
+          <button type="button" className={actionButtonBase}>
+            <FaEnvelope className="text-sm" />
+            <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-orange-500 px-1 text-[9px] font-bold text-white">
+              5
+            </span>
+          </button>
+
+          <button type="button" className={actionButtonBase}>
+            <FaCalendarAlt className="text-sm" />
+          </button>
+
+          <div className="h-8 w-px bg-slate-200" />
+
+          <div className="relative" ref={userMenuRef}>
+            <button
+              type="button"
+              onClick={toggleUserMenu}
+              className="flex items-center gap-3 rounded-xl bg-white px-3 py-1.5 text-slate-900 shadow-[0_10px_25px_rgba(15,23,42,0.05)] transition hover:bg-slate-50"
+            >
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-slate-100 to-slate-200 text-sm font-bold text-slate-900">
+                {getUserInitials(userName)}
+              </div>
+              <div className="hidden text-left leading-tight xl:block">
+                <p className="text-sm font-semibold text-slate-900">{userName}</p>
+                <p className="text-xs text-slate-500">{role}</p>
+              </div>
+              <FaChevronDown className="text-xs text-slate-400" />
+            </button>
+
+            {showUserMenu ? (
+              <UserMenu
+                userName={userName}
+                role={role}
+                onNavigate={(path) => {
+                  navigate(path);
+                  setShowUserMenu(false);
+                }}
+                onLogout={() => {
+                  onLogout();
+                  setShowUserMenu(false);
+                }}
+              />
+            ) : null}
           </div>
         </div>
       </div>
@@ -897,5 +790,3 @@ const Navbar = ({ isMobile, sidebarOpen, onToggleSidebar, onLogout }) => {
 };
 
 export default Navbar;
-
-

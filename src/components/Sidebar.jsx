@@ -1,955 +1,688 @@
-// components/Sidebar.jsx
-import React, {
-  useState,
-  useRef,
-  useMemo,
-  useCallback,
-  useEffect,
-} from "react";
+import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import Cookies from "js-cookie";
 import {
-  canAccessModule,
-  getCurrentPermissions,
-  getCurrentRole,
-  hasAdminAccess,
-  hasAnyPermissions,
-  hasAllPermissions,
-  hasBlogAccess,
-} from "../utils/access";
-import {
+  FaArrowRight,
+  FaBolt,
+  FaChartBar,
   FaChartLine,
-  FaNetworkWired,
-  FaLaptopCode,
-  FaDatabase,
-  FaCog,
-  FaMobileAlt,
-  FaTags,
-  FaPlus,
-  FaBox,
-  FaMemory,
-  FaSitemap,
-  FaUsers,
-  FaShieldAlt,
-  FaChevronLeft,
-  FaChevronRight,
   FaChevronDown,
-  FaChevronUp,
-  FaUser,
-  FaBars,
-  FaTimes,
+  FaClipboardList,
+  FaCog,
+  FaCrown,
+  FaExchangeAlt,
+  FaFileAlt,
+  FaHeartbeat,
+  FaHome,
+  FaLaptopCode,
+  FaLink,
+  FaMobileAlt,
+  FaNewspaper,
+  FaRobot,
+  FaSearch,
+  FaShoppingBag,
+  FaSignal,
   FaStar,
-  FaCocktail,
-  FaCogs,
-  FaShopify,
-  FaUpload,
-  FaDownload,
-  FaTv,
-  FaBullhorn,
-  FaCalendarAlt,
+  FaTags,
+  FaTimes,
+  FaUserCog,
+  FaUserShield,
+  FaUsers,
 } from "react-icons/fa";
 import HookLogo from "./Ui/hooklogo";
 
-// Menu configuration moved to separate object
-const MENU_CONFIG = {
-  items: [
-    {
-      id: "dashboard",
-      label: "Dashboard",
-      icon: <FaChartLine />,
-      path: "/dashboard",
-      type: "item",
-    },
-    {
-      id: "products",
-      label: "Products",
-      icon: <FaBox />,
-      type: "submenu",
-      requiredAnyPermissions: ["products.view"],
-      children: [
-        {
-          id: "smartphones",
-          label: "Smartphones",
-          icon: <FaMobileAlt />,
-          type: "submenu",
-          children: [
-            {
-              id: "sp-create",
-              label: "Create Product",
-              icon: <FaPlus />,
-              path: "/products/smartphones/create",
-            },
-            {
-              id: "sp-inventory",
-              label: "Inventory",
-              icon: <FaBox />,
-              path: "/products/smartphones/inventory",
-            },
-            {
-              id: "sp-upcoming",
-              label: "Upcoming Mobiles",
-              icon: <FaCalendarAlt />,
-              path: "/products/smartphones/upcoming",
-            },
-          ],
-        },
-        {
-          id: "laptops",
-          label: "Laptops",
-          icon: <FaLaptopCode />,
-          type: "submenu",
-          children: [
-            {
-              id: "lp-create",
-              label: "Create Product",
-              icon: <FaPlus />,
-              path: "/products/laptops/create",
-            },
-            {
-              id: "lp-inventory",
-              label: "Inventory",
-              icon: <FaBox />,
-              path: "/products/laptops/inventory",
-            },
-          ],
-        },
-        {
-          id: "networking",
-          label: "Networking",
-          icon: <FaNetworkWired />,
-          type: "submenu",
-          children: [
-            {
-              id: "net-routers",
-              label: "Routers",
-              icon: <FaNetworkWired />,
-              path: "/products/networking/routers",
-            },
-            {
-              id: "net-modems",
-              label: "Modems",
-              icon: <FaNetworkWired />,
-              path: "/products/networking/modems",
-            },
-            {
-              id: "net-switches",
-              label: "Switches",
-              icon: <FaSitemap />,
-              path: "/products/networking/switches",
-            },
-            {
-              id: "net-inventory",
-              label: "Inventory",
-              icon: <FaBox />,
-              path: "/products/networking/inventory",
-            },
-          ],
-        },
-        {
-          id: "tvs",
-          label: "TVs",
-          icon: <FaTv />,
-          type: "submenu",
-          children: [
-            {
-              id: "tv-create",
-              label: "Create TV",
-              icon: <FaPlus />,
-              path: "/products/tvs/create",
-            },
-            {
-              id: "tv-inventory",
-              label: "Inventory",
-              icon: <FaBox />,
-              path: "/products/tvs/inventory",
-            },
-          ],
-        },
-      ],
-    },
-    {
-      id: "specifications",
-      label: "Specifications",
-      icon: <FaDatabase />,
-      type: "submenu",
-      requiredAnyPermissions: ["products.view", "settings.view"],
-      children: [
-        {
-          id: "sp-brands",
-          label: "Brands",
-          icon: <FaTags />,
-          path: "/specifications/brands",
-        },
-        {
-          id: "spec-ram",
-          label: "Memory & Storage",
-          icon: <FaMemory />,
-          type: "submenu",
-          children: [
-            {
-              id: "spec-memory-config",
-              label: "Memory Configurations",
-              icon: <FaCog />,
-              path: "/specifications/memory-storage/configurations",
-            },
-          ],
-        },
-        {
-          id: "spec-categories",
-          label: "Categories",
-          icon: <FaSitemap />,
-          type: "submenu",
-          children: [
-            {
-              id: "spec-cat-smartphones",
-              label: "Configure",
-              icon: <FaCogs />,
-              path: "/specifications/categories/create",
-            },
-          ],
-        },
-        {
-          id: "spec-store",
-          label: "Store",
-          icon: <FaShopify />,
-          path: "/specifications/store",
-        },
-        {
-          id: "spec-ratings",
-          label: "Ratings",
-          icon: <FaStar />,
-          path: "/specifications/ratings",
-        },
-      ],
-    },
-    {
-      id: "users",
-      label: "Users & Access",
-      icon: <FaUsers />,
-      type: "submenu",
-      requiredAnyPermissions: [
-        "users.view",
-        "roles.view",
-        "permissions.view",
-        "activity.view",
-      ],
-      children: [
-        {
-          id: "ua-users",
-          label: "Users",
-          icon: <FaUser />,
-          path: "/user-management",
-          requiredAnyPermissions: ["users.view"],
-        },
-        {
-          id: "ua-customers",
-          label: "Customers",
-          icon: <FaUsers />,
-          path: "/customer-management",
-          requiredAnyPermissions: ["customers.view", "users.view"],
-        },
-        {
-          id: "ua-account",
-          label: "My Account",
-          icon: <FaUser />,
-          path: "/account-management",
-        },
-        {
-          id: "ua-roles",
-          label: "Roles",
-          icon: <FaShieldAlt />,
-          path: "/permission-management",
-          requiredAnyPermissions: ["roles.view", "permissions.view"],
-        },
-      ],
-    },
-    {
-      id: "settings",
-      label: "Settings",
-      icon: <FaCog />,
-      type: "submenu",
-      requiredAnyPermissions: ["settings.view"],
-      children: [
-        {
-          id: "set-compare-pages",
-          label: "Compare Pages",
-          icon: <FaPlus />,
-          path: "/settings/compare-pages",
-        },
-        {
-          id: "set-compare-scoring",
-          label: "Compare Scoring",
-          icon: <FaChartLine />,
-          path: "/settings/compare-scoring",
-        },
-        {
-          id: "set-device-field-profiles",
-          label: "Device Field Profiles",
-          icon: <FaDatabase />,
-          path: "/settings/device-field-profiles",
-        },
-        {
-          id: "set-api-tester",
-          label: "API Tester",
-          icon: <FaCogs />,
-          path: "/api-tester",
-        },
-      ],
-    },
-    {
-      id: "marketing",
-      label: "Marketing",
-      icon: <FaBullhorn />,
-      type: "submenu",
-      requiredAnyPermissions: ["marketing.view"],
-      children: [
-        {
-          id: "marketing-banners",
-          label: "Banners",
-          icon: <FaBullhorn />,
-          path: "/marketing/banners",
-        },
-      ],
-    },
-    {
-      id: "content",
-      label: "Content",
-      icon: <FaDatabase />,
-      type: "submenu",
-      requiredPermissions: ["content.news.view"],
-      requiredAnyPermissions: [
-        "content.news.create",
-        "content.news.edit",
-        "content.news.publish",
-        "content.news.schedule",
-        "content.news.manage",
-      ],
-      children: [
-        {
-          id: "content-blog-studio",
-          label: "News & Articles",
-          icon: <FaChartLine />,
-          path: "/content/news-articles",
-        },
-      ],
-    },
-    {
-      id: "reports",
-      label: "Reports",
-      icon: <FaChartLine />,
-      type: "submenu",
-      requiredAnyPermissions: ["reports.view", "activity.view"],
-      children: [
-        {
-          id: "product-cat-rep",
-          label: "Product Categories",
-          icon: <FaChartLine />,
-          path: "/reports/productcategories",
-          requiredAnyPermissions: ["reports.view"],
-        },
-        {
-          id: "product-pub-rep",
-          label: "Publish Status",
-          icon: <FaCocktail />,
-          path: "/reports/productpublishstatus",
-          requiredAnyPermissions: ["reports.view"],
-        },
-        {
-          id: "launch-timing-rep",
-          label: "Launch Timing",
-          icon: <FaCalendarAlt />,
-          path: "/reports/launch-timing",
-          requiredAnyPermissions: ["reports.view"],
-        },
-        {
-          id: "user-activity-rep",
-          label: "User Activity",
-          icon: <FaUsers />,
-          path: "/reports/useractivity",
-          requiredAnyPermissions: ["reports.view"],
-        },
-        {
-          id: "recent-activity-rep",
-          label: "Recent Activity",
-          icon: <FaStar />,
-          path: "/reports/recentactivity",
-          requiredAnyPermissions: ["activity.view"],
-        },
-        {
-          id: "trending-manager-rep",
-          label: "Trending Manager",
-          icon: <FaChartLine />,
-          path: "/reports/trending",
-          requiredAnyPermissions: ["reports.view"],
-        },
-        {
-          id: "hook-score-rep",
-          label: "Hook Score Report",
-          icon: <FaChartLine />,
-          path: "/reports/hook-score",
-          requiredAnyPermissions: ["reports.view"],
-        },
-        {
-          id: "search-popularity-rep",
-          label: "Search Popularity",
-          icon: <FaChartLine />,
-          path: "/reports/search-popularity",
-          requiredAnyPermissions: ["reports.view"],
-        },
-        {
-          id: "feature-click-rep",
-          label: "Feature Clicks",
-          icon: <FaChartLine />,
-          path: "/reports/feature-clicks",
-          requiredAnyPermissions: ["reports.view"],
-        },
-        {
-          id: "career-applications-rep",
-          label: "Career Applications",
-          icon: <FaUsers />,
-          path: "/reports/career-applications",
-          requiredAnyPermissions: ["reports.view"],
-        },
-        {
-          id: "import-rep",
-          label: "Import",
-          icon: <FaUpload />,
-          path: "/reports/import",
-          requiredAnyPermissions: ["reports.view"],
-        },
-        {
-          id: "export-rep",
-          label: "Export",
-          icon: <FaDownload />,
-          path: "/reports/export",
-          requiredAnyPermissions: ["reports.view"],
-        },
-      ],
-    },
-  ],
+const DESKTOP_SECTIONS = [
+  {
+    title: "MAIN",
+    items: [
+      {
+        label: "Dashboard",
+        icon: FaHome,
+        path: "/dashboard",
+        prefixes: ["/dashboard"],
+      },
+      {
+        label: "Smartphones",
+        icon: FaMobileAlt,
+        path: "/products/smartphones/inventory",
+        prefixes: ["/products/smartphones"],
+        chevron: true,
+        children: [
+          {
+            label: "View Mobiles",
+            path: "/products/smartphones/inventory",
+            prefixes: ["/products/smartphones/inventory"],
+          },
+          {
+            label: "Add New Mobile",
+            path: "/products/smartphones/create",
+            prefixes: ["/products/smartphones/create"],
+          },
+          {
+            label: "Upcoming Mobiles",
+            path: "/products/smartphones/upcoming",
+            prefixes: ["/products/smartphones/upcoming"],
+          },
+          {
+            label: "Compare Pages",
+            path: "/settings/compare-pages",
+            prefixes: ["/settings/compare-pages"],
+          },
+        ],
+      },
+      {
+        label: "Laptops",
+        icon: FaLaptopCode,
+        path: "/products/laptops/inventory",
+        prefixes: ["/products/laptops"],
+        chevron: true,
+      },
+      {
+        label: "Appliances",
+        icon: FaShoppingBag,
+        path: "/products/tvs/inventory",
+        prefixes: ["/products/tvs", "/products/homeappliances"],
+        chevron: true,
+      },
+      {
+        label: "Compare Engine",
+        icon: FaExchangeAlt,
+        path: "/settings/compare-pages",
+        prefixes: ["/settings/compare-pages"],
+        chevron: true,
+      },
+      {
+        label: "Trending",
+        icon: FaSignal,
+        path: "/reports/trending",
+        prefixes: ["/reports/trending"],
+        chevron: true,
+        children: [
+          {
+            label: "Trending Manager",
+            path: "/reports/trending",
+            prefixes: ["/reports/trending"],
+            searchParam: { key: "section", value: "manager", allowEmpty: true },
+          },
+          {
+            label: "Trending Rules",
+            path: "/reports/trending",
+            prefixes: ["/reports/trending"],
+            searchParam: { key: "section", value: "rules" },
+          },
+          {
+            label: "Boost History",
+            path: "/reports/trending",
+            prefixes: ["/reports/trending"],
+            searchParam: { key: "section", value: "history" },
+          },
+        ],
+      },
+      {
+        label: "Specifications",
+        icon: FaClipboardList,
+        path: "/specifications/brands",
+        prefixes: ["/specifications"],
+      },
+      {
+        label: "Brands",
+        icon: FaTags,
+        path: "/specifications/brands",
+        prefixes: ["/specifications/brands"],
+      },
+      {
+        label: "Newsroom CMS",
+        icon: FaNewspaper,
+        path: "/content/news-articles",
+        prefixes: ["/content/news-articles"],
+      },
+      {
+        label: "SEO Reports",
+        icon: FaSearch,
+        path: "/reports/search-popularity",
+        prefixes: ["/reports/search-popularity"],
+      },
+      {
+        label: "Analytics",
+        icon: FaChartLine,
+        path: "/reports/productpublishstatus",
+        prefixes: ["/reports/productpublishstatus", "/analytics"],
+        chevron: true,
+      },
+      {
+        label: "Affiliate Links",
+        icon: FaLink,
+        path: "/dashboard",
+        prefixes: ["/dashboard"],
+      },
+      {
+        label: "Publish Center",
+        icon: FaFileAlt,
+        path: "/reports/productpublishstatus",
+        prefixes: ["/reports/productpublishstatus"],
+      },
+      {
+        label: "AI Summaries",
+        icon: FaRobot,
+        path: "/dashboard",
+        prefixes: ["/dashboard"],
+      },
+    ],
+  },
+  {
+    title: "MANAGEMENT",
+    items: [
+      {
+        label: "Users & Permissions",
+        icon: FaUserCog,
+        path: "/user-management",
+        prefixes: ["/user-management"],
+      },
+      {
+        label: "Roles",
+        icon: FaUserShield,
+        path: "/permission-management",
+        prefixes: ["/permission-management"],
+      },
+      {
+        label: "Customers",
+        icon: FaUsers,
+        path: "/customer-management",
+        prefixes: ["/customer-management"],
+      },
+      {
+        label: "Activity Logs",
+        icon: FaChartBar,
+        path: "/reports/recentactivity",
+        prefixes: ["/reports/recentactivity", "/reports/useractivity"],
+      },
+    ],
+  },
+  {
+    title: "SYSTEM",
+    items: [
+      {
+        label: "Settings",
+        icon: FaCog,
+        path: "/settings/compare-pages",
+        prefixes: ["/settings", "/api-tester"],
+      },
+      {
+        label: "Integrations",
+        icon: FaBolt,
+        path: "/api-tester",
+        prefixes: ["/api-tester"],
+      },
+      {
+        label: "System Health",
+        icon: FaHeartbeat,
+        path: "/dashboard",
+        prefixes: ["/dashboard"],
+      },
+    ],
+  },
+];
+
+const MOBILE_RAIL_ITEMS = [
+  { icon: FaHome, path: "/dashboard", prefixes: ["/dashboard"] },
+  {
+    icon: FaShoppingBag,
+    path: "/products/smartphones/inventory",
+    prefixes: ["/products/smartphones"],
+  },
+  {
+    icon: FaSignal,
+    path: "/reports/trending",
+    prefixes: ["/reports/trending"],
+  },
+  {
+    icon: FaClipboardList,
+    path: "/specifications/brands",
+    prefixes: ["/specifications"],
+  },
+  { icon: FaUsers, path: "/user-management", prefixes: ["/user-management"] },
+  {
+    icon: FaChartBar,
+    path: "/reports/productpublishstatus",
+    prefixes: ["/reports"],
+  },
+  {
+    icon: FaStar,
+    path: "/smartphonesrating",
+    prefixes: ["/smartphonesrating"],
+  },
+  {
+    icon: FaFileAlt,
+    path: "/content/news-articles",
+    prefixes: ["/content/news-articles"],
+  },
+  {
+    icon: FaCog,
+    path: "/settings/compare-pages",
+    prefixes: ["/settings", "/api-tester"],
+  },
+];
+
+const MOBILE_DRAWER_SECTIONS = [
+  {
+    title: "MAIN",
+    items: [
+      {
+        label: "Dashboard",
+        icon: FaHome,
+        path: "/dashboard",
+        prefixes: ["/dashboard"],
+      },
+      {
+        label: "Products",
+        icon: FaShoppingBag,
+        path: "/products/smartphones/inventory",
+        prefixes: ["/products"],
+      },
+      {
+        label: "Categories",
+        icon: FaClipboardList,
+        path: "/specifications/categories/create",
+        prefixes: ["/specifications/categories"],
+      },
+      {
+        label: "Brands",
+        icon: FaTags,
+        path: "/specifications/brands",
+        prefixes: ["/specifications/brands"],
+      },
+      {
+        label: "Users",
+        icon: FaUsers,
+        path: "/user-management",
+        prefixes: ["/user-management"],
+      },
+      {
+        label: "Orders",
+        icon: FaFileAlt,
+        path: "/dashboard",
+        prefixes: ["/dashboard"],
+      },
+      {
+        label: "Reviews",
+        icon: FaStar,
+        path: "/smartphonesrating",
+        prefixes: ["/smartphonesrating"],
+      },
+    ],
+  },
+  {
+    title: "ANALYTICS",
+    items: [
+      {
+        label: "Hookscore",
+        icon: FaChartLine,
+        path: "/reports/hook-score",
+        prefixes: ["/reports/hook-score"],
+      },
+      {
+        label: "Feature Clicks",
+        icon: FaChartBar,
+        path: "/reports/feature-clicks",
+        prefixes: ["/reports/feature-clicks"],
+      },
+      {
+        label: "Reports",
+        icon: FaSignal,
+        path: "/reports/productpublishstatus",
+        prefixes: ["/reports"],
+      },
+    ],
+  },
+  {
+    title: "CONTENT",
+    items: [
+      {
+        label: "Blog",
+        icon: FaNewspaper,
+        path: "/content/news-articles",
+        prefixes: ["/content/news-articles"],
+      },
+      {
+        label: "Media Library",
+        icon: FaFileAlt,
+        path: "/marketing/banners",
+        prefixes: ["/marketing/banners"],
+      },
+    ],
+  },
+  {
+    title: "MANAGEMENT",
+    items: [
+      {
+        label: "Users & Permissions",
+        icon: FaUserCog,
+        path: "/user-management",
+        prefixes: ["/user-management"],
+      },
+      {
+        label: "Roles",
+        icon: FaUserShield,
+        path: "/permission-management",
+        prefixes: ["/permission-management"],
+      },
+      {
+        label: "Settings",
+        icon: FaCog,
+        path: "/settings/compare-pages",
+        prefixes: ["/settings", "/api-tester"],
+      },
+    ],
+  },
+  {
+    title: "INTEGRATIONS",
+    items: [
+      {
+        label: "Webhooks",
+        icon: FaBolt,
+        path: "/api-tester",
+        prefixes: ["/api-tester"],
+      },
+      {
+        label: "API Logs",
+        icon: FaLink,
+        path: "/api-tester",
+        prefixes: ["/api-tester"],
+      },
+    ],
+  },
+];
+
+const matchesPath = (pathname, item) =>
+  (item.prefixes || []).some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+
+const buildTo = (item) => {
+  if (item?.searchParam?.key && item?.searchParam?.value) {
+    return `${item.path}?${item.searchParam.key}=${item.searchParam.value}`;
+  }
+  return item.path;
 };
 
-const canViewMenuItem = (item = [], role = "", permissions = []) => {
-  if (!item) return false;
+const matchesItem = (location, item) => {
+  const pathname = location.pathname || "/dashboard";
+  const pathMatch = matchesPath(pathname, item);
+  if (!pathMatch) return false;
 
-  if (Array.isArray(item.requiredRoles) && item.requiredRoles.length) {
-    const normalizedRole = String(role || "").trim().toLowerCase();
-    const allowedRoles = item.requiredRoles.map((value) =>
-      String(value || "").trim().toLowerCase(),
-    );
-    if (!allowedRoles.includes(normalizedRole)) return false;
+  if (!item.searchParam) return true;
+
+  const params = new URLSearchParams(location.search || "");
+  const currentValue = params.get(item.searchParam.key);
+  if (item.searchParam.allowEmpty) {
+    return !currentValue || currentValue === item.searchParam.value;
   }
 
-  if (
-    Array.isArray(item.requiredPermissions) &&
-    item.requiredPermissions.length &&
-    !hasAllPermissions(item.requiredPermissions, permissions)
-  ) {
-    return false;
-  }
-
-  if (
-    Array.isArray(item.requiredAnyPermissions) &&
-    item.requiredAnyPermissions.length &&
-    !hasAnyPermissions(item.requiredAnyPermissions, permissions)
-  ) {
-    return false;
-  }
-
-  if (item.moduleKey) {
-    return canAccessModule(
-      item.moduleKey,
-      item.action || "view",
-      permissions,
-    );
-  }
-
-  if (item.id === "content" && !hasBlogAccess(role, permissions)) return false;
-  if (item.id === "ua-roles" && !hasAdminAccess(role, permissions)) return false;
-
-  return true;
+  return currentValue === item.searchParam.value;
 };
 
-const filterMenuItemsByRole = (items = [], role = "", permissions = []) =>
-  items
-    .map((item) => {
-      if (!canViewMenuItem(item, role, permissions)) return null;
-
-      if (item.children && Array.isArray(item.children)) {
-        const nextChildren = filterMenuItemsByRole(item.children, role, permissions);
-        if (!nextChildren.length) return null;
-        return { ...item, children: nextChildren };
-      }
-
-      return item;
-    })
-    .filter(Boolean);
-
-// Sub-components
-const MenuItem = ({
-  item,
-  collapsed,
-  isActive,
-  hoveredItem,
-  onMouseEnter,
-  onMouseLeave,
-  onLinkClick,
-}) => {
-  if (item.type === "item") {
-    return (
-      <Link
-        to={item.path}
-        className={`
-          flex items-center rounded-xl border transition-all duration-200 group
-          ${collapsed ? "justify-center p-4" : "px-4 py-3"}
-          ${
-            isActive
-              ? "border-blue-200 bg-blue-50/70 text-blue-700"
-              : "border-transparent text-slate-700 hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900"
-          }
-        `}
-        onMouseEnter={() => onMouseEnter(item.id)}
-        onMouseLeave={() => onMouseLeave()}
-        onClick={onLinkClick}
-      >
-        <div
-          className={`
-          transition-colors duration-200
-          ${
-            isActive
-              ? "text-blue-600"
-              : "text-slate-500 group-hover:text-slate-700"
-          }
-          text-xl
-        `}
-        >
-          {item.icon}
-        </div>
-
-        {!collapsed && (
-          <span className="ml-4 font-semibold flex-1 transition-all duration-200 text-sm">
-            {item.label}
-          </span>
-        )}
-
-        {collapsed && hoveredItem === item.id && (
-          <div className="absolute left-full ml-3 rounded-lg border border-slate-200 bg-slate-900 px-3 py-2 text-sm text-white whitespace-nowrap">
-            {item.label}
-            <div className="absolute right-full top-1/2 transform -translate-y-1/2 w-0 h-0 border-t-4 border-b-4 border-l-4 border-transparent border-l-gray-900"></div>
-          </div>
-        )}
-      </Link>
-    );
-  }
-  return null;
-};
-
-const SubMenuItem = ({
-  item,
-  collapsed,
-  isActive,
-  submenuOpen,
-  openSubmenus,
-  onMouseEnter,
-  onMouseLeave,
-  onToggle,
-  onLinkClick,
-  location,
-}) => {
-  const renderChildItem = (child) => {
-    const childOpen =
-      child.type === "submenu" &&
-      (openSubmenus ? openSubmenus[child.id] : false);
-
-    if (child.type === "submenu") {
-      return (
-        <div key={child.id} className="mb-2">
-          <div
-            className={`flex items-center rounded-lg border p-3 cursor-pointer transition-all duration-200 group ${
-              (child.children || []).some((c) => c.path === location.pathname)
-                ? "border-blue-200 bg-blue-50 text-blue-700"
-                : "border-transparent text-slate-600 hover:border-slate-200 hover:bg-slate-50 hover:text-slate-700"
-            }`}
-            onClick={() => onToggle(child.id)}
-          >
-            <div className={`transition-colors duration-200 text-lg`}>
-              {child.icon}
-            </div>
-            <span className="ml-3 font-medium flex-1 text-sm">
-              {child.label}
-            </span>
-            <span className="text-gray-400">
-              {childOpen ? (
-                <FaChevronUp className="text-sm" />
-              ) : (
-                <FaChevronDown className="text-sm" />
-              )}
-            </span>
-          </div>
-
-          {childOpen && (
-            <div className="ml-4 mt-2 space-y-1">
-              {child.children.map((c) => (
-                <Link
-                  key={c.id}
-                  to={c.path}
-                  className={`flex items-center rounded-lg border p-3 cursor-pointer transition-all duration-200 group ${
-                    location.pathname === c.path
-                      ? "border-blue-200 bg-blue-50 text-blue-700"
-                      : "border-transparent text-slate-600 hover:border-slate-200 hover:bg-slate-50 hover:text-slate-700"
-                  }`}
-                  onClick={onLinkClick}
-                >
-                  <div className={`transition-colors duration-200 text-lg`}>
-                    {c.icon}
-                  </div>
-                  <span className="ml-3 font-medium text-sm">{c.label}</span>
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
-      );
-    }
-
-    return (
-      <Link
-        key={child.id}
-        to={child.path}
-        className={`flex items-center rounded-lg border p-3 cursor-pointer transition-all duration-200 group ${
-          location.pathname === child.path
-            ? "border-blue-200 bg-blue-50 text-blue-700"
-            : "border-transparent text-slate-600 hover:border-slate-200 hover:bg-slate-50 hover:text-slate-700"
-        }`}
-        onClick={onLinkClick}
-      >
-        <div className={`transition-colors duration-200 text-lg`}>
-          {child.icon}
-        </div>
-        <span className="ml-3 font-medium text-sm">{child.label}</span>
-      </Link>
-    );
-  };
+const DesktopNavItem = ({ item, location, collapsed }) => {
+  const Icon = item.icon;
+  const childItems = Array.isArray(item.children) ? item.children : [];
+  const hasActiveChild = childItems.some((child) =>
+    matchesItem(location, child),
+  );
+  const active = matchesItem(location, item) || hasActiveChild;
+  const showChildren = !collapsed && childItems.length > 0 && active;
 
   return (
-    <div key={item.id} className="mb-2">
-      <div
-        className={`
-          flex items-center rounded-xl border transition-all duration-200 group
-          ${collapsed ? "justify-center p-4" : "px-4 py-3"}
-          ${
-            isActive
-              ? "border-blue-200 bg-blue-50/70 text-blue-700"
-              : "border-transparent text-slate-700 hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900"
-          }
-        `}
-        onClick={() => onToggle(item.id)}
-        onMouseEnter={() => onMouseEnter(item.id)}
-        onMouseLeave={() => onMouseLeave()}
+    <div>
+      <Link
+        to={buildTo(item)}
+        title={collapsed ? item.label : undefined}
+        className={`group flex items-center rounded-xl border transition ${
+          collapsed ? "justify-center px-0 py-3.5" : "px-3.5 py-3"
+        } ${
+          active
+            ? "border-white/10 bg-gradient-to-r from-[#345CFF] to-[#7A2CFF] text-white shadow-[0_18px_35px_rgba(90,73,255,0.24)]"
+            : "border-transparent text-slate-200/90 hover:border-white/10 hover:bg-white/6 hover:text-white"
+        }`}
       >
-        <div
-          className={`transition-colors duration-200 ${
-            isActive
-              ? "text-blue-600"
-              : "text-slate-500 group-hover:text-slate-700"
-          } text-xl`}
-        >
-          {item.icon}
-        </div>
-
-        {!collapsed && (
+        <Icon
+          className={`text-[15px] ${active ? "text-white" : "text-slate-400 group-hover:text-white"}`}
+        />
+        {!collapsed ? (
           <>
-            <span className="ml-4 font-semibold flex-1 transition-all duration-200 text-sm">
+            <span className="ml-3 flex-1 text-[15px] font-medium">
               {item.label}
             </span>
-            <span className="text-gray-400 transition-transform duration-200">
-              {submenuOpen ? (
-                <FaChevronUp className="text-sm" />
+            {item.chevron || childItems.length > 0 ? (
+              showChildren ? (
+                <FaChevronDown className="text-[11px] text-white/70" />
               ) : (
-                <FaChevronDown className="text-sm" />
-              )}
-            </span>
+                <FaArrowRight className="text-[11px] text-slate-500" />
+              )
+            ) : null}
           </>
-        )}
-      </div>
+        ) : null}
+      </Link>
 
-      {submenuOpen && !collapsed && (
-        <div className="ml-4 mt-2 space-y-1 border-l-2 border-slate-200 pl-4">
-          {item.children.map((child) => renderChildItem(child))}
+      {showChildren ? (
+        <div className="mt-2 ml-4 space-y-1 border-l border-white/10 pl-4">
+          {childItems.map((child) => {
+            const childActive = matchesItem(location, child);
+            return (
+              <Link
+                key={`${item.label}-${child.label}`}
+                to={buildTo(child)}
+                className={`flex items-center rounded-lg px-3 py-2.5 text-[13px] font-medium transition ${
+                  childActive
+                    ? "bg-white/10 text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]"
+                    : "text-slate-300/80 hover:bg-white/6 hover:text-white"
+                }`}
+              >
+                {child.label}
+              </Link>
+            );
+          })}
         </div>
-      )}
+      ) : null}
     </div>
   );
 };
 
+const DesktopSidebar = ({ collapsed, location }) => (
+  <aside
+    className={`sticky top-0 hidden h-screen min-h-screen shrink-0 overflow-hidden border-r border-white/10 bg-[radial-gradient(circle_at_top,_rgba(90,73,255,0.22),_transparent_22%),linear-gradient(180deg,_#0F1833_0%,_#0A1228_50%,_#081024_100%)] text-white lg:flex lg:flex-col ${
+      collapsed ? "w-20" : "w-[214px]"
+    } transition-all duration-300`}
+  >
+    <div
+      className={`flex items-center ${collapsed ? "justify-center px-3 py-5" : "px-5 py-5"}`}
+    >
+      {collapsed ? (
+        <Link
+          to="/dashboard"
+          className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/6 ring-1 ring-white/10"
+        >
+          <HookLogo showText={false} className="h-8 w-8" />
+        </Link>
+      ) : (
+        <Link to="/dashboard" className="flex min-w-0 items-center gap-3">
+          <HookLogo showText={false} className="h-10 w-10 flex-shrink-0" />
+          <div className="min-w-0">
+            <p className="truncate text-[1.9rem] font-bold leading-none tracking-tight text-white">
+              hooks
+            </p>
+            <p className="mt-1 text-[10px] uppercase tracking-[0.24em] text-slate-400">
+              Gadget Intelligence
+            </p>
+          </div>
+        </Link>
+      )}
+    </div>
+
+    <div className="flex-1 overflow-y-auto px-3 pb-4 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:w-0">
+      {DESKTOP_SECTIONS.map((section) => (
+        <div key={section.title} className="mb-5">
+          {!collapsed ? (
+            <p className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+              {section.title}
+            </p>
+          ) : null}
+
+          <div className="space-y-1.5">
+            {section.items.map((item) => (
+              <DesktopNavItem
+                key={`${section.title}-${item.label}`}
+                item={item}
+                location={location}
+                collapsed={collapsed}
+              />
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  </aside>
+);
+
+const MobileRail = ({ pathname, mobileOpen }) => (
+  <aside className="fixed bottom-4 left-4 top-[92px] z-20 w-14 rounded-[28px] border border-slate-200 bg-white/95 shadow-[0_18px_45px_rgba(15,23,42,0.08)] backdrop-blur-sm lg:hidden">
+    <div className="flex h-full flex-col items-center justify-between py-5">
+      <div className="space-y-2">
+        {MOBILE_RAIL_ITEMS.map((item) => {
+          const Icon = item.icon;
+          const active = matchesPath(pathname, item);
+
+          return (
+            <Link
+              key={item.path}
+              to={item.path}
+              className={`flex h-10 w-10 items-center justify-center rounded-xl transition ${
+                active
+                  ? "bg-[#EEF0FF] text-[#5C49FF] shadow-[0_8px_18px_rgba(92,73,255,0.16)]"
+                  : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+              }`}
+            >
+              <Icon className="text-[15px]" />
+            </Link>
+          );
+        })}
+      </div>
+
+      <div className="flex flex-col items-center gap-4">
+        <div className="h-8 w-px bg-slate-200" />
+        <button
+          type="button"
+          className={`flex h-10 w-10 items-center justify-center rounded-full border transition ${
+            mobileOpen
+              ? "border-[#5C49FF]/30 bg-[#EEF0FF] text-[#5C49FF]"
+              : "border-transparent text-slate-400 hover:border-slate-200 hover:bg-slate-50"
+          }`}
+          aria-hidden="true"
+        >
+          <FaArrowRight className="text-[11px]" />
+        </button>
+      </div>
+    </div>
+  </aside>
+);
+
+const MobileDrawer = ({ mobileOpen, setMobileOpen, pathname, onLogout }) => (
+  <aside
+    className={`fixed inset-y-0 left-0 z-40 w-[78vw] max-w-[320px] rounded-r-3xl border-r border-white/10 bg-[radial-gradient(circle_at_top,_rgba(90,73,255,0.22),_transparent_24%),linear-gradient(180deg,_#101933_0%,_#0A1228_48%,_#081024_100%)] px-4 pb-5 pt-6 text-white shadow-[0_30px_80px_rgba(3,7,18,0.55)] transition-transform duration-300 lg:hidden ${
+      mobileOpen ? "translate-x-0" : "-translate-x-full"
+    }`}
+  >
+    <div className="flex items-center justify-between">
+      <div className="flex min-w-0 items-center gap-3">
+        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/6 ring-1 ring-white/10">
+          <HookLogo showText={false} className="h-8 w-8" />
+        </div>
+        <div className="min-w-0">
+          <p className="truncate text-[1.95rem] font-bold leading-none tracking-tight text-white">
+            hookscore
+          </p>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        onClick={() => setMobileOpen(false)}
+        className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-300 transition hover:bg-white/8 hover:text-white"
+        aria-label="Close sidebar"
+      >
+        <FaTimes className="text-base" />
+      </button>
+    </div>
+
+    <div className="mt-6 h-[calc(100%-4.5rem)] overflow-y-auto pr-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:w-0">
+      {MOBILE_DRAWER_SECTIONS.map((section) => (
+        <div key={section.title} className="mb-6">
+          <p className="px-1 pb-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+            {section.title}
+          </p>
+          <div className="space-y-1.5">
+            {section.items.map((item) => {
+              const Icon = item.icon;
+              const active = matchesPath(pathname, item);
+
+              return (
+                <Link
+                  key={item.label}
+                  to={item.path}
+                  onClick={() => setMobileOpen(false)}
+                  className={`flex items-center rounded-xl border px-3.5 py-3 transition ${
+                    active
+                      ? "border-white/10 bg-gradient-to-r from-[#345CFF] to-[#7A2CFF] text-white shadow-[0_18px_35px_rgba(90,73,255,0.24)]"
+                      : "border-transparent text-slate-200/90 hover:border-white/10 hover:bg-white/6 hover:text-white"
+                  }`}
+                >
+                  <Icon
+                    className={`text-[15px] ${active ? "text-white" : "text-slate-400"}`}
+                  />
+                  <span className="ml-3 text-[15px] font-medium">
+                    {item.label}
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+
+      <button
+        type="button"
+        onClick={onLogout}
+        className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-white/8 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/12"
+      >
+        <FaUserShield className="text-sm text-[#A88CFF]" />
+        Logout
+      </button>
+    </div>
+  </aside>
+);
+
 const Sidebar = ({
   collapsed,
-  setCollapsed,
   isMobile = false,
   mobileOpen = false,
   setMobileOpen,
-  onClose,
+  onLogout,
 }) => {
-  const [openSubmenus, setOpenSubmenus] = useState({});
-  const [hoveredItem, setHoveredItem] = useState(null);
-  const [authSnapshot, setAuthSnapshot] = useState(() => ({
-    role: getCurrentRole(),
-    permissions: getCurrentPermissions(),
-  }));
-  const sidebarRef = useRef(null);
   const location = useLocation();
-  const email = Cookies.get("username");
-  const role = authSnapshot.role || Cookies.get("role");
-  const normalizedRole = authSnapshot.role;
-  const permissions = authSnapshot.permissions;
+  const pathname = location.pathname || "/dashboard";
 
-  useEffect(() => {
-    const syncAuthSnapshot = () => {
-      setAuthSnapshot({
-        role: getCurrentRole(),
-        permissions: getCurrentPermissions(),
-      });
-    };
+  if (isMobile) {
+    return (
+      <>
+        <MobileRail pathname={pathname} mobileOpen={mobileOpen} />
+        <MobileDrawer
+          mobileOpen={mobileOpen}
+          setMobileOpen={setMobileOpen}
+          pathname={pathname}
+          onLogout={onLogout}
+        />
+      </>
+    );
+  }
 
-    syncAuthSnapshot();
-    window.addEventListener("storage", syncAuthSnapshot);
-    window.addEventListener("hooks-rbac-updated", syncAuthSnapshot);
-    return () => {
-      window.removeEventListener("storage", syncAuthSnapshot);
-      window.removeEventListener("hooks-rbac-updated", syncAuthSnapshot);
-    };
-  }, []);
-
-  const routeOpenSubmenus = useMemo(() => {
-    const initialOpenSubmenus = {};
-
-    const checkItems = (items) => {
-      items.forEach((item) => {
-        if (item.type === "submenu" && item.children) {
-          const isActive = item.children.some((child) => {
-            if (child.type === "submenu") {
-              return (child.children || []).some(
-                (c) => c.path === location.pathname,
-              );
-            }
-            return child.path === location.pathname;
-          });
-          if (isActive) {
-            initialOpenSubmenus[item.id] = true;
-          }
-        }
-      });
-    };
-
-    checkItems(MENU_CONFIG.items);
-    return initialOpenSubmenus;
-  }, [location.pathname]);
-
-  const effectiveOpenSubmenus = useMemo(
-    () => ({ ...openSubmenus, ...routeOpenSubmenus }),
-    [openSubmenus, routeOpenSubmenus],
-  );
-
-  const toggleSubmenu = useCallback((id) => {
-    setOpenSubmenus((prev) => ({
-      ...prev,
-      [id]: !prev[id],
-    }));
-  }, []);
-
-  const isSubmenuOpen = useCallback(
-    (id) => {
-      return effectiveOpenSubmenus[id] || false;
-    },
-    [effectiveOpenSubmenus],
-  );
-
-  const isItemActive = useCallback(
-    (item) => {
-      if (item.type === "submenu") {
-        return item.children.some((child) => child.path === location.pathname);
-      }
-      return item.path === location.pathname;
-    },
-    [location.pathname],
-  );
-
-  const menuItems = useMemo(
-    () => filterMenuItemsByRole(MENU_CONFIG.items, normalizedRole, permissions),
-    [normalizedRole, permissions],
-  );
-
-  // Compute sidebar position and width classes (handle mobile translate)
-  const widthClass = collapsed ? "w-20" : "w-64";
-  const mobileTranslateClass = isMobile
-    ? mobileOpen
-      ? "translate-x-0"
-      : "-translate-x-full"
-    : "translate-x-0";
-  const positionClass = isMobile ? "fixed inset-y-0 left-0 z-40" : "relative";
-
-  const sidebarPositionClasses = `${positionClass} ${mobileTranslateClass} ${widthClass}`;
-
-  const handleLinkClick = useCallback(() => {
-    if (isMobile) {
-      if (setMobileOpen) setMobileOpen(false);
-      if (onClose) onClose();
-    }
-  }, [isMobile, setMobileOpen, onClose]);
-
-  const renderMenuItem = useCallback(
-    (item) => {
-      const isActive = isItemActive(item);
-      const submenuOpen = isSubmenuOpen(item.id);
-
-      if (item.type === "item") {
-        return (
-          <MenuItem
-            key={item.id}
-            item={item}
-            collapsed={collapsed}
-            isActive={isActive}
-            hoveredItem={hoveredItem}
-            onMouseEnter={setHoveredItem}
-            onMouseLeave={() => setHoveredItem(null)}
-            onLinkClick={handleLinkClick}
-          />
-        );
-      } else if (item.type === "submenu") {
-        return (
-          <SubMenuItem
-            key={item.id}
-            item={item}
-            collapsed={collapsed}
-            isActive={isActive}
-            submenuOpen={submenuOpen}
-            openSubmenus={openSubmenus}
-            onMouseEnter={setHoveredItem}
-            onMouseLeave={() => setHoveredItem(null)}
-            onToggle={toggleSubmenu}
-            onLinkClick={handleLinkClick}
-            location={location}
-          />
-        );
-      }
-      return null;
-    },
-    [
-      collapsed,
-      isItemActive,
-      isSubmenuOpen,
-      openSubmenus,
-      hoveredItem,
-      handleLinkClick,
-      toggleSubmenu,
-      location,
-    ],
-  );
-
-  return (
-    <>
-      {/* Sidebar */}
-      <div
-        ref={sidebarRef}
-        className={
-          sidebarPositionClasses +
-          " transform transition-all duration-300 ease-in-out h-full bg-white border-r border-slate-200 flex flex-col overflow-y-auto"
-        }
-      >
-        {/* Header */}
-        <div
-          className={`flex items-center justify-between border-b border-slate-200 ${collapsed ? "p-3" : "p-4 sm:p-6"}`}
-        >
-          {!collapsed ? (
-            <Link to="/dashboard" className="flex items-center gap-2 min-w-0">
-              <HookLogo className="h-9 w-auto max-w-[170px] sm:h-10 sm:max-w-[190px]" />
-            </Link>
-          ) : (
-            <Link
-              to="/dashboard"
-              className="mx-auto hover:scale-110 transition-transform flex-shrink-0"
-            >
-              <div className="h-8 w-8 overflow-hidden rounded-lg sm:h-10 sm:w-10">
-                <HookLogo
-                  showText={false}
-                  className="h-8 w-8 sm:h-10 sm:w-10"
-                />
-              </div>
-            </Link>
-          )}
-          <button
-            onClick={() => {
-              if (isMobile) {
-                if (setMobileOpen) setMobileOpen(!mobileOpen);
-                if (!mobileOpen && setCollapsed) setCollapsed(false);
-              } else {
-                setCollapsed(!collapsed);
-              }
-            }}
-            className="flex-shrink-0 rounded-lg border border-slate-200 p-2 text-slate-600 transition-colors duration-200 hover:border-slate-300 hover:bg-slate-50"
-            aria-label={
-              isMobile
-                ? mobileOpen
-                  ? "Close sidebar"
-                  : "Open sidebar"
-                : collapsed
-                  ? "Expand sidebar"
-                  : "Collapse sidebar"
-            }
-          >
-            {isMobile ? (
-              mobileOpen ? (
-                <FaTimes className="text-lg" />
-              ) : (
-                <FaBars className="text-lg" />
-              )
-            ) : collapsed ? (
-              <FaChevronRight className="text-lg" />
-            ) : (
-              <FaChevronLeft className="text-lg" />
-            )}
-          </button>
-        </div>
-
-        {/* Navigation Menu */}
-        <nav className="flex-1 space-y-2 overflow-y-auto p-4">
-          {menuItems.map((item) => renderMenuItem(item))}
-        </nav>
-        {/* Footer */}
-        <div className="border-t border-slate-200 bg-white p-6">
-          <div className="flex items-center space-x-4">
-            <Link
-              to="/account-management"
-              className="flex items-center space-x-4 hover:opacity-90 transition-opacity w-full"
-              onClick={handleLinkClick}
-            >
-              <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-900 text-base font-semibold text-white">
-                <FaUser className="text-lg" />
-              </div>
-              {!collapsed && (
-                <div className="flex-1 min-w-0">
-                  <p className="truncate text-sm font-semibold text-slate-800">
-                    {email || "User Account"}
-                  </p>
-                  <p className="truncate text-xs capitalize text-slate-500">
-                    {role || "Administrator"}
-                  </p>
-                  {!collapsed && (
-                    <p className="mt-1 text-xs font-medium text-blue-600 hover:underline">
-                      Manage Account →
-                    </p>
-                  )}
-                </div>
-              )}
-            </Link>
-          </div>
-
-          {/* mobile-only close removed */}
-        </div>
-      </div>
-      {/* no mobile padding */}
-    </>
-  );
+  return <DesktopSidebar collapsed={collapsed} location={location} />;
 };
 
 export default Sidebar;

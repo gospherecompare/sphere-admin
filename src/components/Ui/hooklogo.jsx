@@ -6,6 +6,7 @@ export default function HookLogo({
   "aria-label": ariaLabel = "HOOKS",
   brandName = "HOOKS",
   showText = true,
+  textFill = "#111",
 }) {
   const reactId = useId();
   const gradientId = `device-gradient-${reactId.replace(/:/g, "")}`;
@@ -57,7 +58,7 @@ export default function HookLogo({
           fontSize="50"
           fontWeight="800"
           letterSpacing="2"
-          fill="#111"
+          fill={textFill}
         >
           {brandName}
         </text>

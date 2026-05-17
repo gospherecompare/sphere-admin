@@ -130,24 +130,19 @@ const storeAuthNotice = (message) => {
 function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(false); // For mobile sidebar state
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Check if device is mobile on mount and resize
   useEffect(() => {
     const checkMobile = () => {
-      setIsMobile(window.innerWidth < 1024); // lg breakpoint
-      if (window.innerWidth < 1024) {
-        setSidebarCollapsed(true); // Auto-collapse sidebar on mobile
+      const mobileViewport = window.innerWidth < 1024;
+      setIsMobile(mobileViewport);
+      if (mobileViewport) {
+        setSidebarOpen(false);
       }
     };
 
-    // Initial check
     checkMobile();
-
-    // Add resize listener
     window.addEventListener("resize", checkMobile);
-
-    // Cleanup
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
@@ -204,14 +199,6 @@ function App() {
     };
   }, [isAuthenticated, clearAuth]);
 
-  // Close sidebar when route changes (mobile)
-  const handleRouteChange = () => {
-    if (isMobile) {
-      setSidebarOpen(false);
-    }
-  };
-
-  // Protected Route Component
   const ProtectedRoute = ({ children }) => {
     const location = useLocation();
     if (!isAuthenticated) {
@@ -230,7 +217,6 @@ function App() {
     return children;
   };
 
-  // Main Layout Component for authenticated routes
   const MainLayout = () => {
     const navigate = useNavigate();
     const [loginPosterOpen, setLoginPosterOpen] = useState(false);
@@ -326,62 +312,46 @@ function App() {
       showLoginPosterIfNeeded();
     }, [showLoginPosterIfNeeded]);
 
+    const closeSidebar = useCallback(() => {
+      setSidebarOpen(false);
+    }, []);
+
+    const toggleSidebar = useCallback(() => {
+      if (isMobile) {
+        setSidebarOpen((prev) => !prev);
+        return;
+      }
+
+      setSidebarCollapsed((prev) => !prev);
+    }, [isMobile]);
+
     return (
-      <div className="relative isolate flex h-screen bg-white">
-        {/* Mobile Overlay */}
+      <div className="relative isolate flex h-screen overflow-hidden bg-[#F6F8FF]">
         {isMobile && sidebarOpen && (
           <div
             className="fixed inset-0 z-30 bg-slate-950/20 lg:hidden"
-            onClick={() => setSidebarOpen(false)}
+            onClick={closeSidebar}
           />
         )}
 
-        {/* Sidebar with mobile styles (Sidebar handles mobile translate) */}
-        <div
-          className={`
-            ${isMobile ? "fixed" : "relative"}
-            lg:translate-x-0 lg:static
-            z-40 transform transition-transform duration-300 ease-in-out
-            h-full
-          `}
-        >
-          <Sidebar
-            collapsed={isMobile ? false : sidebarCollapsed} // Always expanded on mobile when open
-            setCollapsed={setSidebarCollapsed}
-            isMobile={isMobile}
-            onClose={() => setSidebarOpen(false)}
-            mobileOpen={sidebarOpen}
-            setMobileOpen={setSidebarOpen}
-          />
-        </div>
+        <Sidebar
+          collapsed={sidebarCollapsed}
+          isMobile={isMobile}
+          mobileOpen={sidebarOpen}
+          setMobileOpen={setSidebarOpen}
+          onLogout={() => clearAuth("logout")}
+        />
 
-        {/* Main Content Area */}
-        <div
-          className={`
-            flex-1 flex flex-col w-full min-w-0
-            ${!isMobile && sidebarCollapsed ? "lg:ml-0" : "lg:ml-0"}
-            transition-all duration-300
-            bg-white
-          `}
-        >
+        <div className="flex min-w-0 flex-1 flex-col bg-[#F6F8FF]">
           <Navbar
-            onToggleSidebar={() => {
-              if (isMobile) {
-                setSidebarOpen(!sidebarOpen);
-              } else {
-                setSidebarCollapsed(!sidebarCollapsed);
-              }
-            }}
-            sidebarCollapsed={sidebarCollapsed}
+            onToggleSidebar={toggleSidebar}
             sidebarOpen={sidebarOpen}
             isMobile={isMobile}
             onLogout={() => clearAuth("logout")}
           />
           <main
-            className="flex-1 overflow-auto bg-white p-0"
-            onClick={
-              isMobile && sidebarOpen ? () => setSidebarOpen(false) : undefined
-            }
+            className="flex-1 overflow-x-hidden overflow-y-auto bg-[#F6F8FF] p-0 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:h-0 [&::-webkit-scrollbar]:w-0"
+            onClick={isMobile && sidebarOpen ? closeSidebar : undefined}
           >
             <LoginStatusPoster
               open={loginPosterOpen}
@@ -393,18 +363,18 @@ function App() {
               onOpenReminder={handleOpenLoginPosterReminder}
             />
 
-            <div className="mx-auto flex w-full max-w-[1720px] flex-col gap-4 px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
-              <Breadcrumbs />
+            <div
+              className={`mx-auto flex w-full max-w-[1720px] flex-col gap-4 px-4 py-4 sm:px-6 sm:py-5 lg:px-6 lg:py-6 ${
+                isMobile
+                  ? "gap-3 px-4 py-3 pl-[4.9rem] sm:px-4 sm:py-3 sm:pl-[4.9rem]"
+                  : ""
+              }`}
+            >
+              {isMobile ? null : <Breadcrumbs />}
               <Routes>
                 <Route
                   path="/"
-                  element={
-                    <Navigate
-                      to="/dashboard"
-                      replace
-                      onClick={handleRouteChange}
-                    />
-                  }
+                  element={<Navigate to="/dashboard" replace />}
                 />
                 <Route
                   path="/dashboard"
@@ -516,7 +486,10 @@ function App() {
                   path="/specifications-manager"
                   element={
                     <AccessGate
-                      requiredAnyPermissions={["settings.view", "products.view"]}
+                      requiredAnyPermissions={[
+                        "settings.view",
+                        "products.view",
+                      ]}
                       title="Specifications access required"
                       message="This section is available to product and settings roles."
                     >
@@ -532,7 +505,10 @@ function App() {
                   path="/specifications/categories/create"
                   element={
                     <AccessGate
-                      requiredAnyPermissions={["settings.view", "products.view"]}
+                      requiredAnyPermissions={[
+                        "settings.view",
+                        "products.view",
+                      ]}
                       title="Category management access required"
                       message="This screen is limited to product and settings roles."
                     >
@@ -544,7 +520,10 @@ function App() {
                   path="/specifications/brands"
                   element={
                     <AccessGate
-                      requiredAnyPermissions={["settings.view", "products.view"]}
+                      requiredAnyPermissions={[
+                        "settings.view",
+                        "products.view",
+                      ]}
                       title="Brand management access required"
                       message="This screen is limited to product and settings roles."
                     >
@@ -579,7 +558,10 @@ function App() {
                   path="/api-tester"
                   element={
                     <AccessGate
-                      requiredAnyPermissions={["settings.manage", "settings.view"]}
+                      requiredAnyPermissions={[
+                        "settings.manage",
+                        "settings.view",
+                      ]}
                       title="API tester access required"
                       message="You need settings access to open the API tester."
                     >
@@ -650,7 +632,10 @@ function App() {
                   path="/specifications/store"
                   element={
                     <AccessGate
-                      requiredAnyPermissions={["products.view", "settings.view"]}
+                      requiredAnyPermissions={[
+                        "products.view",
+                        "settings.view",
+                      ]}
                       title="Store management access required"
                       message="You need product or settings access to open this page."
                     >
@@ -839,4 +824,3 @@ function App() {
 }
 
 export default App;
-
