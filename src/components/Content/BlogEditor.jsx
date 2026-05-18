@@ -9,6 +9,7 @@ import { useParams } from "react-router-dom";
 import Cookies from "js-cookie";
 import {
   FaBold,
+  FaCode,
   FaChevronDown,
   FaChevronLeft,
   FaChevronRight,
@@ -25,21 +26,17 @@ import {
   FaPlus,
   FaQuoteRight,
   FaRedo,
-  FaRegCommentDots,
   FaRegEye,
   FaSearch,
   FaSyncAlt,
   FaTable,
+  FaStrikethrough,
   FaUndo,
   FaUnderline,
   FaUpload,
   FaTrashAlt,
   FaTag,
-  FaCalendarAlt,
   FaImage,
-  FaUser,
-  FaThumbtack,
-  FaFire,
   FaStar,
   FaCheckCircle,
 } from "react-icons/fa";
@@ -72,11 +69,6 @@ const STORY_CATEGORY_OPTIONS = [
   { value: "guides", label: "Guides" },
   { value: "launches", label: "Launches" },
 ];
-
-const STATUS_BADGES = {
-  draft: "border border-amber-200 bg-amber-50 text-amber-800",
-  published: "border border-emerald-200 bg-emerald-50 text-emerald-800",
-};
 
 const HERO_IMAGE_SOURCE = {
   ASSET: "asset",
@@ -430,9 +422,9 @@ const sanitizeArticleMarkup = (value) => {
     )
     .replace(/<h1\b/gi, "<h2")
     .replace(/<\/h1>/gi, "</h2>")
-    .replace(/\son[a-z]+\s*=\s*(\"[^\"]*\"|'[^']*'|[^\s>]+)/gi, "")
+    .replace(/\son[a-z]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "")
     .replace(
-      /\s(?:style|class|id|aria-[\w-]+|data-[\w-]+)\s*=\s*(\"[^\"]*\"|'[^']*')/gi,
+      /\s(?:style|class|id|aria-[\w-]+|data-[\w-]+)\s*=\s*("[^"]*"|'[^']*')/gi,
       "",
     )
     .replace(/\s(?:style|class|id)\s*=\s*[^\s>]+/gi, "")
@@ -550,8 +542,7 @@ const resolveStoredArticleContent = (record, fallback = "") => {
 };
 
 const BlogEditor = () => {
-  // Get articleId from route param (for /blog-editor/:id or similar route)
-  const { id: routeArticleId } = useParams ? useParams() : { id: undefined };
+  const { id: routeArticleId } = useParams();
   // Auto-load article if route param is present and not already loaded
   useEffect(() => {
     if (routeArticleId && String(blogId) !== String(routeArticleId)) {
@@ -615,14 +606,7 @@ const BlogEditor = () => {
   const [newPostMenuOpen, setNewPostMenuOpen] = useState(false);
   const [libraryActionMenuId, setLibraryActionMenuId] = useState(null);
   const [composerSidebarTab, setComposerSidebarTab] = useState("post");
-  const [mobileComposerPanels, setMobileComposerPanels] = useState({
-    publish: true,
-    workflow: false,
-    settings: true,
-    seo: false,
-    source: true,
-    facts: false,
-  });
+  const [composerPreviewOpen, setComposerPreviewOpen] = useState(false);
   const [editorUiState, setEditorUiState] = useState({
     canRedo: false,
     canUndo: false,
@@ -630,6 +614,7 @@ const BlogEditor = () => {
     isBlockquote: false,
     isBold: false,
     isBulletList: false,
+    isCodeBlock: false,
     isEmpty: true,
     isFocused: false,
     isH2: false,
@@ -638,6 +623,7 @@ const BlogEditor = () => {
     isLink: false,
     isOrderedList: false,
     isParagraph: true,
+    isStrike: false,
     isUnderline: false,
   });
   const storyEditorRef = useRef(null);
@@ -646,13 +632,6 @@ const BlogEditor = () => {
   const slugInputRef = useRef(null);
   const tagsInputRef = useRef(null);
   const deferredLibraryQuery = useDeferredValue(libraryQuery);
-
-  const toggleMobileComposerPanel = (panelKey) => {
-    setMobileComposerPanels((prev) => ({
-      ...prev,
-      [panelKey]: !prev[panelKey],
-    }));
-  };
 
   const authHeaders = useMemo(() => {
     const token = getAuthToken();
@@ -837,13 +816,6 @@ const BlogEditor = () => {
     return filteredLibrary.slice(start, start + libraryPageSize);
   }, [filteredLibrary, libraryPage, libraryPageSize]);
 
-  const activeEditorSummary = useMemo(() => {
-    if (blogMode === "product") {
-      return selectedProduct?.name || "Select a product to begin";
-    }
-    return title || "Draft a custom news or article entry";
-  }, [blogMode, selectedProduct?.name, title]);
-
   const renderedTemplatePreview = useMemo(
     () => renderBlogTemplatePreview(contentTemplate, tokenMap),
     [contentTemplate, tokenMap],
@@ -856,11 +828,6 @@ const BlogEditor = () => {
 
   const articlePreviewHtml = useMemo(
     () => buildArticlePreviewHtml(renderedTemplatePreview),
-    [renderedTemplatePreview],
-  );
-
-  const hasStructuredPreview = useMemo(
-    () => hasStructuredArticleMarkup(renderedTemplatePreview),
     [renderedTemplatePreview],
   );
 
@@ -877,6 +844,8 @@ const BlogEditor = () => {
     setError("");
     setMessage("Choose a product to start a linked story.");
     setWorkspaceView("composer");
+    setComposerSidebarTab("post");
+    setComposerPreviewOpen(false);
     setBlogMode("product");
     setProductType(nextType);
     setBlogId(null);
@@ -911,6 +880,8 @@ const BlogEditor = () => {
     setError("");
     setMessage("Ready for a new general article.");
     setWorkspaceView("composer");
+    setComposerSidebarTab("post");
+    setComposerPreviewOpen(false);
     setBlogMode("general");
     setBlogId(null);
     setSelectedLibraryId(null);
@@ -1197,31 +1168,6 @@ const BlogEditor = () => {
     return Boolean(storyEditorRef.current?.insertHtml?.(markup));
   };
 
-  const insertInlineImageFromUrl = () => {
-    if (typeof window === "undefined") return;
-
-    runEditorPromptTask(() => {
-      const requestedUrl = window.prompt("Enter the inline image URL");
-      if (requestedUrl === null) return;
-
-      const normalizedUrl = String(requestedUrl || "").trim();
-      if (!normalizedUrl) return;
-
-      const fallbackAlt = title || "Article image";
-      const requestedAlt = window.prompt(
-        "Add alt text for the image",
-        fallbackAlt,
-      );
-      const requestedCaption = window.prompt("Optional caption or credit", "");
-
-      insertInlineImage({
-        source: normalizedUrl,
-        alt: String(requestedAlt || fallbackAlt).trim() || fallbackAlt,
-        caption: String(requestedCaption || "").trim(),
-      });
-    });
-  };
-
   const handleInlineImageUpload = async (file) => {
     if (!file) return;
 
@@ -1279,6 +1225,8 @@ const BlogEditor = () => {
     if (!articleId) return;
 
     setWorkspaceView("composer");
+    setComposerSidebarTab("post");
+    setComposerPreviewOpen(false);
     setLoadingEntryId(articleId);
     setError("");
     setMessage("");
@@ -1520,6 +1468,17 @@ const BlogEditor = () => {
     });
   };
 
+  const insertEmbedPlaceholder = () => {
+    storyEditorRef.current?.insertHtml?.(
+      [
+        "<blockquote>",
+        "<p><strong>Embed block</strong></p>",
+        "<p>Paste a YouTube, X, benchmark chart, or source URL here.</p>",
+        "</blockquote>",
+      ].join(""),
+    );
+  };
+
   const insertToken = (tokenKey) => {
     insertEditorText(`{{${tokenKey}}}`);
   };
@@ -1531,172 +1490,20 @@ const BlogEditor = () => {
     action();
   };
 
-  const editorFormattingActions = useMemo(
-    () => [
-      {
-        key: "undo",
-        label: "Undo",
-        icon: FaUndo,
-        active: false,
-        disabled: !editorUiState.canUndo,
-        onClick: () => storyEditorRef.current?.undo?.(),
-      },
-      {
-        key: "redo",
-        label: "Redo",
-        icon: FaRedo,
-        active: false,
-        disabled: !editorUiState.canRedo,
-        onClick: () => storyEditorRef.current?.redo?.(),
-      },
-      {
-        key: "paragraph",
-        label: "P",
-        active: editorUiState.isParagraph,
-        disabled: false,
-        onClick: () => storyEditorRef.current?.setParagraph?.(),
-      },
-      {
-        key: "h2",
-        label: "H2",
-        active: editorUiState.isH2,
-        disabled: false,
-        onClick: () => storyEditorRef.current?.toggleHeading?.(2),
-      },
-      {
-        key: "h3",
-        label: "H3",
-        active: editorUiState.isH3,
-        disabled: false,
-        onClick: () => storyEditorRef.current?.toggleHeading?.(3),
-      },
-      {
-        key: "bold",
-        label: "Bold",
-        icon: FaBold,
-        active: editorUiState.isBold,
-        disabled: false,
-        onClick: () => storyEditorRef.current?.toggleBold?.(),
-      },
-      {
-        key: "italic",
-        label: "Italic",
-        icon: FaItalic,
-        active: editorUiState.isItalic,
-        disabled: false,
-        onClick: () => storyEditorRef.current?.toggleItalic?.(),
-      },
-      {
-        key: "underline",
-        label: "Underline",
-        icon: FaUnderline,
-        active: editorUiState.isUnderline,
-        disabled: false,
-        onClick: () => storyEditorRef.current?.toggleUnderline?.(),
-      },
-      {
-        key: "quote",
-        label: "Quote",
-        icon: FaQuoteRight,
-        active: editorUiState.isBlockquote,
-        disabled: false,
-        onClick: () => storyEditorRef.current?.toggleBlockquote?.(),
-      },
-      {
-        key: "bullets",
-        label: "Bullets",
-        icon: FaListUl,
-        active: editorUiState.isBulletList,
-        disabled: false,
-        onClick: () => storyEditorRef.current?.toggleBulletList?.(),
-      },
-      {
-        key: "numbers",
-        label: "Numbers",
-        icon: FaListOl,
-        active: editorUiState.isOrderedList,
-        disabled: false,
-        onClick: () => storyEditorRef.current?.toggleOrderedList?.(),
-      },
-    ],
-    [editorUiState],
-  );
-
-  const editorInsertActions = useMemo(
-    () => [
-      {
-        key: "link",
-        label: editorUiState.isLink ? "Edit link" : "Add link",
-        icon: FaLink,
-        active: editorUiState.isLink,
-        disabled: false,
-        onClick: applyLink,
-      },
-      {
-        key: "unlink",
-        label: "Remove link",
-        icon: FaLink,
-        active: false,
-        disabled: !editorUiState.isLink,
-        onClick: () => storyEditorRef.current?.unsetLink?.(),
-      },
-      {
-        key: "image-url",
-        label: "Image URL",
-        icon: FaImage,
-        active: false,
-        disabled: false,
-        onClick: insertInlineImageFromUrl,
-      },
-      {
-        key: "image-upload",
-        label: uploadingInlineImage ? "Uploading..." : "Upload image",
-        icon: FaUpload,
-        active: false,
-        disabled: uploadingInlineImage,
-        onClick: openInlineImagePicker,
-      },
-      {
-        key: "table",
-        label: "Insert table",
-        icon: FaTable,
-        active: false,
-        disabled: false,
-        onClick: insertTableLayout,
-      },
-    ],
-    [editorUiState.isLink, uploadingInlineImage],
-  );
-
-  const editorTemplateActions = useMemo(
-    () => [
-      {
-        key: "starter",
-        label: "News layout",
-        description: "Insert a launch/news article structure.",
-        onClick: insertStarterLayout,
-      },
-      {
-        key: "guide",
-        label: "Guide layout",
-        description: "Insert a step-by-step explainer structure.",
-        onClick: insertGuideStepLayout,
-      },
-    ],
-    [],
-  );
-
-  const editorModeLabel = editorUiState.isH2
-    ? "H2 active"
-    : editorUiState.isH3
-      ? "H3 active"
-      : editorUiState.isBlockquote
-        ? "Quote block"
-        : editorUiState.isBulletList
-          ? "Bullet list"
-          : editorUiState.isOrderedList
-            ? "Numbered list"
-            : "Paragraph";
+  const editorTemplateActions = [
+    {
+      key: "starter",
+      label: "News layout",
+      description: "Insert a launch/news article structure.",
+      onClick: insertStarterLayout,
+    },
+    {
+      key: "guide",
+      label: "Guide layout",
+      description: "Insert a step-by-step explainer structure.",
+      onClick: insertGuideStepLayout,
+    },
+  ];
 
   const editorSelectionLabel = editorUiState.hasSelection
     ? "Text selected"
@@ -1704,14 +1511,59 @@ const BlogEditor = () => {
       ? "Cursor active"
       : "Click editor to start";
 
-  const getToolbarButtonClassName = (active, disabled = false) =>
-    `inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold transition ${
+  const getComposerIconButtonClassName = (active, disabled = false) =>
+    `inline-flex h-9 w-9 items-center justify-center border text-sm transition ${
       disabled
-        ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
+        ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-300"
         : active
-          ? "border-blue-300 bg-blue-50 text-blue-700 shadow-sm"
-          : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+          ? "border-[#7C3AED]/20 bg-[#F3EEFF] text-[#5B34E6]"
+          : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
     }`;
+  const composerFieldClassName =
+    "h-11 w-full border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-slate-400 focus:ring-0";
+  const composerTextareaClassName =
+    "w-full border border-slate-200 bg-white px-3 py-3 text-sm text-slate-700 outline-none transition focus:border-slate-400 focus:ring-0";
+  const composerButtonClassName =
+    "inline-flex items-center justify-center border border-slate-200 bg-white text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50";
+  const composerDangerButtonClassName =
+    "inline-flex items-center justify-center border border-red-200 bg-red-50 text-sm font-semibold text-red-600 transition hover:border-red-300 hover:bg-red-100";
+  const listingFieldClassName =
+    "h-11 w-full border border-slate-200 bg-white px-2 text-sm text-slate-700 outline-none transition focus:border-slate-400 focus:ring-0 md:px-4";
+  const listingButtonClassName =
+    "inline-flex h-11 items-center justify-center gap-2 border border-slate-200 bg-white px-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 md:px-4";
+  const listingIconButtonClassName =
+    "inline-flex h-9 w-9 items-center justify-center border border-slate-200 bg-white text-slate-500 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900";
+
+  const applyEditorBlockMode = (nextMode) => {
+    storyEditorRef.current?.saveSelection?.();
+
+    if (nextMode === "h2") {
+      storyEditorRef.current?.toggleHeading?.(2);
+      return;
+    }
+    if (nextMode === "h3") {
+      storyEditorRef.current?.toggleHeading?.(3);
+      return;
+    }
+    if (nextMode === "quote") {
+      storyEditorRef.current?.toggleBlockquote?.();
+      return;
+    }
+    if (nextMode === "bullets") {
+      storyEditorRef.current?.toggleBulletList?.();
+      return;
+    }
+    if (nextMode === "numbers") {
+      storyEditorRef.current?.toggleOrderedList?.();
+      return;
+    }
+    if (nextMode === "code") {
+      storyEditorRef.current?.toggleCodeBlock?.();
+      return;
+    }
+
+    storyEditorRef.current?.setParagraph?.();
+  };
 
   const saveBlog = async (statusOverride = null) => {
     const productIdForSave = blogMode === "product" ? selectedProductId : null;
@@ -1904,6 +1756,8 @@ const BlogEditor = () => {
     if (!row?.id) return;
 
     setWorkspaceView("composer");
+    setComposerSidebarTab("post");
+    setComposerPreviewOpen(false);
     if (row.product_id) {
       setError("");
       setMessage("Loading selected story...");
@@ -2102,222 +1956,101 @@ const BlogEditor = () => {
       ),
     [selectedProduct],
   );
-  const heroImageChoices = useMemo(
-    () =>
-      blogMode === "product" && heroImageSource === HERO_IMAGE_SOURCE.ASSET
-        ? collectImageCandidates(productImages, heroImage)
-        : [],
-    [blogMode, heroImage, heroImageSource, productImages],
-  );
+  const activeTagList = useMemo(() => normalizeBlogTags(tagsInput), [tagsInput]);
+  const activeComposerRow = useMemo(() => {
+    const activeId = Number(blogId || selectedLibraryId);
+    if (!Number.isInteger(activeId) || activeId <= 0) return null;
 
-  const currentModeLabel =
-    blogMode === "product" ? "Product-linked story" : "General article";
-  const currentReference =
-    blogMode === "product"
-      ? selectedProduct?.brand_name && selectedProduct?.name
-        ? `${selectedProduct.brand_name} ${selectedProduct.name}`
-        : selectedProduct?.name || "No product selected"
-      : slug
-        ? `/${slug}`
-        : "Slug will be generated when you save";
-  const currentModeHelp =
-    blogMode === "product"
-      ? selectedProductId
-        ? "Product details and editorial helpers are loaded in the right rail."
-        : "Choose a product first to preload specs, hero image options, and suggested lines."
-      : "Use this mode for explainers, launch roundups, and general newsroom posts.";
-  const previewHeroImage =
-    heroImage ||
-    getFirstImageCandidate(
-      selectedProduct?.hero_image,
-      selectedProduct?.image,
-      selectedProduct?.image_url,
-      selectedProduct?.cover_image,
-      selectedProduct?.thumbnail,
-      selectedProduct?.images,
+    return (
+      libraryRows.find((row) => Number(row?.id) === activeId) || null
     );
-  const previewHeroAlt = heroImageAlt || title || "Story cover preview";
-  const currentPermalink = slug
-    ? `/news/${slug}`
-    : "Slug will be generated when you save";
-  const libraryOverviewCards = [
-    {
-      label: "Library Items",
-      value: libraryStats.total,
-      hint: "Saved stories and articles",
-      cardClassName: "border-slate-200 bg-white",
-      labelClassName: "text-slate-500",
-      valueClassName: "text-2xl text-slate-900",
-    },
-    {
-      label: "Drafts",
-      value: libraryStats.draft,
-      hint: "Needs review or publish",
-      cardClassName: "border-amber-200 bg-amber-50",
-      labelClassName: "text-amber-700",
-      valueClassName: "text-2xl text-amber-900",
-    },
-    {
-      label: "Published",
-      value: libraryStats.published,
-      hint: "Live in the newsroom",
-      cardClassName: "border-emerald-200 bg-emerald-50",
-      labelClassName: "text-emerald-700",
-      valueClassName: "text-2xl text-emerald-900",
-    },
-  ];
-  const editorOverviewCards = [
-    {
-      label: "Workspace",
-      value: blogMode === "product" ? "Product Linked" : "General Article",
-      hint:
-        workspaceView === "composer"
-          ? "Editing surface active"
-          : "Library mode active",
-      cardClassName: "border-slate-200 bg-white",
-      labelClassName: "text-slate-500",
-      valueClassName: "text-lg leading-6 text-slate-900",
-    },
-    {
-      label: "Publish State",
-      value: status === "published" ? "Published" : "Draft",
-      hint: publishedAt
-        ? `Scheduled ${formatDateLabel(publishedAt)}`
-        : "Ready to save or publish",
-      cardClassName:
-        status === "published"
-          ? "border-emerald-200 bg-emerald-50"
-          : "border-amber-200 bg-amber-50",
-      labelClassName:
-        status === "published" ? "text-emerald-700" : "text-amber-700",
-      valueClassName:
-        status === "published"
-          ? "text-lg leading-6 text-emerald-900"
-          : "text-lg leading-6 text-amber-900",
-    },
-    {
-      label: blogMode === "product" ? "Source Device" : "Permalink",
-      value:
-        blogMode === "product"
-          ? selectedProduct?.name || "No product selected"
-          : slug || "Auto generated on save",
-      hint:
-        blogMode === "product"
-          ? selectedProduct?.brand_name || currentModeHelp
-          : currentPermalink,
-      cardClassName: "border-blue-200 bg-blue-50",
-      labelClassName: "text-blue-700",
-      valueClassName: "text-base leading-6 text-blue-900",
-    },
-    {
-      label: "Workflow Progress",
-      value: `${
-        [
-          blogMode === "general" || Boolean(selectedProductId),
-          Boolean(title.trim()),
-          Boolean(excerpt.trim()),
-          editorHasContent,
-          Boolean(previewHeroImage),
-          Boolean(metaTitle.trim() && metaDescription.trim()),
-        ].filter(Boolean).length
-      } / 6`,
-      hint: "Source, headline, summary, body, image, and SEO checks",
-      cardClassName: "border-violet-200 bg-violet-50",
-      labelClassName: "text-violet-700",
-      valueClassName: "text-lg leading-6 text-violet-900",
-    },
-  ];
-  const activeOverviewCards =
-    workspaceView === "listing" ? libraryOverviewCards : editorOverviewCards;
-
-  const workflowChecklist = [
-    {
-      label: "Choose source",
-      done: blogMode === "general" || Boolean(selectedProductId),
-      detail:
-        blogMode === "product"
-          ? selectedProduct?.name || "Pick the product that powers this story."
-          : "General article mode is active.",
-    },
-    {
-      label: "Add headline and summary",
-      done: Boolean(title.trim()) && Boolean(excerpt.trim()),
-      detail:
-        title.trim() && excerpt.trim()
-          ? "Headline and standfirst are ready."
-          : "These power the article header, cards, and previews.",
-    },
-    {
-      label: "Write the body",
-      done: editorHasContent,
-      detail: editorHasContent
-        ? "Formatted story content is ready in the writing surface."
-        : "Use the body editor to write the core article content.",
-    },
-    {
-      label: "Set hero image",
-      done: Boolean(previewHeroImage),
-      detail: previewHeroImage
-        ? "A hero image is available for the preview and live post."
-        : "Recommended for stronger cards and article headers.",
-    },
-    {
-      label: "Review SEO and publish",
-      done: Boolean(metaTitle.trim() && metaDescription.trim()),
-      detail:
-        metaTitle.trim() && metaDescription.trim()
-          ? "SEO basics are filled in."
-          : "Add SEO title and description before final publish.",
-    },
-  ];
-
-  const workflowCompletedCount = workflowChecklist.filter(
-    (item) => item.done,
-  ).length;
-
-  const workspaceGuideCards =
-    workspaceView === "listing"
-      ? [
-          {
-            title: "Track status",
-            text: "Filter drafts and published posts from one registry view.",
-          },
-          {
-            title: "Reopen any entry",
-            text: "Open a row to continue editing without leaving the workspace.",
-          },
-          {
-            title: "Manage faster",
-            text: "Search by title, slug, author, brand, or tags.",
-          },
-        ]
-      : [
-          {
-            title: "1. Select source",
-            text:
-              blogMode === "product"
-                ? "Choose the product first so facts and images load automatically."
-                : "Use general mode for custom newsroom stories and explainers.",
-          },
-          {
-            title: "2. Write the story",
-            text:
-              "Use the grouped writing tools like a document editor. No HTML is needed.",
-          },
-          {
-            title: "3. Review and publish",
-            text:
-              "Check the preview, add SEO details, then save as draft or publish.",
-          },
-        ];
+  }, [blogId, libraryRows, selectedLibraryId]);
+  const composerEntryLabel = blogId ? "Edit Blog Post" : "Add New Post";
+  const composerCrumbLabel = blogId ? "Edit Post" : "Add New Post";
+  const composerStatusKey = getListingStatusKey({
+    status,
+    published_at: publishedAt,
+  });
+  const composerStatusLabel = getListingStatusLabel({
+    status,
+    published_at: publishedAt,
+  });
+  const composerUpdatedSource =
+    activeComposerRow?.updated_at ||
+    activeComposerRow?.published_at ||
+    publishedAt ||
+    "";
+  const composerUpdatedLabel = composerUpdatedSource
+    ? formatDateLabel(composerUpdatedSource)
+    : "Not updated yet";
+  const editorPermalinkDisplay =
+    typeof window === "undefined"
+      ? slug
+        ? `/blog/${slug}`
+        : "/blog/your-post-slug"
+      : `${window.location.origin}/blog/${slug || "your-post-slug"}`;
+  const editorBlockModeValue = editorUiState.isH2
+    ? "h2"
+    : editorUiState.isH3
+      ? "h3"
+      : editorUiState.isCodeBlock
+        ? "code"
+      : editorUiState.isBlockquote
+        ? "quote"
+        : editorUiState.isBulletList
+          ? "bullets"
+          : editorUiState.isOrderedList
+            ? "numbers"
+            : "paragraph";
+  const titleCharacterCount = String(title || "").length;
+  const excerptCharacterCount = String(excerpt || "").length;
+  const metaTitleCharacterCount = String(metaTitle || "").length;
+  const metaDescriptionCharacterCount = String(metaDescription || "").length;
+  const articlePlainText = useMemo(
+    () =>
+      normalizeArticleContent(renderedTemplatePreview)
+        .replace(/<[^>]+>/g, " ")
+        .replace(/\s+/g, " ")
+        .trim(),
+    [renderedTemplatePreview],
+  );
+  const articleWordCount = articlePlainText
+    ? articlePlainText.split(/\s+/).filter(Boolean).length
+    : 0;
+  const articleCharacterCount = articlePlainText.length;
+  const seoScore = Math.min(
+    100,
+    [
+      title.trim() ? 20 : 0,
+      excerpt.trim() ? 15 : 0,
+      metaTitle.trim() ? 20 : 0,
+      metaDescription.trim() ? 20 : 0,
+      activeTagList.length ? 10 : 0,
+      editorHasContent ? 15 : 0,
+    ].reduce((sum, value) => sum + value, 0),
+  );
+  const seoScoreLabel =
+    seoScore >= 85 ? "Great job!" : seoScore >= 65 ? "Almost there" : "Needs work";
+  const seoScorePercent = Math.max(0, Math.min(100, Number(seoScore) || 0));
+  const focusKeywordValue = activeTagList[0] || "";
+  const isLoadingStoryMessage = message === "Loading selected story...";
+  const focusSlugField = () => {
+    setComposerSidebarTab("block");
+    setTimeout(() => {
+      slugInputRef.current?.focus();
+      slugInputRef.current?.select?.();
+    }, 40);
+  };
+  const focusTagsField = () => {
+    setComposerSidebarTab("post");
+    setTimeout(() => {
+      tagsInputRef.current?.focus();
+    }, 40);
+  };
 
   return (
     <div
-      className={`mx-auto flex w-full max-w-[1720px] flex-col gap-6 ${
-        workspaceView === "listing"
-          ? "px-0 py-1"
-          : "relative isolate overflow-hidden rounded-[32px] bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.08),_transparent_24%),radial-gradient(circle_at_top_right,_rgba(139,92,246,0.10),_transparent_24%),linear-gradient(180deg,_#f8fafc_0%,_#eef2ff_48%,_#ffffff_100%)] px-3 py-3 sm:px-6 sm:py-4"
-      }`}
+      className="mx-auto flex w-full max-w-[1720px] flex-col gap-8 px-1 py-2"
     >
       {workspaceView === "listing" ? (
         <div className="px-1 py-1 sm:px-2">
@@ -2336,20 +2069,20 @@ const BlogEditor = () => {
                   type="button"
                   onClick={exportLibraryCsv}
                   disabled={filteredLibrary.length === 0}
-                  className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 disabled:opacity-60"
+                  className="inline-flex h-11 items-center justify-center gap-2 border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 disabled:opacity-60 md:px-5"
                 >
                   <FaDownload className="text-xs" />
                   Export
                 </button>
 
-                <div className="relative inline-flex">
+                <div className="relative inline-flex border border-slate-200">
                   <button
                     type="button"
                     onClick={() => {
                       setNewPostMenuOpen(false);
                       startNewGeneralArticle();
                     }}
-                    className="inline-flex h-11 items-center gap-2 rounded-l-xl bg-gradient-to-r from-[#345CFF] to-[#6B2EFF] px-5 text-sm font-semibold text-white shadow-sm transition hover:from-[#274be0] hover:to-[#5c21ea]"
+                    className="inline-flex h-11 items-center gap-2 bg-[#5B2EFF] px-3 text-sm font-semibold text-white transition hover:bg-[#4D23E0] md:px-5"
                   >
                     <FaPlus className="text-xs" />
                     New Post
@@ -2357,20 +2090,20 @@ const BlogEditor = () => {
                   <button
                     type="button"
                     onClick={() => setNewPostMenuOpen((prev) => !prev)}
-                    className="inline-flex h-11 items-center rounded-r-xl border-l border-white/20 bg-gradient-to-r from-[#345CFF] to-[#6B2EFF] px-3 text-white shadow-sm transition hover:from-[#274be0] hover:to-[#5c21ea]"
+                    className="inline-flex h-11 items-center border-l border-white/20 bg-[#5B2EFF] px-3 text-white transition hover:bg-[#4D23E0]"
                   >
                     <FaChevronDown className="text-xs" />
                   </button>
 
                   {newPostMenuOpen ? (
-                    <div className="absolute right-0 top-[calc(100%+0.75rem)] z-20 w-56 overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_24px_70px_rgba(15,23,42,0.18)]">
+                    <div className="absolute right-0 top-[calc(100%+0.75rem)] z-20 w-56 overflow-hidden border border-slate-200 bg-white">
                       <button
                         type="button"
                         onClick={() => {
                           setNewPostMenuOpen(false);
                           startNewGeneralArticle();
                         }}
-                        className="flex w-full items-start rounded-xl px-3 py-3 text-left transition hover:bg-slate-50"
+                        className="flex w-full items-start border-b border-slate-200 px-3 py-3 text-left transition hover:bg-slate-50"
                       >
                         <div>
                           <div className="text-sm font-semibold text-slate-900">
@@ -2387,7 +2120,7 @@ const BlogEditor = () => {
                           setNewPostMenuOpen(false);
                           startNewProductStory();
                         }}
-                        className="flex w-full items-start rounded-xl px-3 py-3 text-left transition hover:bg-slate-50"
+                        className="flex w-full items-start px-3 py-3 text-left transition hover:bg-slate-50"
                       >
                         <div>
                           <div className="text-sm font-semibold text-slate-900">
@@ -2405,1024 +2138,1501 @@ const BlogEditor = () => {
           </div>
         </div>
       ) : (
-        <>
-          <div className="overflow-hidden rounded-[32px] border border-blue-200/30 bg-[radial-gradient(circle_at_top_left,_rgba(96,165,250,0.22),_transparent_24%),radial-gradient(circle_at_bottom_right,_rgba(168,85,247,0.18),_transparent_28%),linear-gradient(135deg,_#0f172a_0%,_#1d4ed8_42%,_#6d28d9_100%)] p-3 text-white shadow-[0_32px_90px_rgba(37,99,235,0.28)] sm:p-4 md:p-6">
-            <div className="grid gap-4 sm:gap-5 2xl:grid-cols-[minmax(0,1fr)_380px]">
-              <div className="flex flex-col gap-4 sm:gap-5">
-                <div className="flex flex-col gap-4 sm:gap-5 xl:flex-row xl:items-start xl:justify-between">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-white/15 bg-white/10 text-white shadow-lg shadow-slate-950/15 sm:h-14 sm:w-14 sm:rounded-2xl">
-                      <FaNewspaper className="text-lg" />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/80">
-                          Editorial ERP
-                        </p>
-                        <span className="inline-flex items-center rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/80">
-                          Composer view
-                        </span>
-                        <span className="inline-flex items-center rounded-full border border-emerald-200/40 bg-emerald-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-100">
-                          {workflowCompletedCount} / {workflowChecklist.length} steps ready
-                        </span>
-                      </div>
-                      <h1 className="mt-1.5 text-3xl font-semibold tracking-[-0.03em] text-white sm:mt-2">
-                        News and Articles Studio
-                      </h1>
-                      <p className="mt-2 max-w-3xl text-sm leading-7 text-slate-100/90 sm:mt-3">
-                        Manage product linked stories and general editorial content from
-                        one ERP workspace with editor controls, live preview, and
-                        publish actions in one place.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex w-full flex-col items-stretch gap-3 sm:w-auto sm:flex-row sm:items-center">
-                    <div className="grid grid-cols-2 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm sm:inline-flex">
-                      <button
-                        type="button"
-                        onClick={() => setWorkspaceView("listing")}
-                        className="px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-                      >
-                        Posts Library
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setWorkspaceView("composer")}
-                        className="bg-blue-600 px-3 py-2 text-sm font-medium text-white transition"
-                      >
-                        Composer
-                      </button>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => startNewGeneralArticle()}
-                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm hover:border-slate-300 hover:bg-slate-50 sm:w-auto"
-                    >
-                      New Article
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => startNewProductStory()}
-                      className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 sm:w-auto"
-                    >
-                      <FaLink className="text-xs" />
-                      New Product Story
-                    </button>
-                  </div>
-                </div>
-
-                <div className="grid gap-3 md:grid-cols-3">
-                  {workspaceGuideCards.map((card) => (
-                    <div
-                      key={card.title}
-                      className="rounded-2xl border border-white/10 bg-white/10 px-4 py-4 text-white shadow-sm shadow-slate-950/10 backdrop-blur"
-                    >
-                      <div className="text-sm font-semibold tracking-tight">
-                        {card.title}
-                      </div>
-                      <p className="mt-2 text-sm leading-6 text-slate-100/85">
-                        {card.text}
-                      </p>
-                    </div>
-                  ))}
-                </div>
+        <div className="px-1 py-1 sm:px-2">
+          <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2 text-sm text-slate-500">
+                <span>Dashboard</span>
+                <FaChevronRight className="text-[10px] text-slate-300" />
+                <span>Blog</span>
+                <FaChevronRight className="text-[10px] text-slate-300" />
+                <button
+                  type="button"
+                  onClick={() => setWorkspaceView("listing")}
+                  className="transition hover:text-slate-900"
+                >
+                  All Posts
+                </button>
+                <FaChevronRight className="text-[10px] text-slate-300" />
+                <span className="text-slate-700">{composerCrumbLabel}</span>
               </div>
 
-              <div className="rounded-3xl border border-white/10 bg-slate-950/15 p-4 text-white shadow-lg shadow-slate-950/15 backdrop-blur">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-100/70">
-                      Workflow Summary
-                    </div>
-                    <div className="mt-2 text-lg font-semibold">
-                      {workflowCompletedCount} of {workflowChecklist.length} publishing checks complete
-                    </div>
-                  </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/10 px-3 py-2 text-right">
-                    <div className="text-[11px] uppercase tracking-[0.18em] text-slate-100/70">
-                      Active Desk
-                    </div>
-                    <div className="mt-1 text-sm font-semibold">
-                      {currentModeLabel}
-                    </div>
-                  </div>
-                </div>
+              <div className="mt-4 flex flex-wrap items-center gap-3">
+                <h1 className="text-[2.1rem] font-semibold tracking-[-0.04em] text-slate-950">
+                  {composerEntryLabel}
+                </h1>
+                <span
+                  className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${LISTING_STATUS_BADGES[composerStatusKey] || LISTING_STATUS_BADGES.draft}`}
+                >
+                  {composerStatusLabel}
+                </span>
+              </div>
 
-                <div className="mt-4 space-y-3">
-                  {workflowChecklist.map((item, index) => (
-                    <div
-                      key={item.label}
-                      className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/10 px-3 py-3"
-                    >
-                      <div
-                        className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-xs font-semibold ${
-                          item.done
-                            ? "border-emerald-300/50 bg-emerald-300/15 text-emerald-100"
-                            : "border-white/15 bg-white/10 text-white/90"
-                        }`}
-                      >
-                        {item.done ? (
-                          <FaCheckCircle className="text-xs" />
-                        ) : (
-                          index + 1
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="text-sm font-semibold">{item.label}</div>
-                        <div className="mt-1 text-sm leading-6 text-slate-100/75">
-                          {item.detail}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+              <p className="mt-2 text-[15px] text-slate-600">
+                Last updated: {composerUpdatedLabel}
+                {authorName ? ` by ${authorName}` : ""}
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <button
+                type="button"
+                onClick={() => saveBlog("draft")}
+                disabled={saving}
+                className={`${composerButtonClassName} h-11 px-5 disabled:opacity-60`}
+              >
+                {saving && status !== "published" ? "Saving..." : "Save as Draft"}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setComposerPreviewOpen(true)}
+                className={`${composerButtonClassName} h-11 gap-2 px-5`}
+              >
+                <FaRegEye className="text-sm" />
+                Preview
+              </button>
+
+              <div className="inline-flex overflow-hidden border border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => saveBlog("published")}
+                  disabled={saving}
+                  className="inline-flex h-11 items-center justify-center gap-2 bg-[#5B2EFF] px-5 text-sm font-semibold text-white transition hover:bg-[#4D23E0] disabled:opacity-60"
+                >
+                  <FaUpload className="text-[11px]" />
+                  {saving && status === "published" ? "Publishing..." : "Publish"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setComposerSidebarTab("post")}
+                  className="inline-flex h-11 items-center justify-center border-l border-white/20 bg-[#5B2EFF] px-3 text-white transition hover:bg-[#4D23E0]"
+                >
+                  <FaChevronDown className="text-xs" />
+                </button>
               </div>
             </div>
           </div>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {activeOverviewCards.map((card) => (
-              <div
-                key={card.label}
-                className={`rounded-[24px] border border-slate-200/80 bg-white/95 p-5 shadow-[0_14px_40px_rgba(15,23,42,0.08)] backdrop-blur-sm ${card.cardClassName}`}
-              >
-                <div
-                  className={`text-xs font-semibold uppercase tracking-wide ${card.labelClassName}`}
-                >
-                  {card.label}
-                </div>
-                <div className={`mt-2 font-semibold ${card.valueClassName}`}>
-                  {card.value}
-                </div>
-                <div className="mt-1 text-xs text-slate-500">{card.hint}</div>
-              </div>
-            ))}
-          </div>
-        </>
+        </div>
       )}
 
       {error ? (
-        <div className="rounded-[20px] border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-          {error}
+        <div className="border border-red-200 bg-red-50 px-2 py-3 text-red-700 md:px-4">
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 flex h-8 w-8 items-center justify-center border border-red-200 bg-white/70 text-red-600">
+              <span className="text-sm font-semibold">!</span>
+            </div>
+            <div>
+              <div className="text-sm font-semibold">Something went wrong</div>
+              <div className="mt-1 text-sm">{error}</div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {message ? (
+        <div
+          className={`border px-2 py-3 md:px-4 ${
+            isLoadingStoryMessage
+              ? "border-sky-200 bg-[linear-gradient(90deg,#f8fbff_0%,#eef6ff_100%)] text-sky-700"
+              : "border-emerald-200 bg-[linear-gradient(90deg,#f7fdf9_0%,#eefbf3_100%)] text-emerald-700"
+          }`}
+        >
+          <div className="flex items-start gap-3">
+            <div
+              className={`mt-0.5 flex h-8 w-8 items-center justify-center border bg-white/75 ${
+                isLoadingStoryMessage
+                  ? "border-sky-200 text-sky-600"
+                  : "border-emerald-200 text-emerald-600"
+              }`}
+            >
+              {isLoadingStoryMessage ? (
+                <FaSyncAlt className="animate-spin text-xs" />
+              ) : (
+                <FaCheckCircle className="text-xs" />
+              )}
+            </div>
+            <div>
+              <div className="text-sm font-semibold">
+                {isLoadingStoryMessage ? "Opening story" : "Workspace updated"}
+              </div>
+              <div className="mt-1 text-sm">{message}</div>
+            </div>
+          </div>
         </div>
       ) : null}
 
       <div className="mb-5">
         {workspaceView === "listing" ? (
-          <div className="overflow-hidden rounded-[26px] border border-slate-200/80 bg-white shadow-[0_20px_60px_rgba(15,23,42,0.08)]">
-            <div className="border-b border-slate-200/80 px-4 py-5 md:px-6 md:py-6">
-              <div className="flex flex-col gap-5">
-                <div className="grid gap-3 xl:grid-cols-[minmax(0,1.8fr)_repeat(3,minmax(0,0.95fr))_auto_auto]">
-                  <div className="relative min-w-0">
-                    <FaSearch className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm text-slate-400" />
-                    <input
-                      value={libraryQuery}
-                      onChange={(event) => setLibraryQuery(event.target.value)}
-                      placeholder="Search posts by title, keyword..."
-                      className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-11 pr-4 text-sm text-slate-800 shadow-sm outline-none transition focus:border-[#345CFF] focus:ring-4 focus:ring-blue-50"
-                    />
-                  </div>
-
-                  <select
-                    value={libraryCategoryFilter}
-                    onChange={(event) =>
-                      setLibraryCategoryFilter(event.target.value)
-                    }
-                    className="h-11 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-700 shadow-sm outline-none transition focus:border-[#345CFF] focus:ring-4 focus:ring-blue-50"
-                  >
-                    <option value="all">All Categories</option>
-                    {libraryCategoryOptions.map((option) => (
-                      <option key={option} value={option}>
-                        {getCategoryLabel(option)}
-                      </option>
-                    ))}
-                  </select>
-
-                  <select
-                    value={libraryAuthorFilter}
-                    onChange={(event) => setLibraryAuthorFilter(event.target.value)}
-                    className="h-11 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-700 shadow-sm outline-none transition focus:border-[#345CFF] focus:ring-4 focus:ring-blue-50"
-                  >
-                    <option value="all">All Authors</option>
-                    {libraryAuthorOptions.map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
-
-                  <select
-                    value={libraryStatus}
-                    onChange={(event) => setLibraryStatus(event.target.value)}
-                    className="h-11 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-700 shadow-sm outline-none transition focus:border-[#345CFF] focus:ring-4 focus:ring-blue-50"
-                  >
-                    <option value="all">All Status</option>
-                    <option value="published">Published</option>
-                    <option value="draft">Draft</option>
-                    <option value="scheduled">Scheduled</option>
-                  </select>
-
-                  <button
-                    type="button"
-                    onClick={() => loadLibrary()}
-                    disabled={libraryLoading}
-                    className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 disabled:opacity-60"
-                  >
-                    {libraryLoading ? (
-                      <FaSyncAlt className="animate-spin text-xs" />
-                    ) : (
-                      <FaFilter className="text-xs" />
-                    )}
-                    Filter
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={clearLibraryFilters}
-                    className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
-                  >
-                    Clear
-                  </button>
+          <div className="overflow-hidden border border-slate-200 bg-white">
+            <div className="border-b border-slate-200 px-2 py-4 md:px-6 md:py-6">
+              <div className="flex flex-col gap-3 lg:grid lg:grid-cols-[minmax(0,1.8fr)_repeat(3,minmax(0,0.95fr))_auto_auto]">
+                <div className="relative min-w-0">
+                  <FaSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400 md:left-4" />
+                  <input
+                    value={libraryQuery}
+                    onChange={(event) => setLibraryQuery(event.target.value)}
+                    placeholder="Search posts by title, keyword..."
+                    className="h-11 w-full border border-slate-200 bg-white pl-10 pr-2 text-sm text-slate-800 outline-none transition focus:border-slate-400 focus:ring-0 md:pl-11 md:pr-4"
+                  />
                 </div>
 
-                <div className="flex flex-wrap items-end gap-2 border-b border-slate-200">
-                  {libraryStatusTabs.map((tab) => (
-                    <button
-                      key={tab.key}
-                      type="button"
-                      onClick={() => setLibraryTab(tab.key)}
-                      className={`inline-flex items-center gap-3 rounded-t-xl border border-b-0 px-4 py-3 text-sm font-semibold transition ${
-                        libraryTab === tab.key
-                          ? "border-slate-200 bg-white text-[#5138EE]"
-                          : "border-transparent bg-transparent text-slate-500 hover:text-slate-800"
-                      }`}
-                    >
-                      <span>{tab.label}</span>
-                      <span
-                        className={`rounded-full px-2.5 py-1 text-xs font-bold ${
-                          libraryTab === tab.key
-                            ? tab.pillClassName
-                            : "bg-slate-100 text-slate-500"
-                        }`}
-                      >
-                        {tab.count}
-                      </span>
-                    </button>
+                <select
+                  value={libraryCategoryFilter}
+                  onChange={(event) =>
+                    setLibraryCategoryFilter(event.target.value)
+                  }
+                  className={listingFieldClassName}
+                >
+                  <option value="all">All Categories</option>
+                  {libraryCategoryOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {getCategoryLabel(option)}
+                    </option>
                   ))}
-                </div>
-              </div>
-            </div>
+                </select>
 
-            <div className="space-y-4 p-4 md:p-6">
-              {libraryError ? (
-                <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                  {libraryError}
-                </div>
-              ) : null}
+                <select
+                  value={libraryAuthorFilter}
+                  onChange={(event) => setLibraryAuthorFilter(event.target.value)}
+                  className={listingFieldClassName}
+                >
+                  <option value="all">All Authors</option>
+                  {libraryAuthorOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
 
-              <div className="overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-sm">
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-slate-200">
-                    <thead className="bg-white">
-                      <tr className="text-left text-xs font-semibold text-slate-700">
-                        <th className="w-12 px-4 py-4">
-                          <input
-                            type="checkbox"
-                            checked={areAllPageRowsSelected}
-                            onChange={toggleLibrarySelectionForPage}
-                            className="h-4 w-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500"
-                          />
-                        </th>
-                        <th className="min-w-[460px] px-4 py-4">Title</th>
-                        <th className="w-[180px] px-4 py-4">Author</th>
-                        <th className="w-[200px] px-4 py-4">Category</th>
-                        <th className="w-[130px] px-4 py-4">Status</th>
-                        <th className="w-[170px] px-4 py-4">Published On</th>
-                        <th className="w-[110px] px-4 py-4">Views</th>
-                        <th className="w-[110px] px-4 py-4">Comments</th>
-                        <th className="w-[110px] px-4 py-4 text-right">Actions</th>
-                      </tr>
-                    </thead>
+                <select
+                  value={libraryStatus}
+                  onChange={(event) => setLibraryStatus(event.target.value)}
+                  className={listingFieldClassName}
+                >
+                  <option value="all">All Status</option>
+                  <option value="published">Published</option>
+                  <option value="draft">Draft</option>
+                  <option value="scheduled">Scheduled</option>
+                </select>
 
-                    <tbody className="divide-y divide-slate-200">
-                      {libraryLoading && libraryRows.length === 0 ? (
-                        <tr>
-                          <td
-                            colSpan={9}
-                            className="px-4 py-12 text-center text-sm text-slate-500"
-                          >
-                            Loading content library...
-                          </td>
-                        </tr>
-                      ) : paginatedLibrary.length === 0 ? (
-                        <tr>
-                          <td
-                            colSpan={9}
-                            className="px-4 py-12 text-center text-sm text-slate-500"
-                          >
-                            {libraryTab === "trash"
-                              ? "Trash view is ready for future deleted-record support."
-                              : "No posts match the current filters."}
-                          </td>
-                        </tr>
-                      ) : (
-                        paginatedLibrary.map((row) => {
-                          const rowId = Number(row.id);
-                          const rowCategory =
-                            row.category ||
-                            (row.product_id
-                              ? getDefaultStoryCategory("product")
-                              : getDefaultStoryCategory("general"));
-                          const rowStatus = getListingStatusKey(row);
-                          const publishedDate = formatDateParts(row.published_at);
-                          const viewsLabel = formatCompactNumber(
-                            row.views_total ?? row.views,
-                          );
-                          const commentsLabel = formatCompactNumber(
-                            row.comment_count ?? row.comments_count,
-                          );
-
-                          return (
-                            <tr
-                              key={row.id}
-                              className={`align-top transition ${
-                                selectedLibraryId === row.id
-                                  ? "bg-violet-50/70"
-                                  : "bg-white hover:bg-slate-50/70"
-                              }`}
-                            >
-                              <td className="px-4 py-4">
-                                <input
-                                  type="checkbox"
-                                  checked={selectedLibraryIds.includes(rowId)}
-                                  onChange={() => toggleLibrarySelection(rowId)}
-                                  className="mt-1 h-4 w-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500"
-                                />
-                              </td>
-
-                              <td className="px-4 py-4">
-                                <div className="flex items-start gap-4">
-                                  <div className="h-14 w-20 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
-                                    {row.hero_image ? (
-                                      <img
-                                        src={row.hero_image}
-                                        alt={
-                                          row.hero_image_alt ||
-                                          row.title ||
-                                          "Story cover"
-                                        }
-                                        className="h-full w-full object-cover"
-                                      />
-                                    ) : (
-                                      <div className="flex h-full items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-700 text-white">
-                                        <FaNewspaper className="text-lg opacity-80" />
-                                      </div>
-                                    )}
-                                  </div>
-
-                                  <div className="min-w-0">
-                                    <div className="line-clamp-2 max-w-[34rem] text-[15px] font-semibold leading-6 text-slate-950">
-                                      {row.title || "Untitled content"}
-                                    </div>
-                                    <div className="mt-1 truncate text-xs text-slate-500">
-                                      {row.slug
-                                        ? `/blog/${row.slug}`
-                                        : "Slug will be generated on save"}
-                                    </div>
-                                  </div>
-                                </div>
-                              </td>
-
-                              <td className="px-4 py-4">
-                                <div className="flex items-center gap-3">
-                                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-[11px] font-bold text-slate-700">
-                                    {getAuthorInitials(row.author_name)}
-                                  </div>
-                                  <div className="min-w-0">
-                                    <div className="text-sm font-semibold text-slate-900">
-                                      {row.author_name || "No byline"}
-                                    </div>
-                                  </div>
-                                </div>
-                              </td>
-
-                              <td className="px-4 py-4">
-                                <div className="flex items-center gap-2.5">
-                                  <span
-                                    className={`inline-flex h-6 w-6 items-center justify-center rounded-md border text-[10px] ${getCategoryBadgeClassName(
-                                      rowCategory,
-                                    )}`}
-                                  >
-                                    <FaTag className="text-[10px]" />
-                                  </span>
-                                  <span className="text-sm font-medium text-slate-700">
-                                    {getCategoryLabel(rowCategory)}
-                                  </span>
-                                </div>
-                              </td>
-
-                              <td className="px-4 py-4">
-                                <span
-                                  className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
-                                    LISTING_STATUS_BADGES[rowStatus]
-                                  }`}
-                                >
-                                  {getListingStatusLabel(row)}
-                                </span>
-                              </td>
-
-                              <td className="px-4 py-4 text-sm text-slate-700">
-                                <div className="font-semibold text-slate-900">
-                                  {publishedDate.dateLabel}
-                                </div>
-                                {publishedDate.timeLabel ? (
-                                  <div className="mt-1 text-sm font-medium text-slate-900">
-                                    {publishedDate.timeLabel}
-                                  </div>
-                                ) : null}
-                              </td>
-
-                              <td className="px-4 py-4 text-sm text-slate-700">
-                                <div className="flex items-center gap-2">
-                                  <FaRegEye className="text-slate-400" />
-                                  <span>{viewsLabel}</span>
-                                </div>
-                              </td>
-
-                              <td className="px-4 py-4 text-sm text-slate-700">
-                                <div className="flex items-center gap-2">
-                                  <FaRegCommentDots className="text-slate-400" />
-                                  <span>{commentsLabel}</span>
-                                </div>
-                              </td>
-
-                              <td className="px-4 py-4">
-                                <div className="relative flex justify-end gap-1">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleLibrarySelect(row)}
-                                    disabled={
-                                      loadingEntryId === row.id ||
-                                      deletingId === row.id
-                                    }
-                                    className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 disabled:opacity-60"
-                                    title="Open in composer"
-                                  >
-                                    <FaPen className="text-xs" />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => copyBlogPermalink(row)}
-                                    disabled={!row.slug}
-                                    className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-40"
-                                    title="Copy public link"
-                                  >
-                                    <FaCopy className="text-xs" />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      setLibraryActionMenuId((prev) =>
-                                        prev === row.id ? null : row.id,
-                                      )
-                                    }
-                                    className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 disabled:opacity-60"
-                                    title="More actions"
-                                  >
-                                    <FaEllipsisV className="text-xs" />
-                                  </button>
-
-                                  {libraryActionMenuId === row.id ? (
-                                    <div className="absolute right-0 top-[calc(100%+0.4rem)] z-20 w-40 overflow-hidden rounded-xl border border-slate-200 bg-white p-1.5 shadow-[0_18px_45px_rgba(15,23,42,0.14)]">
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          setLibraryActionMenuId(null);
-                                          handleLibrarySelect(row);
-                                        }}
-                                        className="flex w-full items-center rounded-lg px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-                                      >
-                                        Edit post
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          setLibraryActionMenuId(null);
-                                          void copyBlogPermalink(row);
-                                        }}
-                                        className="flex w-full items-center rounded-lg px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-                                      >
-                                        Copy link
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          setLibraryActionMenuId(null);
-                                          void deleteBlog(row);
-                                        }}
-                                        className="flex w-full items-center rounded-lg px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50"
-                                      >
-                                        Delete post
-                                      </button>
-                                    </div>
-                                  ) : null}
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-
-                <div className="flex flex-col gap-4 border-t border-slate-200 px-4 py-4 md:flex-row md:items-center md:justify-between">
-                  <div className="flex flex-col gap-3 text-sm text-slate-600 sm:flex-row sm:items-center">
-                    <span>
-                      Showing {currentPageRangeStart} to {currentPageRangeEnd} of{" "}
-                      {filteredLibrary.length} results
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <span>Rows per page</span>
-                      <select
-                        value={libraryPageSize}
-                        onChange={(event) =>
-                          setLibraryPageSize(Number(event.target.value) || 10)
-                        }
-                        className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
-                      >
-                        {[10, 20, 50].map((size) => (
-                          <option key={size} value={size}>
-                            {size} per page
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between gap-3 sm:justify-end">
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setLibraryPage((prev) => Math.max(1, prev - 1))
-                        }
-                        disabled={libraryPage <= 1}
-                        className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 disabled:opacity-40"
-                      >
-                        <FaChevronLeft className="text-xs" />
-                      </button>
-
-                      {paginationItems.map((item, index) =>
-                        item === "..." ? (
-                          <span
-                            key={`ellipsis-${index}`}
-                            className="px-2 text-sm text-slate-400"
-                          >
-                            ...
-                          </span>
-                        ) : (
-                          <button
-                            key={item}
-                            type="button"
-                            onClick={() => setLibraryPage(Number(item))}
-                            className={`inline-flex h-10 min-w-[2.5rem] items-center justify-center rounded-xl border px-3 text-sm font-semibold transition ${
-                              libraryPage === item
-                                ? "border-violet-600 bg-violet-600 text-white"
-                                : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
-                            }`}
-                          >
-                            {item}
-                          </button>
-                        ),
-                      )}
-
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setLibraryPage((prev) =>
-                            Math.min(totalLibraryPages, prev + 1),
-                          )
-                        }
-                        disabled={libraryPage >= totalLibraryPages}
-                        className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 disabled:opacity-40"
-                      >
-                        <FaChevronRight className="text-xs" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        ) : null}
-
-        {false ? (
-          <div className="rounded-xl border border-slate-200 bg-white p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  Publish Panel
-                </div>
-                <div className="mt-2 text-lg font-semibold text-slate-900">
-                  {activeEditorSummary}
-                </div>
-                <div className="mt-1 text-sm text-slate-600">
-                  {currentModeLabel}
-                  {blogId ? ` - ID ${blogId}` : " - New draft"}
-                </div>
-              </div>
-              <span
-                className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold capitalize ${
-                  STATUS_BADGES[status] || STATUS_BADGES.draft
-                }`}
-              >
-                {status}
-              </span>
-            </div>
-
-            {message ? (
-              <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-                {message}
-              </div>
-            ) : null}
-
-            <div className="mt-4 grid gap-2 sm:grid-cols-3 xl:grid-cols-1">
-              <button
-                type="button"
-                onClick={() =>
-                  document
-                    .getElementById("story-preview-panel")
-                    ?.scrollIntoView({ behavior: "smooth", block: "start" })
-                }
-                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:border-slate-400 hover:bg-slate-50"
-              >
-                Preview
-              </button>
-              <button
-                type="button"
-                onClick={() => saveBlog("draft")}
-                disabled={saving}
-                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:border-slate-400 hover:bg-slate-50 disabled:opacity-60"
-              >
-                Save Draft
-              </button>
-              <button
-                type="button"
-                onClick={() => saveBlog("published")}
-                disabled={saving}
-                className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
-              >
-                {saving && status === "published" ? "Publishing..." : "Publish"}
-              </button>
-            </div>
-
-            <div className="mt-4 space-y-3">
-              <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  Current Mode
-                </div>
-                <div className="mt-1 text-sm font-semibold text-slate-900">
-                  {currentModeLabel}
-                </div>
-              </div>
-              <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  Permalink
-                </div>
-                <div className="mt-1 break-all text-sm font-medium text-blue-700">
-                  {currentPermalink}
-                </div>
-              </div>
-              <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  Current Reference
-                </div>
-                <div className="mt-1 text-sm font-semibold text-slate-900">
-                  {currentReference}
-                </div>
-                <div className="mt-1 text-xs text-slate-600">
-                  {getCategoryLabel(category)} • {authorName || "No byline set"}
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-4 rounded-lg border border-slate-200 bg-white px-3 py-3">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                Workflow Notes
-              </div>
-              <div className="mt-2 text-sm text-slate-700">
-                {currentModeHelp}
-              </div>
-              <div className="mt-3 space-y-2 text-xs text-slate-600">
-                <div>1. Pick the content mode and source.</div>
-                <div>2. Fill the headline, summary, and article body.</div>
-                <div>3. Set image, metadata, then preview and publish.</div>
-              </div>
-              {blogId ? (
                 <button
                   type="button"
-                  onClick={() =>
-                    deleteBlog({
-                      id: blogId,
-                      title,
-                      product_id:
-                        blogMode === "product" ? selectedProductId : null,
-                      product_type: blogMode === "product" ? productType : null,
-                    })
-                  }
-                  disabled={deletingId === blogId}
-                  className="mt-4 inline-flex items-center gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 hover:border-red-300 hover:bg-red-100 disabled:opacity-60"
+                  onClick={() => loadLibrary()}
+                  disabled={libraryLoading}
+                  className={`${listingButtonClassName} disabled:opacity-60`}
                 >
-                  <FaTrashAlt className="text-[11px]" />
-                  {deletingId === blogId
-                    ? "Deleting entry..."
-                    : "Delete current entry"}
+                  {libraryLoading ? (
+                    <FaSyncAlt className="animate-spin text-xs" />
+                  ) : (
+                    <FaFilter className="text-xs" />
+                  )}
+                  Filter
                 </button>
-              ) : null}
-            </div>
-          </div>
-        ) : null}
-      </div>
 
-      {workspaceView === "composer" ? (
-        <div className="rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm overflow-hidden p-4 md:p-6">
-          <div className="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_420px]">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-700/80">Editorial Workspace</p>
-              <h2 className="font-semibold tracking-[-0.03em] text-slate-950 mt-2 text-2xl sm:text-3xl">
-                Editorial Composer
-              </h2>
-              <p className="text-[15px] leading-6 text-slate-600 mt-2 max-w-2xl text-sm">
-                Use this workspace like an ERP desk: source on the right,
-                writing in the center, preview below, and publish actions always
-                within reach.
-              </p>
-              <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
-                <span className="inline-flex items-center gap-2 rounded-2xl border border-slate-200/80 bg-slate-50/90 px-3 py-2 font-medium text-slate-600 shadow-sm transition-colors hover:border-slate-300 hover:bg-white hover:text-slate-900 px-2.5 py-1">
-                  {currentModeLabel}
-                </span>
-                <span className="inline-flex items-center gap-2 rounded-2xl border border-slate-200/80 bg-slate-50/90 px-3 py-2 font-medium text-slate-600 shadow-sm transition-colors hover:border-slate-300 hover:bg-white hover:text-slate-900 px-2.5 py-1">
-                  {status === "published" ? "Published" : "Draft"}
-                </span>
-                <span className="inline-flex items-center gap-2 rounded-2xl border border-slate-200/80 bg-slate-50/90 px-3 py-2 font-medium text-slate-600 shadow-sm transition-colors hover:border-slate-300 hover:bg-white hover:text-slate-900 px-2.5 py-1">
-                  {workflowCompletedCount} / {workflowChecklist.length} workflow checks
-                </span>
-                <span className="break-all text-blue-700">
-                  {currentPermalink}
-                </span>
+                <button
+                  type="button"
+                  onClick={clearLibraryFilters}
+                  className={listingButtonClassName}
+                >
+                  Clear
+                </button>
               </div>
+            </div>
 
-              <div className="mt-4 grid gap-3 md:grid-cols-3">
-                {[
-                  {
-                    title: "Step 1",
-                    text:
-                      blogMode === "product"
-                        ? "Choose the source product in the control rail."
-                        : "General article mode is ready for custom writing.",
-                  },
-                  {
-                    title: "Step 2",
-                    text:
-                      "Fill headline, summary, and body. The editor stores clean markup automatically.",
-                  },
-                  {
-                    title: "Step 3",
-                    text:
-                      "Review preview, SEO, and publishing controls before going live.",
-                  },
-                ].map((card) => (
-                  <div
-                    key={card.title}
-                    className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4"
+            <div className="overflow-x-auto border-b border-slate-200">
+              <div className="flex min-w-max">
+                {libraryStatusTabs.map((tab) => (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    onClick={() => setLibraryTab(tab.key)}
+                    className={`inline-flex items-center gap-3 border-r border-slate-200 px-3 py-3 text-sm font-semibold transition md:px-4 ${
+                      libraryTab === tab.key
+                        ? "bg-slate-50 text-[#5138EE]"
+                        : "bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800"
+                    }`}
                   >
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                      {card.title}
-                    </div>
-                    <p className="mt-2 text-sm leading-6 text-slate-700">
-                      {card.text}
-                    </p>
-                  </div>
+                    <span>{tab.label}</span>
+                    <span
+                      className={`border px-2 py-1 text-[11px] font-bold ${
+                        libraryTab === tab.key
+                          ? tab.pillClassName
+                          : "border-slate-200 bg-slate-100 text-slate-500"
+                      }`}
+                    >
+                      {tab.count}
+                    </span>
+                  </button>
                 ))}
               </div>
             </div>
 
-            <div className="rounded-3xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-4 shadow-sm">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                Command Center
+            {libraryError ? (
+              <div className="border-b border-slate-200 bg-red-50 px-2 py-3 text-sm text-red-700 md:px-4">
+                {libraryError}
               </div>
-              <div className="mt-2 text-base font-semibold text-slate-900">
-                Fast actions for editors
-              </div>
-              <p className="mt-1 text-sm text-slate-600">
-                Switch modes, save progress, or jump to preview without leaving the writer flow.
-              </p>
+            ) : null}
 
-              <div className="mt-4 flex flex-wrap gap-2">
+            <div className="hidden lg:block overflow-x-auto">
+              <table className="min-w-[980px] w-full divide-y divide-slate-200">
+                <thead className="bg-white">
+                  <tr className="text-left text-xs font-semibold uppercase tracking-[0.08em] text-slate-600">
+                    <th className="w-12 px-4 py-4">
+                      <input
+                        type="checkbox"
+                        checked={areAllPageRowsSelected}
+                        onChange={toggleLibrarySelectionForPage}
+                        className="h-4 w-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500"
+                      />
+                    </th>
+                    <th className="min-w-[560px] px-4 py-4">Title</th>
+                    <th className="w-[180px] px-4 py-4">Author</th>
+                    <th className="w-[200px] px-4 py-4">Category</th>
+                    <th className="w-[130px] px-4 py-4">Status</th>
+                    <th className="w-[170px] px-4 py-4">Published On</th>
+                    <th className="w-[140px] px-4 py-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+
+                <tbody className="divide-y divide-slate-200">
+                  {libraryLoading && libraryRows.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={7}
+                        className="px-4 py-12 text-center text-sm text-slate-500"
+                      >
+                        Loading content library...
+                      </td>
+                    </tr>
+                  ) : paginatedLibrary.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={7}
+                        className="px-4 py-12 text-center text-sm text-slate-500"
+                      >
+                        {libraryTab === "trash"
+                          ? "Trash view is ready for future deleted-record support."
+                          : "No posts match the current filters."}
+                      </td>
+                    </tr>
+                  ) : (
+                    paginatedLibrary.map((row) => {
+                      const rowId = Number(row.id);
+                      const rowCategory =
+                        row.category ||
+                        (row.product_id
+                          ? getDefaultStoryCategory("product")
+                          : getDefaultStoryCategory("general"));
+                      const rowStatus = getListingStatusKey(row);
+                      const publishedDate = formatDateParts(row.published_at);
+
+                      return (
+                        <tr
+                          key={row.id}
+                          className={`align-top transition ${
+                            selectedLibraryId === row.id
+                              ? "bg-violet-50/70"
+                              : "bg-white hover:bg-slate-50/70"
+                          }`}
+                        >
+                          <td className="px-4 py-4">
+                            <input
+                              type="checkbox"
+                              checked={selectedLibraryIds.includes(rowId)}
+                              onChange={() => toggleLibrarySelection(rowId)}
+                              className="mt-1 h-4 w-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500"
+                            />
+                          </td>
+
+                          <td className="px-4 py-4">
+                            <div className="flex items-start gap-4">
+                              <div className="h-14 w-20 shrink-0 overflow-hidden border border-slate-200 bg-slate-100">
+                                {row.hero_image ? (
+                                  <img
+                                    src={row.hero_image}
+                                    alt={
+                                      row.hero_image_alt ||
+                                      row.title ||
+                                      "Story cover"
+                                    }
+                                    className="h-full w-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="flex h-full items-center justify-center bg-slate-100 text-slate-500">
+                                    <FaNewspaper className="text-lg" />
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="min-w-0 flex-1">
+                                <div className="line-clamp-2 w-full text-[15px] font-semibold leading-6 text-slate-950">
+                                  {row.title || "Untitled content"}
+                                </div>
+                                <div className="mt-1 truncate text-xs text-slate-500">
+                                  {row.slug
+                                    ? `/blog/${row.slug}`
+                                    : "Slug will be generated on save"}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+
+                          <td className="px-4 py-4">
+                            <div className="flex items-center gap-3">
+                              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-[11px] font-bold text-slate-700">
+                                {getAuthorInitials(row.author_name)}
+                              </div>
+                              <div className="min-w-0">
+                                <div className="text-sm font-semibold text-slate-900">
+                                  {row.author_name || "No byline"}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+
+                          <td className="px-4 py-4">
+                            <div className="flex items-center gap-2.5">
+                              <span
+                                className={`inline-flex h-6 w-6 items-center justify-center border text-[10px] ${getCategoryBadgeClassName(
+                                  rowCategory,
+                                )}`}
+                              >
+                                <FaTag className="text-[10px]" />
+                              </span>
+                              <span className="text-sm font-medium text-slate-700">
+                                {getCategoryLabel(rowCategory)}
+                              </span>
+                            </div>
+                          </td>
+
+                          <td className="px-4 py-4">
+                            <span
+                              className={`inline-flex border px-2.5 py-1 text-[11px] font-semibold ${
+                                LISTING_STATUS_BADGES[rowStatus]
+                              }`}
+                            >
+                              {getListingStatusLabel(row)}
+                            </span>
+                          </td>
+
+                          <td className="px-4 py-4 text-sm text-slate-700">
+                            <div className="font-semibold text-slate-900">
+                              {publishedDate.dateLabel}
+                            </div>
+                            {publishedDate.timeLabel ? (
+                              <div className="mt-1 text-sm font-medium text-slate-900">
+                                {publishedDate.timeLabel}
+                              </div>
+                            ) : null}
+                          </td>
+
+                          <td className="px-4 py-4">
+                            <div className="relative flex justify-end gap-1">
+                              <button
+                                type="button"
+                                onClick={() => handleLibrarySelect(row)}
+                                disabled={
+                                  loadingEntryId === row.id ||
+                                  deletingId === row.id
+                                }
+                                className={`${listingIconButtonClassName} disabled:opacity-60`}
+                                title="Open in composer"
+                              >
+                                <FaPen className="text-xs" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => copyBlogPermalink(row)}
+                                disabled={!row.slug}
+                                className={`${listingIconButtonClassName} disabled:cursor-not-allowed disabled:opacity-40`}
+                                title="Copy public link"
+                              >
+                                <FaCopy className="text-xs" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setLibraryActionMenuId((prev) =>
+                                    prev === row.id ? null : row.id,
+                                  )
+                                }
+                                className={`${listingIconButtonClassName} disabled:opacity-60`}
+                                title="More actions"
+                              >
+                                <FaEllipsisV className="text-xs" />
+                              </button>
+
+                              {libraryActionMenuId === row.id ? (
+                                <div className="absolute right-0 top-[calc(100%+0.4rem)] z-20 w-40 overflow-hidden border border-slate-200 bg-white">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setLibraryActionMenuId(null);
+                                      handleLibrarySelect(row);
+                                    }}
+                                    className="flex w-full items-center border-b border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                                  >
+                                    Edit post
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setLibraryActionMenuId(null);
+                                      void copyBlogPermalink(row);
+                                    }}
+                                    className="flex w-full items-center border-b border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                                  >
+                                    Copy link
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setLibraryActionMenuId(null);
+                                      void deleteBlog(row);
+                                    }}
+                                    className="flex w-full items-center px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50"
+                                  >
+                                    Delete post
+                                  </button>
+                                </div>
+                              ) : null}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="lg:hidden">
+              {libraryLoading && libraryRows.length === 0 ? (
+                <div className="px-2 py-12 text-center text-sm text-slate-500 md:px-4">
+                  Loading content library...
+                </div>
+              ) : paginatedLibrary.length === 0 ? (
+                <div className="px-2 py-12 text-center text-sm text-slate-500 md:px-4">
+                  {libraryTab === "trash"
+                    ? "Trash view is ready for future deleted-record support."
+                    : "No posts match the current filters."}
+                </div>
+              ) : (
+                <div className="divide-y divide-slate-200">
+                  {paginatedLibrary.map((row) => {
+                    const rowId = Number(row.id);
+                    const rowCategory =
+                      row.category ||
+                      (row.product_id
+                        ? getDefaultStoryCategory("product")
+                        : getDefaultStoryCategory("general"));
+                    const rowStatus = getListingStatusKey(row);
+                    const publishedDate = formatDateParts(row.published_at);
+
+                    return (
+                      <article
+                        key={`mobile-${row.id}`}
+                        className={`px-2 py-4 md:px-4 ${
+                          selectedLibraryId === row.id ? "bg-violet-50/70" : "bg-white"
+                        }`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <input
+                            type="checkbox"
+                            checked={selectedLibraryIds.includes(rowId)}
+                            onChange={() => toggleLibrarySelection(rowId)}
+                            className="mt-1 h-4 w-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500"
+                          />
+
+                          <div className="h-14 w-16 shrink-0 overflow-hidden border border-slate-200 bg-slate-100">
+                            {row.hero_image ? (
+                              <img
+                                src={row.hero_image}
+                                alt={
+                                  row.hero_image_alt ||
+                                  row.title ||
+                                  "Story cover"
+                                }
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <div className="flex h-full items-center justify-center bg-slate-100 text-slate-500">
+                                <FaNewspaper className="text-base" />
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="min-w-0 flex-1">
+                            <div className="line-clamp-2 text-[15px] font-semibold leading-6 text-slate-950">
+                              {row.title || "Untitled content"}
+                            </div>
+                            <div className="mt-1 truncate text-xs text-slate-500">
+                              {row.slug
+                                ? `/blog/${row.slug}`
+                                : "Slug will be generated on save"}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-3 border-t border-slate-200 pt-3 text-xs">
+                          <div>
+                            <div className="uppercase tracking-[0.08em] text-slate-400">
+                              Author
+                            </div>
+                            <div className="mt-1 text-sm font-semibold text-slate-900">
+                              {row.author_name || "No byline"}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="uppercase tracking-[0.08em] text-slate-400">
+                              Category
+                            </div>
+                            <div className="mt-1 text-sm font-medium text-slate-700">
+                              {getCategoryLabel(rowCategory)}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="uppercase tracking-[0.08em] text-slate-400">
+                              Status
+                            </div>
+                            <span
+                              className={`mt-1 inline-flex border px-2 py-1 text-[11px] font-semibold ${
+                                LISTING_STATUS_BADGES[rowStatus]
+                              }`}
+                            >
+                              {getListingStatusLabel(row)}
+                            </span>
+                          </div>
+                          <div>
+                            <div className="uppercase tracking-[0.08em] text-slate-400">
+                              Published
+                            </div>
+                            <div className="mt-1 text-sm font-medium text-slate-700">
+                              {publishedDate.dateLabel}
+                              {publishedDate.timeLabel ? `, ${publishedDate.timeLabel}` : ""}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="mt-3 flex flex-wrap gap-2 border-t border-slate-200 pt-3">
+                          <button
+                            type="button"
+                            onClick={() => handleLibrarySelect(row)}
+                            disabled={
+                              loadingEntryId === row.id || deletingId === row.id
+                            }
+                            className="inline-flex h-9 items-center gap-2 border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 disabled:opacity-60"
+                          >
+                            <FaPen className="text-[11px]" />
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => copyBlogPermalink(row)}
+                            disabled={!row.slug}
+                            className="inline-flex h-9 items-center gap-2 border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                          >
+                            <FaCopy className="text-[11px]" />
+                            Copy Link
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void deleteBlog(row)}
+                            className="inline-flex h-9 items-center gap-2 border border-red-200 bg-red-50 px-3 text-xs font-semibold text-red-600 transition hover:border-red-300 hover:bg-red-100"
+                          >
+                            <FaTrashAlt className="text-[11px]" />
+                            Delete
+                          </button>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-4 border-t border-slate-200 px-2 py-4 md:px-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex flex-col gap-3 text-sm text-slate-600 sm:flex-row sm:items-center">
+                <span>
+                  Showing {currentPageRangeStart} to {currentPageRangeEnd} of{" "}
+                  {filteredLibrary.length} results
+                </span>
+                <div className="flex items-center gap-2">
+                  <span>Rows per page</span>
+                  <select
+                    value={libraryPageSize}
+                    onChange={(event) =>
+                      setLibraryPageSize(Number(event.target.value) || 10)
+                    }
+                    className="h-10 border border-slate-200 bg-white px-2 text-sm text-slate-700 outline-none transition focus:border-slate-400 focus:ring-0 md:px-3"
+                  >
+                    {[10, 20, 50].map((size) => (
+                      <option key={size} value={size}>
+                        {size} per page
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between gap-2 sm:justify-end">
                 <button
                   type="button"
-                  onClick={() => setWorkspaceView("listing")}
-                  className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:border-slate-400 hover:bg-slate-50"
+                  onClick={() => setLibraryPage((prev) => Math.max(1, prev - 1))}
+                  disabled={libraryPage <= 1}
+                  className="inline-flex h-10 w-10 items-center justify-center border border-slate-200 bg-white text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 disabled:opacity-40"
                 >
-                  Back to Posts
+                  <FaChevronLeft className="text-xs" />
                 </button>
-                <select
-                  value={blogMode}
-                  onChange={(event) => {
-                    if (event.target.value === "product") {
-                      startNewProductStory(productType);
-                    } else {
-                      startNewGeneralArticle();
-                    }
-                  }}
-                  className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700"
-                >
-                  <option value="product">Product-Linked Story</option>
-                  <option value="general">General Article</option>
-                </select>
-                {blogMode === "product" ? (
-                  <select
-                    value={productType}
-                    onChange={(event) => startNewProductStory(event.target.value)}
-                    className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700"
-                  >
-                    <option value="smartphone">Smartphones</option>
-                    <option value="laptop">Laptops</option>
-                    <option value="tv">TVs</option>
-                  </select>
-                ) : null}
-              </div>
 
-              <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                <div className="flex items-center gap-2 overflow-x-auto">
+                  {paginationItems.map((item, index) =>
+                    item === "..." ? (
+                      <span
+                        key={`ellipsis-${index}`}
+                        className="px-2 text-sm text-slate-400"
+                      >
+                        ...
+                      </span>
+                    ) : (
+                      <button
+                        key={item}
+                        type="button"
+                        onClick={() => setLibraryPage(Number(item))}
+                        className={`inline-flex h-10 min-w-[2.5rem] items-center justify-center border px-3 text-sm font-semibold transition ${
+                          libraryPage === item
+                            ? "border-violet-600 bg-violet-600 text-white"
+                            : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                        }`}
+                      >
+                        {item}
+                      </button>
+                    ),
+                  )}
+                </div>
+
                 <button
                   type="button"
                   onClick={() =>
-                    document
-                      .getElementById("story-preview-panel")
-                      ?.scrollIntoView({ behavior: "smooth", block: "start" })
+                    setLibraryPage((prev) =>
+                      Math.min(totalLibraryPages, prev + 1),
+                    )
                   }
-                  className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:border-slate-400 hover:bg-slate-50"
+                  disabled={libraryPage >= totalLibraryPages}
+                  className="inline-flex h-10 w-10 items-center justify-center border border-slate-200 bg-white text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 disabled:opacity-40"
                 >
-                  Preview
-                </button>
-                <button
-                  type="button"
-                  onClick={() => saveBlog("draft")}
-                  disabled={saving}
-                  className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:border-slate-400 hover:bg-slate-50 disabled:opacity-60"
-                >
-                  Save Draft
-                </button>
-                <button
-                  type="button"
-                  onClick={() => saveBlog("published")}
-                  disabled={saving}
-                  className="rounded-xl bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
-                >
-                  Publish
+                  <FaChevronRight className="text-xs" />
                 </button>
               </div>
             </div>
           </div>
-        </div>
-      ) : null}
+        ) : null}
 
       {workspaceView === "composer" ? (
-        <div className="grid gap-5 pb-28 xl:grid-cols-[minmax(0,1fr)_360px] xl:pb-0">
-          <div className="space-y-4">
-            <div className="rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm overflow-hidden">
-              <div className="border-b border-slate-200/70 bg-gradient-to-r from-blue-50/90 via-white to-purple-50/80 px-5 py-5">
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                  <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-700/80">Writing Desk</p>
-                    <h3 className="mt-2 text-base font-semibold text-slate-900">
-                      Write the core story first
-                    </h3>
-                    <p className="mt-1 max-w-2xl text-sm text-slate-600">
-                      Keep the writing flow focused here. Story settings, SEO, and
-                      hero image controls stay in the control rail so the editor
-                      remains clean.
-                    </p>
-                    <div className="mt-2 text-[11px] font-medium uppercase tracking-[0.18em] text-blue-700">
-                      {currentPermalink}
-                    </div>
-                  </div>
-
-                  <div className="grid gap-2 sm:grid-cols-3 lg:w-[28rem]">
-                    {[
-                      {
-                        label: "No HTML",
-                        value: "Write like a document",
-                      },
-                      {
-                        label: "Inline Images",
-                        value: "Insert at the cursor",
-                      },
-                      {
-                        label: "Preview",
-                        value: "Updates from saved markup",
-                      },
-                    ].map((item) => (
-                      <div
-                        key={item.label}
-                        className="rounded-2xl border border-slate-200 bg-white px-3 py-3 shadow-sm"
-                      >
-                        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                          {item.label}
-                        </div>
-                        <div className="mt-1 text-sm font-semibold text-slate-900">
-                          {item.value}
+        <div className="px-1 pb-8 sm:px-2">
+          <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_352px] xl:gap-0">
+            <div className="space-y-5">
+              <div
+                id="story-editor-panel"
+                className="overflow-hidden border border-slate-200 bg-white"
+              >
+                <div className="px-2 py-5 md:px-6 md:py-6">
+                  <div className="space-y-5">
+                    <div>
+                      <label className="mb-2 block text-sm font-semibold text-slate-900">
+                        Title <span className="text-red-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <input
+                          value={title}
+                          onChange={(event) => setTitle(event.target.value)}
+                          maxLength={100}
+                          placeholder="Enter the post title"
+                          className="h-12 w-full border border-slate-200 bg-white px-2 pr-20 text-sm text-slate-800 outline-none transition focus:border-slate-400 focus:ring-0 md:px-4"
+                        />
+                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-4 text-xs font-medium text-slate-400">
+                          {titleCharacterCount} / 100
                         </div>
                       </div>
-                    ))}
+                    </div>
+
+                    <div className="flex flex-col gap-2 text-sm sm:flex-row sm:items-center">
+                      <div className="min-w-0 flex-1 truncate text-slate-600">
+                        <span className="font-medium text-slate-500">
+                          Permalink:
+                        </span>{" "}
+                        {editorPermalinkDisplay}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={focusSlugField}
+                        className="inline-flex h-8 items-center justify-center border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-white"
+                      >
+                        Edit
+                      </button>
+                    </div>
+
+                    <div>
+                      <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <label className="text-sm font-semibold text-slate-900">
+                          Content
+                        </label>
+                        <div className="text-xs font-medium text-slate-400">
+                          {editorSelectionLabel}
+                        </div>
+                      </div>
+
+                      <div className="overflow-hidden border border-slate-200 bg-white">
+                        <div className="border-b border-slate-200 bg-white px-3 py-2.5">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <select
+                              value={editorBlockModeValue}
+                              onChange={(event) =>
+                                applyEditorBlockMode(event.target.value)
+                              }
+                              className="h-9 min-w-[138px] border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-slate-400 focus:ring-0"
+                            >
+                              <option value="paragraph">Paragraph</option>
+                              <option value="h2">Heading 2</option>
+                              <option value="h3">Heading 3</option>
+                              <option value="code">Code Block</option>
+                              <option value="quote">Quote</option>
+                              <option value="bullets">Bullet List</option>
+                              <option value="numbers">Numbered List</option>
+                            </select>
+
+                            <div className="mx-1 hidden h-6 w-px bg-slate-200 sm:block" />
+
+                            <button
+                              type="button"
+                              onPointerDown={(event) =>
+                                handleToolbarAction(
+                                  event,
+                                  () => storyEditorRef.current?.toggleBold?.(),
+                                )
+                              }
+                              className={getComposerIconButtonClassName(
+                                editorUiState.isBold,
+                              )}
+                              title="Bold"
+                            >
+                              <FaBold />
+                            </button>
+                            <button
+                              type="button"
+                              onPointerDown={(event) =>
+                                handleToolbarAction(
+                                  event,
+                                  () => storyEditorRef.current?.toggleItalic?.(),
+                                )
+                              }
+                              className={getComposerIconButtonClassName(
+                                editorUiState.isItalic,
+                              )}
+                              title="Italic"
+                            >
+                              <FaItalic />
+                            </button>
+                            <button
+                              type="button"
+                              onPointerDown={(event) =>
+                                handleToolbarAction(
+                                  event,
+                                  () =>
+                                    storyEditorRef.current?.toggleUnderline?.(),
+                                )
+                              }
+                              className={getComposerIconButtonClassName(
+                                editorUiState.isUnderline,
+                              )}
+                              title="Underline"
+                            >
+                              <FaUnderline />
+                            </button>
+                            <button
+                              type="button"
+                              onPointerDown={(event) =>
+                                handleToolbarAction(
+                                  event,
+                                  () => storyEditorRef.current?.toggleStrike?.(),
+                                )
+                              }
+                              className={getComposerIconButtonClassName(
+                                editorUiState.isStrike,
+                              )}
+                              title="Strikethrough"
+                            >
+                              <FaStrikethrough />
+                            </button>
+                            <button
+                              type="button"
+                              onPointerDown={(event) =>
+                                handleToolbarAction(event, applyLink)
+                              }
+                              className={getComposerIconButtonClassName(
+                                editorUiState.isLink,
+                              )}
+                              title="Add link"
+                            >
+                              <FaLink />
+                            </button>
+                            <button
+                              type="button"
+                              onPointerDown={(event) =>
+                                handleToolbarAction(
+                                  event,
+                                  () => storyEditorRef.current?.unsetLink?.(),
+                                  !editorUiState.isLink,
+                                )
+                              }
+                              className={getComposerIconButtonClassName(
+                                false,
+                                !editorUiState.isLink,
+                              )}
+                              title="Remove link"
+                            >
+                              <FaLink className="opacity-55" />
+                            </button>
+                            <button
+                              type="button"
+                              onPointerDown={(event) =>
+                                handleToolbarAction(
+                                  event,
+                                  () => openInlineImagePicker(),
+                                  uploadingInlineImage,
+                                )
+                              }
+                              className={getComposerIconButtonClassName(
+                                false,
+                                uploadingInlineImage,
+                              )}
+                              title="Upload image"
+                            >
+                              <FaImage />
+                            </button>
+                            <button
+                              type="button"
+                              onPointerDown={(event) =>
+                                handleToolbarAction(
+                                  event,
+                                  insertEmbedPlaceholder,
+                                )
+                              }
+                              className={getComposerIconButtonClassName(false)}
+                              title="Insert embed block"
+                            >
+                              <FaNewspaper />
+                            </button>
+                            <button
+                              type="button"
+                              onPointerDown={(event) =>
+                                handleToolbarAction(
+                                  event,
+                                  () =>
+                                    storyEditorRef.current?.toggleBlockquote?.(),
+                                )
+                              }
+                              className={getComposerIconButtonClassName(
+                                editorUiState.isBlockquote,
+                              )}
+                              title="Quote"
+                            >
+                              <FaQuoteRight />
+                            </button>
+                            <button
+                              type="button"
+                              onPointerDown={(event) =>
+                                handleToolbarAction(
+                                  event,
+                                  () =>
+                                    storyEditorRef.current?.toggleBulletList?.(),
+                                )
+                              }
+                              className={getComposerIconButtonClassName(
+                                editorUiState.isBulletList,
+                              )}
+                              title="Bullet list"
+                            >
+                              <FaListUl />
+                            </button>
+                            <button
+                              type="button"
+                              onPointerDown={(event) =>
+                                handleToolbarAction(
+                                  event,
+                                  () =>
+                                    storyEditorRef.current?.toggleOrderedList?.(),
+                                )
+                              }
+                              className={getComposerIconButtonClassName(
+                                editorUiState.isOrderedList,
+                              )}
+                              title="Numbered list"
+                            >
+                              <FaListOl />
+                            </button>
+                            <button
+                              type="button"
+                              onPointerDown={(event) =>
+                                handleToolbarAction(event, insertTableLayout)
+                              }
+                              className={getComposerIconButtonClassName(false)}
+                              title="Insert table"
+                            >
+                              <FaTable />
+                            </button>
+                            <button
+                              type="button"
+                              onPointerDown={(event) =>
+                                handleToolbarAction(
+                                  event,
+                                  () =>
+                                    storyEditorRef.current?.toggleCodeBlock?.(),
+                                )
+                              }
+                              className={getComposerIconButtonClassName(
+                                editorUiState.isCodeBlock,
+                              )}
+                              title="Code block"
+                            >
+                              <FaCode />
+                            </button>
+
+                            <div className="mx-1 hidden h-6 w-px bg-slate-200 sm:block" />
+
+                            <button
+                              type="button"
+                              onPointerDown={(event) =>
+                                handleToolbarAction(
+                                  event,
+                                  () => storyEditorRef.current?.undo?.(),
+                                  !editorUiState.canUndo,
+                                )
+                              }
+                              className={getComposerIconButtonClassName(
+                                false,
+                                !editorUiState.canUndo,
+                              )}
+                              title="Undo"
+                            >
+                              <FaUndo />
+                            </button>
+                            <button
+                              type="button"
+                              onPointerDown={(event) =>
+                                handleToolbarAction(
+                                  event,
+                                  () => storyEditorRef.current?.redo?.(),
+                                  !editorUiState.canRedo,
+                                )
+                              }
+                              className={getComposerIconButtonClassName(
+                                false,
+                                !editorUiState.canRedo,
+                              )}
+                              title="Redo"
+                            >
+                              <FaRedo />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setComposerSidebarTab("block")}
+                              className="ml-auto inline-flex h-9 w-9 items-center justify-center border border-slate-200 bg-white text-slate-400 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700"
+                              title="More options"
+                            >
+                              <FaEllipsisV />
+                            </button>
+                          </div>
+                        </div>
+
+                        <input
+                          ref={inlineImageInputRef}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={async (event) => {
+                            const file = event.target.files?.[0] || null;
+                            await handleInlineImageUpload(file);
+                            event.target.value = "";
+                          }}
+                        />
+
+                        <div className="min-h-[580px] bg-white">
+                          <TiptapStoryEditor
+                            ref={storyEditorRef}
+                            value={contentTemplate}
+                            onChange={setContentTemplate}
+                            onEditorStateChange={setEditorUiState}
+                            normalizeContent={buildEditorSurfaceHtml}
+                            className="min-h-[580px]"
+                          />
+                        </div>
+
+                        <div className="flex flex-col gap-2 border-t border-slate-200 px-2 py-3 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between md:px-4">
+                          <div className="flex flex-wrap items-center gap-4">
+                            <span>Words: {articleWordCount}</span>
+                            <span>Characters: {articleCharacterCount}</span>
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-3">
+                            <span>
+                              {message ? "Saved a few seconds ago" : "Editing in progress"}
+                            </span>
+                            <span className="font-medium text-slate-700">
+                              {saving
+                                ? "Saving..."
+                                : composerStatusLabel === "Published"
+                                  ? "Published"
+                                  : "Draft saved"}
+                            </span>
+                            <span
+                              className={`inline-flex h-5 w-5 items-center justify-center rounded-full ${
+                                message
+                                  ? "bg-emerald-100 text-emerald-600"
+                                  : "bg-slate-100 text-slate-400"
+                              }`}
+                            >
+                              <FaCheckCircle className="text-[10px]" />
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
-              <div className="space-y-4 p-5">
-                <div className="rounded-3xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-4 shadow-sm">
-                  <div className="flex flex-wrap items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-600 text-sm font-semibold text-white">
-                      1
+
+            </div>
+
+            <div className="space-y-0 xl:sticky xl:top-6 xl:self-start xl:border-l xl:border-slate-200">
+              <div className="border-b border-slate-200 px-2 md:px-4">
+                <div className="grid grid-cols-2">
+                  {[
+                    { key: "post", label: "Post" },
+                    { key: "block", label: "Block" },
+                  ].map((tab) => (
+                    <button
+                      key={tab.key}
+                      type="button"
+                      onClick={() => setComposerSidebarTab(tab.key)}
+                      className={`relative px-2 py-3 text-sm font-semibold transition md:px-4 ${
+                        composerSidebarTab === tab.key
+                          ? "text-[#5B34E6]"
+                          : "text-slate-500 hover:text-slate-900"
+                      }`}
+                    >
+                      {tab.label}
+                      {composerSidebarTab === tab.key ? (
+                        <span className="absolute inset-x-4 bottom-0 h-px bg-[#5B34E6]" />
+                      ) : null}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {composerSidebarTab === "post" ? (
+                <>
+                  <div className="border-b border-slate-200 bg-white">
+                    <div className="border-b border-slate-200 px-2 py-4 md:px-4">
+                      <h3 className="text-base font-semibold text-slate-900">
+                        Status & Visibility
+                      </h3>
                     </div>
-                    <div>
-                      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                        Story Basics
+                    <div className="space-y-4 px-2 py-4 md:px-4">
+                      <div>
+                        <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                          Status
+                        </label>
+                        <select
+                          value={status}
+                          onChange={(event) => setStatus(event.target.value)}
+                          className={composerFieldClassName}
+                        >
+                          <option value="draft">Draft</option>
+                          <option value="published">Published</option>
+                        </select>
                       </div>
-                      <div className="mt-1 text-sm text-slate-600">
-                        Set the headline, slug, and short summary that readers see first.
+
+                      <div>
+                        <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                          Visibility
+                        </label>
+                        <select
+                          value="public"
+                          readOnly
+                          className={composerFieldClassName}
+                        >
+                          <option value="public">Public</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                          Published on
+                        </label>
+                        <input
+                          type="datetime-local"
+                          value={publishedAt}
+                          onChange={(event) => setPublishedAt(event.target.value)}
+                          className={composerFieldClassName}
+                        />
+                      </div>
+
+                      {blogId ? (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            deleteBlog({
+                              id: blogId,
+                              title,
+                              product_id:
+                                blogMode === "product" ? selectedProductId : null,
+                              product_type:
+                                blogMode === "product" ? productType : null,
+                            })
+                          }
+                          disabled={deletingId === blogId}
+                          className={`${composerDangerButtonClassName} h-11 px-2 disabled:opacity-60 md:px-4`}
+                        >
+                          {deletingId === blogId ? "Moving..." : "Move to Trash"}
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <div className="border-b border-slate-200 bg-white">
+                    <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-2 py-4 md:px-4">
+                      <h3 className="text-base font-semibold text-slate-900">
+                        Categories
+                      </h3>
+                      <button
+                        type="button"
+                        onClick={() => setComposerSidebarTab("block")}
+                        className="text-xs font-semibold text-[#5B34E6] transition hover:text-[#4524c7]"
+                      >
+                        Add New Category
+                      </button>
+                    </div>
+                    <div className="space-y-3 px-2 py-4 md:px-4">
+                      {STORY_CATEGORY_OPTIONS.map((option) => {
+                        const checked =
+                          String(category || "").trim().toLowerCase() ===
+                          option.value;
+
+                        return (
+                          <label
+                            key={option.value}
+                            className="flex cursor-pointer items-center gap-3 text-sm text-slate-700"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => setCategory(option.value)}
+                              className="h-4 w-4 rounded border-slate-300 text-[#5B34E6] focus:ring-[#5B34E6]"
+                            />
+                            <span>{option.label}</span>
+                          </label>
+                        );
+                      })}
+                      <button
+                        type="button"
+                        onClick={() => setComposerSidebarTab("block")}
+                        className="pt-1 text-sm font-medium text-[#5B34E6] transition hover:text-[#4524c7]"
+                      >
+                        View All Categories
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="border-b border-slate-200 bg-white">
+                    <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-2 py-4 md:px-4">
+                      <h3 className="text-base font-semibold text-slate-900">
+                        Tags
+                      </h3>
+                      <button
+                        type="button"
+                        onClick={focusTagsField}
+                        className="text-xs font-semibold text-[#5B34E6] transition hover:text-[#4524c7]"
+                      >
+                        Add New Tag
+                      </button>
+                    </div>
+                    <div className="px-2 py-4 md:px-4">
+                      <div className="flex flex-wrap gap-2">
+                        {activeTagList.length ? (
+                          activeTagList.map((tag) => (
+                            <button
+                              key={tag}
+                              type="button"
+                              onClick={() =>
+                                setTagsInput(
+                                  activeTagList
+                                    .filter((value) => value !== tag)
+                                    .join(", "),
+                                )
+                              }
+                              className="inline-flex items-center gap-2 rounded-full bg-[#F3EEFF] px-3 py-1 text-xs font-medium text-[#5B34E6]"
+                            >
+                              <span>{tag}</span>
+                              <span className="text-[10px]">x</span>
+                            </button>
+                          ))
+                        ) : (
+                          <span className="text-sm text-slate-400">
+                            No tags added yet
+                          </span>
+                        )}
+                      </div>
+                      <input
+                        ref={tagsInputRef}
+                        value={tagsInput}
+                        onChange={(event) => setTagsInput(event.target.value)}
+                        placeholder="Press comma to separate tags"
+                        className={`mt-3 ${composerFieldClassName}`}
+                      />
+                      <div className="mt-2 text-xs text-slate-400">
+                        Press Enter or comma to add more tags
                       </div>
                     </div>
                   </div>
 
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <div>
-                      <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">
-                        Headline
-                      </label>
-                      <input
-                        value={title}
-                        onChange={(event) => setTitle(event.target.value)}
-                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800"
-                        placeholder="Enter the main story headline"
-                      />
+                  <div className="border-b border-slate-200 bg-white">
+                    <div className="border-b border-slate-200 px-2 py-4 md:px-4">
+                      <h3 className="text-base font-semibold text-slate-900">
+                        Excerpt
+                      </h3>
                     </div>
-                    <div>
-                      <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">
-                        URL Slug
-                      </label>
-                      <input
-                        value={slug}
-                        onChange={(event) => setSlug(event.target.value)}
-                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800"
-                        placeholder="optional-custom-slug"
-                      />
-                    </div>
-                    <div className="md:col-span-2">
-                      <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">
-                        Standfirst / Summary
-                      </label>
-                      <input
+                    <div className="px-2 py-4 md:px-4">
+                      <textarea
                         value={excerpt}
                         onChange={(event) => setExcerpt(event.target.value)}
-                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800"
-                        placeholder="Short summary for cards, listings, and article intro"
+                        rows={4}
+                        maxLength={160}
+                        placeholder="Write a short summary for cards and search results"
+                        className={composerTextareaClassName}
                       />
+                      <div className="mt-2 text-right text-xs font-medium text-slate-400">
+                        {excerptCharacterCount} / 160
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="hidden mb-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
-                  <div className="mb-3 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                    <FaTag className="text-xs text-slate-400" />
-                    Story Metadata
+                  <div className="border-b border-slate-200 bg-white">
+                    <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-2 py-4 md:px-4">
+                      <h3 className="text-base font-semibold text-slate-900">
+                        SEO
+                      </h3>
+                      <span className="text-xs font-semibold text-[#5B34E6]">
+                        Edit Snippet
+                      </span>
+                    </div>
+                    <div className="space-y-4 px-2 py-4 md:px-4">
+                      <div>
+                        <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                          SEO Title
+                        </label>
+                        <input
+                          value={metaTitle}
+                          onChange={(event) => setMetaTitle(event.target.value)}
+                          maxLength={60}
+                          className={composerFieldClassName}
+                        />
+                        <div className="mt-1 text-right text-xs font-medium text-slate-400">
+                          {metaTitleCharacterCount} / 60
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                          Meta Description
+                        </label>
+                        <textarea
+                          value={metaDescription}
+                          onChange={(event) =>
+                            setMetaDescription(event.target.value)
+                          }
+                          rows={3}
+                          maxLength={160}
+                          className={composerTextareaClassName}
+                        />
+                        <div className="mt-1 text-right text-xs font-medium text-slate-400">
+                          {metaDescriptionCharacterCount} / 160
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                          Focus Keyword
+                        </label>
+                        <input
+                          value={focusKeywordValue}
+                          onChange={(event) => {
+                            const nextKeyword = String(
+                              event.target.value || "",
+                            ).trim();
+                            const nextTags = [...activeTagList];
+
+                            if (nextKeyword) {
+                              if (nextTags.length) {
+                                nextTags[0] = nextKeyword;
+                              } else {
+                                nextTags.push(nextKeyword);
+                              }
+                            } else if (nextTags.length) {
+                              nextTags.shift();
+                            }
+
+                            setTagsInput(
+                              Array.from(new Set(nextTags.filter(Boolean))).join(
+                                ", ",
+                              ),
+                            );
+                          }}
+                          className={composerFieldClassName}
+                        />
+                      </div>
+
+                      <div className="border border-emerald-100 bg-emerald-50 px-2 py-3 md:px-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="text-sm font-semibold text-emerald-700">
+                            SEO Score: {seoScore} / 100
+                          </div>
+                          <div className="text-xs font-semibold text-emerald-700">
+                            {seoScoreLabel}
+                          </div>
+                        </div>
+                        <div className="mt-3 h-2 rounded-full bg-white/80">
+                          <div
+                            className="h-full rounded-full bg-gradient-to-r from-emerald-400 via-emerald-500 to-lime-500 transition-all"
+                            style={{ width: `${seoScorePercent}%` }}
+                          />
+                        </div>
+                        <div className="mt-2 text-xs text-emerald-700/80">
+                          Improve the title, summary, and focus keyword coverage to strengthen organic reach.
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="border-b border-slate-200 bg-white">
+                    <div className="border-b border-slate-200 px-2 py-4 md:px-4">
+                      <h3 className="text-base font-semibold text-slate-900">
+                        Story Setup
+                      </h3>
+                    </div>
+                    <div className="space-y-4 px-2 py-4 md:px-4">
+                      <div>
+                        <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                          Post Type
+                        </label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => startNewGeneralArticle()}
+                            className={`border px-3 py-2.5 text-sm font-semibold transition ${
+                              blogMode === "general"
+                                ? "border-[#CFC3FF] bg-[#F3EEFF] text-[#5B34E6]"
+                                : "border border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+                            }`}
+                          >
+                            General
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => startNewProductStory(productType)}
+                            className={`border px-3 py-2.5 text-sm font-semibold transition ${
+                              blogMode === "product"
+                                ? "border-[#CFC3FF] bg-[#F3EEFF] text-[#5B34E6]"
+                                : "border border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+                            }`}
+                          >
+                            Product Linked
+                          </button>
+                        </div>
+                      </div>
+
+                      {blogMode === "product" ? (
+                        <>
+                          <div>
+                            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                              Product Type
+                            </label>
+                            <select
+                              value={productType}
+                              onChange={(event) =>
+                                startNewProductStory(event.target.value)
+                              }
+                              className={composerFieldClassName}
+                            >
+                              <option value="smartphone">Smartphones</option>
+                              <option value="laptop">Laptops</option>
+                              <option value="tv">TVs</option>
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                              Candidate Product
+                            </label>
+                            <select
+                              value={selectedProductId || ""}
+                              onChange={(event) =>
+                                setSelectedProductId(Number(event.target.value))
+                              }
+                              disabled={candidatesLoading || candidates.length === 0}
+                              className={`${composerFieldClassName} disabled:bg-slate-50`}
+                            >
+                              {candidates.length === 0 ? (
+                                <option value="">
+                                  {candidatesLoading
+                                    ? "Loading..."
+                                    : "No candidates"}
+                                </option>
+                              ) : null}
+                              {candidates.map((row) => (
+                                <option key={row.product_id} value={row.product_id}>
+                                  {row.name} ({row.brand_name || "Brand"})
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div className="border border-slate-200 bg-slate-50 px-2 py-4 text-sm text-slate-700 md:px-4">
+                            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                              Product Snapshot
+                            </div>
+                            <div className="mt-2 font-semibold text-slate-900">
+                              {selectedProduct?.name || "-"}
+                            </div>
+                            <div className="mt-1">
+                              {selectedProduct?.brand_name || "-"}
+                            </div>
+                            <div className="mt-1">{selectedProduct?.price || "-"}</div>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="border border-indigo-100 bg-indigo-50 px-2 py-4 text-sm leading-6 text-indigo-700 md:px-4">
+                          General article mode is best for explainers, roundups,
+                          and editorial posts that are not tied to one product.
+                        </div>
+                      )}
+                    </div>
                   </div>
 
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <div>
-                      <label className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                        <FaTag className="text-[10px]" />
-                        Category
-                      </label>
-                      <select
-                        value={category}
-                        onChange={(event) => setCategory(event.target.value)}
-                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800"
-                      >
-                        {STORY_CATEGORY_OPTIONS.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
+                  <div className="border-b border-slate-200 bg-white">
+                    <div className="border-b border-slate-200 px-2 py-4 md:px-4">
+                      <h3 className="text-base font-semibold text-slate-900">
+                        Author & Permalink
+                      </h3>
                     </div>
-                    <div>
-                      <label className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                        <FaUser className="text-[10px]" />
-                        Byline / Author
-                      </label>
-                      <div className="space-y-2">
+                    <div className="space-y-4 px-2 py-4 md:px-4">
+                      <div>
+                        <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                          Author
+                        </label>
                         <select
                           value={authorUserId}
                           onChange={(event) => {
@@ -3432,1328 +3642,208 @@ const BlogEditor = () => {
                               (option) =>
                                 String(option.value) === String(nextAuthorId),
                             );
-                            setAuthorName(
-                              selectedAuthor?.label ||
-                                getDefaultAuthorName() ||
-                                "",
-                            );
+                            if (selectedAuthor?.label) {
+                              setAuthorName(selectedAuthor.label);
+                            }
                           }}
-                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800"
+                          className={composerFieldClassName}
                         >
                           <option value="">Custom byline</option>
                           {authorOptions.map((option) => (
                             <option key={option.value} value={option.value}>
-                              {option.label} · {option.secondary}
+                              {option.label} - {option.secondary}
                             </option>
                           ))}
                         </select>
+                      </div>
+
+                      <div>
+                        <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                          Custom Byline
+                        </label>
                         <input
                           value={authorName}
-                          onChange={(event) => {
-                            setAuthorName(event.target.value);
-                            setAuthorUserId("");
-                          }}
-                          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800"
-                          placeholder={getDefaultAuthorName() || "Editor name"}
+                          onChange={(event) => setAuthorName(event.target.value)}
+                          className={composerFieldClassName}
                         />
                       </div>
-                      <div className="mt-1 text-[11px] text-slate-500">
-                        Choose an active author, or type a custom byline if
-                        needed.
-                      </div>
-                    </div>
-                    <div className="md:col-span-2">
-                      <label className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                        <FaTag className="text-[10px]" />
-                        Tags / Keywords
-                      </label>
-                      <input
-                        value={tagsInput}
-                        onChange={(event) => setTagsInput(event.target.value)}
-                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800"
-                        placeholder="news, launch, smartphone, samsung"
-                      />
-                      <div className="mt-1 text-[11px] text-slate-500">
-                        Separate tags with commas. They are used for searching,
-                        filters, and related story grouping.
-                      </div>
-                    </div>
-                    <div className="md:col-span-2">
-                      <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                        Story Flags
-                      </div>
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {[
-                          {
-                            key: "featured",
-                            label: "Featured",
-                            icon: FaStar,
-                            active: featured,
-                            onClick: () => setFeatured((prev) => !prev),
-                            activeClass:
-                              "border-amber-300 bg-amber-50 text-amber-800",
-                          },
-                          {
-                            key: "trending",
-                            label: "Trending",
-                            icon: FaFire,
-                            active: trending,
-                            onClick: () => setTrending((prev) => !prev),
-                            activeClass:
-                              "border-rose-300 bg-rose-50 text-rose-800",
-                          },
-                          {
-                            key: "pinned",
-                            label: "Pinned",
-                            icon: FaThumbtack,
-                            active: pinned,
-                            onClick: () => setPinned((prev) => !prev),
-                            activeClass:
-                              "border-blue-300 bg-blue-50 text-blue-800",
-                          },
-                        ].map((item) => {
-                          const Icon = item.icon;
-                          return (
-                            <button
-                              key={item.key}
-                              type="button"
-                              onClick={item.onClick}
-                              className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold transition ${
-                                item.active
-                                  ? item.activeClass
-                                  : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-100"
-                              }`}
-                            >
-                              <Icon className="text-[10px]" />
-                              {item.label}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                </div>
 
-                <div className="hidden mb-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
-                  <div className="mb-3 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                    <FaCalendarAlt className="text-xs text-slate-400" />
-                    Publishing & SEO
-                  </div>
-
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <div>
-                      <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">
-                        Publish State
-                      </label>
-                      <select
-                        value={status}
-                        onChange={(event) => setStatus(event.target.value)}
-                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800"
-                      >
-                        <option value="draft">Draft</option>
-                        <option value="published">Publish</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                        <FaCalendarAlt className="text-[10px]" />
-                        Publish At
-                      </label>
-                      <input
-                        type="datetime-local"
-                        value={publishedAt}
-                        onChange={(event) => setPublishedAt(event.target.value)}
-                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800"
-                      />
-                      <div className="mt-1 text-[11px] text-slate-500">
-                        Leave blank to publish immediately. Use a future time to
-                        schedule an article.
-                      </div>
-                    </div>
-                    <div>
-                      <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">
-                        SEO Title
-                      </label>
-                      <input
-                        value={metaTitle}
-                        onChange={(event) => setMetaTitle(event.target.value)}
-                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800"
-                        placeholder="Title used for search engines"
-                      />
-                    </div>
-                    <div className="md:col-span-2">
-                      <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">
-                        SEO Description
-                      </label>
-                      <textarea
-                        value={metaDescription}
-                        onChange={(event) =>
-                          setMetaDescription(event.target.value)
-                        }
-                        rows={2}
-                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800"
-                        placeholder="Short description used in search previews"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="rounded-3xl border border-slate-200 bg-gradient-to-br from-blue-50 to-white p-4 shadow-sm">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="flex items-start gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-600 text-sm font-semibold text-white">
-                        2
-                      </div>
                       <div>
-                        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                          Tiptap Editor
-                        </div>
-                        <p className="mt-1 text-sm text-slate-600">
-                          Rich-text editing is now powered by Tiptap with
-                          active formatting, selection-aware controls, and
-                          cleaner document behavior.
-                        </p>
-                      </div>
-                    </div>
-                    <div className="rounded-full border border-blue-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-blue-700 shadow-sm">
-                      Powered by Tiptap
-                    </div>
-                  </div>
-                  <p className="mt-3 text-xs leading-6 text-slate-600">
-                    Use the toolbar or keyboard shortcuts like `Ctrl/Cmd + B`
-                    and `Ctrl/Cmd + I`. Active styles light up in blue, and the
-                    editor keeps the saved article markup in sync as you type.
-                  </p>
-                </div>
-
-                <div className="mb-3 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-                  <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3">
-                    <div>
-                      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                        Editor Toolbar
-                      </div>
-                      <div className="mt-1 text-sm text-slate-600">
-                        Choose formatting, insert content, or start from a
-                        ready-made layout.
-                      </div>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600 shadow-sm">
-                        {editorModeLabel}
-                      </span>
-                      <span className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-700 shadow-sm">
-                        {editorSelectionLabel}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4 p-4">
-                    <div>
-                      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                        Formatting
-                      </div>
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        {editorFormattingActions.map((action) => {
-                          const Icon = action.icon || null;
-                          return (
-                            <button
-                              key={action.key}
-                              type="button"
-                              disabled={action.disabled}
-                              onPointerDown={(event) =>
-                                handleToolbarAction(
-                                  event,
-                                  action.onClick,
-                                  action.disabled,
-                                )
-                              }
-                              className={getToolbarButtonClassName(
-                                action.active,
-                                action.disabled,
-                              )}
-                            >
-                              {Icon ? (
-                                <Icon className="text-sm" />
-                              ) : (
-                                <span className="min-w-[1.25rem] text-center text-xs font-black">
-                                  {action.label}
-                                </span>
-                              )}
-                              {Icon ? <span>{action.label}</span> : null}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                        Insert
-                      </div>
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        {editorInsertActions.map((action) => {
-                          const Icon = action.icon;
-                          return (
-                            <button
-                              key={action.key}
-                              type="button"
-                              disabled={action.disabled}
-                              onPointerDown={(event) =>
-                                handleToolbarAction(
-                                  event,
-                                  action.onClick,
-                                  action.disabled,
-                                )
-                              }
-                              className={getToolbarButtonClassName(
-                                action.active,
-                                action.disabled,
-                              )}
-                            >
-                              <Icon className="text-sm" />
-                              <span>{action.label}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                        Starter Blocks
-                      </div>
-                      <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                        {editorTemplateActions.map((action) => (
-                          <button
-                            key={action.key}
-                            type="button"
-                            onPointerDown={(event) =>
-                              handleToolbarAction(event, action.onClick)
-                            }
-                            className="flex min-h-[4rem] flex-col items-start justify-center rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-left transition hover:border-slate-300 hover:bg-white"
-                          >
-                            <span className="text-sm font-semibold text-slate-900">
-                              {action.label}
-                            </span>
-                            <span className="mt-1 text-[11px] leading-5 text-slate-500">
-                              {action.description}
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-3 py-3 text-[11px] leading-6 text-slate-500">
-                      Tip: select text first if you want bold, italics, links,
-                      or headings applied to an existing sentence. Product facts
-                      from the right rail still insert at the current cursor
-                      position.
-                    </div>
-                  </div>
-
-                  <input
-                    ref={inlineImageInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={async (event) => {
-                      const file = event.target.files?.[0] || null;
-                      await handleInlineImageUpload(file);
-                      event.target.value = "";
-                    }}
-                  />
-                </div>
-
-                <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-                  <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                    <span>Tiptap Writing Surface</span>
-                    <span>
-                      {editorUiState.isFocused ? "Editing" : "Ready"}
-                    </span>
-                  </div>
-                  <div className="relative">
-                    {editorUiState.isEmpty && !editorUiState.isFocused ? (
-                      <div className="pointer-events-none absolute left-4 top-4 right-4 text-[15px] leading-7 text-slate-400">
-                        Start typing the story here. Use the toolbar above for
-                        headings, links, images, quotes, lists, and tables.
-                      </div>
-                    ) : null}
-                    <TiptapStoryEditor
-                      ref={storyEditorRef}
-                      value={contentTemplate}
-                      onChange={setContentTemplate}
-                      onEditorStateChange={setEditorUiState}
-                      normalizeContent={buildEditorSurfaceHtml}
-                    />
-                  </div>
-                </div>
-
-                <div className="mb-4 text-[11px] text-slate-500">
-                  The editor saves clean story markup behind the scenes, and the
-                  live preview below uses the same article rendering rules as
-                  the public news page.
-                </div>
-
-                <div className="rounded-3xl border border-slate-200 bg-gradient-to-br from-violet-50 to-white p-4 shadow-sm">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-violet-600 text-sm font-semibold text-white">
-                      3
-                    </div>
-                    <div>
-                      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                        Live Preview
-                      </div>
-                      <p className="mt-1 text-sm text-slate-600">
-                        Review the article exactly as the newsroom renderer understands it.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div
-                  id="story-preview-panel"
-                  className="mb-4 rounded-[24px] border border-slate-200 bg-slate-50 p-4 shadow-sm"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <h4 className="text-sm font-semibold text-slate-900">
-                        Live Preview
-                      </h4>
-                      <p className="mt-1 text-xs text-slate-600">
-                        Title, standfirst, and body preview with token
-                        replacement.
-                      </p>
-                    </div>
-                    <div className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600">
-                      {hasStructuredPreview ? "Rich layout" : "Simple layout"}
-                    </div>
-                  </div>
-
-                  <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
-                    {previewHeroImage ? (
-                      <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
-                        <img
-                          src={previewHeroImage}
-                          alt={previewHeroAlt}
-                          className="h-56 w-full object-cover sm:h-72"
+                        <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                          Slug
+                        </label>
+                        <input
+                          ref={slugInputRef}
+                          value={slug}
+                          onChange={(event) => setSlug(event.target.value)}
+                          placeholder="optional-custom-slug"
+                          className={composerFieldClassName}
                         />
                       </div>
-                    ) : null}
 
-                    <div className={previewHeroImage ? "mt-5" : ""}>
-                      {title ? (
-                        <h2 className="text-2xl font-black leading-tight tracking-[-0.03em] text-slate-950">
-                          {title}
-                        </h2>
-                      ) : (
-                        <div className="rounded-md border border-dashed border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-500">
-                          Add a headline to preview the article header.
-                        </div>
-                      )}
-
-                      {excerpt ? (
-                        <p className="mt-3 text-sm leading-7 text-slate-600 sm:text-[15px]">
-                          {excerpt}
-                        </p>
-                      ) : null}
-
-                      <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-slate-500">
-                        <span className="font-semibold text-blue-700">
-                          {getCategoryLabel(category)}
-                        </span>
-                        <span className="h-1 w-1 rounded-full bg-slate-300" />
-                        <span>{authorName || "No byline set"}</span>
-                      </div>
-
-                      {articlePreviewHtml ? (
-                        <div
-                          className="mt-5 text-[15px] leading-7 text-slate-700 [&_p]:mb-5 [&_p:last-child]:mb-0 [&_p:first-of-type]:text-[16px] [&_p:first-of-type]:leading-8 [&_p:first-of-type]:text-slate-800 sm:[&_p:first-of-type]:text-[17px] sm:[&_p:first-of-type]:leading-8 [&_h2]:mt-8 [&_h2]:text-[22px] [&_h2]:font-black [&_h2]:leading-tight [&_h2]:tracking-[-0.03em] [&_h2]:text-slate-950 [&_h3]:mt-7 [&_h3]:text-[18px] [&_h3]:font-bold [&_h3]:text-slate-900 [&_h4]:mt-6 [&_h4]:text-[16px] [&_h4]:font-bold [&_h4]:text-slate-900 [&_ul]:my-5 [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-5 [&_ol]:my-5 [&_ol]:list-decimal [&_ol]:space-y-2 [&_ol]:pl-5 [&_blockquote]:my-6 [&_blockquote]:border-l-4 [&_blockquote]:border-blue-500 [&_blockquote]:bg-blue-50 [&_blockquote]:px-4 [&_blockquote]:py-3 [&_blockquote]:text-slate-700 [&_a]:font-semibold [&_a]:text-blue-700 [&_a]:underline [&_a]:underline-offset-4 [&_strong]:font-bold [&_strong]:text-slate-950 [&_figure]:my-7 [&_figure]:overflow-hidden [&_figure]:rounded-2xl [&_figure]:border [&_figure]:border-slate-200 [&_figure]:bg-slate-50 [&_figure_figcaption]:border-t [&_figure_figcaption]:border-slate-200 [&_figure_figcaption]:px-4 [&_figure_figcaption]:py-3 [&_figure_figcaption]:text-xs [&_figure_figcaption]:uppercase [&_figure_figcaption]:tracking-[0.14em] [&_figure_figcaption]:text-slate-500 [&_figure_img]:w-full [&_figure_img]:bg-slate-100 [&_figure_img]:object-cover [&_img]:my-6 [&_img]:w-full [&_img]:rounded-2xl [&_div.article-table-wrap]:my-5 [&_div.article-table-wrap]:overflow-x-auto [&_table]:min-w-[520px] [&_table]:w-full [&_table]:border-collapse [&_table]:text-left [&_table]:text-sm [&_thead]:bg-slate-50 [&_th]:border [&_th]:border-slate-200 [&_th]:px-3 [&_th]:py-2 [&_th]:font-semibold [&_th]:text-slate-800 [&_td]:border [&_td]:border-slate-200 [&_td]:px-3 [&_td]:py-2 [&_td]:align-top"
-                          dangerouslySetInnerHTML={{
-                            __html: articlePreviewHtml,
-                          }}
-                        />
-                      ) : (
-                        <div className="mt-5 rounded-md border border-dashed border-slate-300 bg-slate-50 px-3 py-3 text-sm text-slate-500">
-                          Start writing the story body to see the rendered
-                          preview.
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                  Use the right publish rail or top action buttons to save
-                  drafts, preview the article, and publish when ready.
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-3 xl:sticky xl:top-4 xl:space-y-4 xl:self-start">
-            <div className="rounded-3xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-4 shadow-sm xl:hidden">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                Mobile Editor Mode
-              </div>
-              <div className="mt-2 text-base font-semibold text-slate-900">
-                Open only the panel you need
-              </div>
-              <p className="mt-1 text-sm text-slate-600">
-                Use the panels below for settings, SEO, images, and product facts. The story editor stays cleaner on smaller screens.
-              </p>
-              <div className="mt-3 grid grid-cols-3 gap-2">
-                <div className="rounded-2xl border border-slate-200 bg-white px-3 py-3 text-center">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                    Status
-                  </div>
-                  <div className="mt-1 text-sm font-semibold text-slate-900">
-                    {status === "published" ? "Published" : "Draft"}
-                  </div>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-white px-3 py-3 text-center">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                    Mode
-                  </div>
-                  <div className="mt-1 text-sm font-semibold text-slate-900">
-                    {blogMode === "product" ? "Product" : "General"}
-                  </div>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-white px-3 py-3 text-center">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                    Progress
-                  </div>
-                  <div className="mt-1 text-sm font-semibold text-slate-900">
-                    {workflowCompletedCount}/{workflowChecklist.length}
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm rounded-3xl p-4 shadow-sm md:p-5">
-              <button
-                type="button"
-                onClick={() => toggleMobileComposerPanel("publish")}
-                className="flex w-full items-start justify-between gap-3 text-left xl:hidden"
-              >
-                <div>
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                    Publish & Preview
-                  </div>
-                  <div className="mt-1 text-sm font-semibold text-slate-900">
-                    Save, preview, or publish this article
-                  </div>
-                </div>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold text-slate-600">
-                  {mobileComposerPanels.publish ? "Hide" : "Open"}
-                </span>
-              </button>
-
-              <div className="hidden items-start justify-between gap-3 xl:flex">
-                <div>
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                    Publish Center
-                  </div>
-                  <div className="mt-2 text-base font-semibold text-slate-900">
-                    {activeEditorSummary}
-                  </div>
-                  <div className="mt-1 text-sm text-slate-600">
-                    {currentModeLabel}
-                    {blogId ? ` - ID ${blogId}` : " - New draft"}
-                  </div>
-                </div>
-                <span
-                  className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold capitalize ${
-                    STATUS_BADGES[status] || STATUS_BADGES.draft
-                  }`}
-                >
-                  {status}
-                </span>
-              </div>
-
-              <div
-                className={`${
-                  mobileComposerPanels.publish ? "mt-4 block" : "hidden"
-                } xl:mt-0 xl:block`}
-              >
-                {message ? (
-                  <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-                    {message}
-                  </div>
-                ) : null}
-
-                <div className="mt-4 grid gap-2 sm:grid-cols-3 xl:grid-cols-1">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      document
-                        .getElementById("story-preview-panel")
-                        ?.scrollIntoView({ behavior: "smooth", block: "start" })
-                    }
-                    className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:border-slate-400 hover:bg-slate-50"
-                  >
-                    Preview Article
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => saveBlog("draft")}
-                    disabled={saving}
-                    className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:border-slate-400 hover:bg-slate-50 disabled:opacity-60"
-                  >
-                    Save Draft
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => saveBlog("published")}
-                    disabled={saving}
-                    className="rounded-xl bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
-                  >
-                    {saving && status === "published"
-                      ? "Publishing..."
-                      : "Publish"}
-                  </button>
-                </div>
-
-                <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                    Permalink
-                  </div>
-                  <div className="mt-1 break-all text-sm font-medium text-blue-700">
-                    {currentPermalink}
-                  </div>
-                </div>
-
-                <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                    Workflow Notes
-                  </div>
-                  <div className="mt-2 text-sm text-slate-700">
-                    {currentModeHelp}
-                  </div>
-                  {blogId ? (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        deleteBlog({
-                          id: blogId,
-                          title,
-                          product_id:
-                            blogMode === "product" ? selectedProductId : null,
-                          product_type:
-                            blogMode === "product" ? productType : null,
-                        })
-                      }
-                      disabled={deletingId === blogId}
-                      className="mt-4 inline-flex items-center gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 hover:border-red-300 hover:bg-red-100 disabled:opacity-60"
-                    >
-                      <FaTrashAlt className="text-[11px]" />
-                      {deletingId === blogId
-                        ? "Deleting entry..."
-                        : "Delete current entry"}
-                    </button>
-                  ) : null}
-                </div>
-              </div>
-            </div>
-
-            <div className="rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm rounded-3xl p-4 shadow-sm md:p-5">
-              <button
-                type="button"
-                onClick={() => toggleMobileComposerPanel("workflow")}
-                className="flex w-full items-center justify-between gap-3 text-left xl:hidden"
-              >
-                <div>
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                    Workflow Checklist
-                  </div>
-                  <div className="mt-1 text-sm font-semibold text-slate-900">
-                    Track what is ready before publishing
-                  </div>
-                </div>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold text-slate-600">
-                  {mobileComposerPanels.workflow ? "Hide" : "Open"}
-                </span>
-              </button>
-
-              <div className="mb-3 hidden items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 xl:flex">
-                <FaCheckCircle className="text-xs text-emerald-500" />
-                Workflow Checklist
-              </div>
-
-              <div
-                className={`space-y-3 ${
-                  mobileComposerPanels.workflow ? "block" : "hidden"
-                } xl:block`}
-              >
-                {workflowChecklist.map((item) => (
-                  <div
-                    key={item.label}
-                    className={`rounded-2xl border px-3 py-3 ${
-                      item.done
-                        ? "border-emerald-200 bg-emerald-50"
-                        : "border-slate-200 bg-slate-50"
-                    }`}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div
-                        className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
-                          item.done
-                            ? "bg-emerald-600 text-white"
-                            : "bg-white text-slate-500"
-                        }`}
-                      >
-                        {item.done ? <FaCheckCircle className="text-xs" /> : "•"}
-                      </div>
-                      <div>
-                        <div className="text-sm font-semibold text-slate-900">
-                          {item.label}
-                        </div>
-                        <p className="mt-1 text-xs leading-5 text-slate-600">
-                          {item.detail}
-                        </p>
+                      <div className="border border-slate-200 bg-slate-50 px-2 py-3 text-sm text-slate-600 md:px-4">
+                        {editorPermalinkDisplay}
                       </div>
                     </div>
                   </div>
-                ))}
-              </div>
-            </div>
 
-            <div className="rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm rounded-3xl p-4 shadow-sm md:p-5">
-              <button
-                type="button"
-                onClick={() => toggleMobileComposerPanel("settings")}
-                className="flex w-full items-center justify-between gap-3 text-left xl:hidden"
-              >
-                <div>
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                    Story Details
-                  </div>
-                  <div className="mt-1 text-sm font-semibold text-slate-900">
-                    Category, author, tags, and flags
-                  </div>
-                </div>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold text-slate-600">
-                  {mobileComposerPanels.settings ? "Hide" : "Open"}
-                </span>
-              </button>
-
-              <div className="mb-3 hidden items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 xl:flex">
-                <FaTag className="text-xs text-slate-400" />
-                Story Settings
-              </div>
-              <p className="mb-4 hidden text-sm text-slate-600 xl:block">
-                Manage editorial labels, author details, and visibility flags for this article.
-              </p>
-
-              <div
-                className={`space-y-3 ${
-                  mobileComposerPanels.settings ? "mt-4 block" : "hidden"
-                } xl:mt-0 xl:block`}
-              >
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                  <label className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                    <FaTag className="text-[10px]" />
-                    Category
-                  </label>
-                  <select
-                    value={category}
-                    onChange={(event) => setCategory(event.target.value)}
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800"
-                  >
-                    {STORY_CATEGORY_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                  <label className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                    <FaUser className="text-[10px]" />
-                    Byline / Author
-                  </label>
-                  <div className="space-y-2">
-                    <select
-                      value={authorUserId}
-                      onChange={(event) => {
-                        const nextAuthorId = event.target.value;
-                        setAuthorUserId(nextAuthorId);
-                        const selectedAuthor = authorOptions.find(
-                          (option) =>
-                            String(option.value) === String(nextAuthorId),
-                        );
-                        setAuthorName(
-                          selectedAuthor?.label || getDefaultAuthorName() || "",
-                        );
-                      }}
-                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800"
-                    >
-                      <option value="">Custom byline</option>
-                      {authorOptions.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label} | {option.secondary}
-                        </option>
-                      ))}
-                    </select>
-                    <input
-                      value={authorName}
-                      onChange={(event) => {
-                        setAuthorName(event.target.value);
-                        setAuthorUserId("");
-                      }}
-                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800"
-                      placeholder={getDefaultAuthorName() || "Editor name"}
-                    />
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                  <label className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                    <FaTag className="text-[10px]" />
-                    Tags / Keywords
-                  </label>
-                  <input
-                    value={tagsInput}
-                    onChange={(event) => setTagsInput(event.target.value)}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800"
-                    placeholder="news, launch, smartphone, samsung"
-                  />
-                </div>
-
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                  <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                    Story Flags
-                  </div>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {[
-                      {
-                        key: "featured",
-                        label: "Featured",
-                        icon: FaStar,
-                        active: featured,
-                        onClick: () => setFeatured((prev) => !prev),
-                        activeClass:
-                          "border-amber-300 bg-amber-50 text-amber-800",
-                      },
-                      {
-                        key: "trending",
-                        label: "Trending",
-                        icon: FaFire,
-                        active: trending,
-                        onClick: () => setTrending((prev) => !prev),
-                        activeClass: "border-rose-300 bg-rose-50 text-rose-800",
-                      },
-                      {
-                        key: "pinned",
-                        label: "Pinned",
-                        icon: FaThumbtack,
-                        active: pinned,
-                        onClick: () => setPinned((prev) => !prev),
-                        activeClass: "border-blue-300 bg-blue-50 text-blue-800",
-                      },
-                    ].map((item) => {
-                      const Icon = item.icon;
-                      return (
+                  <div className="border-b border-slate-200 bg-white">
+                    <div className="border-b border-slate-200 px-2 py-4 md:px-4">
+                      <h3 className="text-base font-semibold text-slate-900">
+                        Post Flags
+                      </h3>
+                    </div>
+                    <div className="flex flex-wrap gap-2 px-2 py-4 md:px-4">
+                      {[
+                        {
+                          key: "featured",
+                          label: "Featured",
+                          active: featured,
+                          onClick: () => setFeatured((prev) => !prev),
+                        },
+                        {
+                          key: "trending",
+                          label: "Trending",
+                          active: trending,
+                          onClick: () => setTrending((prev) => !prev),
+                        },
+                        {
+                          key: "pinned",
+                          label: "Pinned",
+                          active: pinned,
+                          onClick: () => setPinned((prev) => !prev),
+                        },
+                      ].map((item) => (
                         <button
                           key={item.key}
                           type="button"
                           onClick={item.onClick}
-                          className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold transition ${
+                          className={`inline-flex items-center border px-3 py-2 text-xs font-semibold transition ${
                             item.active
-                              ? item.activeClass
-                              : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-100"
+                              ? "border-[#CFC3FF] bg-[#F3EEFF] text-[#5B34E6]"
+                              : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50"
                           }`}
                         >
-                          <Icon className="text-[10px]" />
                           {item.label}
                         </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm rounded-3xl p-4 shadow-sm md:p-5">
-              <button
-                type="button"
-                onClick={() => toggleMobileComposerPanel("seo")}
-                className="flex w-full items-center justify-between gap-3 text-left xl:hidden"
-              >
-                <div>
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                    SEO & Schedule
-                  </div>
-                  <div className="mt-1 text-sm font-semibold text-slate-900">
-                    Publish timing and search details
-                  </div>
-                </div>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold text-slate-600">
-                  {mobileComposerPanels.seo ? "Hide" : "Open"}
-                </span>
-              </button>
-
-              <div className="mb-3 hidden items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 xl:flex">
-                <FaCalendarAlt className="text-xs text-slate-400" />
-                Publishing & SEO
-              </div>
-              <p className="mb-4 hidden text-sm text-slate-600 xl:block">
-                Control when the article goes live and what search engines will read first.
-              </p>
-
-              <div
-                className={`space-y-3 ${
-                  mobileComposerPanels.seo ? "mt-4 block" : "hidden"
-                } xl:mt-0 xl:block`}
-              >
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">
-                    Publish State
-                  </label>
-                  <select
-                    value={status}
-                    onChange={(event) => setStatus(event.target.value)}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800"
-                  >
-                    <option value="draft">Draft</option>
-                    <option value="published">Publish</option>
-                  </select>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                  <label className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                    <FaCalendarAlt className="text-[10px]" />
-                    Publish At
-                  </label>
-                  <input
-                    type="datetime-local"
-                    value={publishedAt}
-                    onChange={(event) => setPublishedAt(event.target.value)}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800"
-                  />
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">
-                    SEO Title
-                  </label>
-                  <input
-                    value={metaTitle}
-                    onChange={(event) => setMetaTitle(event.target.value)}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800"
-                    placeholder="Title used for search engines"
-                  />
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">
-                    SEO Description
-                  </label>
-                  <textarea
-                    value={metaDescription}
-                    onChange={(event) => setMetaDescription(event.target.value)}
-                    rows={3}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800"
-                    placeholder="Short description used in search previews"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
-              <button
-                type="button"
-                onClick={() => toggleMobileComposerPanel("source")}
-                className="flex w-full items-center justify-between gap-3 text-left xl:hidden"
-              >
-                <div>
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                    Source & Images
-                  </div>
-                  <div className="mt-1 text-sm font-semibold text-slate-900">
-                    Product source, hero image, and image details
-                  </div>
-                </div>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold text-slate-600">
-                  {mobileComposerPanels.source ? "Hide" : "Open"}
-                </span>
-              </button>
-
-              <h2 className="hidden text-sm font-semibold text-gray-900 xl:block">
-                Source & Assets
-              </h2>
-              <p className="mt-1 hidden text-xs text-slate-600 xl:block">
-                Pick the story source, review the content reference, and control
-                the hero image from here.
-              </p>
-
-              <div
-                className={`${
-                  mobileComposerPanels.source ? "mt-4 block" : "hidden"
-                } xl:mt-0 xl:block`}
-              >
-              {blogMode === "product" ? (
-                <>
-                  <label className="mt-4 mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Candidate Product
-                  </label>
-                  <select
-                    value={selectedProductId || ""}
-                    onChange={(event) =>
-                      setSelectedProductId(Number(event.target.value))
-                    }
-                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700"
-                    disabled={candidatesLoading || candidates.length === 0}
-                  >
-                    {candidates.length === 0 ? (
-                      <option value="">
-                        {candidatesLoading ? "Loading..." : "No candidates"}
-                      </option>
-                    ) : null}
-                    {candidates.map((row) => (
-                      <option key={row.product_id} value={row.product_id}>
-                        {row.name} ({row.brand_name || "Brand"})
-                      </option>
-                    ))}
-                  </select>
-
-                  <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700">
-                    <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                      Product Snapshot
+                      ))}
                     </div>
-                    <div className="mt-2 font-semibold text-slate-900">
-                      {selectedProduct?.name || "-"}
+                  </div>
+
+                  <div className="border-b border-slate-200 bg-white">
+                    <div className="border-b border-slate-200 px-2 py-4 md:px-4">
+                      <h3 className="text-base font-semibold text-slate-900">
+                        Starter Layouts
+                      </h3>
                     </div>
-                    <div className="mt-1">
-                      {selectedProduct?.brand_name || "-"}
+                    <div className="space-y-2 px-2 py-4 md:px-4">
+                      {editorTemplateActions.map((item) => (
+                        <button
+                          key={item.key}
+                          type="button"
+                          onClick={item.onClick}
+                          className="flex w-full items-start justify-between border border-slate-200 bg-white px-2 py-3 text-left transition hover:border-slate-300 hover:bg-slate-50 md:px-4"
+                        >
+                          <div>
+                            <div className="text-sm font-semibold text-slate-900">
+                              {item.label}
+                            </div>
+                            <div className="mt-1 text-xs leading-5 text-slate-500">
+                              {item.description}
+                            </div>
+                          </div>
+                          <FaPlus className="mt-1 text-xs text-slate-400" />
+                        </button>
+                      ))}
                     </div>
-                    <div className="mt-1">{selectedProduct?.price || "-"}</div>
+                  </div>
+
+                  <div className="border-b border-slate-200 bg-white">
+                    <div className="border-b border-slate-200 px-2 py-4 md:px-4">
+                      <h3 className="text-base font-semibold text-slate-900">
+                        Product Facts
+                      </h3>
+                    </div>
+                    <div className="px-2 py-4 md:px-4">
+                      <div className="flex max-h-48 flex-wrap gap-2 overflow-y-auto">
+                        {blogMode !== "product" ? (
+                          <span className="text-sm text-slate-400">
+                            Switch to a product-linked story to use dynamic facts.
+                          </span>
+                        ) : tokenKeys.length === 0 ? (
+                          <span className="text-sm text-slate-400">
+                            No product facts available
+                          </span>
+                        ) : (
+                          tokenKeys.map((tokenKey) => (
+                            <button
+                              key={tokenKey}
+                              type="button"
+                              onPointerDown={(event) =>
+                                handleToolbarAction(
+                                  event,
+                                  () => insertToken(tokenKey),
+                                )
+                              }
+                              className="border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-100"
+                            >
+                              {`{{${tokenKey}}}`}
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </>
-              ) : (
-                <div className="mt-4 rounded-2xl border border-indigo-200 bg-indigo-50 px-3 py-3 text-sm text-indigo-800">
-                  General article mode is ideal for launch roundups, trend
-                  reports, and custom newsroom posts.
-                </div>
               )}
-
-              <div className="mt-4">
-                <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Hero Image
-                </label>
-                <p className="mt-1 text-xs text-slate-500">
-                  Choose an attached product image or switch to a custom URL for
-                  a fresh cover. We store the source with the blog.
-                </p>
-
-                {blogMode === "product" ? (
-                  <div className="mt-3 inline-flex overflow-hidden rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-600">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setHeroImageSource(HERO_IMAGE_SOURCE.ASSET)
-                      }
-                      className={`px-3 py-2 ${
-                        heroImageSource === HERO_IMAGE_SOURCE.ASSET
-                          ? "bg-blue-600 text-white"
-                          : "text-slate-600 hover:bg-slate-50"
-                      }`}
-                    >
-                      Product assets
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setHeroImageSource(HERO_IMAGE_SOURCE.URL)}
-                      className={`px-3 py-2 ${
-                        heroImageSource === HERO_IMAGE_SOURCE.URL
-                          ? "bg-blue-600 text-white"
-                          : "text-slate-600 hover:bg-slate-50"
-                      }`}
-                    >
-                      Custom URL / upload
-                    </button>
-                  </div>
-                ) : null}
-
-                {heroImage ? (
-                  <div className="mt-3 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
-                    <img
-                      src={heroImage}
-                      alt={heroImageAlt || title || "Selected hero"}
-                      className="h-36 w-full object-cover"
-                    />
-                    <div className="flex items-center justify-between gap-3 border-t border-slate-200 px-3 py-2 text-xs text-slate-600">
-                      <span>
-                        Current hero image
-                        {blogMode === "product" ? (
-                          <span className="ml-2 text-[10px] uppercase tracking-wide text-slate-400">
-                            (
-                            {heroImageSource === HERO_IMAGE_SOURCE.ASSET
-                              ? "Product asset"
-                              : "Custom URL"}
-                            )
-                          </span>
-                        ) : null}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setHeroImage("")}
-                        className="font-semibold text-slate-500 hover:text-slate-900"
-                      >
-                        Clear
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="mt-3 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-3 py-3 text-xs text-slate-500">
-                    No hero image selected yet.
-                  </div>
-                )}
-
-                {blogMode === "product" &&
-                heroImageSource === HERO_IMAGE_SOURCE.ASSET ? (
-                  heroImageChoices.length > 0 ? (
-                    <div className="mt-4">
-                      <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                        Select from product images
-                      </div>
-                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                        {heroImageChoices.map((img, idx) => {
-                          const selected = heroImage === img;
-                          return (
-                            <button
-                              key={`${img}-${idx}`}
-                              type="button"
-                              onClick={() => {
-                                setHeroImage(img);
-                                setHeroImageSource(HERO_IMAGE_SOURCE.ASSET);
-                              }}
-                            className={`overflow-hidden rounded-xl border text-left transition ${
-                                selected
-                                  ? "border-slate-900 ring-1 ring-slate-900"
-                                  : "border-slate-200 hover:border-slate-400"
-                              }`}
-                            >
-                              <img
-                                src={img}
-                                alt={`product-${idx + 1}`}
-                                className="h-20 w-full object-cover"
-                              />
-                              <div className="flex items-center justify-between gap-2 border-t border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-600">
-                                <span>
-                                  {selected ? "Selected" : "Use image"}
-                                </span>
-                                <span>#{idx + 1}</span>
-                              </div>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ) : (
-                  <div className="mt-4 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-3 py-3 text-xs text-slate-500">
-                      No product images are attached yet. Add images to the
-                      product first, then select one here. You can still switch
-                      to a custom URL below.
-                    </div>
-                  )
-                ) : (
-                  <div className="mt-4 space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                    <div>
-                      <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                        Image URL
-                      </label>
-                      <input
-                        type="url"
-                        value={heroImage}
-                        onChange={(event) => {
-                          setHeroImage(event.target.value);
-                          setHeroImageSource(HERO_IMAGE_SOURCE.URL);
-                        }}
-                        className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800"
-                        placeholder="https://example.com/article-image.jpg"
-                      />
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => heroImageInputRef.current?.click()}
-                        disabled={uploadingHeroImage}
-                        className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
-                      >
-                        <FaUpload className="text-[11px]" />
-                        {uploadingHeroImage ? "Uploading..." : "Upload image"}
-                      </button>
-                      <input
-                        ref={heroImageInputRef}
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={async (event) => {
-                          const file = event.target.files?.[0] || null;
-                          await handleHeroImageUpload(file);
-                          event.target.value = "";
-                        }}
-                      />
-                      {heroImage ? (
-                        <button
-                          type="button"
-                          onClick={() => setHeroImage("")}
-                          className="text-xs font-semibold text-slate-500 hover:text-slate-900"
-                        >
-                          Remove image
-                        </button>
-                      ) : null}
-                    </div>
-
-                    <div className="text-[11px] leading-5 text-slate-500">
-                      Use this for blogs and news articles when you want a fresh
-                      cover image instead of a product image.
-                    </div>
-                  </div>
-                )}
-
-                <div className="mt-4 grid gap-3 md:grid-cols-2">
-                  <div className="md:col-span-2">
-                    <label className="mb-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                      <FaImage className="text-[10px]" />
-                      Hero Image Alt Text
-                    </label>
-                    <input
-                      type="text"
-                      value={heroImageAlt}
-                      onChange={(event) => setHeroImageAlt(event.target.value)}
-                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800"
-                      placeholder="Describe the image for accessibility and SEO"
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="mb-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                      <FaImage className="text-[10px]" />
-                      Image Caption / Credit
-                    </label>
-                    <input
-                      type="text"
-                      value={heroImageCaption}
-                      onChange={(event) =>
-                        setHeroImageCaption(event.target.value)
-                      }
-                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800"
-                      placeholder="Image credit shown below the hero image"
-                    />
-                  </div>
-                </div>
-              </div>
-              </div>
-            </div>
-
-            <div className="rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm rounded-3xl p-3 shadow-sm">
-              <button
-                type="button"
-                onClick={() => toggleMobileComposerPanel("facts")}
-                className="flex w-full items-center justify-between gap-3 px-1 py-1 text-left xl:hidden"
-              >
-                <div>
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                    Product Facts
-                  </div>
-                  <div className="mt-1 text-sm font-semibold text-slate-900">
-                    Insert stored facts into the story
-                  </div>
-                </div>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold text-slate-600">
-                  {mobileComposerPanels.facts ? "Hide" : "Open"}
-                </span>
-              </button>
-
-              <h2 className="mb-2 hidden text-sm font-semibold text-gray-900 xl:block">
-                Product Facts
-              </h2>
-              <p className="mb-3 hidden text-xs text-slate-600 xl:block">
-                Insert product-specific facts into the story body when you need
-                them. These are most useful for product-linked stories.
-              </p>
-              <div
-                className={`${
-                  mobileComposerPanels.facts ? "mt-4 block" : "hidden"
-                } xl:mt-0 xl:block`}
-              >
-              <div className="flex max-h-48 flex-wrap gap-2 overflow-y-auto">
-                {blogMode !== "product" ? (
-                  <span className="text-xs text-slate-500">
-                    Switch to a product-linked story to use dynamic product
-                    facts.
-                  </span>
-                ) : tokenKeys.length === 0 ? (
-                  <span className="text-xs text-slate-500">
-                    No product facts available
-                  </span>
-                ) : (
-                  tokenKeys.map((tokenKey) => (
-                    <button
-                      key={tokenKey}
-                      type="button"
-                      onPointerDown={(event) =>
-                        handleToolbarAction(event, () => insertToken(tokenKey))
-                      }
-                      className="rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-semibold text-slate-700 hover:border-slate-300 hover:bg-slate-100"
-                    >
-                      {`{{${tokenKey}}}`}
-                    </button>
-                  ))
-                )}
-              </div>
-              </div>
             </div>
           </div>
         </div>
       ) : null}
-      {workspaceView === "composer" ? (
-        <div className="fixed inset-x-3 bottom-3 z-30 xl:hidden">
-          <div className="rounded-3xl border border-slate-200 bg-white/95 p-3 shadow-[0_24px_60px_rgba(15,23,42,0.18)] backdrop-blur">
-            <div className="mb-3 flex items-center justify-between gap-3">
+
+      </div>
+      {composerPreviewOpen ? (
+        <div className="fixed inset-0 z-40 bg-slate-950/40 p-4 backdrop-blur-sm sm:p-6">
+          <div className="mx-auto flex h-full w-full max-w-6xl flex-col overflow-hidden rounded-[22px] border border-slate-200 bg-white shadow-2xl">
+            <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
               <div>
-                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  Quick Actions
+                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  Preview
                 </div>
-                <div className="mt-1 text-sm font-semibold text-slate-900">
-                  Save or publish without leaving the editor
+                <div className="mt-1 text-base font-semibold text-slate-900">
+                  Article preview
                 </div>
               </div>
-              <span
-                className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold capitalize ${
-                  STATUS_BADGES[status] || STATUS_BADGES.draft
-                }`}
+              <button
+                type="button"
+                onClick={() => setComposerPreviewOpen(false)}
+                className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
               >
-                {status}
-              </span>
+                Close
+              </button>
             </div>
 
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={() =>
-                  document
-                    .getElementById("story-preview-panel")
-                    ?.scrollIntoView({ behavior: "smooth", block: "start" })
-                }
-                className="rounded-2xl border border-slate-300 bg-white px-3 py-3 text-sm font-medium text-slate-700 hover:border-slate-400 hover:bg-slate-50"
-              >
-                Preview
-              </button>
-              <button
-                type="button"
-                onClick={() => saveBlog("draft")}
-                disabled={saving}
-                className="rounded-2xl border border-slate-300 bg-white px-3 py-3 text-sm font-medium text-slate-700 hover:border-slate-400 hover:bg-slate-50 disabled:opacity-60"
-              >
-                Save
-              </button>
-              <button
-                type="button"
-                onClick={() => saveBlog("published")}
-                disabled={saving}
-                className="rounded-2xl bg-blue-600 px-3 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
-              >
-                Publish
-              </button>
+            <div className="flex-1 overflow-y-auto px-5 py-5 md:px-8 md:py-8">
+              <div className="mx-auto max-w-4xl">
+                <h2 className="text-[2.35rem] font-semibold leading-tight tracking-[-0.04em] text-slate-950">
+                  {title || "Your post title will appear here"}
+                </h2>
+
+                {excerpt ? (
+                  <p className="mt-4 text-lg leading-8 text-slate-600">
+                    {excerpt}
+                  </p>
+                ) : null}
+
+                <div
+                  className="mt-8 space-y-4 text-[17px] leading-8 text-slate-800 [&_a]:font-semibold [&_a]:text-[#4F46E5] [&_a]:underline [&_blockquote]:border-l-4 [&_blockquote]:border-[#6B2EFF] [&_blockquote]:pl-4 [&_h2]:mt-8 [&_h2]:text-[30px] [&_h2]:font-semibold [&_h2]:leading-tight [&_h2]:tracking-[-0.03em] [&_h3]:mt-6 [&_h3]:text-[24px] [&_h3]:font-semibold [&_img]:my-6 [&_img]:rounded-3xl [&_img]:shadow-sm [&_ol]:pl-6 [&_ol]:list-decimal [&_p]:my-4 [&_ul]:pl-6 [&_ul]:list-disc"
+                  dangerouslySetInnerHTML={{
+                    __html:
+                      articlePreviewHtml ||
+                      "<p>Start writing in the editor to preview the story here.</p>",
+                  }}
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -4763,6 +3853,9 @@ const BlogEditor = () => {
 };
 
 export default BlogEditor;
+
+
+
 
 
 

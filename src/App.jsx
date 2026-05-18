@@ -366,7 +366,7 @@ function App() {
             <div
               className={`mx-auto flex w-full max-w-[1720px] flex-col gap-4 px-4 py-4 sm:px-6 sm:py-5 lg:px-6 lg:py-6 ${
                 isMobile
-                  ? "gap-3 px-4 py-3 pl-[4.9rem] sm:px-4 sm:py-3 sm:pl-[4.9rem]"
+                  ? "gap-3 px-2 py-3 sm:px-2 sm:py-3"
                   : ""
               }`}
             >

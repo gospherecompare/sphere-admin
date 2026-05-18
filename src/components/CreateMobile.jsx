@@ -266,6 +266,7 @@ const CreateMobile = () => {
   });
   const [publishEnabled, setPublishEnabled] = useState(false);
   const [toasts, setToasts] = useState([]);
+  const [activeCreateTab, setActiveCreateTab] = useState("basic");
   const [expandedSections, setExpandedSections] = useState({
     basic: true,
     images: true,

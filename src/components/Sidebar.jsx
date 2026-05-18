@@ -8,7 +8,6 @@ import {
   FaChevronDown,
   FaClipboardList,
   FaCog,
-  FaCrown,
   FaExchangeAlt,
   FaFileAlt,
   FaHeartbeat,
@@ -21,7 +20,6 @@ import {
   FaSearch,
   FaShoppingBag,
   FaSignal,
-  FaStar,
   FaTags,
   FaTimes,
   FaUserCog,
@@ -222,176 +220,6 @@ const DESKTOP_SECTIONS = [
   },
 ];
 
-const MOBILE_RAIL_ITEMS = [
-  { icon: FaHome, path: "/dashboard", prefixes: ["/dashboard"] },
-  {
-    icon: FaShoppingBag,
-    path: "/products/smartphones/inventory",
-    prefixes: ["/products/smartphones"],
-  },
-  {
-    icon: FaSignal,
-    path: "/reports/trending",
-    prefixes: ["/reports/trending"],
-  },
-  {
-    icon: FaClipboardList,
-    path: "/specifications/brands",
-    prefixes: ["/specifications"],
-  },
-  { icon: FaUsers, path: "/user-management", prefixes: ["/user-management"] },
-  {
-    icon: FaChartBar,
-    path: "/reports/productpublishstatus",
-    prefixes: ["/reports"],
-  },
-  {
-    icon: FaStar,
-    path: "/smartphonesrating",
-    prefixes: ["/smartphonesrating"],
-  },
-  {
-    icon: FaFileAlt,
-    path: "/content/news-articles",
-    prefixes: ["/content/news-articles"],
-  },
-  {
-    icon: FaCog,
-    path: "/settings/compare-pages",
-    prefixes: ["/settings", "/api-tester"],
-  },
-];
-
-const MOBILE_DRAWER_SECTIONS = [
-  {
-    title: "MAIN",
-    items: [
-      {
-        label: "Dashboard",
-        icon: FaHome,
-        path: "/dashboard",
-        prefixes: ["/dashboard"],
-      },
-      {
-        label: "Products",
-        icon: FaShoppingBag,
-        path: "/products/smartphones/inventory",
-        prefixes: ["/products"],
-      },
-      {
-        label: "Categories",
-        icon: FaClipboardList,
-        path: "/specifications/categories/create",
-        prefixes: ["/specifications/categories"],
-      },
-      {
-        label: "Brands",
-        icon: FaTags,
-        path: "/specifications/brands",
-        prefixes: ["/specifications/brands"],
-      },
-      {
-        label: "Users",
-        icon: FaUsers,
-        path: "/user-management",
-        prefixes: ["/user-management"],
-      },
-      {
-        label: "Orders",
-        icon: FaFileAlt,
-        path: "/dashboard",
-        prefixes: ["/dashboard"],
-      },
-      {
-        label: "Reviews",
-        icon: FaStar,
-        path: "/smartphonesrating",
-        prefixes: ["/smartphonesrating"],
-      },
-    ],
-  },
-  {
-    title: "ANALYTICS",
-    items: [
-      {
-        label: "Hookscore",
-        icon: FaChartLine,
-        path: "/reports/hook-score",
-        prefixes: ["/reports/hook-score"],
-      },
-      {
-        label: "Feature Clicks",
-        icon: FaChartBar,
-        path: "/reports/feature-clicks",
-        prefixes: ["/reports/feature-clicks"],
-      },
-      {
-        label: "Reports",
-        icon: FaSignal,
-        path: "/reports/productpublishstatus",
-        prefixes: ["/reports"],
-      },
-    ],
-  },
-  {
-    title: "CONTENT",
-    items: [
-      {
-        label: "Blog",
-        icon: FaNewspaper,
-        path: "/content/news-articles",
-        prefixes: ["/content/news-articles"],
-      },
-      {
-        label: "Media Library",
-        icon: FaFileAlt,
-        path: "/marketing/banners",
-        prefixes: ["/marketing/banners"],
-      },
-    ],
-  },
-  {
-    title: "MANAGEMENT",
-    items: [
-      {
-        label: "Users & Permissions",
-        icon: FaUserCog,
-        path: "/user-management",
-        prefixes: ["/user-management"],
-      },
-      {
-        label: "Roles",
-        icon: FaUserShield,
-        path: "/permission-management",
-        prefixes: ["/permission-management"],
-      },
-      {
-        label: "Settings",
-        icon: FaCog,
-        path: "/settings/compare-pages",
-        prefixes: ["/settings", "/api-tester"],
-      },
-    ],
-  },
-  {
-    title: "INTEGRATIONS",
-    items: [
-      {
-        label: "Webhooks",
-        icon: FaBolt,
-        path: "/api-tester",
-        prefixes: ["/api-tester"],
-      },
-      {
-        label: "API Logs",
-        icon: FaLink,
-        path: "/api-tester",
-        prefixes: ["/api-tester"],
-      },
-    ],
-  },
-];
-
 const matchesPath = (pathname, item) =>
   (item.prefixes || []).some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
@@ -503,9 +331,8 @@ const DesktopSidebar = ({ collapsed, location }) => (
         </Link>
       ) : (
         <Link to="/dashboard" className="flex min-w-0 items-center gap-3">
-          <HookLogo showText={false} className="h-10 w-10 flex-shrink-0" />
           <div className="min-w-0">
-            <p className="truncate text-[1.9rem] font-bold leading-none tracking-tight text-white">
+            <p className="truncate text-[1.9rem] font-bold leading-none tracking-tight text-white uppercase">
               hooks
             </p>
             <p className="mt-1 text-[10px] uppercase tracking-[0.24em] text-slate-400">
@@ -541,65 +368,83 @@ const DesktopSidebar = ({ collapsed, location }) => (
   </aside>
 );
 
-const MobileRail = ({ pathname, mobileOpen }) => (
-  <aside className="fixed bottom-4 left-4 top-[92px] z-20 w-14 rounded-[28px] border border-slate-200 bg-white/95 shadow-[0_18px_45px_rgba(15,23,42,0.08)] backdrop-blur-sm lg:hidden">
-    <div className="flex h-full flex-col items-center justify-between py-5">
-      <div className="space-y-2">
-        {MOBILE_RAIL_ITEMS.map((item) => {
-          const Icon = item.icon;
-          const active = matchesPath(pathname, item);
+const MobileNavItem = ({ item, location, setMobileOpen }) => {
+  const Icon = item.icon;
+  const childItems = Array.isArray(item.children) ? item.children : [];
+  const hasActiveChild = childItems.some((child) =>
+    matchesItem(location, child),
+  );
+  const active = matchesItem(location, item) || hasActiveChild;
+  const showChildren = childItems.length > 0 && active;
 
-          return (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={`flex h-10 w-10 items-center justify-center rounded-xl transition ${
-                active
-                  ? "bg-[#EEF0FF] text-[#5C49FF] shadow-[0_8px_18px_rgba(92,73,255,0.16)]"
-                  : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
-              }`}
-            >
-              <Icon className="text-[15px]" />
-            </Link>
-          );
-        })}
-      </div>
-
-      <div className="flex flex-col items-center gap-4">
-        <div className="h-8 w-px bg-slate-200" />
-        <button
-          type="button"
-          className={`flex h-10 w-10 items-center justify-center rounded-full border transition ${
-            mobileOpen
-              ? "border-[#5C49FF]/30 bg-[#EEF0FF] text-[#5C49FF]"
-              : "border-transparent text-slate-400 hover:border-slate-200 hover:bg-slate-50"
+  return (
+    <div>
+      <Link
+        to={buildTo(item)}
+        onClick={() => setMobileOpen(false)}
+        className={`group flex items-center rounded-xl border px-3.5 py-3 transition ${
+          active
+            ? "border-white/10 bg-gradient-to-r from-[#345CFF] to-[#7A2CFF] text-white shadow-[0_18px_35px_rgba(90,73,255,0.24)]"
+            : "border-transparent text-slate-200/90 hover:border-white/10 hover:bg-white/6 hover:text-white"
+        }`}
+      >
+        <Icon
+          className={`text-[15px] ${
+            active ? "text-white" : "text-slate-400 group-hover:text-white"
           }`}
-          aria-hidden="true"
-        >
-          <FaArrowRight className="text-[11px]" />
-        </button>
-      </div>
-    </div>
-  </aside>
-);
+        />
+        <span className="ml-3 flex-1 text-[15px] font-medium">
+          {item.label}
+        </span>
+        {item.chevron || childItems.length > 0 ? (
+          showChildren ? (
+            <FaChevronDown className="text-[11px] text-white/70" />
+          ) : (
+            <FaArrowRight className="text-[11px] text-slate-500" />
+          )
+        ) : null}
+      </Link>
 
-const MobileDrawer = ({ mobileOpen, setMobileOpen, pathname, onLogout }) => (
+      {showChildren ? (
+        <div className="mt-2 ml-4 space-y-1 border-l border-white/10 pl-4">
+          {childItems.map((child) => {
+            const childActive = matchesItem(location, child);
+            return (
+              <Link
+                key={`${item.label}-${child.label}`}
+                to={buildTo(child)}
+                onClick={() => setMobileOpen(false)}
+                className={`flex items-center rounded-lg px-3 py-2.5 text-[13px] font-medium transition ${
+                  childActive
+                    ? "bg-white/10 text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]"
+                    : "text-slate-300/80 hover:bg-white/6 hover:text-white"
+                }`}
+              >
+                {child.label}
+              </Link>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
+};
+
+const MobileDrawer = ({ mobileOpen, setMobileOpen, location, onLogout }) => (
   <aside
-    className={`fixed inset-y-0 left-0 z-40 w-[78vw] max-w-[320px] rounded-r-3xl border-r border-white/10 bg-[radial-gradient(circle_at_top,_rgba(90,73,255,0.22),_transparent_24%),linear-gradient(180deg,_#101933_0%,_#0A1228_48%,_#081024_100%)] px-4 pb-5 pt-6 text-white shadow-[0_30px_80px_rgba(3,7,18,0.55)] transition-transform duration-300 lg:hidden ${
+    className={`fixed inset-y-0 left-0 z-50 w-[86vw] max-w-[340px] border-r border-white/10 bg-[radial-gradient(circle_at_top,_rgba(90,73,255,0.22),_transparent_24%),linear-gradient(180deg,_#101933_0%,_#0A1228_48%,_#081024_100%)] px-2 pb-5 pt-6 text-white shadow-[0_30px_80px_rgba(3,7,18,0.55)] transition-transform duration-300 lg:hidden ${
       mobileOpen ? "translate-x-0" : "-translate-x-full"
     }`}
   >
     <div className="flex items-center justify-between">
-      <div className="flex min-w-0 items-center gap-3">
-        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/6 ring-1 ring-white/10">
-          <HookLogo showText={false} className="h-8 w-8" />
-        </div>
-        <div className="min-w-0">
-          <p className="truncate text-[1.95rem] font-bold leading-none tracking-tight text-white">
-            hookscore
-          </p>
-        </div>
-      </div>
+      <Link to="/dashboard" className="min-w-0">
+        <p className="truncate text-[1.9rem] font-bold leading-none tracking-tight text-white uppercase">
+          hooks
+        </p>
+        <p className="mt-1 text-[10px] uppercase tracking-[0.24em] text-slate-400">
+          Gadget Intelligence
+        </p>
+      </Link>
 
       <button
         type="button"
@@ -612,36 +457,20 @@ const MobileDrawer = ({ mobileOpen, setMobileOpen, pathname, onLogout }) => (
     </div>
 
     <div className="mt-6 h-[calc(100%-4.5rem)] overflow-y-auto pr-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:w-0">
-      {MOBILE_DRAWER_SECTIONS.map((section) => (
+      {DESKTOP_SECTIONS.map((section) => (
         <div key={section.title} className="mb-6">
           <p className="px-1 pb-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
             {section.title}
           </p>
           <div className="space-y-1.5">
-            {section.items.map((item) => {
-              const Icon = item.icon;
-              const active = matchesPath(pathname, item);
-
-              return (
-                <Link
-                  key={item.label}
-                  to={item.path}
-                  onClick={() => setMobileOpen(false)}
-                  className={`flex items-center rounded-xl border px-3.5 py-3 transition ${
-                    active
-                      ? "border-white/10 bg-gradient-to-r from-[#345CFF] to-[#7A2CFF] text-white shadow-[0_18px_35px_rgba(90,73,255,0.24)]"
-                      : "border-transparent text-slate-200/90 hover:border-white/10 hover:bg-white/6 hover:text-white"
-                  }`}
-                >
-                  <Icon
-                    className={`text-[15px] ${active ? "text-white" : "text-slate-400"}`}
-                  />
-                  <span className="ml-3 text-[15px] font-medium">
-                    {item.label}
-                  </span>
-                </Link>
-              );
-            })}
+            {section.items.map((item) => (
+              <MobileNavItem
+                key={`${section.title}-${item.label}`}
+                item={item}
+                location={location}
+                setMobileOpen={setMobileOpen}
+              />
+            ))}
           </div>
         </div>
       ))}
@@ -666,19 +495,15 @@ const Sidebar = ({
   onLogout,
 }) => {
   const location = useLocation();
-  const pathname = location.pathname || "/dashboard";
 
   if (isMobile) {
     return (
-      <>
-        <MobileRail pathname={pathname} mobileOpen={mobileOpen} />
-        <MobileDrawer
-          mobileOpen={mobileOpen}
-          setMobileOpen={setMobileOpen}
-          pathname={pathname}
-          onLogout={onLogout}
-        />
-      </>
+      <MobileDrawer
+        mobileOpen={mobileOpen}
+        setMobileOpen={setMobileOpen}
+        location={location}
+        onLogout={onLogout}
+      />
     );
   }
 

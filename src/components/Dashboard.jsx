@@ -8,7 +8,6 @@ import {
   FaChartLine,
   FaCheckCircle,
   FaChevronDown,
-  FaDollarSign,
   FaEllipsisH,
   FaEye,
   FaFire,
@@ -19,11 +18,9 @@ import {
   FaPlus,
   FaShoppingBag,
   FaUpload,
-  FaUsers,
 } from "react-icons/fa";
 
 const DESKTOP_DATE_RANGE = "May 12 - May 18, 2024";
-const MOBILE_DATE_RANGE = "May 14, 2024 - May 20, 2024";
 
 const DESKTOP_SUMMARY_CARDS = [
   {
@@ -161,44 +158,6 @@ const UPCOMING_LAUNCHES = [
   { name: "OnePlus 13", date: "Oct 15, 2024", left: "129 days left", accent: "from-sky-700 to-blue-500" },
 ];
 
-const MOBILE_OVERVIEW_CARDS = [
-  {
-    label: "Total Sales",
-    value: "$128,742",
-    delta: "18.6%",
-    compareLabel: "vs May 7 - May 13",
-    icon: FaDollarSign,
-    iconWrapClass: "bg-violet-50 text-violet-600",
-  },
-  {
-    label: "Orders",
-    value: "2,543",
-    delta: "14.2%",
-    compareLabel: "vs May 7 - May 13",
-    icon: FaShoppingBag,
-    iconWrapClass: "bg-emerald-50 text-emerald-600",
-  },
-  {
-    label: "Customers",
-    value: "1,789",
-    delta: "8.7%",
-    compareLabel: "vs May 7 - May 13",
-    icon: FaUsers,
-    iconWrapClass: "bg-indigo-50 text-indigo-600",
-  },
-  {
-    label: "Conversion Rate",
-    value: "3.24%",
-    delta: "7.4%",
-    compareLabel: "vs May 7 - May 13",
-    icon: FaChartLine,
-    iconWrapClass: "bg-amber-50 text-amber-500",
-  },
-];
-
-const MOBILE_CHART_LABELS = ["May 14", "May 15", "May 16", "May 17", "May 18", "May 19", "May 20"];
-const MOBILE_CHART_SERIES = [42000, 56000, 43000, 57000, 48000, 61000, 52000];
-
 const getInitials = (name) =>
   String(name || "")
     .split(" ")
@@ -248,23 +207,6 @@ const SummaryCard = ({ icon: Icon, iconWrapClass, title, value, delta }) => (
         <p className="mt-1 text-[1.7rem] font-bold tracking-tight text-slate-950">{value}</p>
         <p className="mt-1 text-xs text-slate-500">
           <span className="font-semibold text-emerald-600">{deltaLabel(delta)}</span> vs last 7 days
-        </p>
-      </div>
-    </div>
-  </div>
-);
-
-const MobileStatCard = ({ icon: Icon, iconWrapClass, label, value, delta, compareLabel }) => (
-  <div className="rounded-xl border border-slate-200 bg-white px-4 py-4 shadow-[0_14px_30px_rgba(15,23,42,0.05)]">
-    <div className="flex items-start gap-3">
-      <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${iconWrapClass}`}>
-        <Icon className="text-base" />
-      </div>
-      <div className="min-w-0">
-        <p className="text-[11px] font-medium text-slate-500">{label}</p>
-        <p className="mt-1 text-[1.75rem] font-bold leading-none tracking-tight text-slate-950">{value}</p>
-        <p className="mt-1 text-[11px] text-slate-500">
-          <span className="font-semibold text-emerald-600">{deltaLabel(delta)}</span> {compareLabel}
         </p>
       </div>
     </div>
@@ -341,96 +283,6 @@ const DesktopPerformanceChart = () => {
     </div>
   );
 };
-
-const MobileSalesChart = () => {
-  const width = 320;
-  const height = 170;
-  const padding = 18;
-  const linePath = buildLinePath(MOBILE_CHART_SERIES, width, height, padding);
-  const maxValue = Math.max(...MOBILE_CHART_SERIES, 1);
-  const usableWidth = width - padding * 2;
-  const usableHeight = height - padding * 2;
-
-  return (
-    <SectionCard className="px-4 py-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-base font-semibold text-slate-950">Sales Overview</h2>
-        <button
-          type="button"
-          className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600"
-        >
-          Daily <FaChevronDown className="text-[10px]" />
-        </button>
-      </div>
-
-      <div className="mt-4">
-        <svg viewBox={`0 0 ${width} ${height + 28}`} className="h-[178px] w-full">
-          {[0, 1, 2, 3].map((row) => {
-            const y = padding + ((height - padding * 2) / 3) * row;
-            return <line key={row} x1={padding} x2={width - padding} y1={y} y2={y} stroke="#E7EAF4" strokeWidth="1" />;
-          })}
-
-          <path d={linePath} fill="none" stroke="#5A49FF" strokeWidth="3" strokeLinecap="round" />
-
-          {MOBILE_CHART_SERIES.map((value, index) => {
-            const x = padding + (usableWidth / (MOBILE_CHART_SERIES.length - 1)) * index;
-            const y = height - padding - (value / maxValue) * usableHeight;
-
-            return (
-              <g key={MOBILE_CHART_LABELS[index]}>
-                <circle cx={x} cy={y} r="3.5" fill="#5A49FF" />
-                <text x={x} y={height + 18} textAnchor="middle" fontSize="10" fill="#94A3B8">
-                  {MOBILE_CHART_LABELS[index]}
-                </text>
-              </g>
-            );
-          })}
-
-          <line x1="157" x2="157" y1="30" y2="142" stroke="#D7DDF0" strokeDasharray="4 4" />
-          <rect x="119" y="18" width="88" height="44" rx="10" fill="#FFFFFF" stroke="#E7EAF4" strokeWidth="1" />
-          <text x="130" y="35" fontSize="10" fill="#64748B">
-            May 17, 2024
-          </text>
-          <text x="130" y="51" fontSize="11" fontWeight="700" fill="#5A49FF">
-            Sales: $74,625
-          </text>
-        </svg>
-      </div>
-    </SectionCard>
-  );
-};
-
-const MobileDashboard = ({ firstName }) => (
-  <div className="space-y-4">
-    <section>
-      <h1 className="text-[2rem] font-bold tracking-tight text-slate-950">Dashboard</h1>
-      <p className="mt-1 max-w-[16rem] text-sm leading-6 text-slate-500">
-        Welcome back, {firstName}! Here&apos;s what&apos;s happening today.
-      </p>
-    </section>
-
-    <section className="space-y-3">
-      <button
-        type="button"
-        className="inline-flex w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-[0_12px_25px_rgba(15,23,42,0.04)]"
-      >
-        <span className="inline-flex items-center gap-2">
-          <FaCalendarAlt className="text-slate-400" />
-          {MOBILE_DATE_RANGE}
-        </span>
-        <FaChevronDown className="text-[11px] text-slate-400" />
-      </button>
-
-      <div className="space-y-3">
-        {MOBILE_OVERVIEW_CARDS.map((card) => (
-          <MobileStatCard key={card.label} {...card} />
-        ))}
-      </div>
-    </section>
-
-    <MobileSalesChart />
-  </div>
-);
 
 const DesktopDashboard = ({ firstName, onQuickAction }) => {
   const publishHealth = 92;
@@ -611,7 +463,7 @@ const DesktopDashboard = ({ firstName, onQuickAction }) => {
               </button>
             </div>
 
-            <div className="mt-4 grid grid-cols-3 gap-3">
+            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
               {[
                 { label: "Clicks", value: "1.26M", delta: "15.6%" },
                 { label: "Conversions", value: "18,650", delta: "11.3%" },
@@ -626,7 +478,7 @@ const DesktopDashboard = ({ firstName, onQuickAction }) => {
             </div>
 
             <div className="mt-4 rounded-xl border border-slate-200 bg-white px-4 py-4">
-              <div className="flex items-center justify-between gap-4">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3">
                   <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#F8F3E6] text-xl font-bold text-slate-900">
                     a
@@ -636,7 +488,7 @@ const DesktopDashboard = ({ firstName, onQuickAction }) => {
                     <p className="text-sm font-semibold text-slate-950">Amazon</p>
                   </div>
                 </div>
-                <p className="text-right text-xl font-bold text-slate-950">
+                <p className="text-left text-xl font-bold text-slate-950 sm:text-right">
                   $22,450 <span className="text-sm font-medium text-slate-500">(46.1%)</span>
                 </p>
               </div>
@@ -767,14 +619,10 @@ const DesktopDashboard = ({ firstName, onQuickAction }) => {
   );
 };
 
-const Dashboard = ({ isMobile = false }) => {
+const Dashboard = () => {
   const navigate = useNavigate();
   const userName = Cookies.get("userName") || Cookies.get("username") || "John Doe";
   const firstName = String(userName).split(" ")[0] || "John";
-
-  if (isMobile) {
-    return <MobileDashboard firstName={firstName} />;
-  }
 
   return <DesktopDashboard firstName={firstName} onQuickAction={(path) => navigate(path)} />;
 };

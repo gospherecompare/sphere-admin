@@ -10,7 +10,6 @@ import Cookies from "js-cookie";
 import {
   FaBars,
   FaBell,
-  FaCalendarAlt,
   FaCheckCircle,
   FaChevronDown,
   FaCog,
@@ -29,7 +28,6 @@ import {
   EMPTY_SUMMARY,
   createMobileReminderSummary,
 } from "../utils/mobileReminders";
-import HookLogo from "./Ui/hooklogo";
 
 const extractSmartphoneRows = (payload) => {
   if (Array.isArray(payload)) return payload;
@@ -611,33 +609,36 @@ const Navbar = ({ isMobile, sidebarOpen, onToggleSidebar, onLogout }) => {
   );
 
   const actionButtonBase = isMobile
-    ? "relative flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-[0_10px_25px_rgba(15,23,42,0.05)]"
+    ? "relative flex h-9 w-9 items-center justify-center rounded-xl bg-transparent text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
     : "relative flex h-10 w-10 items-center justify-center rounded-xl bg-white text-slate-600 shadow-[0_10px_25px_rgba(15,23,42,0.05)] transition hover:bg-slate-50 hover:text-slate-900";
 
   if (isMobile) {
     return (
-      <nav className="sticky top-0 z-40 bg-[#F6F8FF] px-3 py-3">
-        <div className="space-y-3">
-          <div className="rounded-xl border border-slate-200 bg-white px-3.5 py-3 shadow-[0_14px_35px_rgba(15,23,42,0.06)]">
-            <div className="flex items-center gap-2.5">
-              <button
-                type="button"
-                onClick={onToggleSidebar}
-                className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-600"
-                aria-label="Open navigation menu"
-              >
-                <FaBars className="text-base" />
-              </button>
+      <nav className="sticky top-0 z-40 border-b border-slate-200 bg-white shadow-[0_14px_35px_rgba(15,23,42,0.06)]">
+        <div className="px-2 py-3">
+          <div className="flex items-center justify-between gap-3">
+            <button
+              type="button"
+              onClick={onToggleSidebar}
+              className="flex h-9 w-9 items-center justify-center rounded-xl bg-transparent text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
+              aria-label="Open navigation menu"
+            >
+              <FaBars className="text-base" />
+            </button>
 
+            <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => setMobileSearchOpen((prev) => !prev)}
-                className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden text-left"
+                className={`flex h-9 w-9 items-center justify-center rounded-xl transition ${
+                  mobileSearchOpen
+                    ? "bg-[#F6F8FF] text-[#345CFF]"
+                    : "bg-transparent text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                }`}
+                aria-label={mobileSearchOpen ? "Close search" : "Open search"}
+                aria-expanded={mobileSearchOpen}
               >
-                <HookLogo showText={false} className="h-6 w-6 flex-shrink-0" />
-                <span className="truncate text-[1.45rem] font-bold leading-none tracking-tight text-slate-950">
-                  hookscore
-                </span>
+                <FaSearch className="text-sm" />
               </button>
 
               <div className="relative" ref={notificationRef}>
@@ -661,18 +662,11 @@ const Navbar = ({ isMobile, sidebarOpen, onToggleSidebar, onLogout }) => {
                 ) : null}
               </div>
 
-              <button type="button" className={actionButtonBase}>
-                <FaEnvelope className="text-sm" />
-                <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-bold text-white">
-                  5
-                </span>
-              </button>
-
               <div className="relative" ref={userMenuRef}>
                 <button
                   type="button"
                   onClick={toggleUserMenu}
-                  className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-[#345CFF] to-[#7A2CFF] text-[11px] font-bold text-white"
+                  className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-[#345CFF] to-[#7A2CFF] text-[11px] font-bold text-white shadow-[0_10px_25px_rgba(92,76,255,0.22)]"
                 >
                   {getUserInitials(userName)}
                 </button>
@@ -693,13 +687,13 @@ const Navbar = ({ isMobile, sidebarOpen, onToggleSidebar, onLogout }) => {
               </div>
             </div>
           </div>
-
-          {mobileSearchOpen ? (
-            <div className="rounded-xl border border-slate-200 bg-white px-3 py-3 shadow-[0_14px_35px_rgba(15,23,42,0.06)]">
-              {renderSearchBar(true)}
-            </div>
-          ) : null}
         </div>
+
+        {mobileSearchOpen ? (
+          <div className="border-t border-slate-100 px-2 py-3">
+            {renderSearchBar(true)}
+          </div>
+        ) : null}
       </nav>
     );
   }
@@ -747,7 +741,7 @@ const Navbar = ({ isMobile, sidebarOpen, onToggleSidebar, onLogout }) => {
           </button>
 
           <button type="button" className={actionButtonBase}>
-            <FaCalendarAlt className="text-sm" />
+            <FaHeadset className="text-sm" />
           </button>
 
           <div className="h-8 w-px bg-slate-200" />
