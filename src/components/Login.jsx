@@ -1,8 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Cookies from "js-cookie";
-import { FaMicrosoft } from "react-icons/fa6";
-import { FcGoogle } from "react-icons/fc";
 import {
   HiOutlineArrowRight,
   HiOutlineBackspace,
@@ -32,15 +30,15 @@ const MIN_PIN_LENGTH = 4;
 const MAX_PIN_LENGTH = 7;
 
 const INPUT_WRAPPER =
-  "group relative overflow-hidden rounded-2xl border border-[#dbe3ef] bg-white transition duration-200 focus-within:border-[#4b61ff] focus-within:shadow-[0_0_0_4px_rgba(75,97,255,0.08)]";
+  "group relative overflow-hidden rounded-2xl border border-transparent bg-white/10 transition duration-200 focus-within:border-[#4b61ff]";
 const INPUT_ICON =
   "pointer-events-none absolute left-4 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-[#98a1bd] transition group-focus-within:text-[#4b61ff]";
 const INPUT_FIELD =
-  "h-[46px] w-full bg-transparent pl-12 pr-4 text-[15px] text-[#4f5b86] outline-none placeholder:text-[#98a1bd] disabled:cursor-not-allowed disabled:text-slate-400";
+  "h-[46px] w-full bg-transparent pl-12 pr-4 text-[15px] text-slate-100 outline-none placeholder:text-slate-400 disabled:cursor-not-allowed disabled:text-slate-400";
 const PRIMARY_BUTTON =
-  "inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#3458ff] via-[#5d58ff] to-[#c13bf8] px-5 text-[15px] font-semibold text-white shadow-[0_18px_34px_rgba(98,71,255,0.24)] transition duration-200 hover:translate-y-[-1px] hover:shadow-[0_22px_44px_rgba(86,91,255,0.3)] disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60";
+  "inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#3458ff] via-[#5d58ff] to-[#c13bf8] px-5 text-[15px] font-semibold text-white transition duration-200 hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60";
 const PIN_PRIMARY_BUTTON =
-  "inline-flex h-[64px] w-full items-center justify-center gap-3 rounded-xl bg-gradient-to-r from-[#4c2fff] via-[#5a27ff] to-[#7a1fff] px-6 text-[1.05rem] font-semibold text-white shadow-[0_20px_45px_rgba(97,59,255,0.3)] transition duration-200 hover:translate-y-[-1px] hover:shadow-[0_24px_52px_rgba(97,59,255,0.34)] disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60";
+  "inline-flex h-[64px] w-full items-center justify-center gap-3 rounded-xl bg-gradient-to-r from-[#4c2fff] via-[#5a27ff] to-[#7a1fff] px-6 text-[1.05rem] font-semibold text-white transition duration-200 hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60";
 
 const promoFeatures = [
   {
@@ -107,7 +105,7 @@ const HeroBrand = ({ dark = true, compact = false }) => (
     <svg
       viewBox="0 0 72 72"
       aria-hidden="true"
-      className={`${compact ? "h-10 w-10" : "h-12 w-12"} shrink-0`}
+      className={`${compact ? "h-8 w-8" : "h-12 w-12"} shrink-0`}
     >
       <defs>
         <linearGradient
@@ -149,9 +147,9 @@ const HeroBrand = ({ dark = true, compact = false }) => (
       <div
         className={`${compact ? "text-[2rem]" : "text-[2.35rem]"} font-semibold leading-none tracking-[-0.06em] ${
           dark ? "text-[#101633]" : "text-white"
-        }`}
+        } uppercase`}
       >
-        hooks
+        HOOKS
       </div>
       <div
         className={`mt-1 text-[10px] uppercase tracking-[0.24em] ${
@@ -213,42 +211,70 @@ const PinAccessBrand = () => (
   </div>
 );
 
-const PromoFeature = ({ icon: Icon, title, description, iconClass }) => (
-  <div className="flex items-start gap-4">
-    <div
-      className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl shadow-[0_14px_28px_rgba(77,92,152,0.08)] ${iconClass}`}
-    >
-      <Icon className="h-5 w-5" />
+const PromoFeature = ({
+  icon,
+  title,
+  description,
+  iconClass,
+  darkSurface = false,
+}) => {
+  const Icon = icon;
+
+  return (
+    <div className="flex items-start gap-4">
+      <div
+        className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${
+          darkSurface
+            ? "border border-white/12 shadow-[0_16px_32px_rgba(0,0,0,0.22)]"
+            : "shadow-[0_14px_28px_rgba(77,92,152,0.08)]"
+        } ${iconClass}`}
+      >
+        <Icon className="h-5 w-5" />
+      </div>
+      <div className="min-w-0">
+        <div
+          className={`text-[15px] font-semibold leading-6 ${
+            darkSurface ? "text-white" : "text-[#111936]"
+          }`}
+        >
+          {title}
+        </div>
+        <p
+          className={`mt-1 text-[14px] leading-6 ${
+            darkSurface ? "text-white/72" : "text-[#66708f]"
+          }`}
+        >
+          {description}
+        </p>
+      </div>
     </div>
-    <div className="min-w-0">
-      <div className="text-[15px] font-semibold leading-6 text-[#111936]">
+  );
+};
+
+const PinAccessFeatureCard = ({ icon, title, description }) => {
+  const Icon = icon;
+
+  return (
+    <div className="rounded-xl border border-[#e7e3ff] bg-white px-6 py-7">
+      <div className="mx-auto flex h-[58px] w-[58px] items-center justify-center rounded-xl bg-[linear-gradient(180deg,rgba(121,91,255,0.2)_0%,rgba(105,75,255,0.08)_100%)] text-[#5b31ff]">
+        <Icon className="h-8 w-8" />
+      </div>
+      <div className="mt-5 text-center text-[1.05rem] font-semibold text-[#131a39]">
         {title}
       </div>
-      <p className="mt-1 text-[14px] leading-6 text-[#66708f]">{description}</p>
+      <p className="mt-3 text-center text-[15px] leading-7 text-[#5b648c]">
+        {description}
+      </p>
     </div>
-  </div>
-);
-
-const PinAccessFeatureCard = ({ icon: Icon, title, description }) => (
-  <div className="rounded-xl border border-white/80 bg-white/80 px-6 py-7 shadow-[0_18px_40px_rgba(100,106,170,0.08)] backdrop-blur-sm">
-    <div className="mx-auto flex h-[58px] w-[58px] items-center justify-center rounded-xl bg-[linear-gradient(180deg,rgba(121,91,255,0.2)_0%,rgba(105,75,255,0.08)_100%)] text-[#5b31ff] shadow-[0_14px_28px_rgba(103,73,255,0.12)]">
-      <Icon className="h-8 w-8" />
-    </div>
-    <div className="mt-5 text-center text-[1.05rem] font-semibold text-[#131a39]">
-      {title}
-    </div>
-    <p className="mt-3 text-center text-[15px] leading-7 text-[#5b648c]">
-      {description}
-    </p>
-  </div>
-);
+  );
+};
 
 const PinPadButton = ({ children, onClick, disabled, className = "" }) => (
   <button
     type="button"
     onClick={onClick}
     disabled={disabled}
-    className={`flex h-[68px] items-center justify-center rounded-xl border border-[#e4defe] bg-white text-[2rem] font-semibold text-[#111936] shadow-[0_12px_30px_rgba(111,116,182,0.08)] transition duration-150 hover:border-[#cfc3ff] hover:bg-[#fbfaff] disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
+    className={`flex h-[68px] items-center justify-center rounded-xl border border-[#e4defe] bg-white text-[2rem] font-semibold text-[#111936] transition duration-150 hover:border-[#cfc3ff] hover:bg-[#fbfaff] disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
   >
     {children}
   </button>
@@ -633,9 +659,9 @@ const PinBoxesField = ({
                 key={`${label || "pin"}-${index}`}
                 className={`flex h-[78px] items-center justify-center rounded-xl border text-[2rem] font-semibold transition sm:h-[82px] ${
                   filled
-                    ? "border-[#cfc4ff] bg-white text-[#101734] shadow-[0_14px_30px_rgba(105,96,196,0.08)]"
+                    ? "border-[#cfc4ff] bg-white text-[#101734]"
                     : active
-                      ? "border-[#5d34ff] bg-white text-[#5d34ff] shadow-[0_0_0_4px_rgba(108,75,255,0.08)]"
+                      ? "border-[#5d34ff] bg-white text-[#5d34ff]"
                       : "border-[#ddd7ff] bg-white text-transparent"
                 }`}
               >
@@ -1027,26 +1053,70 @@ const Login = ({ onLogin }) => {
       : "Create PIN and Sign In";
 
   return (
-    <div className="min-h-dvh bg-[linear-gradient(180deg,#f7f9ff_0%,#eef3ff_100%)] lg:h-screen lg:overflow-hidden">
-      <div className="mx-auto flex min-h-dvh max-w-[1560px] flex-col px-4 py-4 sm:px-5 sm:py-5 md:px-6 lg:h-screen lg:justify-center lg:px-6 lg:py-5">
-        <div className="grid w-full overflow-hidden rounded-2xl bg-white/65 backdrop-blur-sm md:min-h-[calc(100dvh-2.5rem)] md:grid-rows-[auto_1fr] lg:h-[calc(100dvh-2.5rem)] lg:min-h-0 lg:grid-cols-[2.28fr_2.72fr] lg:grid-rows-1 xl:grid-cols-[2.38fr_2.62fr]">
-          <section className="relative hidden overflow-hidden border-b border-[#edf1f7] bg-[linear-gradient(180deg,#ffffff_0%,#f6f7ff_100%)] md:flex md:flex-col md:justify-between md:px-8 md:py-7 lg:border-b-0 lg:border-r lg:px-10 lg:py-8">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_16%_18%,rgba(72,122,255,0.08)_0%,transparent_26%),radial-gradient(circle_at_82%_20%,rgba(151,92,255,0.12)_0%,transparent_24%),radial-gradient(circle_at_34%_90%,rgba(106,132,255,0.08)_0%,transparent_28%)]" />
-            <div className="pointer-events-none absolute inset-y-10 right-8 hidden w-[140px] opacity-30 lg:block">
-              <div className="h-full w-full bg-[radial-gradient(circle,rgba(131,129,202,0.32)_1px,transparent_1px)] [background-size:16px_16px]" />
-            </div>
+    <div className="relative isolate min-h-screen flex items-center justify-center py-6 overflow-hidden bg-[linear-gradient(180deg,#020617_0%,#050816_38%,#0B1120_100%)] text-white">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_22%,rgba(124,58,237,0.16),transparent_22%),radial-gradient(circle_at_82%_24%,rgba(37,99,235,0.16),transparent_24%),radial-gradient(circle_at_90%_82%,rgba(124,58,237,0.18),transparent_18%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(148,163,184,0.06)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,0.06)_1px,transparent_1px)] [background-size:24px_24px] opacity-35 [mask-image:radial-gradient(circle_at_center,white,transparent_88%)]" />
+      <div className="pointer-events-none absolute inset-y-0 left-[26%] hidden w-[380px] bg-[radial-gradient(circle,rgba(124,58,237,0.12)_1px,transparent_1px)] [background-size:10px_10px] opacity-50 [mask-image:radial-gradient(circle_at_center,white,transparent_76%)] lg:block" />
+      <div className="pointer-events-none absolute inset-y-0 right-[-4%] hidden w-[360px] bg-[radial-gradient(circle,rgba(37,99,235,0.2)_1px,transparent_1px)] [background-size:10px_10px] opacity-55 [mask-image:radial-gradient(circle_at_center,white,transparent_78%)] lg:block" />
+      <div className="pointer-events-none absolute inset-x-0 top-[34%] hidden lg:block">
+        <svg
+          viewBox="0 0 1440 260"
+          className="h-[260px] w-full opacity-95"
+          fill="none"
+          aria-hidden="true"
+        >
+          <defs>
+            <linearGradient id="hooksLoginHeroWave" x1="0" y1="0" x2="1440" y2="0">
+              <stop offset="0%" stopColor="rgba(124,58,237,0)" />
+              <stop offset="34%" stopColor="#7C3AED" />
+              <stop offset="68%" stopColor="#2563EB" />
+              <stop offset="100%" stopColor="rgba(37,99,235,0)" />
+            </linearGradient>
+            <filter
+              id="hooksLoginHeroGlow"
+              x="-20%"
+              y="-80%"
+              width="140%"
+              height="260%"
+            >
+              <feGaussianBlur stdDeviation="7" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
+          <path
+            d="M-40 178C108 217 194 224 308 188C431 150 503 67 652 90C794 113 868 226 1010 214C1145 203 1250 120 1480 146"
+            stroke="url(#hooksLoginHeroWave)"
+            strokeWidth="3"
+            strokeLinecap="round"
+            filter="url(#hooksLoginHeroGlow)"
+          />
+          <path
+            d="M18 194C154 217 249 208 348 163C454 114 546 85 663 111C783 137 855 224 983 215C1112 206 1238 123 1454 137"
+            stroke="rgba(124,58,237,0.46)"
+            strokeWidth="1.5"
+            strokeDasharray="2 10"
+            strokeLinecap="round"
+          />
+        </svg>
+      </div>
 
+      <div className="relative mx-auto flex min-h-dvh w-full max-w-[1160px] flex-col px-2 py-2 sm:px-5 sm:py-5 md:px-6 lg:h-screen lg:justify-center lg:px-6 lg:py-5">
+        <div className="grid w-full overflow-hidden rounded-md bg-transparent md:min-h-[calc(100dvh-2.5rem)] md:grid-rows-[auto_1fr] lg:h-[calc(100dvh-2.5rem)] lg:min-h-0 lg:grid-cols-[2.7fr_2fr] lg:grid-rows-1 xl:grid-cols-[2.85fr_1.9fr]">
+          <section className="relative hidden overflow-hidden bg-transparent md:flex md:flex-col md:justify-between md:px-8 md:py-7 lg:px-10 lg:py-8">
             <div className="relative z-10">
-              <HeroBrand dark />
+              <HeroBrand dark={false} />
 
               <div className="mt-7 max-w-[470px]">
-                <h1 className="text-[2.35rem] font-semibold leading-[1.08] tracking-[-0.05em] text-[#101633] lg:text-[3rem]">
+                <h1 className="text-[2.35rem] font-semibold leading-[1.08] tracking-[-0.05em] text-white lg:text-[3rem]">
                   Intelligent insights.
                   <span className="block bg-gradient-to-r from-[#5A35FF] via-[#7E4CFF] to-[#4F7BFF] bg-clip-text text-transparent">
                     Smarter decisions.
                   </span>
                 </h1>
-                <p className="mt-4 max-w-[390px] text-[15px] leading-7 text-[#66708f] lg:text-base">
+                <p className="mt-4 max-w-[390px] text-[15px] leading-7 text-white/72 lg:text-base">
                   Hooks helps you discover, compare and analyze gadgets with
                   powerful insights.
                 </p>
@@ -1054,7 +1124,7 @@ const Login = ({ onLogin }) => {
 
               <div className="mt-7 grid max-w-[480px] gap-5 lg:mt-8">
                 {promoFeatures.map((item) => (
-                  <PromoFeature key={item.title} {...item} />
+                  <PromoFeature key={item.title} {...item} darkSurface />
                 ))}
               </div>
             </div>
@@ -1064,17 +1134,12 @@ const Login = ({ onLogin }) => {
             </div>
           </section>
 
-          <section className="relative flex flex-col bg-[linear-gradient(180deg,#fcfdff_0%,#f4f7ff_100%)] px-4 py-4 sm:px-5 sm:py-5 md:px-7 md:py-7 lg:px-10 lg:py-8">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(127,147,255,0.12)_0%,transparent_28%),radial-gradient(circle_at_80%_18%,rgba(193,123,255,0.12)_0%,transparent_20%),radial-gradient(circle_at_26%_88%,rgba(97,128,255,0.08)_0%,transparent_22%)]" />
-
-            <div className="relative z-10 md:hidden">
-              <div className="sticky top-0 mb-4 rounded-2xl border border-white/70 bg-white/80 px-4 py-3 shadow-[0_14px_35px_rgba(74,93,163,0.08)] backdrop-blur-sm">
-                <HeroBrand dark compact />
+          <section className="relative flex flex-col bg-transparent px-3 py-5 sm:px-5 sm:py-5 md:px-7 md:py-7 lg:px-10 lg:py-8">
+            <div className="relative z-10 mx-auto flex w-full max-w-[520px] flex-1 flex-col justify-center lg:max-w-[520px] xl:max-w-[520px]">
+              <div className="block md:hidden mb-4">
+                <HeroBrand dark={false} compact />
               </div>
-            </div>
-
-            <div className="relative z-10 mx-auto flex w-full max-w-[760px] flex-1 flex-col justify-center lg:max-w-[700px] xl:max-w-[680px]">
-              <div className="w-full rounded-2xl border border-[#e7ecf5] bg-white/92 px-5 py-6 shadow-[0_22px_60px_rgba(71,95,162,0.1)] backdrop-blur-sm sm:px-7 sm:py-7 md:px-9 md:py-8 lg:px-10 lg:py-8">
+              <div className="w-full rounded-md border border-transparent bg-transparent px-4 py-6 sm:px-7 sm:py-7 md:px-9 md:py-8 lg:px-10 lg:py-8">
                 <div
                   className={
                     isPinOverlayOpen
@@ -1082,14 +1147,8 @@ const Login = ({ onLogin }) => {
                       : ""
                   }
                 >
-                  <p className="text-[15px] font-semibold text-[#3458ff]">
+                  <p className="text-[14px] font-semibold text-[#3458ff] sm:text-[15px]">
                     Welcome back! <span className="align-middle">👋</span>
-                  </p>
-                  <h2 className="mt-3 text-[2rem] font-semibold leading-tight tracking-[-0.045em] text-[#141b37] sm:text-[2.25rem]">
-                    Sign in to your account
-                  </h2>
-                  <p className="mt-2 text-[15px] leading-7 text-[#6f7897]">
-                    Enter your credentials to access your dashboard.
                   </p>
 
                   <div className="mt-5 space-y-3">
@@ -1115,9 +1174,9 @@ const Login = ({ onLogin }) => {
 
                   <form onSubmit={submit} className="mt-6 space-y-5">
                     <div>
-                      <label className="mb-2 block text-[14px] font-semibold text-[#1c2542]">
-                        Email address
-                      </label>
+                      <label className="mb-2 block text-[14px] font-semibold text-slate-100">
+                          Email address
+                        </label>
                       <div className={INPUT_WRAPPER}>
                         <HiOutlineEnvelope className={INPUT_ICON} />
                         <input
@@ -1140,7 +1199,7 @@ const Login = ({ onLogin }) => {
                     </div>
 
                     <div>
-                      <label className="mb-2 block text-[14px] font-semibold text-[#1c2542]">
+                      <label className="mb-2 block text-[14px] font-semibold text-slate-100">
                         Password
                       </label>
                       <div className={INPUT_WRAPPER}>
@@ -1179,7 +1238,7 @@ const Login = ({ onLogin }) => {
                       </div>
                     </div>
 
-                    <div className="flex flex-col gap-3 text-[14px] text-[#5f6786] sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex flex-col gap-3 text-[14px] text-slate-100 sm:flex-row sm:items-center sm:justify-between">
                       <label className="inline-flex cursor-pointer items-center gap-3">
                         <input
                           type="checkbox"
@@ -1190,7 +1249,7 @@ const Login = ({ onLogin }) => {
                           disabled={loading || isPinOverlayOpen}
                           className="h-4 w-4 rounded border-slate-300 accent-[#4560ff] disabled:cursor-not-allowed"
                         />
-                        <span className="font-medium text-[#202845]">
+                        <span className="font-medium text-slate-100">
                           Remember me
                         </span>
                       </label>
@@ -1217,32 +1276,6 @@ const Login = ({ onLogin }) => {
                     </button>
                   </form>
 
-                  <div className="mt-6 flex items-center gap-4">
-                    <div className="h-px flex-1 bg-[#e9edf5]" />
-                    <span className="text-[14px] text-[#8c94ae]">
-                      or continue with
-                    </span>
-                    <div className="h-px flex-1 bg-[#e9edf5]" />
-                  </div>
-
-                  <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                    <button
-                      type="button"
-                      className="inline-flex h-12 items-center justify-center gap-3 rounded-2xl border border-[#dbe3ef] bg-white px-4 text-[15px] font-medium text-[#4b5677] transition hover:border-slate-300 hover:bg-slate-50"
-                    >
-                      <FcGoogle className="h-5 w-5" />
-                      <span>Continue with Google</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      className="inline-flex h-12 items-center justify-center gap-3 rounded-2xl border border-[#dbe3ef] bg-white px-4 text-[15px] font-medium text-[#4b5677] transition hover:border-slate-300 hover:bg-slate-50"
-                    >
-                      <FaMicrosoft className="h-5 w-5 text-[#2563eb]" />
-                      <span>Continue with Microsoft</span>
-                    </button>
-                  </div>
-
                   <p className="mt-6 text-center text-[14px] text-[#66708f]">
                     Need help?{" "}
                     <a
@@ -1255,7 +1288,7 @@ const Login = ({ onLogin }) => {
                 </div>
               </div>
 
-              <p className="mt-4 text-center text-[14px] text-[#8a92ab]">
+              <p className="mt-3 px-2 text-center text-[13px] text-[#8a92ab] sm:mt-4 sm:text-[14px]">
                 &copy; 2024{" "}
                 <span className="font-semibold text-[#3458ff]">Hooks</span>. All
                 rights reserved.
@@ -1266,15 +1299,13 @@ const Login = ({ onLogin }) => {
       </div>
 
       {isPinOverlayOpen ? (
-        <div className="fixed inset-0 z-[120] overflow-y-auto bg-[linear-gradient(180deg,rgba(249,250,255,0.98)_0%,rgba(241,234,255,0.98)_100%)] p-3 sm:p-5 lg:p-8">
+        <div className="fixed inset-0 z-[120] overflow-y-auto bg-white p-3 sm:p-5 lg:p-8">
           <form
             onSubmit={submit}
-            className="relative mx-auto w-full max-w-[1500px] overflow-hidden rounded-xl border border-white/80 bg-[linear-gradient(135deg,rgba(255,255,255,0.96)_0%,rgba(246,243,255,0.96)_100%)] shadow-[0_32px_100px_rgba(115,114,195,0.16)]"
+            className="relative mx-auto w-full max-w-[1500px] overflow-hidden rounded-xl border border-[#e6eaf2] bg-white"
           >
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_22%_18%,rgba(128,106,255,0.12)_0%,transparent_28%),radial-gradient(circle_at_82%_16%,rgba(155,122,255,0.14)_0%,transparent_24%),radial-gradient(circle_at_70%_88%,rgba(120,155,255,0.08)_0%,transparent_22%)]" />
-
             <div className="relative flex justify-end px-4 pb-0 pt-4 sm:px-6 sm:pt-6 lg:px-8 lg:pt-8">
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/80 bg-white/80 px-4 py-2 text-sm font-semibold text-[#2e2a77] shadow-[0_10px_24px_rgba(107,111,182,0.1)] backdrop-blur-sm">
+              <div className="inline-flex items-center gap-2 rounded-full border border-[#e7e3ff] bg-white px-4 py-2 text-sm font-semibold text-[#2e2a77]">
                 <HiOutlineShieldCheck className="h-5 w-5 text-[#6241ff]" />
                 <span>Secure Connection</span>
               </div>
@@ -1292,7 +1323,7 @@ const Login = ({ onLogin }) => {
                           ? "Create Admin PIN"
                           : "Admin Access Gate"}
                       </h2>
-                      <div className="flex h-20 w-20 items-center justify-center rounded-xl bg-[linear-gradient(180deg,rgba(115,82,255,0.16)_0%,rgba(102,62,255,0.06)_100%)] text-[#5d31ff] shadow-[0_16px_35px_rgba(99,74,255,0.12)]">
+                      <div className="flex h-20 w-20 items-center justify-center rounded-xl bg-[linear-gradient(180deg,rgba(115,82,255,0.16)_0%,rgba(102,62,255,0.06)_100%)] text-[#5d31ff]">
                         <HiOutlineShieldCheck className="h-11 w-11" />
                       </div>
                     </div>
@@ -1313,7 +1344,7 @@ const Login = ({ onLogin }) => {
                 <div className="mt-16">
                   <div className="flex items-center gap-4 text-[#7e73ce]">
                     <div className="h-px flex-1 bg-[linear-gradient(90deg,rgba(134,126,201,0)_0%,rgba(134,126,201,0.5)_100%)]" />
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/80 shadow-[0_10px_24px_rgba(98,105,181,0.08)]">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white">
                       <HiOutlineShieldCheck className="h-6 w-6" />
                     </div>
                     <div className="h-px flex-1 bg-[linear-gradient(90deg,rgba(134,126,201,0.5)_0%,rgba(134,126,201,0)_100%)]" />
@@ -1333,9 +1364,9 @@ const Login = ({ onLogin }) => {
                 </div>
               </div>
 
-              <div className="w-full rounded-xl border border-white/80 bg-white/92 px-5 py-6 shadow-[0_28px_70px_rgba(116,118,187,0.12)] backdrop-blur-sm sm:px-7 sm:py-8 lg:px-10 lg:py-10">
+              <div className="w-full rounded-xl border border-[#e6eaf2] bg-white px-5 py-6 sm:px-7 sm:py-8 lg:px-10 lg:py-10">
                 <div className="mx-auto max-w-[640px]">
-                  <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-xl bg-[linear-gradient(180deg,rgba(111,75,255,0.22)_0%,rgba(102,63,255,0.08)_100%)] text-[#5f33ff] shadow-[0_20px_40px_rgba(106,77,255,0.14)]">
+                  <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-xl bg-[linear-gradient(180deg,rgba(111,75,255,0.22)_0%,rgba(102,63,255,0.08)_100%)] text-[#5f33ff]">
                     <HiOutlineLockClosed className="h-12 w-12" />
                   </div>
 
@@ -1453,7 +1484,7 @@ const Login = ({ onLogin }) => {
                     </button>
                   </div>
 
-                  <div className="mt-6 rounded-xl border border-[#ece6ff] bg-[linear-gradient(180deg,#ffffff_0%,#faf8ff_100%)] px-5 py-4 text-[15px] text-[#5d648d] shadow-[0_12px_24px_rgba(117,121,184,0.06)]">
+                  <div className="mt-6 rounded-xl border border-[#ece6ff] bg-white px-5 py-4 text-[15px] text-[#5d648d]">
                     Signing in as{" "}
                     <span className="font-semibold text-[#13193c]">
                       {form.email || "your account"}
