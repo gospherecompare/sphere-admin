@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, createRef } from "react";
+﻿import React, { useState, useEffect, useRef, createRef } from "react";
 import { useNavigate } from "react-router-dom";
 import Cookies from "js-cookie";
 import { buildUrl } from "../api";
@@ -666,6 +666,7 @@ const CreateMobile = () => {
   };
 
   const specEditorHiddenKeys = [
+    "score",
     "sphere_score",
     "sphere_description",
     "sphere_images",
@@ -1449,10 +1450,10 @@ const CreateMobile = () => {
             setIsOpen(!isOpen);
             setSearchValue("");
           }}
-          className={`w-full px-4 py-2.5 border-2 transition-all rounded-lg bg-white text-left flex items-center justify-between ${
+          className={`flex h-11 w-full items-center justify-between border bg-white px-3 text-left text-sm transition ${
             value
-              ? "border-blue-400 shadow-sm hover:shadow-md"
-              : "border-gray-300 hover:border-gray-400 hover:shadow-sm"
+              ? "border-[#345CFF]"
+              : "border-slate-200 hover:border-slate-300"
           }`}
         >
           <span
@@ -1470,17 +1471,17 @@ const CreateMobile = () => {
         </button>
 
         {isOpen && (
-          <div className="absolute z-50 mt-2 w-full bg-white border-2 border-blue-200 rounded-lg shadow-xl overflow-hidden">
+          <div className="absolute z-50 mt-2 w-full overflow-hidden border border-slate-200 bg-white">
             {/* Search input */}
             {showSearch && (
-              <div className="sticky top-0 bg-gradient-to-r from-blue-50 to-white p-3 border-b-2 border-blue-100">
+              <div className="sticky top-0 border-b border-slate-200 bg-white p-3">
                 <div className="relative">
-                  <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-blue-400 text-sm" />
+                  <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 text-sm" />
                   <input
                     type="text"
                     value={searchValue}
                     onChange={(e) => setSearchValue(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2.5 border-2 border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                    className="h-11 w-full border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-700 outline-none transition focus:border-[#345CFF] focus:ring-0"
                     placeholder={getSearchPlaceholder()}
                     autoFocus
                   />
@@ -1496,13 +1497,13 @@ const CreateMobile = () => {
                     key={option[valueKey]}
                     type="button"
                     onClick={() => onSelect(option)}
-                    className={`w-full text-left px-4 py-3 transition-colors flex items-center space-x-3 ${
+                    className={`flex w-full items-center space-x-3 border-b border-slate-200 px-2 py-3 text-left transition-colors last:border-b-0 sm:px-3 ${
                       option[valueKey] === value
-                        ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white font-medium shadow-md"
+                        ? "bg-[#F4F7FF] text-[#345CFF] font-medium"
                         : idx % 2 === 0
-                          ? "hover:bg-blue-50 text-gray-700"
-                          : "hover:bg-blue-100 text-gray-700"
-                    } ${idx !== filteredOptions.length - 1 ? "border-b border-gray-100" : ""}`}
+                          ? "hover:bg-slate-50 text-gray-700"
+                          : "hover:bg-slate-50 text-gray-700"
+                    }`}
                   >
                     <span className="flex-1 truncate text-sm">
                       {option[labelKey]}
@@ -1515,7 +1516,7 @@ const CreateMobile = () => {
                   </button>
                 ))
               ) : (
-                <div className="px-4 py-8 text-center text-gray-500 text-sm">
+                <div className="px-2 py-8 text-center text-gray-500 text-sm sm:px-3">
                   <p>No {type === "brand" ? "brands" : "categories"} found</p>
                   <p className="text-xs text-gray-400 mt-1">
                     Try different search term
@@ -1591,11 +1592,11 @@ const CreateMobile = () => {
         <button
           type="button"
           onClick={() => setShowDatePicker(!showDatePicker)}
-          className={`w-full px-4 py-2.5 border-2 transition-all rounded-lg bg-white text-left flex items-center justify-between ${
+          className={`flex h-11 w-full items-center justify-between border bg-white px-3 text-left text-sm transition ${
             formData.smartphone.launch_date
-              ? "border-blue-400 shadow-sm"
-              : "border-gray-300 hover:border-gray-400"
-          } hover:shadow-md`}
+              ? "border-[#345CFF]"
+              : "border-slate-200 hover:border-slate-300"
+          }`}
         >
           <div className="flex items-center space-x-3">
             <FaCalendar
@@ -1639,13 +1640,13 @@ const CreateMobile = () => {
         </button>
 
         {showDatePicker && (
-          <div className="absolute z-50 mt-2 w-96 bg-white border-2 border-blue-200 rounded-xl shadow-2xl p-5 backdrop-blur-sm bg-opacity-95">
+          <div className="absolute z-50 mt-2 w-full border border-slate-200 bg-white p-3 sm:w-96 sm:p-4">
             {/* Header */}
-            <div className="bg-gradient-to-r from-blue-600 to-blue-500 rounded-lg p-4 mb-4 text-white">
-              <h3 className="text-lg font-bold text-center">
+            <div className="mb-4 border border-slate-200 bg-slate-50 px-3 py-3 text-slate-900">
+              <h3 className="text-center text-lg font-bold">
                 {months[selectedDate.month]} {selectedDate.year}
               </h3>
-              <p className="text-center text-blue-100 text-sm mt-1">
+              <p className="mt-1 text-center text-sm text-slate-500">
                 {selectedDate.day
                   ? `${selectedDate.day} ${months[selectedDate.month]} ${selectedDate.year}`
                   : "Pick a date"}
@@ -1653,11 +1654,11 @@ const CreateMobile = () => {
             </div>
 
             {/* Month/Year Navigation */}
-            <div className="flex items-center justify-between mb-5 pb-4 border-b border-gray-200">
+            <div className="mb-5 flex items-center justify-between border-b border-slate-200 pb-4">
               <button
                 type="button"
                 onClick={handlePrevMonth}
-                className="p-2 hover:bg-blue-100 rounded-lg transition-colors text-gray-700 font-bold"
+                className="p-2 text-gray-700 transition-colors hover:bg-slate-100"
               >
                 <FaChevronDown className="transform rotate-90 text-lg" />
               </button>
@@ -1671,7 +1672,7 @@ const CreateMobile = () => {
                       month: parseInt(e.target.value),
                     }))
                   }
-                  className="px-3 py-1.5 border-2 border-gray-300 rounded-lg text-sm font-semibold focus:outline-none focus:border-blue-500 bg-white hover:border-blue-400 transition-colors"
+                  className="border border-slate-200 bg-white px-2 py-1.5 text-sm font-semibold focus:outline-none focus:border-[#345CFF]"
                 >
                   {months.map((month, idx) => (
                     <option key={month} value={idx}>
@@ -1688,7 +1689,7 @@ const CreateMobile = () => {
                       year: parseInt(e.target.value),
                     }))
                   }
-                  className="px-3 py-1.5 border-2 border-gray-300 rounded-lg text-sm font-semibold focus:outline-none focus:border-blue-500 bg-white hover:border-blue-400 transition-colors"
+                  className="border border-slate-200 bg-white px-2 py-1.5 text-sm font-semibold focus:outline-none focus:border-[#345CFF]"
                 >
                   {generateYears().map((year) => (
                     <option key={year} value={year}>
@@ -1701,7 +1702,7 @@ const CreateMobile = () => {
               <button
                 type="button"
                 onClick={handleNextMonth}
-                className="p-2 hover:bg-blue-100 rounded-lg transition-colors text-gray-700 font-bold"
+                className="p-2 text-gray-700 transition-colors hover:bg-slate-100"
               >
                 <FaChevronDown className="transform -rotate-90 text-lg" />
               </button>
@@ -1712,7 +1713,7 @@ const CreateMobile = () => {
               {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
                 <div
                   key={day}
-                  className="text-center text-xs font-bold text-gray-600 py-2 bg-gray-50 rounded-md"
+                  className="border border-slate-200 bg-slate-50 py-2 text-center text-xs font-bold text-gray-600"
                 >
                   {day}
                 </div>
@@ -1727,14 +1728,14 @@ const CreateMobile = () => {
                   type="button"
                   onClick={() => handleDaySelect(day)}
                   disabled={!day}
-                  className={`w-full aspect-square rounded-lg text-sm font-semibold transition-all transform ${
+                  className={`w-full aspect-square border text-sm font-semibold transition-all ${
                     !day
                       ? "text-transparent cursor-default"
                       : isToday(day)
-                        ? "bg-amber-100 text-amber-900 border-2 border-amber-400 shadow-md"
+                        ? "border-amber-300 bg-amber-50 text-amber-900"
                         : day === selectedDate.day
-                          ? "bg-blue-600 text-white shadow-lg scale-105"
-                          : "text-gray-700 bg-gray-50 hover:bg-blue-50 hover:border-2 hover:border-blue-300 hover:scale-105"
+                          ? "border-[#345CFF] bg-[#345CFF] text-white"
+                          : "border-slate-200 bg-white text-gray-700 hover:bg-slate-50 hover:border-slate-300"
                   } disabled:cursor-default`}
                 >
                   {day}
@@ -1743,11 +1744,11 @@ const CreateMobile = () => {
             </div>
 
             {/* Today & Action Buttons */}
-            <div className="flex justify-between items-center pt-3 border-t border-gray-200">
+            <div className="flex items-center justify-between border-t border-slate-200 pt-3">
               <button
                 type="button"
                 onClick={handleToday}
-                className="px-3 py-1.5 text-xs font-semibold text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors border border-blue-300"
+                className="border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-600 transition-colors hover:bg-blue-100"
               >
                 Today
               </button>
@@ -1755,14 +1756,14 @@ const CreateMobile = () => {
                 <button
                   type="button"
                   onClick={() => setShowDatePicker(false)}
-                  className="px-4 py-1.5 text-sm font-semibold border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="border border-slate-200 px-3 py-1.5 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
                   onClick={handleDateSelect}
-                  className="px-4 py-1.5 text-sm font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-md"
+                  className="border border-[#345CFF] bg-[#345CFF] px-3 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-[#274eef]"
                 >
                   Apply
                 </button>
@@ -1775,7 +1776,7 @@ const CreateMobile = () => {
   };
 
   return (
-    <div className="relative isolate overflow-hidden rounded-[32px] bg-[radial-gradient(circle_at_top_left,_rgba(34,211,238,0.08),_transparent_24%),radial-gradient(circle_at_top_right,_rgba(14,165,233,0.08),_transparent_22%),linear-gradient(180deg,_#f8fafc_0%,_#ffffff_42%,_#f8fafc_100%)] mx-auto w-full max-w-[1720px] min-h-full bg-white p-3 sm:p-4 md:p-6">
+    <div className="mx-auto w-full max-w-[1720px] min-h-full space-y-4 bg-white px-2 py-3 sm:px-3 md:px-4 [&_input:not([type='checkbox']):not([type='file']):not([type='color'])]:rounded-none [&_input:not([type='checkbox']):not([type='file']):not([type='color'])]:border-slate-200 [&_input:not([type='checkbox']):not([type='file']):not([type='color'])]:focus:ring-0 [&_select]:rounded-none [&_select]:border-slate-200 [&_select]:focus:ring-0 [&_textarea]:rounded-none [&_textarea]:border-slate-200 [&_textarea]:focus:ring-0">
       {/* Toast Container */}
       <div className="fixed top-4 right-4 z-50 space-y-2 max-w-xs">
         {toasts.map((toast) => (
@@ -1799,14 +1800,14 @@ const CreateMobile = () => {
           <div className="flex items-center gap-2 sm:gap-3">
             <button
               onClick={() => window.history.back()}
-              className="px-3 sm:px-4 py-2 border border-gray-300 text-gray-700 rounded-md font-medium text-xs sm:text-sm hover:bg-gray-50"
+              className="px-2 sm:px-3 py-2 border border-slate-200 bg-white text-gray-700 font-medium text-xs sm:text-sm hover:bg-gray-50"
             >
               Cancel
             </button>
             <button
               onClick={handleSubmit}
               disabled={isLoading}
-              className="px-3 sm:px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-medium text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 whitespace-nowrap"
+              className="px-2 sm:px-3 py-2 border border-[#345CFF] bg-[#345CFF] text-white font-medium text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 whitespace-nowrap hover:bg-[#274eef]"
             >
               {isLoading ? (
                 <FaSpinner className="animate-spin text-sm" />
@@ -1822,15 +1823,15 @@ const CreateMobile = () => {
         </div>
       </div>
 
-      <div className="space-y-3 sm:space-y-4">
+      <div className="min-w-0 space-y-3 sm:space-y-4">
         {/* Basic Information Section */}
-        <div className="bg-white rounded-lg shadow-md">
+        <div className="border border-slate-200 bg-white">
           <button
             onClick={() => toggleSection("basic")}
-            className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border-b border-gray-200 flex items-center justify-between hover:bg-gray-50 transition-colors"
+            className="w-full px-2 sm:px-3 py-2.5 sm:py-3 border-b border-slate-200 flex items-center justify-between hover:bg-gray-50 transition-colors"
           >
             <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-              <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+              <div className="flex h-8 w-8 items-center justify-center border border-blue-200 bg-blue-50 flex-shrink-0">
                 <FaMobile className="text-blue-600 text-sm" />
               </div>
               <div className="text-left min-w-0">
@@ -1850,7 +1851,7 @@ const CreateMobile = () => {
           </button>
 
           {expandedSections.basic && (
-            <div className="p-3 sm:p-4 space-y-3 sm:space-y-4">
+            <div className="px-2 py-3 sm:px-3 sm:py-4 space-y-3 sm:space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
@@ -1973,13 +1974,13 @@ const CreateMobile = () => {
         </div>
 
         {/* Images Section */}
-        <div className="bg-white rounded-lg shadow-md">
+        <div className="border border-slate-200 bg-white">
           <button
             onClick={() => toggleSection("images")}
-            className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border-b border-gray-200 flex items-center justify-between hover:bg-gray-50 transition-colors"
+            className="w-full px-2 sm:px-3 py-2.5 sm:py-3 border-b border-slate-200 flex items-center justify-between hover:bg-gray-50 transition-colors"
           >
             <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-              <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
+              <div className="flex h-8 w-8 items-center justify-center border border-purple-200 bg-purple-50 flex-shrink-0">
                 <FaCamera className="text-purple-600 text-sm" />
               </div>
               <div className="text-left min-w-0">
@@ -1999,7 +2000,7 @@ const CreateMobile = () => {
           </button>
 
           {expandedSections.images && (
-            <div className="p-3 sm:p-4">
+            <div className="px-2 py-3 sm:px-3 sm:py-4">
               {formData.images.length > 0 && (
                 <div className="mb-4">
                   <div className="flex flex-wrap gap-2">
@@ -2037,7 +2038,7 @@ const CreateMobile = () => {
                   }}
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                 />
-                <div className="border-2 border-dashed border-gray-300 rounded-md p-4 text-center hover:border-blue-400 transition-colors">
+                <div className="border-2 border-dashed border-gray-300 px-2 py-4 text-center transition-colors hover:border-blue-400 sm:px-3">
                   <FaCamera className="text-gray-400 text-lg sm:text-xl mx-auto mb-2" />
                   <p className="text-xs sm:text-sm text-gray-600">
                     {isLoading ? "Uploading..." : "Click to upload images"}
@@ -2052,13 +2053,13 @@ const CreateMobile = () => {
         </div>
 
         {/* Colors Section with name and color picker */}
-        <div className="bg-white  shadow-md">
+        <div className="border border-slate-200 bg-white">
           <button
             onClick={() => toggleSection("colors")}
-            className="w-full px-4 py-3 border-b border-gray-200 flex items-center justify-between hover:bg-gray-50"
+            className="w-full px-2 sm:px-3 py-3 border-b border-slate-200 flex items-center justify-between hover:bg-gray-50"
           >
             <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-pink-100 rounded-lg flex items-center justify-center">
+              <div className="flex h-8 w-8 items-center justify-center border border-pink-200 bg-pink-50">
                 <FaPalette className="text-pink-600" />
               </div>
               <div className="text-left">
@@ -2072,7 +2073,7 @@ const CreateMobile = () => {
           </button>
 
           {expandedSections.colors && (
-            <div className="p-4 space-y-3">
+            <div className="px-2 py-3 sm:px-3 sm:py-4 space-y-3">
               <button
                 onClick={addColor}
                 className="flex items-center gap-2 text-blue-600 hover:text-blue-700"
@@ -2084,7 +2085,7 @@ const CreateMobile = () => {
               {formData.smartphone.colors.map((color, index) => (
                 <div
                   key={index}
-                  className="p-3 bg-gray-50 rounded-md space-y-3"
+                  className="border border-slate-200 bg-slate-50 px-2 py-3 space-y-3 sm:px-3"
                 >
                   <div className="flex items-center justify-between">
                     <h4 className="text-sm font-medium text-gray-700">
@@ -2172,13 +2173,13 @@ const CreateMobile = () => {
         </div>
 
         {/* Variants Section with updated store fields */}
-        <div className="bg-white shadow-md">
+        <div className="border border-slate-200 bg-white">
           <button
             onClick={() => toggleSection("variants")}
-            className="w-full px-4 py-3 border-b border-gray-200 flex items-center justify-between hover:bg-gray-50"
+            className="w-full px-2 sm:px-3 py-3 border-b border-slate-200 flex items-center justify-between hover:bg-gray-50"
           >
             <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+              <div className="flex h-8 w-8 items-center justify-center border border-green-200 bg-green-50">
                 <FaBoxOpen className="text-green-600" />
               </div>
               <div className="text-left">
@@ -2194,7 +2195,7 @@ const CreateMobile = () => {
           </button>
 
           {expandedSections.variants && (
-            <div className="p-4 space-y-4">
+            <div className="px-2 py-3 sm:px-3 sm:py-4 space-y-4">
               <button
                 onClick={addVariant}
                 className="flex items-center gap-2 text-blue-600 hover:text-blue-700"
@@ -2206,7 +2207,7 @@ const CreateMobile = () => {
               {formData.variants.map((variant, index) => (
                 <div
                   key={index}
-                  className="p-4 border border-gray-200 rounded-md"
+                  className="border border-slate-200 px-2 py-3 sm:px-3 sm:py-4"
                 >
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="font-medium text-gray-800">
@@ -2379,7 +2380,7 @@ const CreateMobile = () => {
                     {variant.stores.map((store, storeIndex) => (
                       <div
                         key={storeIndex}
-                        className="p-3 bg-gray-50 rounded-md mb-3"
+                        className="mb-3 border border-slate-200 bg-slate-50 px-2 py-3 sm:px-3"
                       >
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
                           <div>
@@ -2603,13 +2604,13 @@ const CreateMobile = () => {
         </div>
 
         {/* Specifications Section with updated connectivity fields */}
-        <div className="bg-white shadow-md">
+        <div className="border border-slate-200 bg-white">
           <button
             onClick={() => toggleSection("specs")}
-            className="w-full px-4 py-3 border-b border-gray-200 flex items-center justify-between hover:bg-gray-50"
+            className="w-full px-2 sm:px-3 py-3 border-b border-slate-200 flex items-center justify-between hover:bg-gray-50"
           >
             <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
+              <div className="flex h-8 w-8 items-center justify-center border border-orange-200 bg-orange-50">
                 <FaMicrochip className="text-orange-600" />
               </div>
               <div className="text-left">
@@ -2625,24 +2626,24 @@ const CreateMobile = () => {
           </button>
 
           {expandedSections.specs && (
-            <div className="p-4">
+            <div className="px-2 py-3 sm:px-3 sm:py-4">
               {/* Specification Tabs */}
               <div className="mb-4">
-                <div className="flex overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                <div className="grid grid-cols-2 gap-2 sm:flex sm:overflow-x-auto sm:pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                   {specTabs.map((tab) => {
                     const Icon = tab.icon;
                     return (
                       <button
                         key={tab.id}
                         onClick={() => setActiveSpecTab(tab.id)}
-                        className={`flex-shrink-0 flex items-center space-x-2 px-3 py-2 rounded text-sm font-medium mx-1 ${
+                        className={`flex min-w-0 items-center justify-center space-x-2 border px-3 py-2 text-xs font-medium sm:mx-1 sm:flex-shrink-0 sm:justify-start sm:text-sm ${
                           activeSpecTab === tab.id
-                            ? "bg-blue-600 text-white"
-                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                            ? "border-[#345CFF] bg-[#345CFF] text-white"
+                            : "border-slate-200 bg-white text-gray-700 hover:bg-slate-50"
                         }`}
                       >
-                        <Icon className="text-sm" />
-                        <span>{tab.label}</span>
+                        <Icon className="text-xs sm:text-sm" />
+                        <span className="truncate">{tab.label}</span>
                       </button>
                     );
                   })}
@@ -2700,7 +2701,7 @@ const CreateMobile = () => {
                   </label>
                 </div>
                 {activeSpecTab === "connectivity" && (
-                  <div className="mb-3 p-3 bg-blue-50 rounded-md border border-blue-100">
+                  <div className="mb-3 border border-blue-200 bg-blue-50 px-2 py-3 sm:px-3">
                     <div className="flex items-center space-x-2">
                       <FaSimCard className="text-blue-500" />
                       <span className="text-sm text-blue-700">
@@ -2761,126 +2762,19 @@ const CreateMobile = () => {
                   />
                 )}
 
-                {/* Sphere rating inputs for active spec tab */}
-                {isUpcomingDevice ? (
-                  <div className="mt-6 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
-                    Spec score is disabled for upcoming devices (status:{" "}
-                    {formatLaunchStatusLabel(effectiveLaunchStatus)}). Add
-                    scores after launch or pre-order.
-                  </div>
-                ) : (
-                  <div className="mt-6">
-                    <h4 className="text-sm font-semibold mb-3">Sphere Rating</h4>
-
-                    <div className="mb-3">
-                      <label className="block text-xs font-medium text-gray-600 mb-1">
-                        Score (0-100)
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        max="100"
-                        step="1"
-                        placeholder="0-100"
-                        title="Enter a score between 0 and 100"
-                        aria-label="Sphere score (0 to 100)"
-                        value={
-                          formData.smartphone[activeSpecTab]?.sphere_score ?? ""
-                        }
-                        onChange={(e) =>
-                          handleJsonbChange(
-                            activeSpecTab,
-                            "sphere_score",
-                            e.target.value === "" ? "" : Number(e.target.value),
-                          )
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
-                      />
-                    </div>
-
-                    <div className="mb-3">
-                      <label className="block text-xs font-medium text-gray-600 mb-1">
-                        Description
-                      </label>
-                      <textarea
-                        value={
-                          formData.smartphone[activeSpecTab]
-                            ?.sphere_description || ""
-                        }
-                        onChange={(e) =>
-                          handleJsonbChange(
-                            activeSpecTab,
-                            "sphere_description",
-                            e.target.value,
-                          )
-                        }
-                        placeholder="Write a short summary for this section (optional)"
-                        className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm h-20"
-                      />
-                    </div>
-
-                    <div className="mb-3">
-                      <label className="block text-xs font-medium text-gray-600 mb-1">
-                        Images
-                      </label>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        multiple
-                        title="Upload sphere rating images"
-                        aria-label="Upload sphere rating images"
-                        onChange={(e) =>
-                          handleSphereImagesUpload(activeSpecTab, e.target.files)
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
-                      />
-                      <p className="text-xs text-gray-500 mt-1">
-                        Upload 1+ images for this section (optional).
-                      </p>
-
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {(
-                          formData.smartphone[activeSpecTab]?.sphere_images || []
-                        ).map((url, idx) => (
-                          <div key={idx} className="relative w-20 h-20">
-                            <img
-                              src={url}
-                              alt={`sphere-${idx}`}
-                              className="w-20 h-20 object-cover rounded"
-                              onError={(e) => {
-                                e.target.onerror = null;
-                                e.target.src =
-                                  "https://via.placeholder.com/80?text=Image";
-                              }}
-                            />
-                            <button
-                              type="button"
-                              onClick={() =>
-                                removeSphereImage(activeSpecTab, idx)
-                              }
-                              className="absolute top-0 right-0 bg-white rounded-full p-1 text-red-500 border"
-                            >
-                              <FaTimes className="text-xs" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
           )}
         </div>
 
         {/* Sensors Section */}
-        <div className="bg-white  shadow-md">
+        <div className="border border-slate-200 bg-white">
           <button
             onClick={() => toggleSection("sensors")}
-            className="w-full px-4 py-3 border-b border-gray-200 flex items-center justify-between hover:bg-gray-50"
+            className="w-full px-2 sm:px-3 py-3 border-b border-slate-200 flex items-center justify-between hover:bg-gray-50"
           >
             <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
+              <div className="flex h-8 w-8 items-center justify-center border border-red-200 bg-red-50">
                 <FaMicrochip className="text-red-600" />
               </div>
               <div className="text-left">
@@ -2892,7 +2786,7 @@ const CreateMobile = () => {
           </button>
 
           {expandedSections.sensors && (
-            <div className="p-4">
+            <div className="px-2 py-3 sm:px-3 sm:py-4">
               <textarea
                 name="sensors"
                 value={formData.smartphone.sensors}
@@ -2909,13 +2803,15 @@ const CreateMobile = () => {
         </div>
 
         {/* Publish Toggle */}
-        <div className="bg-white  shadow-md">
-          <div className="p-4">
+        <div className="border border-slate-200 bg-white">
+          <div className="px-2 py-3 sm:px-3 sm:py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
                 <div
-                  className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                    publishEnabled ? "bg-green-100" : "bg-gray-100"
+                  className={`flex h-8 w-8 items-center justify-center border ${
+                    publishEnabled
+                      ? "border-green-200 bg-green-50"
+                      : "border-slate-200 bg-slate-50"
                   }`}
                 >
                   <FaStar
@@ -2938,10 +2834,10 @@ const CreateMobile = () => {
 
               <button
                 onClick={() => setPublishEnabled(!publishEnabled)}
-                className={`px-4 py-2 rounded-md font-medium ${
+                className={`px-3 py-2 border font-medium ${
                   publishEnabled
-                    ? "bg-green-600 hover:bg-green-700 text-white"
-                    : "bg-gray-200 hover:bg-gray-300 text-gray-800"
+                    ? "border-green-600 bg-green-600 text-white hover:bg-green-700"
+                    : "border-slate-200 bg-slate-100 text-gray-800 hover:bg-slate-200"
                 }`}
               >
                 {publishEnabled ? "Published" : "Draft"}
@@ -2955,7 +2851,7 @@ const CreateMobile = () => {
           <button
             onClick={handleSubmit}
             disabled={isLoading}
-            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-md font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="flex-1 border border-[#345CFF] bg-[#345CFF] px-6 py-3 text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 hover:bg-[#274eef]"
           >
             {isLoading ? (
               <>
@@ -2973,7 +2869,7 @@ const CreateMobile = () => {
           <button
             onClick={handlePreview}
             disabled={isLoading}
-            className="flex-1 border border-violet-300 text-violet-700 hover:bg-violet-50 px-6 py-3 rounded-md font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="flex-1 border border-violet-300 text-violet-700 hover:bg-violet-50 px-6 py-3 font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             <FaEye />
             <span>Preview</span>
@@ -2981,7 +2877,7 @@ const CreateMobile = () => {
 
           <button
             onClick={() => window.history.back()}
-            className="px-6 py-3 border border-gray-300 text-gray-700 rounded-md font-medium hover:bg-gray-50"
+            className="px-6 py-3 border border-slate-200 bg-white text-gray-700 font-medium hover:bg-gray-50"
           >
             Cancel
           </button>

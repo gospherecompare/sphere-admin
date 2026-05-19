@@ -1,5 +1,10 @@
 import React, { useMemo, useState } from "react";
 import { FaChevronDown, FaChevronRight, FaPlus, FaTrash } from "react-icons/fa";
+import {
+  editorFieldClassName,
+  editorTextareaClassName,
+  editorGhostButtonClassName,
+} from "./MobileEditorUi";
 
 const isPlainObject = (value) =>
   value !== null && typeof value === "object" && !Array.isArray(value);
@@ -104,21 +109,50 @@ const isPrimitiveValue = (value) => {
   return t === "string" || t === "number" || t === "boolean" || t === "null";
 };
 
-const PrimitiveEditor = ({ value, onChange, placeholder }) => {
+const MULTILINE_FIELD_PATTERN =
+  /(description|summary|details|notes|overview|highlights|content|body|pros|cons|story)/i;
+
+const getTypeBadgeLabel = (value) => {
+  const type = inferType(value);
+  if (type === "null") return "Empty";
+  if (type === "boolean") return "Toggle";
+  if (type === "number") return "Number";
+  if (type === "array") return "List";
+  if (type === "object") return "Group";
+  return "Text";
+};
+
+const getNestedSummary = (value) => {
+  if (Array.isArray(value)) {
+    return `${value.length} item${value.length === 1 ? "" : "s"}`;
+  }
+  if (isPlainObject(value)) {
+    const count = Object.keys(value).length;
+    return `${count} field${count === 1 ? "" : "s"}`;
+  }
+  return "";
+};
+
+const PrimitiveEditor = ({ value, onChange, placeholder, multiline = false }) => {
   const type = inferType(value);
 
   if (type === "boolean") {
     return (
-      <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+      <label className="flex min-h-[44px] items-center justify-between gap-3 border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] px-3 py-2">
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-slate-700">
+            {value ? "Enabled" : "Disabled"}
+          </p>
+          <p className="text-xs text-slate-400">Toggle between true and false</p>
+        </div>
         <input
           type="checkbox"
           checked={!!value}
           onChange={(e) => onChange(!!e.target.checked)}
           title="Toggle true/false"
           aria-label="Toggle true/false"
-          className="h-4 w-4"
+          className="h-4 w-4 rounded-none border-slate-300 text-[#345CFF] focus:ring-[#345CFF]"
         />
-        <span>{value ? "True" : "False"}</span>
       </label>
     );
   }
@@ -140,7 +174,19 @@ const PrimitiveEditor = ({ value, onChange, placeholder }) => {
         placeholder={placeholder}
         title={placeholder || "Enter a number"}
         aria-label={placeholder || "Enter a number"}
-        className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+        className={editorFieldClassName}
+      />
+    );
+  }
+
+  if (multiline) {
+    return (
+      <textarea
+        rows={4}
+        value={value === null || value === undefined ? "" : String(value)}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className={`${editorTextareaClassName} min-h-[120px] resize-y`}
       />
     );
   }
@@ -151,7 +197,7 @@ const PrimitiveEditor = ({ value, onChange, placeholder }) => {
       value={value === null || value === undefined ? "" : String(value)}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+      className={editorFieldClassName}
     />
   );
 };
@@ -179,63 +225,87 @@ const KeyRow = ({
   const label = getLabel(name);
   const help = getHelp(name);
   const placeholder = getPlaceholder(name);
+  const typeBadge = getTypeBadgeLabel(value);
+  const nestedSummary = getNestedSummary(value);
+  const multiline = MULTILINE_FIELD_PATTERN.test(name);
   const arrayItemPlaceholderForKey =
     arrayItemPlaceholder ||
     (arrayItemPlaceholderOverrides ? arrayItemPlaceholderOverrides[name] : "");
 
   if (!nested) {
     return (
-      <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
-        <div className="flex items-start justify-between gap-2 mb-2">
-          <div>
-            <label className="block text-xs font-semibold text-gray-700">
-              {label}
-            </label>
+      <div className="border border-slate-200 bg-white">
+        <div className="flex items-start justify-between gap-3 border-b border-slate-200 px-2 py-2.5 sm:px-3">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="block text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
+                {label}
+              </label>
+              <span className="inline-flex items-center border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">
+                {typeBadge}
+              </span>
+            </div>
             {help ? (
-              <p className="text-[11px] text-gray-500 mt-1">{help}</p>
+              <p className="mt-1 text-[11px] leading-5 text-slate-500">{help}</p>
             ) : null}
           </div>
           <button
             type="button"
             onClick={onRemove}
-            className="p-1 text-red-600 hover:text-red-700"
+            className="inline-flex h-8 w-8 flex-shrink-0 items-center justify-center border border-slate-200 text-rose-600 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"
             title="Remove field"
           >
             <FaTrash className="text-xs" />
           </button>
         </div>
-        <PrimitiveEditor
-          value={value}
-          onChange={onChange}
-          placeholder={placeholder || `Enter ${label}`}
-        />
+        <div className="px-2 py-3 sm:px-3">
+          <PrimitiveEditor
+            value={value}
+            onChange={onChange}
+            placeholder={placeholder || `Enter ${label}`}
+            multiline={multiline}
+          />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="border border-gray-200 rounded-lg overflow-hidden bg-white">
-      <div className="flex items-center justify-between gap-2 px-3 py-2 bg-gray-100">
+    <div className="overflow-hidden border border-slate-200 bg-white">
+      <div className="flex items-start justify-between gap-3 border-b border-slate-200 px-2 py-2.5 sm:px-3">
         <button
           type="button"
           onClick={() => setExpanded((p) => !p)}
-          className="flex items-center gap-2 text-left min-w-0"
+          className="flex min-w-0 items-start gap-2 text-left"
           title={expanded ? "Collapse" : "Expand"}
         >
           {expanded ? (
-            <FaChevronDown className="text-xs text-gray-500 flex-shrink-0" />
+            <FaChevronDown className="mt-0.5 flex-shrink-0 text-xs text-slate-500" />
           ) : (
-            <FaChevronRight className="text-xs text-gray-500 flex-shrink-0" />
+            <FaChevronRight className="mt-0.5 flex-shrink-0 text-xs text-slate-500" />
           )}
-          <span className="text-sm font-semibold text-gray-700 truncate">
-            {label}
-          </span>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="truncate text-sm font-semibold text-slate-800">
+                {label}
+              </span>
+              <span className="inline-flex items-center border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">
+                {typeBadge}
+              </span>
+              <span className="text-[11px] font-medium text-slate-400">
+                {nestedSummary}
+              </span>
+            </div>
+            {help ? (
+              <p className="mt-1 text-[11px] leading-5 text-slate-500">{help}</p>
+            ) : null}
+          </div>
         </button>
 
         <button
           type="button"
           onClick={onRemove}
-          className="p-1 text-red-600 hover:text-red-700 flex-shrink-0"
+          className="inline-flex h-8 w-8 flex-shrink-0 items-center justify-center border border-slate-200 text-rose-600 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"
           title="Remove field"
         >
           <FaTrash className="text-xs" />
@@ -243,10 +313,7 @@ const KeyRow = ({
       </div>
 
       {expanded && (
-        <div className="p-3">
-          {help ? (
-            <p className="text-xs text-gray-500 mb-3">{help}</p>
-          ) : null}
+        <div className="px-2 py-3 sm:px-3">
           <DynamicForm
             data={value}
             onChange={onChange}
@@ -313,14 +380,16 @@ const ObjectEditor = ({
   const gridMode = level <= 2;
 
   return (
-    <div className={level > 0 ? "ml-2 pl-3 border-l-2 border-gray-200" : ""}>
+    <div className={`${level > 0 ? "border-l border-slate-200 pl-2 sm:pl-3" : ""} space-y-3`}>
       {keys.length === 0 ? (
-        <div className="text-xs text-gray-500 italic mb-3">No fields yet</div>
+        <div className="border border-dashed border-slate-300 bg-slate-50 px-2 py-4 text-xs italic text-slate-500 sm:px-3">
+          No fields yet. Add one below.
+        </div>
       ) : (
         <div
           className={
             gridMode
-              ? "grid grid-cols-1 md:grid-cols-2 gap-3"
+              ? "grid grid-cols-1 gap-3 md:grid-cols-2"
               : "space-y-3"
           }
         >
@@ -354,36 +423,46 @@ const ObjectEditor = ({
         </div>
       )}
 
-      <div className="border border-dashed border-gray-300 rounded-md p-3 bg-white">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-          <input
-            type="text"
-            value={newKey}
-            onChange={(e) => setNewKey(e.target.value)}
-            placeholder="New field name"
-            className="sm:col-span-2 px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-          />
-          <select
-            value={newType}
-            onChange={(e) => setNewType(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-          >
-            <option value="string">String</option>
-            <option value="number">Number</option>
-            <option value="boolean">Boolean</option>
-            <option value="object">Object</option>
-            <option value="array">Array</option>
-            <option value="null">Null</option>
-          </select>
+      <div className="border border-dashed border-slate-300 bg-slate-50">
+        <div className="border-b border-slate-200 px-2 py-2 sm:px-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
+            Add Custom Field
+          </p>
+          <p className="mt-1 text-[11px] leading-5 text-slate-400">
+            Extend this section with a new key, value type, and content.
+          </p>
         </div>
-        <button
-          type="button"
-          onClick={addField}
-          className="mt-2 inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 text-sm font-medium"
-        >
-          <FaPlus className="text-xs" />
-          <span>Add Field</span>
-        </button>
+        <div className="px-2 py-3 sm:px-3">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+            <input
+              type="text"
+              value={newKey}
+              onChange={(e) => setNewKey(e.target.value)}
+              placeholder="New field name"
+              className={`sm:col-span-2 ${editorFieldClassName}`}
+            />
+            <select
+              value={newType}
+              onChange={(e) => setNewType(e.target.value)}
+              className={editorFieldClassName}
+            >
+              <option value="string">String</option>
+              <option value="number">Number</option>
+              <option value="boolean">Boolean</option>
+              <option value="object">Object</option>
+              <option value="array">Array</option>
+              <option value="null">Null</option>
+            </select>
+          </div>
+          <button
+            type="button"
+            onClick={addField}
+            className={`${editorGhostButtonClassName} mt-2 w-full sm:w-auto`}
+          >
+            <FaPlus className="text-xs" />
+            <span>Add Field</span>
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -425,31 +504,40 @@ const ArrayEditor = ({
   };
 
   return (
-    <div
-      className={
-        level > 0 ? "ml-2 pl-3 border-l-2 border-gray-200" : ""
-      }
-    >
-        <div className="flex items-center justify-between gap-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-md">
+    <div className={`${level > 0 ? "border-l border-slate-200 pl-2 sm:pl-3" : ""} space-y-3`}>
+      <div className="flex items-start justify-between gap-3 border border-slate-200 bg-slate-50 px-2 py-2.5 sm:px-3">
         <button
           type="button"
           onClick={() => setExpanded((p) => !p)}
-          className="flex items-center gap-2 text-left"
+          className="flex min-w-0 items-start gap-2 text-left"
         >
           {expanded ? (
-            <FaChevronDown className="text-xs text-blue-700" />
+            <FaChevronDown className="mt-0.5 text-xs text-slate-500" />
           ) : (
-            <FaChevronRight className="text-xs text-blue-700" />
+            <FaChevronRight className="mt-0.5 text-xs text-slate-500" />
           )}
-          <span className="text-sm font-semibold text-blue-900">
-            Items ({Array.isArray(data) ? data.length : 0})
-          </span>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm font-semibold text-slate-800">Items</span>
+              <span className="inline-flex items-center border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">
+                {Array.isArray(data) ? data.length : 0}
+              </span>
+              {inferredType ? (
+                <span className="text-[11px] font-medium text-slate-400">
+                  {formatLabel(inferredType)}
+                </span>
+              ) : null}
+            </div>
+            <p className="mt-1 text-[11px] leading-5 text-slate-500">
+              Manage ordered values for this list.
+            </p>
+          </div>
         </button>
 
         <button
           type="button"
           onClick={addItem}
-          className="inline-flex items-center gap-2 text-blue-700 hover:text-blue-800 text-sm font-medium"
+          className="inline-flex h-8 flex-shrink-0 items-center gap-2 border border-slate-200 bg-white px-2 text-xs font-semibold uppercase tracking-[0.08em] text-[#345CFF] transition hover:border-[#345CFF] hover:bg-[#F4F7FF]"
         >
           <FaPlus className="text-xs" />
           <span>Add Item</span>
@@ -457,17 +545,25 @@ const ArrayEditor = ({
       </div>
 
       {expanded && (
-        <div className="mt-2 space-y-2">
+        <div className="space-y-3">
           {Array.isArray(data) && data.length === 0 && (
-            <div className="border border-dashed border-gray-300 rounded-md p-3 bg-white">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-center">
-                <span className="text-xs text-gray-600 sm:col-span-2">
+            <div className="border border-dashed border-slate-300 bg-slate-50">
+              <div className="border-b border-slate-200 px-2 py-2 sm:px-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
+                  New Item Type
+                </p>
+                <p className="mt-1 text-[11px] leading-5 text-slate-400">
+                  Choose the structure for the first item in this list.
+                </p>
+              </div>
+              <div className="grid grid-cols-1 items-center gap-2 px-2 py-3 sm:grid-cols-3 sm:px-3">
+                <span className="text-xs text-slate-600 sm:col-span-2">
                   Choose the type for new items:
                 </span>
                 <select
                   value={newType}
                   onChange={(e) => setNewType(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  className={editorFieldClassName}
                 >
                   <option value="string">String</option>
                   <option value="number">Number</option>
@@ -486,41 +582,49 @@ const ArrayEditor = ({
               return (
                 <div
                   key={`item-${index}`}
-                  className="border border-gray-200 rounded-md p-3 bg-white"
+                  className="border border-slate-200 bg-white"
                 >
-                  <div className="flex items-center justify-between gap-2 mb-2">
-                    <span className="text-xs font-semibold text-gray-700">
-                      Item {index + 1}
-                    </span>
+                  <div className="flex items-start justify-between gap-3 border-b border-slate-200 px-2 py-2.5 sm:px-3">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
+                          Item {index + 1}
+                        </span>
+                        <span className="inline-flex items-center border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">
+                          {getTypeBadgeLabel(item)}
+                        </span>
+                      </div>
+                    </div>
                     <button
                       type="button"
                       onClick={() => removeItem(index)}
-                      className="p-1 text-red-600 hover:text-red-700"
+                      className="inline-flex h-8 w-8 flex-shrink-0 items-center justify-center border border-slate-200 text-rose-600 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"
                       title="Remove item"
                     >
                       <FaTrash className="text-xs" />
                     </button>
                   </div>
-
-                  {primitive ? (
-                    <PrimitiveEditor
-                      value={item}
-                      onChange={(v) => updateItem(index, v)}
-                      placeholder={arrayItemPlaceholder || "Enter value"}
-                    />
-                  ) : (
-                    <DynamicForm
-                      data={item}
-                      onChange={(v) => updateItem(index, v)}
-                      level={level + 1}
-                      hiddenKeys={hiddenKeys}
-                      labelOverrides={labelOverrides}
-                      helpText={helpText}
-                      placeholderOverrides={placeholderOverrides}
-                      arrayItemPlaceholderOverrides={arrayItemPlaceholderOverrides}
-                      arrayItemPlaceholder={arrayItemPlaceholder}
-                    />
-                  )}
+                  <div className="px-2 py-3 sm:px-3">
+                    {primitive ? (
+                      <PrimitiveEditor
+                        value={item}
+                        onChange={(v) => updateItem(index, v)}
+                        placeholder={arrayItemPlaceholder || "Enter value"}
+                      />
+                    ) : (
+                      <DynamicForm
+                        data={item}
+                        onChange={(v) => updateItem(index, v)}
+                        level={level + 1}
+                        hiddenKeys={hiddenKeys}
+                        labelOverrides={labelOverrides}
+                        helpText={helpText}
+                        placeholderOverrides={placeholderOverrides}
+                        arrayItemPlaceholderOverrides={arrayItemPlaceholderOverrides}
+                        arrayItemPlaceholder={arrayItemPlaceholder}
+                      />
+                    )}
+                  </div>
                 </div>
               );
             })}

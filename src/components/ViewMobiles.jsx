@@ -120,9 +120,9 @@ const getStatusLabel = (mobile) => {
 
 const getStatusClasses = (mobile) => {
   const status = getStatusValue(mobile);
-  if (status === "published") return "bg-emerald-50 text-emerald-700";
-  if (status === "upcoming") return "bg-indigo-50 text-indigo-700";
-  return "bg-orange-50 text-orange-700";
+  if (status === "published") return "border border-emerald-200 bg-emerald-50 text-emerald-700";
+  if (status === "upcoming") return "border border-indigo-200 bg-indigo-50 text-indigo-700";
+  return "border border-orange-200 bg-orange-50 text-orange-700";
 };
 
 const slugify = (value) =>
@@ -340,23 +340,41 @@ const resolveTrendDirection = (mobile) => {
   return value >= 0 ? "up" : "down";
 };
 
+const flatFieldClassName =
+  "h-11 w-full border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-[#345CFF] focus:ring-0";
+
+const secondaryButtonClassName =
+  "inline-flex h-11 items-center justify-center gap-2 border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50";
+
+const primaryButtonClassName =
+  "inline-flex h-11 items-center justify-center gap-2 border border-[#345CFF] bg-[#345CFF] px-4 text-sm font-semibold text-white transition hover:bg-[#274eef]";
+
+const rowActionButtonClassName =
+  "flex h-9 w-9 items-center justify-center border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 hover:text-slate-900";
+
+const mobileActionButtonClassName =
+  "inline-flex h-10 items-center justify-center gap-2 bg-white px-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50";
+
 const StatCard = ({ icon, iconClassName, label, value, delta, deltaTone = "up" }) => {
   const Icon = icon;
   const deltaClassName = deltaTone === "down" ? "text-rose-600" : "text-emerald-600";
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white px-6 py-5 shadow-[0_16px_35px_rgba(15,23,42,0.04)]">
+    <div className="bg-white px-4 py-4 sm:px-5">
       <div className="flex items-start gap-4">
-        <div className={`flex h-12 w-12 items-center justify-center rounded-full ${iconClassName}`}>
+        <div className={`flex h-12 w-12 items-center justify-center border border-current/10 ${iconClassName}`}>
           <Icon className="text-lg" />
         </div>
         <div className="min-w-0">
           <p className="text-sm font-medium text-slate-500">{label}</p>
-          <div className="mt-2 text-[2rem] font-bold tracking-tight text-slate-950">
+          <div className="mt-2 text-[1.9rem] font-bold tracking-tight text-slate-950">
             {typeof value === "number" ? <CountUp end={value} duration={1} /> : value}
           </div>
           <p className="mt-1 text-xs text-slate-500">
-            <span className={`font-semibold ${deltaClassName}`}>{delta}</span> vs last 7 days
+            <span className={`font-semibold ${deltaClassName}`}>
+              {deltaTone === "down" ? "\u2193" : "\u2191"} {delta}
+            </span>{" "}
+            vs last 7 days
           </p>
         </div>
       </div>
@@ -368,7 +386,7 @@ const SelectField = ({ value, onChange, children, className = "" }) => (
   <select
     value={value}
     onChange={onChange}
-    className={`h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-700 outline-none transition focus:border-[#5A49FF] focus:ring-4 focus:ring-[#5A49FF]/10 ${className}`}
+    className={`${flatFieldClassName} ${className}`}
   >
     {children}
   </select>
@@ -379,7 +397,7 @@ const Toasts = ({ toasts, onDismiss }) => (
     {toasts.map((toast) => (
       <div
         key={toast.id}
-        className={`flex items-start gap-3 rounded-xl border px-4 py-3 shadow-[0_18px_40px_rgba(15,23,42,0.12)] ${
+        className={`flex items-start gap-3 border px-4 py-3 ${
           toast.type === "success"
             ? "border-emerald-200 bg-emerald-50"
             : toast.type === "error"
@@ -405,6 +423,22 @@ const Toasts = ({ toasts, onDismiss }) => (
         </button>
       </div>
     ))}
+  </div>
+);
+
+const MobileInfoRow = ({ label, value, valueClassName = "" }) => (
+  <div className="flex items-start justify-between gap-3 border-b border-slate-200 py-2 last:border-b-0">
+    <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{label}</p>
+    <div className={`text-right text-sm font-medium text-slate-700 ${valueClassName}`}>{value}</div>
+  </div>
+);
+
+const MobileInlineScore = ({ label, value, className }) => (
+  <div className="min-w-[calc(50%-0.25rem)] flex-1 border border-slate-200 bg-white px-2 py-2">
+    <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{label}</p>
+    <span className={`mt-2 inline-flex min-w-[2.5rem] items-center justify-center border px-2 py-1 text-sm font-semibold ${className}`}>
+      {value}
+    </span>
   </div>
 );
 
@@ -1163,7 +1197,7 @@ const ViewMobiles = ({
   }, [currentPage, totalPages]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <Toasts toasts={toasts} onDismiss={removeToast} />
 
       <input
@@ -1183,11 +1217,11 @@ const ViewMobiles = ({
             <p className="mt-2 text-base text-slate-500">{subtitle}</p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="inline-flex h-12 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-[0_12px_24px_rgba(15,23,42,0.04)] transition hover:bg-slate-50"
+              className={`${secondaryButtonClassName} w-full sm:w-auto`}
             >
               <FaUpload className="text-sm text-slate-500" />
               Import Excel
@@ -1195,7 +1229,7 @@ const ViewMobiles = ({
             <button
               type="button"
               onClick={handleExport}
-              className="inline-flex h-12 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-[0_12px_24px_rgba(15,23,42,0.04)] transition hover:bg-slate-50"
+              className={`${secondaryButtonClassName} w-full sm:w-auto`}
             >
               <FaDownload className="text-sm text-slate-500" />
               Export
@@ -1203,7 +1237,7 @@ const ViewMobiles = ({
             <button
               type="button"
               onClick={() => navigate("/products/smartphones/create")}
-              className="inline-flex h-12 items-center gap-2 rounded-xl bg-gradient-to-r from-[#345CFF] to-[#5C35FF] px-5 text-sm font-semibold text-white shadow-[0_18px_35px_rgba(92,76,255,0.25)] transition hover:brightness-105"
+              className={`${primaryButtonClassName} w-full sm:w-auto`}
             >
               <FaPlus className="text-sm" />
               Add New Mobile
@@ -1211,27 +1245,27 @@ const ViewMobiles = ({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-6">
+        <div className="grid grid-cols-1 gap-px border border-slate-200 bg-slate-200 sm:grid-cols-2 2xl:grid-cols-6">
           <StatCard
             icon={FaMobile}
             iconClassName="bg-blue-50 text-blue-600"
             label={totalLabel}
             value={totalMobiles}
-            delta="↑ 8.4%"
+            delta="8.4%"
           />
           <StatCard
             icon={FaCheckCircle}
             iconClassName="bg-emerald-50 text-emerald-600"
             label="Published"
             value={publishedMobiles}
-            delta="↑ 12.6%"
+            delta="12.6%"
           />
           <StatCard
             icon={FaEyeSlash}
             iconClassName="bg-orange-50 text-orange-500"
             label="Drafts"
             value={draftMobiles}
-            delta="↓ 4.3%"
+            delta="4.3%"
             deltaTone="down"
           />
           <StatCard
@@ -1239,42 +1273,42 @@ const ViewMobiles = ({
             iconClassName="bg-violet-50 text-violet-600"
             label="Upcoming"
             value={upcomingMobiles}
-            delta="↑ 9.7%"
+            delta="9.7%"
           />
           <StatCard
             icon={FaFilter}
             iconClassName="bg-blue-50 text-blue-600"
             label="Compare Enabled"
             value={compareEnabledCount}
-            delta="↑ 15.2%"
+            delta="15.2%"
           />
           <StatCard
             icon={FaCheckCircle}
             iconClassName="bg-emerald-50 text-emerald-600"
             label="Avg. Hook Score"
             value={averageHookScore}
-            delta="↑ 6.1%"
+            delta="6.1%"
           />
         </div>
       </section>
 
       {error ? (
-        <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+        <div className="border border-rose-200 bg-rose-50 px-2 py-3 text-sm text-rose-700 sm:px-3">
           {error}
         </div>
       ) : null}
 
-      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_18px_40px_rgba(15,23,42,0.04)]">
-        <div className="border-b border-slate-200 px-4 py-4 lg:px-5">
-          <div className="grid gap-3 xl:grid-cols-[minmax(0,1.45fr)_repeat(5,minmax(0,0.78fr))_auto_auto]">
+      <section className="overflow-hidden border border-slate-200 bg-white">
+        <div className="border-b border-slate-200 px-2 py-3 sm:px-3 lg:px-4">
+          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-[minmax(0,1.45fr)_repeat(5,minmax(0,0.78fr))_auto_auto]">
             <div className="relative">
-              <FaSearch className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm text-slate-400" />
+              <FaSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400" />
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(event) => setSearchTerm(event.target.value)}
                 placeholder="Search by name, brand, model..."
-                className="h-12 w-full rounded-xl border border-slate-200 bg-white pl-11 pr-4 text-sm text-slate-700 outline-none transition focus:border-[#5A49FF] focus:ring-4 focus:ring-[#5A49FF]/10"
+                className={`${flatFieldClassName} pl-10`}
               />
             </div>
 
@@ -1321,10 +1355,8 @@ const ViewMobiles = ({
             <button
               type="button"
               onClick={() => setShowAdvancedFilters((previous) => !previous)}
-              className={`inline-flex h-12 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-semibold transition ${
-                showAdvancedFilters
-                  ? "border-[#5A49FF]/20 bg-[#F5F4FF] text-[#5A49FF]"
-                  : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+              className={`${secondaryButtonClassName} ${
+                showAdvancedFilters ? "border-[#345CFF] bg-[#F4F7FF] text-[#345CFF]" : ""
               }`}
             >
               <FaFilter className="text-sm" />
@@ -1334,7 +1366,7 @@ const ViewMobiles = ({
             <button
               type="button"
               onClick={clearFilters}
-              className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-[#5A49FF] transition hover:bg-slate-50"
+              className={`${secondaryButtonClassName} text-[#345CFF]`}
             >
               <FaRedo className="text-sm" />
               Reset
@@ -1342,7 +1374,7 @@ const ViewMobiles = ({
           </div>
 
           {showAdvancedFilters ? (
-            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-6">
+            <div className="mt-3 grid gap-2 border-t border-slate-200 pt-3 md:grid-cols-2 xl:grid-cols-6">
               <SelectField value={storageFilter} onChange={(event) => setStorageFilter(event.target.value)}>
                 <option value="all">All Storage</option>
                 {storageOptions.map((storage) => (
@@ -1395,30 +1427,30 @@ const ViewMobiles = ({
           ) : null}
         </div>
 
-        <div className="overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:h-0">
-          <table className="min-w-[1280px] w-full text-sm text-slate-700">
+        <div className="hidden overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:h-0 lg:block">
+          <table className="min-w-[1320px] w-full text-sm text-slate-700">
             <thead>
-              <tr className="border-b border-slate-200 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-                <th className="px-4 py-4 lg:px-5">
+              <tr className="border-b border-slate-200 bg-slate-50/70 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                <th className="px-3 py-3 xl:px-4">
                   <input
                     type="checkbox"
                     checked={allVisibleSelected}
                     onChange={toggleSelectAllVisible}
-                    className="h-4 w-4 rounded border-slate-300 text-[#5A49FF] focus:ring-[#5A49FF]"
+                    className="h-4 w-4 rounded-none border-slate-300 text-[#5A49FF] focus:ring-[#5A49FF]"
                   />
                 </th>
-                <th className="px-4 py-4 lg:px-5">Mobile</th>
-                <th className="px-4 py-4">Brand</th>
-                <th className="px-4 py-4">Launch Date</th>
-                <th className="px-4 py-4">Price Range</th>
-                <th className="px-4 py-4">Hook Score</th>
-                <th className="px-4 py-4">Compare Score</th>
-                <th className="px-4 py-4">Camera Score</th>
-                <th className="px-4 py-4">Performance Score</th>
-                <th className="px-4 py-4">Search Volume</th>
-                <th className="px-4 py-4">Status</th>
-                <th className="px-4 py-4">Trending Rank</th>
-                <th className="px-4 py-4 text-right lg:px-5">Actions</th>
+                <th className="min-w-[320px] px-3 py-3 xl:px-4">Mobile</th>
+                <th className="px-3 py-3">Brand</th>
+                <th className="px-3 py-3">Launch Date</th>
+                <th className="px-3 py-3">Price Range</th>
+                <th className="px-3 py-3">Hook Score</th>
+                <th className="px-3 py-3">Compare Score</th>
+                <th className="px-3 py-3">Camera Score</th>
+                <th className="px-3 py-3">Performance Score</th>
+                <th className="px-3 py-3">Search Volume</th>
+                <th className="px-3 py-3">Status</th>
+                <th className="px-3 py-3">Trending Rank</th>
+                <th className="px-3 py-3 text-right xl:px-4">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -1451,90 +1483,90 @@ const ViewMobiles = ({
                   const selected = selectedRowKeys.includes(mobile.rowKey);
 
                   return (
-                    <tr key={mobile.rowKey} className="border-b border-slate-100 transition hover:bg-slate-50/70">
-                      <td className="px-4 py-4 lg:px-5">
+                    <tr key={mobile.rowKey} className="border-b border-slate-200 transition hover:bg-slate-50">
+                      <td className="px-3 py-3 xl:px-4">
                         <input
                           type="checkbox"
                           checked={selected}
                           onChange={() => toggleSelectedRow(mobile.rowKey)}
-                          className="h-4 w-4 rounded border-slate-300 text-[#5A49FF] focus:ring-[#5A49FF]"
+                          className="h-4 w-4 rounded-none border-slate-300 text-[#5A49FF] focus:ring-[#5A49FF]"
                         />
                       </td>
 
-                      <td className="px-4 py-4 lg:px-5">
+                      <td className="px-3 py-3 xl:px-4">
                         <div className="flex items-center gap-3">
                           {mobile.images?.[0] ? (
                             <img
                               src={mobile.images[0]}
                               alt={mobile.name}
-                              className="h-10 w-10 rounded-lg border border-slate-200 bg-white object-contain p-1"
+                              className="h-12 w-12 border border-slate-200 bg-white object-contain p-1"
                               onError={(event) => {
                                 event.currentTarget.onerror = null;
                                 event.currentTarget.src = "https://via.placeholder.com/40?text=M";
                               }}
                             />
                           ) : (
-                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
+                            <div className="flex h-12 w-12 items-center justify-center border border-slate-200 bg-slate-50 text-slate-500">
                               <FaMobile className="text-sm" />
                             </div>
                           )}
-                          <div className="min-w-0">
-                            <p className="truncate font-semibold text-slate-950">{mobile.name}</p>
-                            <p className="truncate text-xs text-slate-500">
+                          <div className="min-w-0 max-w-[280px] xl:max-w-[360px]">
+                            <p className="line-clamp-2 w-full break-words font-semibold text-slate-950">{mobile.name}</p>
+                            <p className="mt-1 line-clamp-2 text-xs text-slate-500">
                               {normalizeText(mobile.ram) || "N/A"} {normalizeText(mobile.storage) ? `, ${mobile.storage}` : ""}
                             </p>
                           </div>
                         </div>
                       </td>
 
-                      <td className="px-4 py-4">
+                      <td className="px-3 py-3">
                         <div className="font-medium text-slate-900">{mobile.brand}</div>
                       </td>
 
-                      <td className="px-4 py-4 text-slate-700">{formatDate(mobile.launch_date)}</td>
+                      <td className="px-3 py-3 text-slate-700">{formatDate(mobile.launch_date)}</td>
 
-                      <td className="px-4 py-4 font-medium text-slate-700">{formatPriceRange(mobile)}</td>
+                      <td className="px-3 py-3 font-medium text-slate-700">{formatPriceRange(mobile)}</td>
 
-                      <td className="px-4 py-4">
-                        <span className="inline-flex min-w-[2.2rem] items-center justify-center rounded-full bg-emerald-50 px-3 py-1 text-sm font-semibold text-emerald-700">
+                      <td className="px-3 py-3">
+                        <span className="inline-flex min-w-[2.5rem] items-center justify-center border border-emerald-200 bg-emerald-50 px-3 py-1 text-sm font-semibold text-emerald-700">
                           {formatScoreChip(mobile.hook_score)}
                         </span>
                       </td>
 
-                      <td className="px-4 py-4">
-                        <span className="inline-flex min-w-[2.2rem] items-center justify-center rounded-full bg-indigo-50 px-3 py-1 text-sm font-semibold text-indigo-700">
+                      <td className="px-3 py-3">
+                        <span className="inline-flex min-w-[2.5rem] items-center justify-center border border-indigo-200 bg-indigo-50 px-3 py-1 text-sm font-semibold text-indigo-700">
                           {formatScoreChip(mobile.compareScore)}
                         </span>
                       </td>
 
-                      <td className="px-4 py-4">
-                        <span className="inline-flex min-w-[2.2rem] items-center justify-center rounded-full bg-blue-50 px-3 py-1 text-sm font-semibold text-blue-700">
+                      <td className="px-3 py-3">
+                        <span className="inline-flex min-w-[2.5rem] items-center justify-center border border-blue-200 bg-blue-50 px-3 py-1 text-sm font-semibold text-blue-700">
                           {formatScoreChip(mobile.cameraScore)}
                         </span>
                       </td>
 
-                      <td className="px-4 py-4">
-                        <span className="inline-flex min-w-[2.2rem] items-center justify-center rounded-full bg-violet-50 px-3 py-1 text-sm font-semibold text-violet-700">
+                      <td className="px-3 py-3">
+                        <span className="inline-flex min-w-[2.5rem] items-center justify-center border border-violet-200 bg-violet-50 px-3 py-1 text-sm font-semibold text-violet-700">
                           {formatScoreChip(mobile.performanceScore)}
                         </span>
                       </td>
 
-                      <td className="px-4 py-4 font-medium text-slate-700">{resolveSearchVolume(mobile, startIndex + index)}</td>
+                      <td className="px-3 py-3 font-medium text-slate-700">{resolveSearchVolume(mobile, startIndex + index)}</td>
 
-                      <td className="px-4 py-4">
+                      <td className="px-3 py-3">
                         <button
                           type="button"
                           onClick={() => {
                             if (getStatusValue(mobile) === "upcoming") return;
                             togglePublish(mobile);
                           }}
-                          className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${getStatusClasses(mobile)}`}
+                          className={`inline-flex px-2 py-1 text-xs font-semibold ${getStatusClasses(mobile)}`}
                         >
                           {getStatusLabel(mobile)}
                         </button>
                       </td>
 
-                      <td className="px-4 py-4">
+                      <td className="px-3 py-3">
                         <div className="flex items-center gap-2 font-medium text-slate-700">
                           <span>{resolveTrendingRank(mobile, startIndex + index)}</span>
                           <span className={resolveTrendDirection(mobile) === "down" ? "text-rose-500" : "text-emerald-500"}>
@@ -1547,12 +1579,12 @@ const ViewMobiles = ({
                         </div>
                       </td>
 
-                      <td className="px-4 py-4 text-right lg:px-5">
+                      <td className="px-3 py-3 text-right xl:px-4">
                         <div className="flex items-center justify-end gap-2">
                           <button
                             type="button"
                             onClick={() => openPreview(mobile)}
-                            className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:border-slate-300 hover:text-slate-900"
+                            className={rowActionButtonClassName}
                             title="Preview"
                           >
                             <FaEye className="text-sm" />
@@ -1568,7 +1600,7 @@ const ViewMobiles = ({
                                 state: { smartphone: mobile.raw },
                               });
                             }}
-                            className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:border-slate-300 hover:text-slate-900"
+                            className={rowActionButtonClassName}
                             title="Edit"
                           >
                             <FaEdit className="text-sm" />
@@ -1576,8 +1608,8 @@ const ViewMobiles = ({
                           <button
                             type="button"
                             onClick={() => handleDelete(mobile)}
-                            className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:border-rose-200 hover:text-rose-600"
-                            title="Delete"
+                            className={`${rowActionButtonClassName} hover:border-rose-200 hover:text-rose-600`}
+                            title="More"
                           >
                             <FaEllipsisH className="text-sm" />
                           </button>
@@ -1591,7 +1623,176 @@ const ViewMobiles = ({
           </table>
         </div>
 
-        <div className="border-t border-slate-200 px-4 py-4 lg:px-5">
+        <div className="lg:hidden">
+          {loading ? (
+            <div className="px-2 py-12 text-center sm:px-3">
+              <div className="flex flex-col items-center gap-3 text-slate-500">
+                <FaSpinner className="animate-spin text-2xl text-[#5A49FF]" />
+                Loading mobile inventory...
+              </div>
+            </div>
+          ) : paginatedMobiles.length === 0 ? (
+            <div className="px-2 py-12 text-center sm:px-3">
+              <div className="flex flex-col items-center gap-3 text-slate-500">
+                <FaMobile className="text-4xl text-slate-300" />
+                <p className="text-base font-semibold text-slate-700">
+                  {searchTerm ? "No mobiles found" : "No mobiles available"}
+                </p>
+                <p className="text-sm text-slate-500">
+                  {searchTerm ? "Try adjusting your search or filters." : "Import inventory or add a new mobile to get started."}
+                </p>
+              </div>
+            </div>
+          ) : (
+            paginatedMobiles.map((mobile, index) => {
+              const resolvedId = resolveProductId(mobile);
+              const selected = selectedRowKeys.includes(mobile.rowKey);
+              const trendDirection = resolveTrendDirection(mobile);
+              const trendValue = resolveTrendingRank(mobile, startIndex + index);
+              const specSummary = [mobile.brand || "N/A", normalizeText(mobile.ram) || "N/A", normalizeText(mobile.storage) || "N/A"]
+                .filter(Boolean)
+                .join(" / ");
+
+              return (
+                <article key={mobile.rowKey} className="border-b border-slate-200 last:border-b-0">
+                  <div className="flex items-start gap-3">
+                    <div className="w-full px-2 py-3 sm:px-3">
+                      <div className="flex items-start gap-3">
+                        <input
+                          type="checkbox"
+                          checked={selected}
+                          onChange={() => toggleSelectedRow(mobile.rowKey)}
+                          className="mt-1 h-4 w-4 rounded-none border-slate-300 text-[#5A49FF] focus:ring-[#5A49FF]"
+                        />
+
+                        {mobile.images?.[0] ? (
+                          <img
+                            src={mobile.images[0]}
+                            alt={mobile.name}
+                            className="h-14 w-14 border border-slate-200 bg-white object-contain p-1"
+                            onError={(event) => {
+                              event.currentTarget.onerror = null;
+                              event.currentTarget.src = "https://via.placeholder.com/40?text=M";
+                            }}
+                          />
+                        ) : (
+                          <div className="flex h-14 w-14 items-center justify-center border border-slate-200 bg-slate-50 text-slate-500">
+                            <FaMobile className="text-base" />
+                          </div>
+                        )}
+
+                        <div className="min-w-0 flex-1">
+                          <div className="border-b border-slate-200 pb-3">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">
+                                  Row {startIndex + index + 1}
+                                </p>
+                                <p className="mt-1 break-words text-sm font-semibold leading-5 text-slate-950">
+                                  {mobile.name}
+                                </p>
+                                <p className="mt-1 break-words text-xs text-slate-500">{specSummary}</p>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (getStatusValue(mobile) === "upcoming") return;
+                                  togglePublish(mobile);
+                                }}
+                                className={`inline-flex shrink-0 px-2 py-1 text-xs font-semibold ${getStatusClasses(mobile)}`}
+                              >
+                                {getStatusLabel(mobile)}
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="pt-1">
+                            <MobileInfoRow label="Launch Date" value={formatDate(mobile.launch_date)} />
+                            <MobileInfoRow label="Price Range" value={formatPriceRange(mobile)} />
+                            <MobileInfoRow label="Search Volume" value={resolveSearchVolume(mobile, startIndex + index)} />
+                            <MobileInfoRow
+                              label="Trending"
+                              value={
+                                <span className={`inline-flex items-center gap-1 ${trendDirection === "down" ? "text-rose-600" : "text-emerald-600"}`}>
+                                  <span className="text-slate-700">{trendValue}</span>
+                                  <span>{trendDirection === "down" ? "\u2193" : "\u2191"}</span>
+                                </span>
+                              }
+                            />
+                          </div>
+
+                          <div className="flex flex-wrap gap-2 border-t border-slate-200 py-3">
+                            <MobileInlineScore
+                              label="Hook Score"
+                              value={formatScoreChip(mobile.hook_score)}
+                              className="border-emerald-200 bg-emerald-50 text-emerald-700"
+                            />
+                            <MobileInlineScore
+                              label="Compare"
+                              value={formatScoreChip(mobile.compareScore)}
+                              className="border-indigo-200 bg-indigo-50 text-indigo-700"
+                            />
+                            <MobileInlineScore
+                              label="Camera"
+                              value={formatScoreChip(mobile.cameraScore)}
+                              className="border-blue-200 bg-blue-50 text-blue-700"
+                            />
+                            <MobileInlineScore
+                              label="Performance"
+                              value={formatScoreChip(mobile.performanceScore)}
+                              className="border-violet-200 bg-violet-50 text-violet-700"
+                            />
+                          </div>
+
+                          <div className="grid grid-cols-3 gap-px border border-slate-200 bg-slate-200">
+                            <button
+                              type="button"
+                              onClick={() => openPreview(mobile)}
+                              className={mobileActionButtonClassName}
+                              title="Preview"
+                            >
+                              <FaEye className="text-sm" />
+                              Preview
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (!resolvedId) {
+                                  showToast("Edit Failed", "Missing product id for edit", "error");
+                                  return;
+                                }
+                                navigate(`/edit-mobile/${resolvedId}`, {
+                                  state: { smartphone: mobile.raw },
+                                });
+                              }}
+                              className={mobileActionButtonClassName}
+                              title="Edit"
+                            >
+                              <FaEdit className="text-sm" />
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDelete(mobile)}
+                              className={`${mobileActionButtonClassName} text-rose-600 hover:bg-rose-50`}
+                              title="More"
+                            >
+                              <FaEllipsisH className="text-sm" />
+                              More
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+              );
+            })
+          )}
+        </div>
+
+        <div className="border-t border-slate-200 px-2 py-3 sm:px-3 lg:px-4">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <p className="text-sm text-slate-600">
               Showing {filteredMobiles.length === 0 ? 0 : startIndex + 1} to {Math.min(endIndex, filteredMobiles.length)} of {filteredMobiles.length} results
@@ -1615,7 +1816,7 @@ const ViewMobiles = ({
                   type="button"
                   onClick={() => setCurrentPage((previous) => Math.max(previous - 1, 1))}
                   disabled={currentPage === 1}
-                  className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex h-10 w-10 items-center justify-center border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <FaChevronLeft className="text-xs" />
                 </button>
@@ -1630,10 +1831,10 @@ const ViewMobiles = ({
                       key={item}
                       type="button"
                       onClick={() => setCurrentPage(Number(item))}
-                      className={`flex h-10 min-w-[2.5rem] items-center justify-center rounded-lg px-3 text-sm font-semibold transition ${
+                      className={`flex h-10 min-w-[2.5rem] items-center justify-center border px-3 text-sm font-semibold transition ${
                         currentPage === item
-                          ? "bg-[#345CFF] text-white shadow-[0_12px_24px_rgba(52,92,255,0.28)]"
-                          : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                          ? "border-[#345CFF] bg-[#345CFF] text-white"
+                          : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
                       }`}
                     >
                       {item}
@@ -1645,7 +1846,7 @@ const ViewMobiles = ({
                   type="button"
                   onClick={() => setCurrentPage((previous) => Math.min(previous + 1, totalPages))}
                   disabled={currentPage === totalPages}
-                  className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex h-10 w-10 items-center justify-center border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <FaChevronRight className="text-xs" />
                 </button>

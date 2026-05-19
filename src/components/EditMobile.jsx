@@ -7,6 +7,29 @@ import { uploadToCloudinary } from "../config/cloudinary";
 import DynamicForm from "./DynamicForm";
 import useFormDraft from "../hooks/useFormDraft";
 import {
+  getSmartphonePreviewPath,
+  saveSmartphonePreviewSnapshot,
+} from "../utils/smartphonePreview";
+import {
+  editorCardClassName,
+  editorDangerButtonClassName,
+  editorFieldClassName,
+  editorGhostButtonClassName,
+  editorPrimaryButtonClassName,
+  editorSectionBodyClassName,
+  editorSectionButtonClassName,
+  editorSelectClassName,
+  editorTextareaClassName,
+  EditorScorePill,
+  EditorSidebarCard,
+  EditorSidebarRow,
+  EditorStatusChip,
+  EditorTabBar,
+  formatEditorDate,
+  normalizeScoreValue,
+  summarizeVariants,
+} from "./MobileEditorUi";
+import {
   FaMobile,
   FaSave,
   FaTimes,
@@ -20,6 +43,7 @@ import {
   FaMicrochip,
   FaDesktop,
   FaMemory,
+  FaEye,
   FaStar,
   FaWifi,
   FaEdit,
@@ -133,6 +157,7 @@ const EditMobile = () => {
   const [dataLoaded, setDataLoaded] = useState(false);
   const [error, setError] = useState(null);
   const [customJsonFields, setCustomJsonFields] = useState({});
+  const [activeEditTab, setActiveEditTab] = useState("basic");
   const formRef = useRef(null);
 
   // Custom dropdown and date picker states
@@ -154,6 +179,7 @@ const EditMobile = () => {
   const ramDropdownRefs = useRef({});
   const storageDropdownRefs = useRef({});
   const storeDropdownRefs = useRef({});
+  const sectionRefs = useRef({});
   const [brandsList, setBrandsList] = useState([]);
   const [storesList, setStoresList] = useState([]);
   const [memoryOptions, setMemoryOptions] = useState({
@@ -232,9 +258,12 @@ const EditMobile = () => {
   const isUpcomingDevice = ["rumored", "announced", "upcoming"].includes(
     effectiveLaunchStatus,
   );
-  const specEditorHiddenKeys = isUpcomingDevice
-    ? ["sphere_score", "sphere_description", "sphere_images"]
-    : [];
+  const specEditorHiddenKeys = [
+    "score",
+    "sphere_score",
+    "sphere_description",
+    "sphere_images",
+  ];
 
   // Months array
   const months = [
@@ -413,6 +442,14 @@ const EditMobile = () => {
     }
   }, [formData?.launch_date]);
 
+  const editorTabs = [
+    { id: "basic", label: "Basic Information", icon: FaMobile },
+    { id: "images", label: "Images & Media", icon: FaCamera },
+    { id: "variants", label: "Pricing & Variants", icon: FaBoxOpen },
+    { id: "specs", label: "Specifications", icon: FaMicrochip },
+    { id: "sensors", label: "Sensors", icon: FaSimCard },
+  ];
+
   const specTabs = [
     { id: "build_design", label: "Build & Design", icon: FaMobile },
     { id: "display", label: "Display", icon: FaDesktop },
@@ -425,6 +462,35 @@ const EditMobile = () => {
     { id: "audio", label: "Audio", icon: FaMicrochip },
     { id: "multimedia", label: "Multimedia", icon: FaDesktop },
   ];
+
+  const openEditorSection = (sectionId) => {
+    setActiveEditTab(sectionId);
+    setExpandedSections((prev) => ({ ...prev, [sectionId]: true }));
+    window.requestAnimationFrame(() => {
+      sectionRefs.current[sectionId]?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+  };
+
+  const selectedBrandName = getSelectedBrandName();
+  const variantSummary = summarizeVariants(formData.variants);
+  const specScoreItems = specTabs
+    .map((tab, index) => ({
+      label: tab.label,
+      value: normalizeScoreValue(
+        formData?.[tab.id]?.sphere_score ?? formData?.[tab.id]?.score,
+      ),
+      tone: ["emerald", "indigo", "blue", "violet", "amber"][index % 5],
+    }))
+    .filter((item) => item.value !== null);
+  const overallScore = specScoreItems.length
+    ? Math.round(
+        specScoreItems.reduce((total, item) => total + item.value, 0) /
+          specScoreItems.length,
+      )
+    : null;
 
   const getSpecUiHints = (specId) => {
     const base = {
@@ -1620,6 +1686,52 @@ const EditMobile = () => {
     showToast("Field Removed", `Custom field "${fieldName}" removed`, "info");
   };
 
+  const buildPreviewFormData = () => ({
+    product: {
+      name: formData.name || "",
+      brand_id: "",
+    },
+    smartphone: {
+      segment: formData.segment || "Smart Phone",
+      brand: formData.brand || "",
+      model: formData.model || "",
+      launch_date: formData.launch_date || "",
+      official_preorder_url: formData.official_preorder_url || "",
+      launch_status_override: launchStatusOverride || "",
+      colors: Array.isArray(formData.colors) ? formData.colors : [],
+      is_foldable: Boolean(formData.is_foldable),
+      build_design: formData.build_design || {},
+      display: formData.display || {},
+      performance: formData.performance || {},
+      camera: formData.camera || {},
+      battery: formData.battery || {},
+      connectivity: formData.connectivity || {},
+      network: formData.network || {},
+      ports: formData.ports || {},
+      audio: formData.audio || {},
+      multimedia: formData.multimedia || {},
+      sensors: formData.sensors || "",
+    },
+    images: Array.isArray(formData.images) ? formData.images : [],
+    variants: Array.isArray(formData.variants)
+      ? formData.variants.map((variant) => ({
+          ...variant,
+          stores: Array.isArray(variant?.stores) ? variant.stores : [],
+        }))
+      : [],
+  });
+
+  const handlePreview = () => {
+    const previewFormData = buildPreviewFormData();
+    const previewState = saveSmartphonePreviewSnapshot({
+      formData: previewFormData,
+      publishEnabled,
+    });
+    navigate(getSmartphonePreviewPath(previewState || previewFormData), {
+      state: { previewState },
+    });
+  };
+
   // Form submit handler
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -1809,7 +1921,7 @@ const EditMobile = () => {
 
     return (
       <div
-        className={`bg-white rounded-lg shadow-lg border p-4 max-w-sm w-full flex items-start space-x-3 ${
+        className={`max-w-sm w-full border bg-white p-4 flex items-start space-x-3 ${
           bgColor[toast.type]
         }`}
       >
@@ -1873,10 +1985,10 @@ const EditMobile = () => {
             setIsOpen(!isOpen);
             setSearchValue("");
           }}
-          className={`w-full px-4 py-2.5 border-2 transition-all rounded-lg bg-white text-left flex items-center justify-between ${
+          className={`flex h-11 w-full items-center justify-between border bg-white px-3 text-left text-sm transition ${
             value
-              ? "border-blue-400 shadow-sm hover:shadow-md"
-              : "border-gray-300 hover:border-gray-400 hover:shadow-sm"
+              ? "border-[#345CFF]"
+              : "border-slate-200 hover:border-slate-300"
           }`}
         >
           <span
@@ -1894,16 +2006,16 @@ const EditMobile = () => {
         </button>
 
         {isOpen && (
-          <div className="absolute z-50 mt-2 w-full bg-white border-2 border-blue-200 rounded-lg shadow-xl overflow-hidden">
+          <div className="absolute z-50 mt-2 w-full overflow-hidden border border-slate-200 bg-white">
             {showSearch && (
-              <div className="sticky top-0 bg-gradient-to-r from-blue-50 to-white p-3 border-b-2 border-blue-100">
+              <div className="sticky top-0 border-b border-slate-200 bg-white p-3">
                 <div className="relative">
-                  <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-blue-400 text-sm" />
+                  <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
                   <input
                     type="text"
                     value={searchValue}
                     onChange={(e) => setSearchValue(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2.5 border-2 border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                    className={`${editorFieldClassName} pl-9`}
                     placeholder={getSearchPlaceholder()}
                     autoFocus
                   />
@@ -1918,13 +2030,13 @@ const EditMobile = () => {
                     key={option[valueKey]}
                     type="button"
                     onClick={() => onSelect(option)}
-                    className={`w-full text-left px-4 py-3 transition-colors flex items-center space-x-3 ${
+                    className={`flex w-full items-center space-x-3 border-b border-slate-200 px-4 py-3 text-left transition-colors last:border-b-0 ${
                       option[valueKey] === value
-                        ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white font-medium shadow-md"
+                        ? "bg-[#F4F7FF] text-[#345CFF] font-medium"
                         : idx % 2 === 0
-                          ? "hover:bg-blue-50 text-gray-700"
-                          : "hover:bg-blue-100 text-gray-700"
-                    } ${idx !== filteredOptions.length - 1 ? "border-b border-gray-100" : ""}`}
+                          ? "hover:bg-slate-50 text-gray-700"
+                          : "hover:bg-slate-50 text-gray-700"
+                    }`}
                   >
                     <span className="flex-1 truncate text-sm">
                       {option[labelKey]}
@@ -2795,15 +2907,15 @@ const EditMobile = () => {
         <button
           type="button"
           onClick={() => setShowDatePicker(!showDatePicker)}
-          className={`w-full px-4 py-2.5 border-2 transition-all rounded-lg bg-white text-left flex items-center justify-between ${
+          className={`flex h-11 w-full items-center justify-between border bg-white px-3 text-left transition ${
             hasValidLaunchDate
-              ? "border-blue-400 shadow-sm"
-              : "border-gray-300 hover:border-gray-400"
-          } hover:shadow-md`}
+              ? "border-[#345CFF]"
+              : "border-slate-200 hover:border-slate-300"
+          }`}
         >
           <div className="flex items-center space-x-3">
             <FaCalendar
-              className={`text-lg ${hasValidLaunchDate ? "text-blue-500" : "text-gray-400"}`}
+              className={`text-base ${hasValidLaunchDate ? "text-[#345CFF]" : "text-gray-400"}`}
             />
             <div>
               <span
@@ -2836,13 +2948,13 @@ const EditMobile = () => {
         </button>
 
         {showDatePicker && (
-          <div className="absolute z-50 mt-2 w-96 bg-white border-2 border-blue-200 rounded-xl shadow-2xl p-5 backdrop-blur-sm bg-opacity-95">
+          <div className="absolute z-50 mt-2 w-[20rem] border border-slate-200 bg-white p-4 sm:w-96">
             {/* Header */}
-            <div className="bg-gradient-to-r from-blue-600 to-blue-500 rounded-lg p-4 mb-4 text-white">
+            <div className="mb-4 border border-slate-200 bg-slate-50 p-4 text-slate-900">
               <h3 className="text-lg font-bold text-center">
                 {months[selectedDate.month]} {selectedDate.year}
               </h3>
-              <p className="text-center text-blue-100 text-sm mt-1">
+              <p className="mt-1 text-center text-sm text-slate-500">
                 {selectedDate.day
                   ? `${selectedDate.day} ${months[selectedDate.month]} ${selectedDate.year}`
                   : "Pick a date"}
@@ -2850,11 +2962,11 @@ const EditMobile = () => {
             </div>
 
             {/* Month/Year Navigation */}
-            <div className="flex items-center justify-between mb-5 pb-4 border-b border-gray-200">
+            <div className="mb-5 flex items-center justify-between border-b border-slate-200 pb-4">
               <button
                 type="button"
                 onClick={handlePrevMonth}
-                className="p-2 hover:bg-blue-100 rounded-lg transition-colors text-gray-700 font-bold"
+                className="border border-slate-200 p-2 text-gray-700 transition-colors hover:bg-slate-50"
               >
                 <FaChevronDown className="transform rotate-90 text-lg" />
               </button>
@@ -2868,7 +2980,7 @@ const EditMobile = () => {
                       month: parseInt(e.target.value),
                     }))
                   }
-                  className="px-3 py-1.5 border-2 border-gray-300 rounded-lg text-sm font-semibold focus:outline-none focus:border-blue-500 bg-white hover:border-blue-400 transition-colors"
+                  className={`${editorSelectClassName} h-10 px-3 py-1.5 font-semibold`}
                 >
                   {months.map((month, idx) => (
                     <option key={month} value={idx}>
@@ -2885,7 +2997,7 @@ const EditMobile = () => {
                       year: parseInt(e.target.value),
                     }))
                   }
-                  className="px-3 py-1.5 border-2 border-gray-300 rounded-lg text-sm font-semibold focus:outline-none focus:border-blue-500 bg-white hover:border-blue-400 transition-colors"
+                  className={`${editorSelectClassName} h-10 px-3 py-1.5 font-semibold`}
                 >
                   {generateYears().map((year) => (
                     <option key={year} value={year}>
@@ -2898,7 +3010,7 @@ const EditMobile = () => {
               <button
                 type="button"
                 onClick={handleNextMonth}
-                className="p-2 hover:bg-blue-100 rounded-lg transition-colors text-gray-700 font-bold"
+                className="border border-slate-200 p-2 text-gray-700 transition-colors hover:bg-slate-50"
               >
                 <FaChevronDown className="transform -rotate-90 text-lg" />
               </button>
@@ -2909,7 +3021,7 @@ const EditMobile = () => {
               {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
                 <div
                   key={day}
-                  className="text-center text-xs font-bold text-gray-600 py-2 bg-gray-50 rounded-md"
+                  className="border border-slate-200 bg-slate-50 py-2 text-center text-xs font-bold text-gray-600"
                 >
                   {day}
                 </div>
@@ -2924,14 +3036,14 @@ const EditMobile = () => {
                   type="button"
                   onClick={() => handleDaySelect(day)}
                   disabled={!day}
-                  className={`w-full aspect-square rounded-lg text-sm font-semibold transition-all transform ${
+                  className={`aspect-square w-full border text-sm font-semibold transition ${
                     !day
                       ? "text-transparent cursor-default"
                       : isToday(day)
-                        ? "bg-amber-100 text-amber-900 border-2 border-amber-400 shadow-md"
+                        ? "border-amber-300 bg-amber-50 text-amber-900"
                         : day === selectedDate.day
-                          ? "bg-blue-600 text-white shadow-lg scale-105"
-                          : "text-gray-700 bg-gray-50 hover:bg-blue-50 hover:border-2 hover:border-blue-300 hover:scale-105"
+                          ? "border-[#345CFF] bg-[#345CFF] text-white"
+                          : "border-slate-200 bg-white text-gray-700 hover:bg-slate-50"
                   } disabled:cursor-default`}
                 >
                   {day}
@@ -2944,7 +3056,7 @@ const EditMobile = () => {
               <button
                 type="button"
                 onClick={handleToday}
-                className="px-3 py-1.5 text-xs font-semibold text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors border border-blue-300"
+                className={editorGhostButtonClassName}
               >
                 Today
               </button>
@@ -2952,14 +3064,14 @@ const EditMobile = () => {
                 <button
                   type="button"
                   onClick={() => setShowDatePicker(false)}
-                  className="px-4 py-1.5 text-sm font-semibold border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                  className={editorGhostButtonClassName}
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
                   onClick={handleDateSelect}
-                  className="px-4 py-1.5 text-sm font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-md"
+                  className={editorPrimaryButtonClassName}
                 >
                   Apply
                 </button>
@@ -3300,7 +3412,7 @@ const EditMobile = () => {
   }
 
   return (
-    <div className="relative isolate overflow-hidden rounded-[32px] bg-[radial-gradient(circle_at_top_left,_rgba(34,211,238,0.08),_transparent_24%),radial-gradient(circle_at_top_right,_rgba(14,165,233,0.08),_transparent_22%),linear-gradient(180deg,_#f8fafc_0%,_#ffffff_42%,_#f8fafc_100%)] mx-auto w-full max-w-[1720px] min-h-full bg-white p-3 sm:p-4 md:p-6">
+    <div className="mx-auto w-full max-w-[1720px] min-h-full space-y-4 bg-white px-2 py-3 sm:px-3 md:px-4 [&_input:not([type='checkbox']):not([type='file']):not([type='color'])]:rounded-none [&_input:not([type='checkbox']):not([type='file']):not([type='color'])]:border-slate-200 [&_input:not([type='checkbox']):not([type='file']):not([type='color'])]:focus:ring-0 [&_select]:rounded-none [&_select]:border-slate-200 [&_select]:focus:ring-0 [&_textarea]:rounded-none [&_textarea]:border-slate-200 [&_textarea]:focus:ring-0">
       {/* Toast Container */}
       <div className="fixed top-4 right-4 z-50 space-y-2 max-w-xs">
         {toasts.map((toast) => (
@@ -3308,30 +3420,42 @@ const EditMobile = () => {
         ))}
       </div>
 
-      {/* Header */}
-      <div className="mb-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-6">
+      <div className="border-b border-slate-200 pb-4">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-700/80 mb-1">Inventory</p>
-            <h1 className="font-semibold tracking-[-0.03em] text-slate-950 text-xl sm:text-2xl md:text-3xl">
-              Edit Mobile
-            </h1>
-            <p className="text-[15px] leading-6 text-slate-600 mt-2 text-xs sm:text-sm">
-              Update {formData?.name || "smartphone"} details
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">
+                Edit Smartphone
+              </h1>
+              <EditorStatusChip
+                label={publishEnabled ? "Published" : "Draft"}
+                tone={publishEnabled ? "success" : "warning"}
+              />
+            </div>
+            <p className="mt-2 text-sm text-slate-500">
+              Update product details, specifications, variants, and media for {formData?.name || "this smartphone"}.
             </p>
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+            <button
+              onClick={handlePreview}
+              disabled={isSaving}
+              className={editorGhostButtonClassName}
+            >
+              <FaEye className="text-sm" />
+              <span>Preview</span>
+            </button>
             <button
               onClick={() => navigate(-1)}
-              className="px-3 sm:px-4 py-2 border border-gray-300 text-gray-700 rounded-md font-medium text-xs sm:text-sm hover:bg-gray-50"
+              className={editorGhostButtonClassName}
             >
               Cancel
             </button>
             <button
               onClick={handleSubmit}
               disabled={isSaving}
-              className="px-3 sm:px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-medium text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 whitespace-nowrap"
+              className={editorPrimaryButtonClassName}
             >
               {isSaving ? (
                 <FaSpinner className="animate-spin text-sm" />
@@ -3347,15 +3471,27 @@ const EditMobile = () => {
         </div>
       </div>
 
-      <div className="space-y-3 sm:space-y-4">
+      <EditorTabBar
+        tabs={editorTabs}
+        activeTab={activeEditTab}
+        onSelect={openEditorSection}
+      />
+
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="min-w-0 space-y-4">
         {/* Basic Information Section */}
-        <div className="bg-white rounded-lg shadow-md">
+        <div
+          ref={(node) => {
+            sectionRefs.current.basic = node;
+          }}
+          className={editorCardClassName}
+        >
           <button
             onClick={() => toggleSection("basic")}
-            className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border-b border-gray-200 flex items-center justify-between hover:bg-gray-50 transition-colors"
+            className={editorSectionButtonClassName}
           >
             <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-              <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+              <div className="flex h-8 w-8 items-center justify-center border border-blue-200 bg-blue-50 flex-shrink-0">
                 <FaMobile className="text-blue-600 text-sm" />
               </div>
               <div className="text-left min-w-0">
@@ -3375,7 +3511,7 @@ const EditMobile = () => {
           </button>
 
           {expandedSections.basic && (
-            <div className="p-3 sm:p-4 space-y-3 sm:space-y-4">
+            <div className={`${editorSectionBodyClassName} space-y-3 sm:space-y-4`}>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
@@ -3510,13 +3646,18 @@ const EditMobile = () => {
         </div>
 
         {/* Images Section */}
-        <div className="bg-white rounded-lg shadow-md">
+        <div
+          ref={(node) => {
+            sectionRefs.current.images = node;
+          }}
+          className={editorCardClassName}
+        >
           <button
             onClick={() => toggleSection("images")}
-            className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border-b border-gray-200 flex items-center justify-between hover:bg-gray-50 transition-colors"
+            className={editorSectionButtonClassName}
           >
             <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-              <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
+              <div className="flex h-8 w-8 items-center justify-center border border-purple-200 bg-purple-50 flex-shrink-0">
                 <FaCamera className="text-purple-600 text-sm" />
               </div>
               <div className="text-left min-w-0">
@@ -3536,13 +3677,13 @@ const EditMobile = () => {
           </button>
 
           {expandedSections.images && (
-            <div className="p-3 sm:p-4">
+            <div className={editorSectionBodyClassName}>
               {formData.images.length > 0 && (
                 <div className="mb-4">
                   <div className="flex flex-wrap gap-2">
                     {formData.images.map((src, idx) => (
                       <div key={idx} className="relative">
-                        <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-100 border border-gray-200 rounded-md overflow-hidden">
+                        <div className="h-16 w-16 overflow-hidden border border-slate-200 bg-gray-100 sm:h-20 sm:w-20">
                           <img
                             src={src}
                             alt={`img-${idx}`}
@@ -3551,7 +3692,7 @@ const EditMobile = () => {
                         </div>
                         <button
                           onClick={() => removeImage(idx)}
-                          className="absolute -top-1 -right-1 bg-red-500 text-white w-5 h-5 rounded-full flex items-center justify-center text-xs hover:bg-red-600"
+                          className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center border border-rose-200 bg-white text-xs text-rose-600 hover:bg-rose-50"
                         >
                           ×
                         </button>
@@ -3574,7 +3715,7 @@ const EditMobile = () => {
                   }}
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                 />
-                <div className="border-2 border-dashed border-gray-300 rounded-md p-4 text-center hover:border-blue-400 transition-colors">
+                <div className="border border-dashed border-slate-300 p-4 text-center transition-colors hover:border-[#345CFF]">
                   <FaCamera className="text-gray-400 text-lg sm:text-xl mx-auto mb-2" />
                   <p className="text-xs sm:text-sm text-gray-600">
                     {uploading ? "Uploading..." : "Click to upload images"}
@@ -3589,13 +3730,18 @@ const EditMobile = () => {
         </div>
 
         {/* Variants Section with updated store fields */}
-        <div className="bg-white rounded-lg shadow-md">
+        <div
+          ref={(node) => {
+            sectionRefs.current.variants = node;
+          }}
+          className={editorCardClassName}
+        >
           <button
             onClick={() => toggleSection("variants")}
-            className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border-b border-gray-200 flex items-center justify-between hover:bg-gray-50 transition-colors"
+            className={editorSectionButtonClassName}
           >
             <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-              <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+              <div className="flex h-8 w-8 items-center justify-center border border-green-200 bg-green-50 flex-shrink-0">
                 <FaBoxOpen className="text-green-600 text-sm" />
               </div>
               <div className="text-left min-w-0">
@@ -3615,7 +3761,7 @@ const EditMobile = () => {
           </button>
 
           {expandedSections.variants && (
-            <div className="p-3 sm:p-4 space-y-3 sm:space-y-4">
+            <div className={`${editorSectionBodyClassName} space-y-3 sm:space-y-4`}>
               <button
                 onClick={addVariant}
                 className="flex items-center gap-2 text-blue-600 hover:text-blue-700 text-sm"
@@ -3627,7 +3773,7 @@ const EditMobile = () => {
               {formData.variants.map((variant, index) => (
                 <div
                   key={index}
-                  className="p-3 sm:p-4 border border-gray-200 rounded-md"
+                  className="border border-slate-200 bg-slate-50 p-3 sm:p-4"
                 >
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="font-medium text-gray-800 text-sm sm:text-base">
@@ -4027,13 +4173,18 @@ const EditMobile = () => {
         </div>
 
         {/* Specifications Section with updated connectivity fields */}
-        <div className="bg-white rounded-lg shadow-md">
+        <div
+          ref={(node) => {
+            sectionRefs.current.specs = node;
+          }}
+          className={editorCardClassName}
+        >
           <button
             onClick={() => toggleSection("specs")}
-            className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border-b border-gray-200 flex items-center justify-between hover:bg-gray-50 transition-colors"
+            className={editorSectionButtonClassName}
           >
             <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-              <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0">
+              <div className="flex h-8 w-8 items-center justify-center border border-orange-200 bg-orange-50 flex-shrink-0">
                 <FaMicrochip className="text-orange-600 text-sm" />
               </div>
               <div className="text-left min-w-0">
@@ -4053,24 +4204,24 @@ const EditMobile = () => {
           </button>
 
           {expandedSections.specs && (
-            <div className="p-3 sm:p-4">
+            <div className={editorSectionBodyClassName}>
               {/* Specification Tabs */}
               <div className="mb-4">
-                <div className="flex overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                <div className="grid grid-cols-2 gap-2 sm:flex sm:overflow-x-auto sm:pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                   {specTabs.map((tab) => {
                     const Icon = tab.icon;
                     return (
                       <button
                         key={tab.id}
                         onClick={() => setActiveSpecTab(tab.id)}
-                        className={`flex-shrink-0 flex items-center space-x-2 px-3 py-2 rounded text-xs sm:text-sm font-medium mx-1 ${
+                        className={`flex min-w-0 items-center justify-center space-x-2 border px-3 py-2 text-xs font-medium sm:mx-1 sm:flex-shrink-0 sm:justify-start sm:text-sm ${
                           activeSpecTab === tab.id
-                            ? "bg-blue-600 text-white"
-                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                            ? "border-[#345CFF] bg-[#345CFF] text-white"
+                            : "border-slate-200 bg-white text-gray-700 hover:bg-slate-50"
                         }`}
                       >
                         <Icon className="text-xs sm:text-sm" />
-                        <span>{tab.label}</span>
+                        <span className="truncate">{tab.label}</span>
                       </button>
                     );
                   })}
@@ -4121,16 +4272,8 @@ const EditMobile = () => {
                   </label>
                 </div>
 
-                {isUpcomingDevice ? (
-                  <div className="mb-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
-                    Spec score fields are hidden for upcoming devices (status:{" "}
-                    {formatLaunchStatusLabel(effectiveLaunchStatus)}). Add
-                    scores after launch or pre-order.
-                  </div>
-                ) : null}
-
                 {activeSpecTab === "network" && (
-                  <div className="mb-3 p-3 bg-blue-50 rounded-md border border-blue-100">
+                  <div className="mb-3 border border-blue-200 bg-blue-50 p-3">
                     <div className="flex items-center space-x-2">
                       <FaSimCard className="text-blue-500" />
                       <span className="text-sm text-blue-700">
@@ -4780,13 +4923,18 @@ const EditMobile = () => {
         </div>
 
         {/* Sensors Section */}
-        <div className="bg-white rounded-lg shadow-md">
+        <div
+          ref={(node) => {
+            sectionRefs.current.sensors = node;
+          }}
+          className={editorCardClassName}
+        >
           <button
             onClick={() => toggleSection("sensors")}
-            className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border-b border-gray-200 flex items-center justify-between hover:bg-gray-50 transition-colors"
+            className={editorSectionButtonClassName}
           >
             <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-              <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center flex-shrink-0">
+              <div className="flex h-8 w-8 items-center justify-center border border-red-200 bg-red-50 flex-shrink-0">
                 <FaMicrochip className="text-red-600 text-sm" />
               </div>
               <div className="text-left min-w-0">
@@ -4806,7 +4954,7 @@ const EditMobile = () => {
           </button>
 
           {expandedSections.sensors && (
-            <div className="p-3 sm:p-4">
+            <div className={editorSectionBodyClassName}>
               <textarea
                 name="sensors"
                 value={formData.sensors || ""}
@@ -4822,56 +4970,12 @@ const EditMobile = () => {
           )}
         </div>
 
-        {/* Publish Toggle */}
-        <div className="bg-white rounded-lg shadow-md">
-          <div className="p-3 sm:p-4">
-            <div className="flex items-center justify-between gap-3 sm:gap-4">
-              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                <div
-                  className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                    publishEnabled ? "bg-green-100" : "bg-gray-100"
-                  }`}
-                >
-                  <FaStar
-                    className={
-                      publishEnabled
-                        ? "text-green-600 text-sm"
-                        : "text-gray-600 text-sm"
-                    }
-                  />
-                </div>
-                <div className="text-left min-w-0">
-                  <div className="font-semibold text-sm sm:text-base text-gray-800">
-                    Publish Status
-                  </div>
-                  <div className="text-xs sm:text-sm text-gray-600">
-                    {publishEnabled
-                      ? "Mobile will be published immediately"
-                      : "Save as draft"}
-                  </div>
-                </div>
-              </div>
-
-              <button
-                onClick={() => setPublishEnabled(!publishEnabled)}
-                className={`px-3 sm:px-4 py-2 rounded-md font-medium text-xs sm:text-sm whitespace-nowrap ${
-                  publishEnabled
-                    ? "bg-green-600 hover:bg-green-700 text-white"
-                    : "bg-gray-200 hover:bg-gray-300 text-gray-800"
-                }`}
-              >
-                {publishEnabled ? "Published" : "Draft"}
-              </button>
-            </div>
-          </div>
-        </div>
-
         {/* Form Actions */}
-        <div className="flex flex-col sm:flex-row gap-3 pt-4">
+        <div className="flex flex-col gap-3 border-t border-slate-200 pt-4 sm:flex-row">
           <button
             onClick={handleSubmit}
             disabled={isSaving}
-            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-md font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className={`${editorPrimaryButtonClassName} flex-1`}
           >
             {isSaving ? (
               <>
@@ -4887,12 +4991,127 @@ const EditMobile = () => {
           </button>
 
           <button
+            onClick={handlePreview}
+            disabled={isSaving}
+            className={`${editorGhostButtonClassName} flex-1`}
+          >
+            <FaEye />
+            <span>Preview</span>
+          </button>
+
+          <button
             onClick={() => navigate(-1)}
-            className="px-6 py-3 border border-gray-300 text-gray-700 rounded-md font-medium hover:bg-gray-50"
+            className={editorGhostButtonClassName}
           >
             Cancel
           </button>
         </div>
+
+        </div>
+
+        <aside className="hidden self-start space-y-4 xl:sticky xl:top-4 xl:block">
+          <EditorSidebarCard title="Publish Status">
+            <EditorSidebarRow
+              label="Status"
+              value={
+                <EditorStatusChip
+                  label={publishEnabled ? "Published" : "Draft"}
+                  tone={publishEnabled ? "success" : "warning"}
+                />
+              }
+            />
+            <EditorSidebarRow
+              label="Launch Status"
+              value={formatLaunchStatusLabel(effectiveLaunchStatus) || "Not set"}
+            />
+            <EditorSidebarRow
+              label="Launch Date"
+              value={formatEditorDate(formData.launch_date)}
+            />
+            <EditorSidebarRow
+              label="Last Updated"
+              value={formatEditorDate(formData.updated_at || formData.updatedAt, true)}
+            />
+            <EditorSidebarRow label="Images" value={formData.images.length} />
+            <EditorSidebarRow
+              label="Variants"
+              value={variantSummary.variantCount}
+            />
+            <EditorSidebarRow
+              label="Store Links"
+              value={variantSummary.storeCount}
+            />
+          </EditorSidebarCard>
+
+          <EditorSidebarCard title="Scores Overview">
+            {specScoreItems.length ? (
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-2">
+                  {specScoreItems.slice(0, 6).map((item) => (
+                    <EditorScorePill
+                      key={item.label}
+                      label={item.label}
+                      value={item.value}
+                      tone={item.tone}
+                    />
+                  ))}
+                </div>
+                <div className="border-t border-slate-200 pt-3">
+                  <EditorSidebarRow
+                    label="Overall Score"
+                    value={
+                      overallScore !== null ? (
+                        <span className="inline-flex min-w-[2.75rem] items-center justify-center border border-emerald-200 bg-emerald-50 px-3 py-1 text-sm font-semibold text-emerald-700">
+                          {overallScore}
+                        </span>
+                      ) : (
+                        "Not scored"
+                      )
+                    }
+                  />
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-slate-500">
+                Scores will appear here as you update specification sections.
+              </p>
+            )}
+          </EditorSidebarCard>
+
+          <EditorSidebarCard title="Quick Actions">
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={handlePreview}
+                disabled={isSaving}
+                className={`${editorGhostButtonClassName} w-full justify-between`}
+              >
+                <span>Preview Device</span>
+                <FaEye className="text-sm" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setPublishEnabled((prev) => !prev)}
+                className={`w-full justify-between ${
+                  publishEnabled
+                    ? editorDangerButtonClassName
+                    : editorPrimaryButtonClassName
+                }`}
+              >
+                <span>{publishEnabled ? "Move to Draft" : "Enable Publish"}</span>
+                <FaStar className="text-sm" />
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate("/products/smartphones/inventory")}
+                className={`${editorGhostButtonClassName} w-full justify-between`}
+              >
+                <span>Back to Inventory</span>
+                <FaChevronRight className="text-xs" />
+              </button>
+            </div>
+          </EditorSidebarCard>
+        </aside>
       </div>
     </div>
   );
