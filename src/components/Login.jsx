@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Cookies from "js-cookie";
 import {
@@ -102,50 +102,9 @@ const StatusMessage = ({ tone = "info", children }) => {
 
 const HeroBrand = ({ dark = true, compact = false }) => (
   <div className="flex items-center gap-3">
-    <svg
-      viewBox="0 0 72 72"
-      aria-hidden="true"
-      className={`${compact ? "h-8 w-8" : "h-12 w-12"} shrink-0`}
-    >
-      <defs>
-        <linearGradient
-          id="hooks-login-brand-gradient"
-          x1="8%"
-          y1="8%"
-          x2="92%"
-          y2="92%"
-        >
-          <stop offset="0%" stopColor="#7c3cff" />
-          <stop offset="52%" stopColor="#3d5cff" />
-          <stop offset="100%" stopColor="#1ab8ff" />
-        </linearGradient>
-      </defs>
-
-      <rect
-        x="7"
-        y="8"
-        width="15"
-        height="56"
-        rx="7.5"
-        fill="url(#hooks-login-brand-gradient)"
-      />
-      <rect
-        x="50"
-        y="8"
-        width="15"
-        height="56"
-        rx="7.5"
-        fill="url(#hooks-login-brand-gradient)"
-      />
-      <path
-        d="M22 39.5C27.8 35.8 32.6 31.5 37.9 24.9C42.3 19.6 45.4 15 50 12.6V29.5C44.2 33 39.6 37.5 34.4 44.1C30.5 48.9 26.7 53 22 56V39.5Z"
-        fill="url(#hooks-login-brand-gradient)"
-      />
-    </svg>
-
     <div>
       <div
-        className={`${compact ? "text-[2rem]" : "text-[2.35rem]"} font-semibold leading-none tracking-[-0.06em] ${
+        className={`${compact ? "text-[2rem]" : "text-[2.35rem]"} font-semibold leading-none tracking-[-0.01em] ${
           dark ? "text-[#101633]" : "text-white"
         } uppercase`}
       >
@@ -162,54 +121,7 @@ const HeroBrand = ({ dark = true, compact = false }) => (
   </div>
 );
 
-const PinAccessBrand = () => (
-  <div className="flex items-center gap-4">
-    <svg
-      viewBox="0 0 72 72"
-      aria-hidden="true"
-      className="h-[58px] w-[58px] shrink-0"
-    >
-      <defs>
-        <linearGradient
-          id="hooks-login-pin-access-gradient"
-          x1="8%"
-          y1="8%"
-          x2="92%"
-          y2="92%"
-        >
-          <stop offset="0%" stopColor="#7c3cff" />
-          <stop offset="52%" stopColor="#3d5cff" />
-          <stop offset="100%" stopColor="#1ab8ff" />
-        </linearGradient>
-      </defs>
-
-      <rect
-        x="7"
-        y="8"
-        width="15"
-        height="56"
-        rx="7.5"
-        fill="url(#hooks-login-pin-access-gradient)"
-      />
-      <rect
-        x="50"
-        y="8"
-        width="15"
-        height="56"
-        rx="7.5"
-        fill="url(#hooks-login-pin-access-gradient)"
-      />
-      <path
-        d="M22 39.5C27.8 35.8 32.6 31.5 37.9 24.9C42.3 19.6 45.4 15 50 12.6V29.5C44.2 33 39.6 37.5 34.4 44.1C30.5 48.9 26.7 53 22 56V39.5Z"
-        fill="url(#hooks-login-pin-access-gradient)"
-      />
-    </svg>
-
-    <div className="font-heading text-[3.1rem] font-semibold leading-none tracking-[-0.08em] text-[#0f1437]">
-      hookscore
-    </div>
-  </div>
-);
+const PinAccessBrand = () => <HeroBrand dark={false} />;
 
 const PromoFeature = ({
   icon,
@@ -255,14 +167,14 @@ const PinAccessFeatureCard = ({ icon, title, description }) => {
   const Icon = icon;
 
   return (
-    <div className="rounded-xl border border-[#e7e3ff] bg-white px-6 py-7">
-      <div className="mx-auto flex h-[58px] w-[58px] items-center justify-center rounded-xl bg-[linear-gradient(180deg,rgba(121,91,255,0.2)_0%,rgba(105,75,255,0.08)_100%)] text-[#5b31ff]">
+    <div className="rounded-md  bg-white/[0.04] px-4 py-5 sm:px-5 sm:py-6">
+      <div className="mx-auto flex h-[52px] w-[52px] items-center justify-center rounded-md bg-[linear-gradient(180deg,rgba(121,91,255,0.24)_0%,rgba(105,75,255,0.10)_100%)] text-[#8f7bff]">
         <Icon className="h-8 w-8" />
       </div>
-      <div className="mt-5 text-center text-[1.05rem] font-semibold text-[#131a39]">
+      <div className="mt-4 text-center text-[0.98rem] font-semibold text-white">
         {title}
       </div>
-      <p className="mt-3 text-center text-[15px] leading-7 text-[#5b648c]">
+      <p className="mt-2 text-center text-[14px] leading-6 text-white/66">
         {description}
       </p>
     </div>
@@ -274,7 +186,7 @@ const PinPadButton = ({ children, onClick, disabled, className = "" }) => (
     type="button"
     onClick={onClick}
     disabled={disabled}
-    className={`flex h-[68px] items-center justify-center rounded-xl border border-[#e4defe] bg-white text-[2rem] font-semibold text-[#111936] transition duration-150 hover:border-[#cfc3ff] hover:bg-[#fbfaff] disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
+    className={`flex h-14 items-center justify-center rounded-md border border-white/10 bg-white/[0.04] text-[1.5rem] font-semibold text-white transition duration-150 hover:border-white/20 hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-50 sm:h-[60px] sm:text-[1.7rem] ${className}`}
   >
     {children}
   </button>
@@ -607,31 +519,66 @@ const PinBoxesField = ({
   isActive = true,
   onActivate,
 }) => {
+  const inputRef = useRef(null);
   const normalized = String(value || "")
     .replace(/\D/g, "")
     .slice(0, MAX_PIN_LENGTH);
+
+  const focusInput = () => {
+    if (disabled) return;
+    if (typeof onActivate === "function") {
+      onActivate();
+    }
+
+    const node = inputRef.current;
+    if (!node) return;
+
+    node.focus({ preventScroll: true });
+
+    try {
+      const caret = String(node.value || "").length;
+      node.setSelectionRange(caret, caret);
+    } catch {
+      // Ignore browsers that do not support selection ranges here.
+    }
+  };
+
+  useEffect(() => {
+    if (!autoFocus || disabled) return;
+
+    const timer = setTimeout(() => {
+      focusInput();
+    }, 0);
+
+    return () => clearTimeout(timer);
+  }, [autoFocus, disabled]);
 
   return (
     <div>
       {label ? (
         <button
           type="button"
-          onClick={onActivate}
+          onClick={focusInput}
           className={`mb-3 block text-left text-sm font-semibold transition ${
-            isActive ? "text-[#4d35ff]" : "text-[#59638c]"
+            isActive ? "text-[#8d7dff]" : "text-white/58"
           }`}
         >
           {label}
         </button>
       ) : null}
 
-      <div className="relative" onClick={onActivate}>
+      <div className="relative" onClick={focusInput}>
         <input
-          type="text"
+          ref={inputRef}
+          type="tel"
           inputMode="numeric"
-          pattern="[0-9]{4,7}"
+          pattern="[0-9]*"
           minLength={MIN_PIN_LENGTH}
           maxLength={MAX_PIN_LENGTH}
+          autoComplete="one-time-code"
+          autoCapitalize="off"
+          autoCorrect="off"
+          spellCheck={false}
           autoFocus={autoFocus}
           value={normalized}
           onChange={(event) =>
@@ -641,11 +588,12 @@ const PinBoxesField = ({
           }
           onFocus={onActivate}
           disabled={disabled}
-          className="absolute inset-0 z-10 h-full w-full cursor-text opacity-0 disabled:cursor-not-allowed"
+          className="absolute inset-0 z-10 h-full w-full cursor-text appearance-none rounded-md border-0 bg-transparent text-transparent caret-transparent outline-none disabled:cursor-not-allowed"
+          style={{ WebkitTextFillColor: "transparent" }}
           aria-label={label || "Organization PIN"}
         />
 
-        <div className="grid grid-cols-7 gap-2 sm:gap-3">
+        <div className="pointer-events-none mx-auto grid w-full max-w-[392px] grid-cols-7 gap-1.5 sm:max-w-[462px] sm:gap-2.5">
           {Array.from({ length: MAX_PIN_LENGTH }).map((_, index) => {
             const digit = normalized[index] || "";
             const filled = Boolean(digit);
@@ -657,12 +605,12 @@ const PinBoxesField = ({
             return (
               <div
                 key={`${label || "pin"}-${index}`}
-                className={`flex h-[78px] items-center justify-center rounded-xl border text-[2rem] font-semibold transition sm:h-[82px] ${
+                className={`flex aspect-square w-full items-center justify-center rounded-md border text-[1.2rem] font-semibold transition sm:text-[1.55rem] ${
                   filled
-                    ? "border-[#cfc4ff] bg-white text-[#101734]"
+                    ? "border-white/20 bg-white text-[#101734]"
                     : active
-                      ? "border-[#5d34ff] bg-white text-[#5d34ff]"
-                      : "border-[#ddd7ff] bg-white text-transparent"
+                      ? "border-[#6e58ff] bg-white/[0.08] text-white"
+                      : "border-white/10 bg-white/[0.04] text-transparent"
                 }`}
               >
                 {digit ? (masked ? "\u2022" : digit) : active ? "|" : ""}
@@ -830,9 +778,8 @@ const Login = ({ onLogin }) => {
     setLoginTicket(String(data?.loginTicket || ""));
     setNotice(
       String(data?.message || "").trim() ||
-        (nextStep === STEPS.pinSetup
-          ? "Create the organization PIN to finish signing in."
-          : "Enter your organization PIN to finish signing in."),
+        (nextStep === STEPS.pinSetup &&
+          "Create the organization PIN to finish signing in."),
     );
     setForm((value) => ({
       ...value,
@@ -1036,7 +983,8 @@ const Login = ({ onLogin }) => {
     }
   };
 
-  const isPinOverlayOpen = step === STEPS.pin || step === STEPS.pinSetup;
+  const isPinStep = step === STEPS.pin || step === STEPS.pinSetup;
+  const isPinOverlayOpen = false;
   const isPinSetupStep = step === STEPS.pinSetup;
   const pinStepTitle = isPinSetupStep
     ? "Create 7-Digit PIN"
@@ -1052,8 +1000,230 @@ const Login = ({ onLogin }) => {
       ? "Access Admin Dashboard"
       : "Create PIN and Sign In";
 
+  const rightPanelContent = isPinStep ? (
+    <div>
+      <p className="text-[14px] font-semibold text-[#3458ff] sm:text-[15px]">
+        {isPinSetupStep ? "Create admin PIN" : "Secure access"}
+      </p>
+      <h2 className="mt-2 text-[1.8rem] font-semibold leading-tight tracking-[-0.045em] text-white sm:mt-3 sm:text-[2.25rem]">
+        {pinStepTitle}
+      </h2>
+      <p className="mt-2 text-[14px] leading-6 text-white/66 sm:text-[15px] sm:leading-7">
+        {pinStepSubtitle}
+      </p>
+
+      <div className="mt-4 space-y-3">
+        {error ? <StatusMessage tone="error">{error}</StatusMessage> : null}
+      </div>
+
+      <form onSubmit={submit} className="mt-5 space-y-4">
+        {step === STEPS.pin ? (
+          <PinBoxesField
+            value={form.pin}
+            onChange={(nextPin) => updatePinField("pin", nextPin)}
+            disabled={loading}
+            autoFocus
+            masked={!showPinValue}
+            onActivate={() => setActivePinField("pin")}
+          />
+        ) : (
+          <div className="space-y-4">
+            <PinBoxesField
+              label="New PIN"
+              value={form.newPin}
+              onChange={(nextPin) => updatePinField("newPin", nextPin)}
+              disabled={loading}
+              autoFocus
+              masked={!showPinValue}
+              isActive={activePinField === "newPin"}
+              onActivate={() => setActivePinField("newPin")}
+            />
+
+            <PinBoxesField
+              label="Confirm PIN"
+              value={form.confirmPin}
+              onChange={(nextPin) => updatePinField("confirmPin", nextPin)}
+              disabled={loading}
+              masked={!showPinValue}
+              isActive={activePinField === "confirmPin"}
+              onActivate={() => setActivePinField("confirmPin")}
+            />
+          </div>
+        )}
+
+        <div className="flex flex-col gap-3 text-[14px] text-white/66 sm:flex-row sm:items-center sm:justify-between">
+          <button
+            type="button"
+            onClick={() => setShowPinValue((value) => !value)}
+            className="inline-flex items-center gap-2 font-medium transition hover:text-white"
+          >
+            {showPinValue ? (
+              <HiOutlineEyeSlash className="h-5 w-5" />
+            ) : (
+              <HiOutlineEye className="h-5 w-5" />
+            )}
+            <span>{showPinValue ? "Hide PIN" : "Show PIN"}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => clearAll(true)}
+            className="text-left font-medium text-[#7f8fff] transition hover:text-white"
+          >
+            Use another account
+          </button>
+        </div>
+
+        <div className="text-[14px] text-white/62">
+          Signing in as{" "}
+          <span className="font-semibold text-white">
+            {form.email || "your account"}
+          </span>
+          {isPinSetupStep ? (
+            <span className="block pt-1 text-[13px] text-white/48">
+              Active field:{" "}
+              {activePinField === "confirmPin" ? "Confirm PIN" : "New PIN"}
+            </span>
+          ) : null}
+        </div>
+
+        <button type="submit" disabled={loading} className={PRIMARY_BUTTON}>
+          <span>{pinStepButtonLabel}</span>
+          <HiOutlineArrowRight className="h-4 w-4" />
+        </button>
+      </form>
+
+      <p className="mt-5 text-center text-[14px] text-white/62">
+        Need help?{" "}
+        <a
+          href="#"
+          className="font-semibold text-[#7f8fff] transition hover:text-white"
+        >
+          Contact support
+        </a>
+      </p>
+    </div>
+  ) : (
+    <div>
+      <p className="text-[14px] font-semibold text-[#3458ff] sm:text-[15px]">
+        Welcome back! <span className="align-middle">Hi</span>
+      </p>
+      <h2 className="mt-2 text-[1.8rem] font-semibold leading-tight tracking-[-0.045em] text-white sm:mt-3 sm:text-[2.25rem]">
+        Sign in to your account
+      </h2>
+      <p className="mt-2 text-[14px] leading-6 text-white/66 sm:text-[15px] sm:leading-7">
+        Enter your credentials to access your dashboard.
+      </p>
+
+      <div className="mt-4 space-y-3">
+        {notice ? <StatusMessage tone="warning">{notice}</StatusMessage> : null}
+        {error ? <StatusMessage tone="error">{error}</StatusMessage> : null}
+      </div>
+
+      <form onSubmit={submit} className="mt-5 space-y-4">
+        <div>
+          <label className="mb-2 block text-[14px] font-semibold text-slate-100">
+            Email address
+          </label>
+          <div className={INPUT_WRAPPER}>
+            <HiOutlineEnvelope className={INPUT_ICON} />
+            <input
+              type="email"
+              value={form.email}
+              onChange={(event) => {
+                setForm((value) => ({
+                  ...value,
+                  email: event.target.value,
+                }));
+                setError("");
+              }}
+              placeholder="admin@hooks.com"
+              autoComplete="email"
+              required
+              disabled={loading}
+              className={INPUT_FIELD}
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="mb-2 block text-[14px] font-semibold text-slate-100">
+            Password
+          </label>
+          <div className={INPUT_WRAPPER}>
+            <HiOutlineLockClosed className={INPUT_ICON} />
+            <input
+              type={showPassword ? "text" : "password"}
+              value={form.password}
+              onChange={(event) => {
+                setForm((value) => ({
+                  ...value,
+                  password: event.target.value,
+                }));
+                setError("");
+              }}
+              placeholder="Enter your password"
+              autoComplete="current-password"
+              required
+              disabled={loading}
+              className="h-12 w-full bg-transparent pl-12 pr-12 text-[15px] text-slate-100 outline-none placeholder:text-slate-400 disabled:cursor-not-allowed disabled:text-slate-400"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((value) => !value)}
+              disabled={loading}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-[#98a1bd] transition hover:text-[#4b61ff] disabled:cursor-not-allowed disabled:opacity-50"
+              aria-label={showPassword ? "Hide password" : "Show password"}
+            >
+              {showPassword ? (
+                <HiOutlineEyeSlash className="h-5 w-5" />
+              ) : (
+                <HiOutlineEye className="h-5 w-5" />
+              )}
+            </button>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-3 text-[14px] text-slate-100 sm:flex-row sm:items-center sm:justify-between">
+          <label className="inline-flex cursor-pointer items-center gap-3">
+            <input
+              type="checkbox"
+              checked={rememberMe}
+              onChange={(event) => setRememberMe(event.target.checked)}
+              disabled={loading}
+              className="h-4 w-4 rounded border-slate-300 accent-[#4560ff] disabled:cursor-not-allowed"
+            />
+            <span className="font-medium text-slate-100">Remember me</span>
+          </label>
+
+          <button
+            type="button"
+            className="text-left font-medium text-[#3458ff] transition hover:text-[#253ee3]"
+          >
+            Forgot password?
+          </button>
+        </div>
+
+        <button type="submit" disabled={loading} className={PRIMARY_BUTTON}>
+          <span>{loading ? "Checking credentials..." : "Sign in"}</span>
+          <HiOutlineArrowRight className="h-4 w-4" />
+        </button>
+      </form>
+
+      <p className="mt-5 text-center text-[14px] text-white/62">
+        Need help?{" "}
+        <a
+          href="#"
+          className="font-semibold text-[#7f8fff] transition hover:text-white"
+        >
+          Contact support
+        </a>
+      </p>
+    </div>
+  );
+
   return (
-    <div className="relative isolate min-h-screen flex items-center justify-center py-6 overflow-hidden bg-[linear-gradient(180deg,#020617_0%,#050816_38%,#0B1120_100%)] text-white">
+    <div className="relative isolate flex min-h-dvh items-center justify-center overflow-hidden bg-[linear-gradient(180deg,#020617_0%,#050816_38%,#0B1120_100%)] text-white">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_22%,rgba(124,58,237,0.16),transparent_22%),radial-gradient(circle_at_82%_24%,rgba(37,99,235,0.16),transparent_24%),radial-gradient(circle_at_90%_82%,rgba(124,58,237,0.18),transparent_18%)]" />
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(148,163,184,0.06)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,0.06)_1px,transparent_1px)] [background-size:24px_24px] opacity-35 [mask-image:radial-gradient(circle_at_center,white,transparent_88%)]" />
       <div className="pointer-events-none absolute inset-y-0 left-[26%] hidden w-[380px] bg-[radial-gradient(circle,rgba(124,58,237,0.12)_1px,transparent_1px)] [background-size:10px_10px] opacity-50 [mask-image:radial-gradient(circle_at_center,white,transparent_76%)] lg:block" />
@@ -1066,7 +1236,13 @@ const Login = ({ onLogin }) => {
           aria-hidden="true"
         >
           <defs>
-            <linearGradient id="hooksLoginHeroWave" x1="0" y1="0" x2="1440" y2="0">
+            <linearGradient
+              id="hooksLoginHeroWave"
+              x1="0"
+              y1="0"
+              x2="1440"
+              y2="0"
+            >
               <stop offset="0%" stopColor="rgba(124,58,237,0)" />
               <stop offset="34%" stopColor="#7C3AED" />
               <stop offset="68%" stopColor="#2563EB" />
@@ -1103,9 +1279,9 @@ const Login = ({ onLogin }) => {
         </svg>
       </div>
 
-      <div className="relative mx-auto flex min-h-dvh w-full max-w-[1160px] flex-col px-2 py-2 sm:px-5 sm:py-5 md:px-6 lg:h-screen lg:justify-center lg:px-6 lg:py-5">
-        <div className="grid w-full overflow-hidden rounded-md bg-transparent md:min-h-[calc(100dvh-2.5rem)] md:grid-rows-[auto_1fr] lg:h-[calc(100dvh-2.5rem)] lg:min-h-0 lg:grid-cols-[2.7fr_2fr] lg:grid-rows-1 xl:grid-cols-[2.85fr_1.9fr]">
-          <section className="relative hidden overflow-hidden bg-transparent md:flex md:flex-col md:justify-between md:px-8 md:py-7 lg:px-10 lg:py-8">
+      <div className="relative mx-auto flex w-full max-w-[1080px] flex-1 flex-col justify-center px-2 sm:px-4 md:px-5 lg:px-6">
+        <div className="grid w-full items-center overflow-hidden bg-transparent md:grid-rows-[auto_1fr] lg:grid-cols-[2.7fr_2fr] lg:grid-rows-1 xl:grid-cols-[2.85fr_1.9fr]">
+          <section className="relative hidden overflow-hidden bg-transparent md:flex md:flex-col md:justify-between md:px-8 md:py-5 lg:px-10 lg:py-6">
             <div className="relative z-10">
               <HeroBrand dark={false} />
 
@@ -1134,161 +1310,164 @@ const Login = ({ onLogin }) => {
             </div>
           </section>
 
-          <section className="relative flex flex-col bg-transparent px-3 py-5 sm:px-5 sm:py-5 md:px-7 md:py-7 lg:px-10 lg:py-8">
-            <div className="relative z-10 mx-auto flex w-full max-w-[520px] flex-1 flex-col justify-center lg:max-w-[520px] xl:max-w-[520px]">
-              <div className="block md:hidden mb-4">
+          <section className="relative flex flex-col bg-transparent px-2 py-3 sm:px-4 sm:py-4 md:px-6 md:py-5 lg:px-8 lg:py-6">
+            <div className="relative z-10 mx-auto flex w-full max-w-[460px] flex-1 flex-col justify-center lg:max-w-[460px] xl:max-w-[460px]">
+              <div className="mb-3 block md:hidden">
                 <HeroBrand dark={false} compact />
               </div>
-              <div className="w-full rounded-md border border-transparent bg-transparent px-4 py-6 sm:px-7 sm:py-7 md:px-9 md:py-8 lg:px-10 lg:py-8">
-                <div
-                  className={
-                    isPinOverlayOpen
-                      ? "pointer-events-none opacity-50 blur-[1px]"
-                      : ""
-                  }
-                >
-                  <p className="text-[14px] font-semibold text-[#3458ff] sm:text-[15px]">
-                    Welcome back! <span className="align-middle">👋</span>
-                  </p>
+              <div className="w-full bg-transparent px-0 py-0">
+                {rightPanelContent}
+                {false ? (
+                  <div
+                    className={
+                      isPinOverlayOpen
+                        ? "pointer-events-none opacity-50 blur-[1px]"
+                        : ""
+                    }
+                  >
+                    <p className="text-[14px] font-semibold text-[#3458ff] sm:text-[15px]">
+                      Welcome back! <span className="align-middle">👋</span>
+                    </p>
 
-                  <div className="mt-5 space-y-3">
-                    {!isPinOverlayOpen && notice ? (
-                      <StatusMessage tone="warning">{notice}</StatusMessage>
-                    ) : null}
+                    <div className="mt-4 space-y-3">
+                      {!isPinOverlayOpen && notice ? (
+                        <StatusMessage tone="warning">{notice}</StatusMessage>
+                      ) : null}
 
-                    {!isPinOverlayOpen && error ? (
-                      <StatusMessage tone="error">{error}</StatusMessage>
-                    ) : null}
+                      {!isPinOverlayOpen && error ? (
+                        <StatusMessage tone="error">{error}</StatusMessage>
+                      ) : null}
 
-                    {isPinOverlayOpen ? (
-                      <StatusMessage tone="success">
-                        Password verified for{" "}
-                        <span className="font-semibold text-emerald-900">
-                          {form.email || "your account"}
-                        </span>
-                        . Complete the organization PIN step in the security
-                        window.
-                      </StatusMessage>
-                    ) : null}
-                  </div>
+                      {isPinOverlayOpen ? (
+                        <StatusMessage tone="success">
+                          Password verified for{" "}
+                          <span className="font-semibold text-emerald-900">
+                            {form.email || "your account"}
+                          </span>
+                          . Complete the organization PIN step in the security
+                          window.
+                        </StatusMessage>
+                      ) : null}
+                    </div>
 
-                  <form onSubmit={submit} className="mt-6 space-y-5">
-                    <div>
-                      <label className="mb-2 block text-[14px] font-semibold text-slate-100">
+                    <form onSubmit={submit} className="mt-5 space-y-4">
+                      <div>
+                        <label className="mb-2 block text-[14px] font-semibold text-slate-100">
                           Email address
                         </label>
-                      <div className={INPUT_WRAPPER}>
-                        <HiOutlineEnvelope className={INPUT_ICON} />
-                        <input
-                          type="email"
-                          value={form.email}
-                          onChange={(event) => {
-                            setForm((value) => ({
-                              ...value,
-                              email: event.target.value,
-                            }));
-                            setError("");
-                          }}
-                          placeholder="admin@hooks.com"
-                          autoComplete="email"
-                          required
-                          disabled={loading || isPinOverlayOpen}
-                          className={INPUT_FIELD}
-                        />
+                        <div className={INPUT_WRAPPER}>
+                          <HiOutlineEnvelope className={INPUT_ICON} />
+                          <input
+                            type="email"
+                            value={form.email}
+                            onChange={(event) => {
+                              setForm((value) => ({
+                                ...value,
+                                email: event.target.value,
+                              }));
+                              setError("");
+                            }}
+                            placeholder="admin@hooks.com"
+                            autoComplete="email"
+                            required
+                            disabled={loading || isPinOverlayOpen}
+                            className={INPUT_FIELD}
+                          />
+                        </div>
                       </div>
-                    </div>
 
-                    <div>
-                      <label className="mb-2 block text-[14px] font-semibold text-slate-100">
-                        Password
-                      </label>
-                      <div className={INPUT_WRAPPER}>
-                        <HiOutlineLockClosed className={INPUT_ICON} />
-                        <input
-                          type={showPassword ? "text" : "password"}
-                          value={form.password}
-                          onChange={(event) => {
-                            setForm((value) => ({
-                              ...value,
-                              password: event.target.value,
-                            }));
-                            setError("");
-                          }}
-                          placeholder="Enter your password"
-                          autoComplete="current-password"
-                          required
-                          disabled={loading || isPinOverlayOpen}
-                          className="h-12 w-full bg-transparent pl-12 pr-12 text-[15px] text-slate-900 outline-none placeholder:text-slate-400 disabled:cursor-not-allowed disabled:text-slate-400"
-                        />
+                      <div>
+                        <label className="mb-2 block text-[14px] font-semibold text-slate-100">
+                          Password
+                        </label>
+                        <div className={INPUT_WRAPPER}>
+                          <HiOutlineLockClosed className={INPUT_ICON} />
+                          <input
+                            type={showPassword ? "text" : "password"}
+                            value={form.password}
+                            onChange={(event) => {
+                              setForm((value) => ({
+                                ...value,
+                                password: event.target.value,
+                              }));
+                              setError("");
+                            }}
+                            placeholder="Enter your password"
+                            autoComplete="current-password"
+                            required
+                            disabled={loading || isPinOverlayOpen}
+                            className="h-12 w-full bg-transparent pl-12 pr-12 text-[15px] text-slate-100 outline-none placeholder:text-slate-400 disabled:cursor-not-allowed disabled:text-slate-400"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword((value) => !value)}
+                            disabled={loading || isPinOverlayOpen}
+                            className="absolute right-4 top-1/2 -translate-y-1/2 text-[#98a1bd] transition hover:text-[#4b61ff] disabled:cursor-not-allowed disabled:opacity-50"
+                            aria-label={
+                              showPassword ? "Hide password" : "Show password"
+                            }
+                          >
+                            {showPassword ? (
+                              <HiOutlineEyeSlash className="h-5 w-5" />
+                            ) : (
+                              <HiOutlineEye className="h-5 w-5" />
+                            )}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-3 text-[14px] text-slate-100 sm:flex-row sm:items-center sm:justify-between">
+                        <label className="inline-flex cursor-pointer items-center gap-3">
+                          <input
+                            type="checkbox"
+                            checked={rememberMe}
+                            onChange={(event) =>
+                              setRememberMe(event.target.checked)
+                            }
+                            disabled={loading || isPinOverlayOpen}
+                            className="h-4 w-4 rounded border-slate-300 accent-[#4560ff] disabled:cursor-not-allowed"
+                          />
+                          <span className="font-medium text-slate-100">
+                            Remember me
+                          </span>
+                        </label>
+
                         <button
                           type="button"
-                          onClick={() => setShowPassword((value) => !value)}
-                          disabled={loading || isPinOverlayOpen}
-                          className="absolute right-4 top-1/2 -translate-y-1/2 text-[#98a1bd] transition hover:text-[#4b61ff] disabled:cursor-not-allowed disabled:opacity-50"
-                          aria-label={
-                            showPassword ? "Hide password" : "Show password"
-                          }
+                          className="text-left font-medium text-[#3458ff] transition hover:text-[#253ee3]"
                         >
-                          {showPassword ? (
-                            <HiOutlineEyeSlash className="h-5 w-5" />
-                          ) : (
-                            <HiOutlineEye className="h-5 w-5" />
-                          )}
+                          Forgot password?
                         </button>
                       </div>
-                    </div>
-
-                    <div className="flex flex-col gap-3 text-[14px] text-slate-100 sm:flex-row sm:items-center sm:justify-between">
-                      <label className="inline-flex cursor-pointer items-center gap-3">
-                        <input
-                          type="checkbox"
-                          checked={rememberMe}
-                          onChange={(event) =>
-                            setRememberMe(event.target.checked)
-                          }
-                          disabled={loading || isPinOverlayOpen}
-                          className="h-4 w-4 rounded border-slate-300 accent-[#4560ff] disabled:cursor-not-allowed"
-                        />
-                        <span className="font-medium text-slate-100">
-                          Remember me
-                        </span>
-                      </label>
 
                       <button
-                        type="button"
-                        className="text-left font-medium text-[#3458ff] transition hover:text-[#253ee3]"
+                        type="submit"
+                        disabled={loading || isPinOverlayOpen}
+                        className={PRIMARY_BUTTON}
                       >
-                        Forgot password?
+                        <span>
+                          {loading && !isPinOverlayOpen
+                            ? "Checking credentials..."
+                            : "Sign in"}
+                        </span>
+                        <HiOutlineArrowRight className="h-4 w-4" />
                       </button>
-                    </div>
+                    </form>
 
-                    <button
-                      type="submit"
-                      disabled={loading || isPinOverlayOpen}
-                      className={PRIMARY_BUTTON}
-                    >
-                      <span>
-                        {loading && !isPinOverlayOpen
-                          ? "Checking credentials..."
-                          : "Sign in"}
-                      </span>
-                      <HiOutlineArrowRight className="h-4 w-4" />
-                    </button>
-                  </form>
-
-                  <p className="mt-6 text-center text-[14px] text-[#66708f]">
-                    Need help?{" "}
-                    <a
-                      href="#"
-                      className="font-semibold text-[#3458ff] transition hover:text-[#253ee3]"
-                    >
-                      Contact support
-                    </a>
-                  </p>
-                </div>
+                    <p className="mt-5 text-center text-[14px] text-white/62">
+                      Need help?{" "}
+                      <a
+                        href="#"
+                        className="font-semibold text-[#7f8fff] transition hover:text-white"
+                      >
+                        Contact support
+                      </a>
+                    </p>
+                  </div>
+                ) : null}
               </div>
 
-              <p className="mt-3 px-2 text-center text-[13px] text-[#8a92ab] sm:mt-4 sm:text-[14px]">
+              <p className="mt-2 px-2 text-center text-[13px] text-white/48 sm:mt-3 sm:text-[14px]">
                 &copy; 2024{" "}
                 <span className="font-semibold text-[#3458ff]">Hooks</span>. All
                 rights reserved.
@@ -1299,219 +1478,216 @@ const Login = ({ onLogin }) => {
       </div>
 
       {isPinOverlayOpen ? (
-        <div className="fixed inset-0 z-[120] overflow-y-auto bg-white p-3 sm:p-5 lg:p-8">
-          <form
-            onSubmit={submit}
-            className="relative mx-auto w-full max-w-[1500px] overflow-hidden rounded-xl border border-[#e6eaf2] bg-white"
-          >
-            <div className="relative flex justify-end px-4 pb-0 pt-4 sm:px-6 sm:pt-6 lg:px-8 lg:pt-8">
-              <div className="inline-flex items-center gap-2 rounded-full border border-[#e7e3ff] bg-white px-4 py-2 text-sm font-semibold text-[#2e2a77]">
-                <HiOutlineShieldCheck className="h-5 w-5 text-[#6241ff]" />
-                <span>Secure Connection</span>
-              </div>
-            </div>
+        <div className="fixed inset-0 z-[120] overflow-x-hidden overflow-y-auto bg-[linear-gradient(180deg,#020617_0%,#050816_38%,#0B1120_100%)] text-white lg:overflow-hidden">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_22%,rgba(124,58,237,0.16),transparent_22%),radial-gradient(circle_at_82%_24%,rgba(37,99,235,0.16),transparent_24%),radial-gradient(circle_at_90%_82%,rgba(124,58,237,0.18),transparent_18%)]" />
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(148,163,184,0.06)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,0.06)_1px,transparent_1px)] [background-size:24px_24px] opacity-35 [mask-image:radial-gradient(circle_at_center,white,transparent_88%)]" />
+          <div className="pointer-events-none absolute inset-y-0 left-[24%] hidden w-[320px] bg-[radial-gradient(circle,rgba(124,58,237,0.12)_1px,transparent_1px)] [background-size:10px_10px] opacity-45 [mask-image:radial-gradient(circle_at_center,white,transparent_76%)] lg:block" />
+          <div className="pointer-events-none absolute inset-y-0 right-[-4%] hidden w-[340px] bg-[radial-gradient(circle,rgba(37,99,235,0.18)_1px,transparent_1px)] [background-size:10px_10px] opacity-50 [mask-image:radial-gradient(circle_at_center,white,transparent_78%)] lg:block" />
 
-            <div className="relative grid gap-6 px-4 pb-4 pt-4 sm:px-6 sm:pb-6 lg:grid-cols-[1.02fr_0.98fr] lg:gap-10 lg:px-8 lg:pb-8 lg:pt-2 xl:px-10 xl:pb-10">
-              <div className="hidden lg:flex lg:flex-col lg:justify-between lg:py-6">
-                <div>
+          <div className="relative mx-auto flex min-h-dvh w-full max-w-[1040px] flex-col justify-center px-2 py-3 sm:px-4 sm:py-4 md:px-5 lg:h-full lg:min-h-0 lg:px-6 lg:py-4">
+            <form
+              onSubmit={submit}
+              className="grid w-full items-center bg-transparent lg:h-full lg:grid-cols-[2.1fr_1.4fr]"
+            >
+              <section className="relative hidden bg-transparent md:flex md:flex-col md:justify-center md:px-8 md:py-5 lg:px-10 lg:py-6">
+                <div className="relative z-10">
                   <PinAccessBrand />
 
-                  <div className="mt-16 text-center">
-                    <div className="inline-flex items-center gap-4">
-                      <h2 className="font-heading text-[4rem] font-semibold leading-[1.02] tracking-[-0.08em] text-[#0d1333]">
-                        {isPinSetupStep
-                          ? "Create Admin PIN"
-                          : "Admin Access Gate"}
-                      </h2>
-                      <div className="flex h-20 w-20 items-center justify-center rounded-xl bg-[linear-gradient(180deg,rgba(115,82,255,0.16)_0%,rgba(102,62,255,0.06)_100%)] text-[#5d31ff]">
-                        <HiOutlineShieldCheck className="h-11 w-11" />
-                      </div>
-                    </div>
-                    <p className="mt-6 text-[2rem] font-semibold tracking-[-0.04em] text-[#3f4678]">
+                  <div className="mt-7 max-w-[470px]">
+                    <p className="text-[12px] font-semibold uppercase tracking-[0.24em] text-[#7f8fff]">
+                      {isPinSetupStep ? "PIN Setup" : "PIN Verification"}
+                    </p>
+                    <h2 className="mt-3 text-[2.2rem] font-semibold leading-[1.08] tracking-[-0.05em] text-white lg:text-[2.9rem]">
                       {isPinSetupStep
-                        ? "Create your 7-digit PIN to continue"
-                        : "Enter your 7-digit PIN to continue"}
+                        ? "Create your secure admin PIN."
+                        : "Finish sign-in with your admin PIN."}
+                    </h2>
+                    <p className="mt-4 max-w-[410px] text-[15px] leading-7 text-white/68 lg:text-base">
+                      {pinStepSubtitle}
                     </p>
                   </div>
 
-                  <div className="mt-16 grid grid-cols-3 gap-6">
+                  <div className="mt-6 grid gap-4 xl:grid-cols-3">
                     {pinAccessFeatures.map((item) => (
                       <PinAccessFeatureCard key={item.title} {...item} />
                     ))}
                   </div>
                 </div>
 
-                <div className="mt-16">
-                  <div className="flex items-center gap-4 text-[#7e73ce]">
-                    <div className="h-px flex-1 bg-[linear-gradient(90deg,rgba(134,126,201,0)_0%,rgba(134,126,201,0.5)_100%)]" />
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white">
-                      <HiOutlineShieldCheck className="h-6 w-6" />
-                    </div>
-                    <div className="h-px flex-1 bg-[linear-gradient(90deg,rgba(134,126,201,0.5)_0%,rgba(134,126,201,0)_100%)]" />
-                  </div>
-
-                  <div className="mt-8 flex items-center justify-center gap-8 text-[1.05rem] font-semibold text-[#2f3563]">
+                <div className="relative z-10 mt-6">
+                  <div className="flex flex-wrap items-center gap-3 text-sm font-semibold text-white/72">
                     {pinAccessBadges.map((item) => (
                       <div
                         key={item}
-                        className="inline-flex items-center gap-2"
+                        className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-2"
                       >
-                        <HiOutlineCheckBadge className="h-5 w-5 text-[#5d31ff]" />
+                        <HiOutlineCheckBadge className="h-4 w-4 text-[#7f8fff]" />
                         <span>{item}</span>
                       </div>
                     ))}
                   </div>
                 </div>
-              </div>
+              </section>
 
-              <div className="w-full rounded-xl border border-[#e6eaf2] bg-white px-5 py-6 sm:px-7 sm:py-8 lg:px-10 lg:py-10">
-                <div className="mx-auto max-w-[640px]">
-                  <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-xl bg-[linear-gradient(180deg,rgba(111,75,255,0.22)_0%,rgba(102,63,255,0.08)_100%)] text-[#5f33ff]">
-                    <HiOutlineLockClosed className="h-12 w-12" />
+              <section className="relative flex flex-col bg-transparent px-2 py-3 sm:px-4 sm:py-4 md:px-6 md:py-5 lg:px-7 lg:py-6">
+                <div className="relative z-10 mx-auto flex w-full max-w-[500px] flex-1 flex-col justify-center">
+                  <div className="mb-4 md:hidden">
+                    <HeroBrand dark={false} compact />
                   </div>
 
-                  <h3 className="mt-8 text-center font-heading text-[2.5rem] font-semibold tracking-[-0.06em] text-[#0f1438] sm:text-[3rem]">
-                    {pinStepTitle}
-                  </h3>
-                  <p className="mt-4 text-center text-[1.2rem] leading-8 text-[#4d5688]">
-                    {pinStepSubtitle}
-                  </p>
+                  <div className="bg-transparent px-0 py-0">
+                    <div className="inline-flex items-center gap-2 px-0 py-0 text-[12px] font-semibold uppercase tracking-[0.18em] text-white/72">
+                      <HiOutlineShieldCheck className="h-4 w-4 text-[#7f8fff]" />
+                      <span>Secure Access</span>
+                    </div>
 
-                  <div className="mt-8 space-y-4">
-                    {notice ? (
-                      <StatusMessage tone="info">{notice}</StatusMessage>
-                    ) : null}
-                    {error ? (
-                      <StatusMessage tone="error">{error}</StatusMessage>
-                    ) : null}
-                  </div>
+                    <div className="mx-auto mt-5 flex h-16 w-16 items-center justify-center rounded-md bg-[linear-gradient(180deg,rgba(111,75,255,0.20)_0%,rgba(102,63,255,0.06)_100%)] text-[#8f7bff] sm:h-20 sm:w-20">
+                      <HiOutlineLockClosed className="h-8 w-8 sm:h-10 sm:w-10" />
+                    </div>
 
-                  <div className="mt-8 space-y-5">
-                    {step === STEPS.pin ? (
-                      <PinBoxesField
-                        value={form.pin}
-                        onChange={(nextPin) => updatePinField("pin", nextPin)}
-                        disabled={loading}
-                        autoFocus
-                        masked={!showPinValue}
-                        onActivate={() => setActivePinField("pin")}
-                      />
-                    ) : (
-                      <div className="space-y-5">
+                    <h3 className="mt-5 text-center text-[1.85rem] font-semibold tracking-[-0.05em] text-white sm:text-[2.35rem]">
+                      {pinStepTitle}
+                    </h3>
+                    <p className="mt-3 text-center text-[14px] leading-6 text-white/66 sm:text-[15px] sm:leading-7">
+                      {pinStepSubtitle}
+                    </p>
+
+                    <div className="mt-5 space-y-3">
+                      {notice ? (
+                        <StatusMessage tone="info">{notice}</StatusMessage>
+                      ) : null}
+                      {error ? (
+                        <StatusMessage tone="error">{error}</StatusMessage>
+                      ) : null}
+                    </div>
+
+                    <div className="mt-6 space-y-4 sm:space-y-5">
+                      {step === STEPS.pin ? (
                         <PinBoxesField
-                          label="New PIN"
-                          value={form.newPin}
-                          onChange={(nextPin) =>
-                            updatePinField("newPin", nextPin)
-                          }
+                          value={form.pin}
+                          onChange={(nextPin) => updatePinField("pin", nextPin)}
                           disabled={loading}
                           autoFocus
                           masked={!showPinValue}
-                          isActive={activePinField === "newPin"}
-                          onActivate={() => setActivePinField("newPin")}
+                          onActivate={() => setActivePinField("pin")}
                         />
-
-                        <PinBoxesField
-                          label="Confirm PIN"
-                          value={form.confirmPin}
-                          onChange={(nextPin) =>
-                            updatePinField("confirmPin", nextPin)
-                          }
-                          disabled={loading}
-                          masked={!showPinValue}
-                          isActive={activePinField === "confirmPin"}
-                          onActivate={() => setActivePinField("confirmPin")}
-                        />
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="mt-6 grid grid-cols-3 gap-3 sm:gap-4">
-                    {pinPadLayout.flat().map((key, index) => {
-                      if (key === "empty") {
-                        return (
-                          <div
-                            key={`empty-${index}`}
-                            className="hidden sm:block"
+                      ) : (
+                        <div className="space-y-4 sm:space-y-5">
+                          <PinBoxesField
+                            label="New PIN"
+                            value={form.newPin}
+                            onChange={(nextPin) =>
+                              updatePinField("newPin", nextPin)
+                            }
+                            disabled={loading}
+                            autoFocus
+                            masked={!showPinValue}
+                            isActive={activePinField === "newPin"}
+                            onActivate={() => setActivePinField("newPin")}
                           />
-                        );
-                      }
 
-                      if (key === "backspace") {
+                          <PinBoxesField
+                            label="Confirm PIN"
+                            value={form.confirmPin}
+                            onChange={(nextPin) =>
+                              updatePinField("confirmPin", nextPin)
+                            }
+                            disabled={loading}
+                            masked={!showPinValue}
+                            isActive={activePinField === "confirmPin"}
+                            onActivate={() => setActivePinField("confirmPin")}
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="mt-5 grid grid-cols-3 gap-2 sm:gap-3">
+                      {pinPadLayout.flat().map((key, index) => {
+                        if (key === "empty") {
+                          return (
+                            <div
+                              key={`empty-${index}`}
+                              className="invisible hidden sm:block"
+                            />
+                          );
+                        }
+
+                        if (key === "backspace") {
+                          return (
+                            <PinPadButton
+                              key={key}
+                              onClick={removePinDigit}
+                              disabled={loading}
+                              className="text-[#9e8cff]"
+                            >
+                              <HiOutlineBackspace className="h-7 w-7 sm:h-8 sm:w-8" />
+                            </PinPadButton>
+                          );
+                        }
+
                         return (
                           <PinPadButton
                             key={key}
-                            onClick={removePinDigit}
+                            onClick={() => appendPinDigit(key)}
                             disabled={loading}
-                            className="text-[#4b3bcb]"
                           >
-                            <HiOutlineBackspace className="h-9 w-9" />
+                            {key}
                           </PinPadButton>
                         );
-                      }
+                      })}
+                    </div>
 
-                      return (
-                        <PinPadButton
-                          key={key}
-                          onClick={() => appendPinDigit(key)}
-                          disabled={loading}
-                        >
-                          {key}
-                        </PinPadButton>
-                      );
-                    })}
-                  </div>
+                    <div className="mt-5 flex flex-col gap-3 text-[14px] text-white/66 sm:flex-row sm:items-center sm:justify-between">
+                      <button
+                        type="button"
+                        onClick={() => setShowPinValue((value) => !value)}
+                        className="inline-flex items-center gap-2 font-medium transition hover:text-white"
+                      >
+                        {showPinValue ? (
+                          <HiOutlineEyeSlash className="h-5 w-5" />
+                        ) : (
+                          <HiOutlineEye className="h-5 w-5" />
+                        )}
+                        <span>{showPinValue ? "Hide PIN" : "Show PIN"}</span>
+                      </button>
 
-                  <div className="mt-7 flex flex-col gap-4 text-[1rem] text-[#4b5683] sm:flex-row sm:items-center sm:justify-between">
-                    <button
-                      type="button"
-                      onClick={() => setShowPinValue((value) => !value)}
-                      className="inline-flex items-center gap-2 font-medium transition hover:text-[#5d31ff]"
-                    >
-                      {showPinValue ? (
-                        <HiOutlineEyeSlash className="h-5 w-5" />
-                      ) : (
-                        <HiOutlineEye className="h-5 w-5" />
-                      )}
-                      <span>{showPinValue ? "Hide PIN" : "Show PIN"}</span>
-                    </button>
+                      <button
+                        type="button"
+                        className="font-semibold text-[#7f8fff] transition hover:text-white"
+                      >
+                        Forgot PIN?
+                      </button>
+                    </div>
 
-                    <button
-                      type="button"
-                      className="font-semibold text-[#4f47bb] transition hover:text-[#5d31ff]"
-                    >
-                      Forgot PIN?
-                    </button>
-                  </div>
-
-                  <div className="mt-6 rounded-xl border border-[#ece6ff] bg-white px-5 py-4 text-[15px] text-[#5d648d]">
-                    Signing in as{" "}
-                    <span className="font-semibold text-[#13193c]">
-                      {form.email || "your account"}
-                    </span>
-                    {isPinSetupStep ? (
-                      <span className="block pt-1 text-[13px] text-[#7a80a5]">
-                        Active field:{" "}
-                        {activePinField === "confirmPin"
-                          ? "Confirm PIN"
-                          : "New PIN"}
+                    <div className="mt-5 px-0 py-0 text-[14px] text-white/68">
+                      Signing in as{" "}
+                      <span className="font-semibold text-white">
+                        {form.email || "your account"}
                       </span>
-                    ) : null}
-                  </div>
+                      {isPinSetupStep ? (
+                        <span className="block pt-1 text-[13px] text-white/52">
+                          Active field:{" "}
+                          {activePinField === "confirmPin"
+                            ? "Confirm PIN"
+                            : "New PIN"}
+                        </span>
+                      ) : null}
+                    </div>
 
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className={`mt-7 ${PIN_PRIMARY_BUTTON}`}
-                  >
-                    <HiOutlineLockClosed className="h-6 w-6" />
-                    <span>{pinStepButtonLabel}</span>
-                    <HiOutlineArrowRight className="h-5 w-5" />
-                  </button>
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className={`mt-6 ${PIN_PRIMARY_BUTTON}`}
+                    >
+                      <HiOutlineLockClosed className="h-5 w-5 sm:h-6 sm:w-6" />
+                      <span>{pinStepButtonLabel}</span>
+                      <HiOutlineArrowRight className="h-5 w-5" />
+                    </button>
+                  </div>
                 </div>
-              </div>
-            </div>
-          </form>
+              </section>
+            </form>
+          </div>
         </div>
       ) : null}
     </div>
