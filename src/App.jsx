@@ -5,6 +5,7 @@ import {
   Routes,
   Route,
   Navigate,
+  Outlet,
   useLocation,
   useNavigate,
 } from "react-router-dom";
@@ -218,6 +219,7 @@ function App() {
   };
 
   const MainLayout = () => {
+    const location = useLocation();
     const navigate = useNavigate();
     const [loginPosterOpen, setLoginPosterOpen] = useState(false);
     const [loginPosterLoading, setLoginPosterLoading] = useState(false);
@@ -312,6 +314,12 @@ function App() {
       showLoginPosterIfNeeded();
     }, [showLoginPosterIfNeeded]);
 
+    useEffect(() => {
+      if (isMobile) {
+        setSidebarOpen(false);
+      }
+    }, [isMobile, location.pathname, location.search, location.hash]);
+
     const closeSidebar = useCallback(() => {
       setSidebarOpen(false);
     }, []);
@@ -324,6 +332,59 @@ function App() {
 
       setSidebarCollapsed((prev) => !prev);
     }, [isMobile]);
+
+    const isApiTesterWorkspace =
+      location.pathname === "/api-tester" ||
+      location.pathname.startsWith("/api-tester/");
+
+    if (isApiTesterWorkspace) {
+      return (
+        <div className="relative isolate min-h-screen bg-[#F5F7FF]">
+          {isMobile && sidebarOpen && (
+            <div
+              className="fixed inset-0 z-30 bg-slate-950/20 lg:hidden"
+              onClick={closeSidebar}
+            />
+          )}
+
+          {isMobile ? (
+            <Sidebar
+              collapsed={false}
+              isMobile
+              mobileOpen={sidebarOpen}
+              setMobileOpen={setSidebarOpen}
+              onLogout={() => clearAuth("logout")}
+            />
+          ) : null}
+
+          <div className="flex min-h-screen min-w-0 flex-col bg-[#F5F7FF]">
+            <Navbar
+              onToggleSidebar={isMobile ? toggleSidebar : () => {}}
+              sidebarOpen={sidebarOpen}
+              isMobile={isMobile}
+              onLogout={() => clearAuth("logout")}
+            />
+
+          <LoginStatusPoster
+            open={loginPosterOpen}
+            loading={loginPosterLoading}
+            error={loginPosterError}
+            reminders={loginPosterReminders}
+            onDismiss={() => setLoginPosterOpen(false)}
+            onRefresh={refreshLoginPoster}
+            onOpenReminder={handleOpenLoginPosterReminder}
+          />
+
+          <div
+            key={`${location.pathname}${location.search}${location.hash}`}
+            className="min-h-0 flex-1"
+          >
+            <Outlet />
+          </div>
+        </div>
+        </div>
+      );
+    }
 
     return (
       <div className="relative isolate flex h-screen overflow-hidden bg-[#F6F8FF]">
@@ -371,417 +432,11 @@ function App() {
               }`}
             >
               {isMobile ? null : <Breadcrumbs />}
-              <Routes>
-                <Route
-                  path="/"
-                  element={<Navigate to="/dashboard" replace />}
-                />
-                <Route
-                  path="/dashboard"
-                  element={<Dashboard isMobile={isMobile} />}
-                />
-                <Route path="/search" element={<GlobalSearchResults />} />
-                <Route
-                  path="/products/laptops/:id/edit"
-                  element={<EditLaptop />}
-                />
-                <Route
-                  path="/products/homeappliances/:id/edit"
-                  element={<EditHomeAppliance />}
-                />
-                <Route
-                  path="/products/tvs/:id/edit"
-                  element={<EditHomeAppliance />}
-                />
-                <Route
-                  path="/products/smartphones/create"
-                  element={<CreateMobile />}
-                />
-                <Route
-                  path="/products/smartphones/preview"
-                  element={<SmartphonePreview />}
-                />
-                <Route
-                  path="/products/smartphones/preview/:slug"
-                  element={<SmartphonePreview />}
-                />
-                <Route
-                  path="/products/smartphones/inventory"
-                  element={<ViewMobiles />}
-                />
-                <Route
-                  path="/products/smartphones/upcoming"
-                  element={<ViewUpcomingMobiles />}
-                />
-
-                <Route
-                  path="/products"
-                  element={
-                    <Navigate to="/products/smartphones/inventory" replace />
-                  }
-                />
-                <Route
-                  path="/products/laptops/inventory"
-                  element={<ViewLaptops />}
-                />
-                <Route
-                  path="/products/homeappliances/inventory"
-                  element={<ViewTVs />}
-                />
-                <Route path="/products/tvs/inventory" element={<ViewTVs />} />
-                <Route
-                  path="/products/laptops/create"
-                  element={<CreateLaptop />}
-                />
-                <Route
-                  path="/products/appliances/create"
-                  element={<CreateHomeAppliance />}
-                />
-                <Route
-                  path="/create-home-appliance"
-                  element={<CreateHomeAppliance />}
-                />
-                <Route
-                  path="/products/tvs/create"
-                  element={<CreateHomeAppliance />}
-                />
-                <Route path="/edit-mobile/:id" element={<EditMobile />} />
-                <Route
-                  path="/users"
-                  element={<Navigate to="/user-management" replace />}
-                />
-                <Route
-                  path="/roles"
-                  element={<Navigate to="/permission-management" replace />}
-                />
-                <Route
-                  path="/user-management"
-                  element={
-                    <AccessGate
-                      requiredAnyPermissions={["users.view"]}
-                      title="User management access required"
-                      message="Your account needs user-management permissions to open this workspace."
-                    >
-                      <UserManagement />
-                    </AccessGate>
-                  }
-                />
-                <Route
-                  path="/customer-management"
-                  element={
-                    <AccessGate
-                      requiredAnyPermissions={["customers.view", "users.view"]}
-                      title="Customer management access required"
-                      message="This screen is available to roles that can manage customers or users."
-                    >
-                      <ViewCustomers />
-                    </AccessGate>
-                  }
-                />
-                <Route
-                  path="/account-management"
-                  element={<AccountManagement />}
-                />
-                <Route
-                  path="/specifications-manager"
-                  element={
-                    <AccessGate
-                      requiredAnyPermissions={[
-                        "settings.view",
-                        "products.view",
-                      ]}
-                      title="Specifications access required"
-                      message="This section is available to product and settings roles."
-                    >
-                      <SpecificationsManager />
-                    </AccessGate>
-                  }
-                />
-                <Route
-                  path="/specifications/memory-storage/configurations"
-                  element={<RamStorageConfig />}
-                />
-                <Route
-                  path="/specifications/categories/create"
-                  element={
-                    <AccessGate
-                      requiredAnyPermissions={[
-                        "settings.view",
-                        "products.view",
-                      ]}
-                      title="Category management access required"
-                      message="This screen is limited to product and settings roles."
-                    >
-                      <CategoryManagement />
-                    </AccessGate>
-                  }
-                />
-                <Route
-                  path="/specifications/brands"
-                  element={
-                    <AccessGate
-                      requiredAnyPermissions={[
-                        "settings.view",
-                        "products.view",
-                      ]}
-                      title="Brand management access required"
-                      message="This screen is limited to product and settings roles."
-                    >
-                      <Brand />
-                    </AccessGate>
-                  }
-                />
-                <Route
-                  path="/permission-management"
-                  element={
-                    <AccessGate
-                      requiredAnyPermissions={[
-                        "roles.manage",
-                        "permissions.manage",
-                      ]}
-                      title="Permission management is restricted"
-                      message="Your account needs role or permission management access to open this workspace."
-                    >
-                      <PermissionManagement />
-                    </AccessGate>
-                  }
-                />
-                <Route
-                  path="/smartphonesrating"
-                  element={<MobileRatingCard />}
-                />
-                <Route
-                  path="/change-password"
-                  element={<ChangePasswordModal />}
-                />
-                <Route
-                  path="/api-tester"
-                  element={
-                    <AccessGate
-                      requiredAnyPermissions={[
-                        "settings.manage",
-                        "settings.view",
-                      ]}
-                      title="API tester access required"
-                      message="You need settings access to open the API tester."
-                    >
-                      <ApiTester />
-                    </AccessGate>
-                  }
-                />
-                <Route
-                  path="/settings/compare-pages"
-                  element={
-                    <AccessGate
-                      requiredAnyPermissions={["settings.view"]}
-                      title="Settings access required"
-                      message="You need settings access to open this page."
-                    >
-                      <ComparePages />
-                    </AccessGate>
-                  }
-                />
-                <Route
-                  path="/settings/compare-scoring"
-                  element={
-                    <AccessGate
-                      requiredAnyPermissions={["settings.view"]}
-                      title="Settings access required"
-                      message="You need settings access to open this page."
-                    >
-                      <CompareScoring />
-                    </AccessGate>
-                  }
-                />
-                <Route
-                  path="/settings/device-field-profiles"
-                  element={
-                    <AccessGate
-                      requiredAnyPermissions={["settings.view"]}
-                      title="Settings access required"
-                      message="You need settings access to open this page."
-                    >
-                      <DeviceFieldProfiles />
-                    </AccessGate>
-                  }
-                />
-                <Route
-                  path="/content/news-articles"
-                  element={
-                    <AccessGate
-                      requiredPermissions={["content.news.view"]}
-                      requiredAnyPermissions={[
-                        "content.news.create",
-                        "content.news.edit",
-                        "content.news.publish",
-                        "content.news.schedule",
-                        "content.news.manage",
-                      ]}
-                      title="News & Articles access required"
-                      message="This newsroom studio is available to roles with News & Articles permissions."
-                    >
-                      <BlogEditor />
-                    </AccessGate>
-                  }
-                />
-                <Route
-                  path="/content/blogs"
-                  element={<Navigate to="/content/news-articles" replace />}
-                />
-                <Route
-                  path="/specifications/store"
-                  element={
-                    <AccessGate
-                      requiredAnyPermissions={[
-                        "products.view",
-                        "settings.view",
-                      ]}
-                      title="Store management access required"
-                      message="You need product or settings access to open this page."
-                    >
-                      <OnlineStoreManagement />
-                    </AccessGate>
-                  }
-                />
-                <Route
-                  path="/marketing/banners"
-                  element={
-                    <AccessGate
-                      requiredAnyPermissions={["marketing.view"]}
-                      title="Marketing access required"
-                      message="You need marketing access to open this page."
-                    >
-                      <BannerManager />
-                    </AccessGate>
-                  }
-                />
-                <Route
-                  path="/reports/productcategories"
-                  element={
-                    <AccessGate
-                      requiredAnyPermissions={["reports.view"]}
-                      title="Reports access required"
-                      message="You need report access to open this page."
-                    >
-                      <ProductCategoryReport />
-                    </AccessGate>
-                  }
-                />
-                <Route
-                  path="/reports/productpublishstatus"
-                  element={
-                    <AccessGate
-                      requiredAnyPermissions={["reports.view"]}
-                      title="Reports access required"
-                      message="You need report access to open this page."
-                    >
-                      <ProductPublishStatusReport />
-                    </AccessGate>
-                  }
-                />
-                <Route
-                  path="/reports/launch-timing"
-                  element={
-                    <AccessGate
-                      requiredAnyPermissions={["reports.view"]}
-                      title="Reports access required"
-                      message="You need report access to open this page."
-                    >
-                      <LaunchTimingReport />
-                    </AccessGate>
-                  }
-                />
-                <Route
-                  path="/analytics"
-                  element={
-                    <Navigate to="/reports/productpublishstatus" replace />
-                  }
-                />
-                <Route
-                  path="/reports/useractivity"
-                  element={
-                    <AccessGate
-                      requiredAnyPermissions={["reports.view"]}
-                      title="Reports access required"
-                      message="You need report access to open this page."
-                    >
-                      <PublishedByUserReport />
-                    </AccessGate>
-                  }
-                />
-                <Route
-                  path="/reports/recentactivity"
-                  element={
-                    <AccessGate
-                      requiredAnyPermissions={["activity.view", "reports.view"]}
-                      title="Recent activity access required"
-                      message="You need activity access to open this page."
-                    >
-                      <RecentPublishActivity />
-                    </AccessGate>
-                  }
-                />
-                <Route
-                  path="/reports/trending"
-                  element={
-                    <AccessGate
-                      requiredAnyPermissions={["reports.view"]}
-                      title="Reports access required"
-                      message="You need report access to open this page."
-                    >
-                      <TrendingManager />
-                    </AccessGate>
-                  }
-                />
-                <Route
-                  path="/reports/hook-score"
-                  element={
-                    <AccessGate
-                      requiredAnyPermissions={["reports.view"]}
-                      title="Reports access required"
-                      message="You need report access to open this page."
-                    >
-                      <HookScoreReport />
-                    </AccessGate>
-                  }
-                />
-                <Route
-                  path="/reports/feature-clicks"
-                  element={
-                    <AccessGate
-                      requiredAnyPermissions={["reports.view"]}
-                      title="Reports access required"
-                      message="You need report access to open this page."
-                    >
-                      <FeatureClicksReport />
-                    </AccessGate>
-                  }
-                />
-                <Route
-                  path="/reports/search-popularity"
-                  element={
-                    <AccessGate
-                      requiredAnyPermissions={["reports.view"]}
-                      title="Reports access required"
-                      message="You need report access to open this page."
-                    >
-                      <SearchPopularityReport />
-                    </AccessGate>
-                  }
-                />
-                <Route
-                  path="/reports/career-applications"
-                  element={
-                    <AccessGate
-                      requiredAnyPermissions={["reports.view"]}
-                      title="Reports access required"
-                      message="You need report access to open this page."
-                    >
-                      <CareerApplications />
-                    </AccessGate>
-                  }
-                />
-              </Routes>
+              <div
+                key={`${location.pathname}${location.search}${location.hash}`}
+              >
+                <Outlet />
+              </div>
               <footer className="mt-8 border-t border-slate-200 py-4 text-center text-sm text-gray-500">
                 &copy; {new Date().getFullYear()} Hook. All rights reserved.
               </footer>
@@ -811,13 +466,385 @@ function App() {
           }
         />
         <Route
-          path="/*"
+          path="/"
           element={
             <ProtectedRoute>
               <MainLayout />
             </ProtectedRoute>
           }
-        />
+        >
+          <Route index element={<Navigate to="/dashboard" replace />} />
+          <Route path="dashboard" element={<Dashboard isMobile={isMobile} />} />
+          <Route path="search" element={<GlobalSearchResults />} />
+          <Route path="products/laptops/:id/edit" element={<EditLaptop />} />
+          <Route
+            path="products/homeappliances/:id/edit"
+            element={<EditHomeAppliance />}
+          />
+          <Route path="products/tvs/:id/edit" element={<EditHomeAppliance />} />
+          <Route path="products/smartphones/create" element={<CreateMobile />} />
+          <Route
+            path="products/smartphones/preview"
+            element={<SmartphonePreview />}
+          />
+          <Route
+            path="products/smartphones/preview/:slug"
+            element={<SmartphonePreview />}
+          />
+          <Route
+            path="products/smartphones/inventory"
+            element={<ViewMobiles />}
+          />
+          <Route
+            path="products/smartphones/upcoming"
+            element={<ViewUpcomingMobiles />}
+          />
+          <Route
+            path="products"
+            element={<Navigate to="/products/smartphones/inventory" replace />}
+          />
+          <Route path="products/laptops/inventory" element={<ViewLaptops />} />
+          <Route
+            path="products/homeappliances/inventory"
+            element={<ViewTVs />}
+          />
+          <Route path="products/tvs/inventory" element={<ViewTVs />} />
+          <Route path="products/laptops/create" element={<CreateLaptop />} />
+          <Route
+            path="products/appliances/create"
+            element={<CreateHomeAppliance />}
+          />
+          <Route
+            path="create-home-appliance"
+            element={<CreateHomeAppliance />}
+          />
+          <Route path="products/tvs/create" element={<CreateHomeAppliance />} />
+          <Route path="edit-mobile/:id" element={<EditMobile />} />
+          <Route path="users" element={<Navigate to="/user-management" replace />} />
+          <Route
+            path="roles"
+            element={<Navigate to="/permission-management" replace />}
+          />
+          <Route
+            path="user-management"
+            element={
+              <AccessGate
+                requiredAnyPermissions={["users.view"]}
+                title="User management access required"
+                message="Your account needs user-management permissions to open this workspace."
+              >
+                <UserManagement />
+              </AccessGate>
+            }
+          />
+          <Route
+            path="customer-management"
+            element={
+              <AccessGate
+                requiredAnyPermissions={["customers.view", "users.view"]}
+                title="Customer management access required"
+                message="This screen is available to roles that can manage customers or users."
+              >
+                <ViewCustomers />
+              </AccessGate>
+            }
+          />
+          <Route path="account-management" element={<AccountManagement />} />
+          <Route
+            path="specifications-manager"
+            element={
+              <AccessGate
+                requiredAnyPermissions={["settings.view", "products.view"]}
+                title="Specifications access required"
+                message="This section is available to product and settings roles."
+              >
+                <SpecificationsManager />
+              </AccessGate>
+            }
+          />
+          <Route
+            path="specifications/memory-storage/configurations"
+            element={<RamStorageConfig />}
+          />
+          <Route
+            path="specifications/categories/create"
+            element={
+              <AccessGate
+                requiredAnyPermissions={["settings.view", "products.view"]}
+                title="Category management access required"
+                message="This screen is limited to product and settings roles."
+              >
+                <CategoryManagement />
+              </AccessGate>
+            }
+          />
+          <Route
+            path="specifications/brands"
+            element={
+              <AccessGate
+                requiredAnyPermissions={["settings.view", "products.view"]}
+                title="Brand management access required"
+                message="This screen is limited to product and settings roles."
+              >
+                <Brand />
+              </AccessGate>
+            }
+          />
+          <Route
+            path="permission-management"
+            element={
+              <AccessGate
+                requiredAnyPermissions={["roles.manage", "permissions.manage"]}
+                title="Permission management is restricted"
+                message="Your account needs role or permission management access to open this workspace."
+              >
+                <PermissionManagement />
+              </AccessGate>
+            }
+          />
+          <Route path="smartphonesrating" element={<MobileRatingCard />} />
+          <Route path="change-password" element={<ChangePasswordModal />} />
+          <Route
+            path="api-tester"
+            element={
+              <AccessGate
+                requiredAnyPermissions={["settings.manage", "settings.view"]}
+                title="API tester access required"
+                message="You need settings access to open the API tester."
+              >
+                <ApiTester />
+              </AccessGate>
+            }
+          />
+          <Route
+            path="settings/compare-pages"
+            element={
+              <AccessGate
+                requiredAnyPermissions={["settings.view"]}
+                title="Settings access required"
+                message="You need settings access to open this page."
+              >
+                <ComparePages />
+              </AccessGate>
+            }
+          />
+          <Route
+            path="settings/compare-scoring"
+            element={
+              <AccessGate
+                requiredAnyPermissions={["settings.view"]}
+                title="Settings access required"
+                message="You need settings access to open this page."
+              >
+                <CompareScoring />
+              </AccessGate>
+            }
+          />
+          <Route
+            path="settings/device-field-profiles"
+            element={
+              <AccessGate
+                requiredAnyPermissions={["settings.view"]}
+                title="Settings access required"
+                message="You need settings access to open this page."
+              >
+                <DeviceFieldProfiles />
+              </AccessGate>
+            }
+          />
+          <Route
+            path="content/news-articles"
+            element={
+              <AccessGate
+                requiredPermissions={["content.news.view"]}
+                requiredAnyPermissions={[
+                  "content.news.create",
+                  "content.news.edit",
+                  "content.news.publish",
+                  "content.news.schedule",
+                  "content.news.manage",
+                ]}
+                title="News & Articles access required"
+                message="This newsroom studio is available to roles with News & Articles permissions."
+              >
+                <BlogEditor />
+              </AccessGate>
+            }
+          />
+          <Route
+            path="content/blogs"
+            element={<Navigate to="/content/news-articles" replace />}
+          />
+          <Route
+            path="specifications/store"
+            element={
+              <AccessGate
+                requiredAnyPermissions={["products.view", "settings.view"]}
+                title="Store management access required"
+                message="You need product or settings access to open this page."
+              >
+                <OnlineStoreManagement />
+              </AccessGate>
+            }
+          />
+          <Route
+            path="marketing/banners"
+            element={
+              <AccessGate
+                requiredAnyPermissions={["marketing.view"]}
+                title="Marketing access required"
+                message="You need marketing access to open this page."
+              >
+                <BannerManager />
+              </AccessGate>
+            }
+          />
+          <Route
+            path="reports/productcategories"
+            element={
+              <AccessGate
+                requiredAnyPermissions={["reports.view"]}
+                title="Reports access required"
+                message="You need report access to open this page."
+              >
+                <ProductCategoryReport />
+              </AccessGate>
+            }
+          />
+          <Route
+            path="reports/productpublishstatus"
+            element={
+              <AccessGate
+                requiredAnyPermissions={["reports.view"]}
+                title="Reports access required"
+                message="You need report access to open this page."
+              >
+                <ProductPublishStatusReport />
+              </AccessGate>
+            }
+          />
+          <Route
+            path="reports/launch-timing"
+            element={
+              <AccessGate
+                requiredAnyPermissions={["reports.view"]}
+                title="Reports access required"
+                message="You need report access to open this page."
+              >
+                <LaunchTimingReport />
+              </AccessGate>
+            }
+          />
+          <Route
+            path="analytics"
+            element={<Navigate to="/reports/productpublishstatus" replace />}
+          />
+          <Route
+            path="reports/useractivity"
+            element={
+              <AccessGate
+                requiredAnyPermissions={["reports.view"]}
+                title="Reports access required"
+                message="You need report access to open this page."
+              >
+                <PublishedByUserReport />
+              </AccessGate>
+            }
+          />
+          <Route
+            path="reports/recentactivity"
+            element={
+              <AccessGate
+                requiredAnyPermissions={["activity.view", "reports.view"]}
+                title="Recent activity access required"
+                message="You need activity access to open this page."
+              >
+                <RecentPublishActivity />
+              </AccessGate>
+            }
+          />
+          <Route
+            path="reports/trending"
+            element={
+              <AccessGate
+                requiredAnyPermissions={["reports.view"]}
+                title="Reports access required"
+                message="You need report access to open this page."
+              >
+                <TrendingManager />
+              </AccessGate>
+            }
+          />
+          <Route
+            path="reports/hook-score"
+            element={
+              <AccessGate
+                requiredAnyPermissions={["reports.view"]}
+                title="Reports access required"
+                message="You need report access to open this page."
+              >
+                <HookScoreReport />
+              </AccessGate>
+            }
+          />
+          <Route
+            path="reports/feature-clicks"
+            element={
+              <AccessGate
+                requiredAnyPermissions={["reports.view"]}
+                title="Reports access required"
+                message="You need report access to open this page."
+              >
+                <FeatureClicksReport />
+              </AccessGate>
+            }
+          />
+          <Route
+            path="reports/search-popularity"
+            element={
+              <AccessGate
+                requiredAnyPermissions={["reports.view"]}
+                title="Reports access required"
+                message="You need report access to open this page."
+              >
+                <SearchPopularityReport />
+              </AccessGate>
+            }
+          />
+          <Route
+            path="reports/career-applications"
+            element={
+              <AccessGate
+                requiredAnyPermissions={["reports.view"]}
+                title="Reports access required"
+                message="You need report access to open this page."
+              >
+                <CareerApplications />
+              </AccessGate>
+            }
+          />
+          <Route
+            path="specifications"
+            element={<Navigate to="/specifications/brands" replace />}
+          />
+          <Route
+            path="settings"
+            element={<Navigate to="/settings/compare-pages" replace />}
+          />
+          <Route
+            path="content"
+            element={<Navigate to="/content/news-articles" replace />}
+          />
+          <Route
+            path="marketing"
+            element={<Navigate to="/marketing/banners" replace />}
+          />
+          <Route
+            path="reports"
+            element={<Navigate to="/reports/productpublishstatus" replace />}
+          />
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        </Route>
       </Routes>
     </Router>
   );

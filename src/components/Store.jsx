@@ -1249,18 +1249,7 @@ const OnlineStoreManagement = () => {
         <div className="border-b border-slate-200 pb-5">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
             <div>
-              <div className="hidden flex-wrap items-center gap-2 text-sm text-slate-500 sm:flex">
-                <span>Dashboard</span>
-                <span>&gt;</span>
-                <span>Master Data</span>
-                <span>&gt;</span>
-                <span>Stores</span>
-                <span>&gt;</span>
-                <span className="font-medium text-slate-700">
-                  {editingId ? "Edit Store" : "Add New Store"}
-                </span>
-              </div>
-              <h1 className="text-3xl font-semibold tracking-tight text-slate-950 sm:mt-4">
+              <h1 className="text-3xl font-semibold tracking-tight text-slate-950">
                 {editorTitle}
               </h1>
               <p className="mt-2 text-sm text-slate-500">{editorDescription}</p>
@@ -2123,14 +2112,7 @@ const OnlineStoreManagement = () => {
       <div className="border-b border-slate-200 pb-4">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <div>
-            <div className="flex flex-wrap items-center gap-2 text-sm text-slate-500">
-              <span>Dashboard</span>
-              <span>&gt;</span>
-              <span>Master Data</span>
-              <span>&gt;</span>
-              <span className="font-medium text-slate-700">Stores</span>
-            </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-slate-950">
+            <h1 className="text-3xl font-semibold tracking-tight text-slate-950">
               Stores
             </h1>
             <p className="mt-2 text-sm text-slate-500">
