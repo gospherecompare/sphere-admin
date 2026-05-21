@@ -58,6 +58,7 @@ import GlobalSearchResults from "./components/GlobalSearchResults";
 import LoginStatusPoster from "./components/LoginStatusPoster";
 import { buildUrl, getAuthToken } from "./api";
 import { createMobileReminderItems } from "./utils/mobileReminders";
+import { buildDocumentTitle } from "./utils/pageTitles";
 
 const AUTH_NOTICE_STORAGE_KEY = "hooksAdminAuthNotice";
 const POST_LOGIN_REDIRECT_KEY = "hooksAdminPostLoginRedirect";
@@ -128,6 +129,254 @@ const storeAuthNotice = (message) => {
   }
 };
 
+const RouteDocumentTitle = () => {
+  const location = useLocation();
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    document.title = buildDocumentTitle(location);
+  }, [location]);
+
+  return null;
+};
+
+const ProtectedRoute = ({ children, isAuthenticated, authReason }) => {
+  const location = useLocation();
+
+  if (!isAuthenticated) {
+    const from = `${location.pathname}${location.search}${location.hash}`;
+    return (
+      <Navigate
+        to="/login"
+        replace
+        state={{
+          from,
+          reason: authReason || undefined,
+        }}
+      />
+    );
+  }
+
+  return children;
+};
+
+const MainLayout = ({
+  isMobile,
+  sidebarCollapsed,
+  setSidebarCollapsed,
+  sidebarOpen,
+  setSidebarOpen,
+  clearAuth,
+}) => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [loginPosterOpen, setLoginPosterOpen] = useState(false);
+  const [loginPosterLoading, setLoginPosterLoading] = useState(false);
+  const [loginPosterError, setLoginPosterError] = useState("");
+  const [loginPosterReminders, setLoginPosterReminders] = useState([]);
+
+  const fetchTodayLoginReminders = useCallback(async () => {
+    const token = getAuthToken();
+    const res = await fetch(buildUrl("/api/smartphone"), {
+      headers: token
+        ? {
+            Authorization: `Bearer ${token}`,
+          }
+        : {},
+    });
+
+    if (!res.ok) {
+      throw new Error(`Request failed with status ${res.status}`);
+    }
+
+    const data = await res.json();
+    return createMobileReminderItems(extractSmartphoneRows(data)).filter(
+      (item) => item.group === "today",
+    );
+  }, []);
+
+  const showLoginPosterIfNeeded = useCallback(async () => {
+    let shouldShowPoster = false;
+
+    try {
+      shouldShowPoster =
+        sessionStorage.getItem(POST_LOGIN_UPDATES_POSTER_KEY) === "1";
+      sessionStorage.removeItem(POST_LOGIN_UPDATES_POSTER_KEY);
+    } catch {
+      shouldShowPoster = false;
+    }
+
+    if (!shouldShowPoster) return;
+
+    setLoginPosterLoading(true);
+    setLoginPosterError("");
+
+    try {
+      const items = await fetchTodayLoginReminders();
+      setLoginPosterReminders(items);
+      setLoginPosterOpen(items.length > 0);
+    } catch (err) {
+      console.error("Login poster reminder error:", err);
+      setLoginPosterError(
+        err?.message || "Unable to load today's mobile updates.",
+      );
+      setLoginPosterOpen(false);
+    } finally {
+      setLoginPosterLoading(false);
+    }
+  }, [fetchTodayLoginReminders]);
+
+  const refreshLoginPoster = useCallback(async () => {
+    setLoginPosterLoading(true);
+    setLoginPosterError("");
+
+    try {
+      const items = await fetchTodayLoginReminders();
+      setLoginPosterReminders(items);
+    } catch (err) {
+      console.error("Login poster refresh error:", err);
+      setLoginPosterError(
+        err?.message || "Unable to refresh today's mobile updates.",
+      );
+    } finally {
+      setLoginPosterLoading(false);
+    }
+  }, [fetchTodayLoginReminders]);
+
+  const handleOpenLoginPosterReminder = useCallback(
+    (item) => {
+      setLoginPosterOpen(false);
+
+      if (item?.productId) {
+        navigate(`/edit-mobile/${item.productId}`);
+        return;
+      }
+
+      navigate("/products/smartphones/inventory", {
+        state: { searchTerm: item?.productName || "" },
+      });
+    },
+    [navigate],
+  );
+
+  useEffect(() => {
+    showLoginPosterIfNeeded();
+  }, [showLoginPosterIfNeeded]);
+
+  useEffect(() => {
+    if (isMobile) {
+      setSidebarOpen(false);
+    }
+  }, [
+    isMobile,
+    location.hash,
+    location.pathname,
+    location.search,
+    setSidebarOpen,
+  ]);
+
+  const toggleSidebar = useCallback(() => {
+    if (isMobile) {
+      setSidebarOpen((previous) => !previous);
+      return;
+    }
+
+    setSidebarCollapsed((previous) => !previous);
+  }, [isMobile, setSidebarCollapsed, setSidebarOpen]);
+
+  const isApiTesterWorkspace =
+    location.pathname === "/api-tester" ||
+    location.pathname.startsWith("/api-tester/");
+
+  if (isApiTesterWorkspace) {
+    return (
+      <div className="relative isolate min-h-screen bg-[#F5F7FF]">
+        {isMobile ? (
+          <Sidebar
+            collapsed={false}
+            isMobile
+            mobileOpen={sidebarOpen}
+            setMobileOpen={setSidebarOpen}
+            onLogout={() => clearAuth("logout")}
+          />
+        ) : null}
+
+        <div className="flex min-h-screen min-w-0 flex-col bg-[#F5F7FF]">
+          <Navbar
+            onToggleSidebar={isMobile ? toggleSidebar : () => {}}
+            sidebarOpen={sidebarOpen}
+            isMobile={isMobile}
+            onLogout={() => clearAuth("logout")}
+          />
+
+          <LoginStatusPoster
+            open={loginPosterOpen}
+            loading={loginPosterLoading}
+            error={loginPosterError}
+            reminders={loginPosterReminders}
+            onDismiss={() => setLoginPosterOpen(false)}
+            onRefresh={refreshLoginPoster}
+            onOpenReminder={handleOpenLoginPosterReminder}
+          />
+
+          <div
+            key={`${location.pathname}${location.search}${location.hash}`}
+            className="min-h-0 flex-1"
+          >
+            <Outlet />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative isolate flex h-screen overflow-hidden bg-[#F6F8FF]">
+      <Sidebar
+        collapsed={sidebarCollapsed}
+        isMobile={isMobile}
+        mobileOpen={sidebarOpen}
+        setMobileOpen={setSidebarOpen}
+        onLogout={() => clearAuth("logout")}
+      />
+
+      <div className="flex min-w-0 flex-1 flex-col bg-[#F6F8FF]">
+        <Navbar
+          onToggleSidebar={toggleSidebar}
+          sidebarOpen={sidebarOpen}
+          isMobile={isMobile}
+          onLogout={() => clearAuth("logout")}
+        />
+        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-[#F6F8FF] p-0 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:h-0 [&::-webkit-scrollbar]:w-0">
+          <LoginStatusPoster
+            open={loginPosterOpen}
+            loading={loginPosterLoading}
+            error={loginPosterError}
+            reminders={loginPosterReminders}
+            onDismiss={() => setLoginPosterOpen(false)}
+            onRefresh={refreshLoginPoster}
+            onOpenReminder={handleOpenLoginPosterReminder}
+          />
+
+          <div
+            className={`mx-auto flex w-full max-w-[1720px] flex-col gap-4 px-4 py-4 sm:px-6 sm:py-5 lg:px-6 lg:py-6 ${
+              isMobile ? "gap-3 px-2 py-3 sm:px-2 sm:py-3" : ""
+            }`}
+          >
+            {isMobile ? null : <Breadcrumbs />}
+            <div key={`${location.pathname}${location.search}${location.hash}`}>
+              <Outlet />
+            </div>
+            <footer className="mt-8 border-t border-slate-200 py-4 text-center text-sm text-gray-500">
+              &copy; {new Date().getFullYear()} Hook. All rights reserved.
+            </footer>
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+};
+
 function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -136,10 +385,12 @@ function App() {
   useEffect(() => {
     const checkMobile = () => {
       const mobileViewport = window.innerWidth < 1024;
-      setIsMobile(mobileViewport);
-      if (mobileViewport) {
-        setSidebarOpen(false);
-      }
+      setIsMobile((previous) => {
+        if (previous && !mobileViewport) {
+          setSidebarOpen(false);
+        }
+        return mobileViewport;
+      });
     };
 
     checkMobile();
@@ -200,255 +451,9 @@ function App() {
     };
   }, [isAuthenticated, clearAuth]);
 
-  const ProtectedRoute = ({ children }) => {
-    const location = useLocation();
-    if (!isAuthenticated) {
-      const from = `${location.pathname}${location.search}${location.hash}`;
-      return (
-        <Navigate
-          to="/login"
-          replace
-          state={{
-            from,
-            reason: authReason || undefined,
-          }}
-        />
-      );
-    }
-    return children;
-  };
-
-  const MainLayout = () => {
-    const location = useLocation();
-    const navigate = useNavigate();
-    const [loginPosterOpen, setLoginPosterOpen] = useState(false);
-    const [loginPosterLoading, setLoginPosterLoading] = useState(false);
-    const [loginPosterError, setLoginPosterError] = useState("");
-    const [loginPosterReminders, setLoginPosterReminders] = useState([]);
-
-    const fetchTodayLoginReminders = useCallback(async () => {
-      const token = getAuthToken();
-      const res = await fetch(buildUrl("/api/smartphone"), {
-        headers: token
-          ? {
-              Authorization: `Bearer ${token}`,
-            }
-          : {},
-      });
-
-      if (!res.ok) {
-        throw new Error(`Request failed with status ${res.status}`);
-      }
-
-      const data = await res.json();
-      return createMobileReminderItems(extractSmartphoneRows(data)).filter(
-        (item) => item.group === "today",
-      );
-    }, []);
-
-    const showLoginPosterIfNeeded = useCallback(async () => {
-      let shouldShowPoster = false;
-
-      try {
-        shouldShowPoster =
-          sessionStorage.getItem(POST_LOGIN_UPDATES_POSTER_KEY) === "1";
-        sessionStorage.removeItem(POST_LOGIN_UPDATES_POSTER_KEY);
-      } catch {
-        shouldShowPoster = false;
-      }
-
-      if (!shouldShowPoster) return;
-
-      setLoginPosterLoading(true);
-      setLoginPosterError("");
-
-      try {
-        const items = await fetchTodayLoginReminders();
-        setLoginPosterReminders(items);
-        setLoginPosterOpen(items.length > 0);
-      } catch (err) {
-        console.error("Login poster reminder error:", err);
-        setLoginPosterError(
-          err?.message || "Unable to load today's mobile updates.",
-        );
-        setLoginPosterOpen(false);
-      } finally {
-        setLoginPosterLoading(false);
-      }
-    }, [fetchTodayLoginReminders]);
-
-    const refreshLoginPoster = useCallback(async () => {
-      setLoginPosterLoading(true);
-      setLoginPosterError("");
-
-      try {
-        const items = await fetchTodayLoginReminders();
-        setLoginPosterReminders(items);
-      } catch (err) {
-        console.error("Login poster refresh error:", err);
-        setLoginPosterError(
-          err?.message || "Unable to refresh today's mobile updates.",
-        );
-      } finally {
-        setLoginPosterLoading(false);
-      }
-    }, [fetchTodayLoginReminders]);
-
-    const handleOpenLoginPosterReminder = useCallback(
-      (item) => {
-        setLoginPosterOpen(false);
-
-        if (item?.productId) {
-          navigate(`/edit-mobile/${item.productId}`);
-          return;
-        }
-
-        navigate("/products/smartphones/inventory", {
-          state: { searchTerm: item?.productName || "" },
-        });
-      },
-      [navigate],
-    );
-
-    useEffect(() => {
-      showLoginPosterIfNeeded();
-    }, [showLoginPosterIfNeeded]);
-
-    useEffect(() => {
-      if (isMobile) {
-        setSidebarOpen(false);
-      }
-    }, [isMobile, location.pathname, location.search, location.hash]);
-
-    const closeSidebar = useCallback(() => {
-      setSidebarOpen(false);
-    }, []);
-
-    const toggleSidebar = useCallback(() => {
-      if (isMobile) {
-        setSidebarOpen((prev) => !prev);
-        return;
-      }
-
-      setSidebarCollapsed((prev) => !prev);
-    }, [isMobile]);
-
-    const isApiTesterWorkspace =
-      location.pathname === "/api-tester" ||
-      location.pathname.startsWith("/api-tester/");
-
-    if (isApiTesterWorkspace) {
-      return (
-        <div className="relative isolate min-h-screen bg-[#F5F7FF]">
-          {isMobile && sidebarOpen && (
-            <div
-              className="fixed inset-0 z-30 bg-slate-950/20 lg:hidden"
-              onClick={closeSidebar}
-            />
-          )}
-
-          {isMobile ? (
-            <Sidebar
-              collapsed={false}
-              isMobile
-              mobileOpen={sidebarOpen}
-              setMobileOpen={setSidebarOpen}
-              onLogout={() => clearAuth("logout")}
-            />
-          ) : null}
-
-          <div className="flex min-h-screen min-w-0 flex-col bg-[#F5F7FF]">
-            <Navbar
-              onToggleSidebar={isMobile ? toggleSidebar : () => {}}
-              sidebarOpen={sidebarOpen}
-              isMobile={isMobile}
-              onLogout={() => clearAuth("logout")}
-            />
-
-          <LoginStatusPoster
-            open={loginPosterOpen}
-            loading={loginPosterLoading}
-            error={loginPosterError}
-            reminders={loginPosterReminders}
-            onDismiss={() => setLoginPosterOpen(false)}
-            onRefresh={refreshLoginPoster}
-            onOpenReminder={handleOpenLoginPosterReminder}
-          />
-
-          <div
-            key={`${location.pathname}${location.search}${location.hash}`}
-            className="min-h-0 flex-1"
-          >
-            <Outlet />
-          </div>
-        </div>
-        </div>
-      );
-    }
-
-    return (
-      <div className="relative isolate flex h-screen overflow-hidden bg-[#F6F8FF]">
-        {isMobile && sidebarOpen && (
-          <div
-            className="fixed inset-0 z-30 bg-slate-950/20 lg:hidden"
-            onClick={closeSidebar}
-          />
-        )}
-
-        <Sidebar
-          collapsed={sidebarCollapsed}
-          isMobile={isMobile}
-          mobileOpen={sidebarOpen}
-          setMobileOpen={setSidebarOpen}
-          onLogout={() => clearAuth("logout")}
-        />
-
-        <div className="flex min-w-0 flex-1 flex-col bg-[#F6F8FF]">
-          <Navbar
-            onToggleSidebar={toggleSidebar}
-            sidebarOpen={sidebarOpen}
-            isMobile={isMobile}
-            onLogout={() => clearAuth("logout")}
-          />
-          <main
-            className="flex-1 overflow-x-hidden overflow-y-auto bg-[#F6F8FF] p-0 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:h-0 [&::-webkit-scrollbar]:w-0"
-            onClick={isMobile && sidebarOpen ? closeSidebar : undefined}
-          >
-            <LoginStatusPoster
-              open={loginPosterOpen}
-              loading={loginPosterLoading}
-              error={loginPosterError}
-              reminders={loginPosterReminders}
-              onDismiss={() => setLoginPosterOpen(false)}
-              onRefresh={refreshLoginPoster}
-              onOpenReminder={handleOpenLoginPosterReminder}
-            />
-
-            <div
-              className={`mx-auto flex w-full max-w-[1720px] flex-col gap-4 px-4 py-4 sm:px-6 sm:py-5 lg:px-6 lg:py-6 ${
-                isMobile
-                  ? "gap-3 px-2 py-3 sm:px-2 sm:py-3"
-                  : ""
-              }`}
-            >
-              {isMobile ? null : <Breadcrumbs />}
-              <div
-                key={`${location.pathname}${location.search}${location.hash}`}
-              >
-                <Outlet />
-              </div>
-              <footer className="mt-8 border-t border-slate-200 py-4 text-center text-sm text-gray-500">
-                &copy; {new Date().getFullYear()} Hook. All rights reserved.
-              </footer>
-            </div>
-          </main>
-        </div>
-      </div>
-    );
-  };
-
   return (
     <Router>
+      <RouteDocumentTitle />
       <Routes>
         <Route
           path="/login"
@@ -468,8 +473,18 @@ function App() {
         <Route
           path="/"
           element={
-            <ProtectedRoute>
-              <MainLayout />
+            <ProtectedRoute
+              isAuthenticated={isAuthenticated}
+              authReason={authReason}
+            >
+              <MainLayout
+                isMobile={isMobile}
+                sidebarCollapsed={sidebarCollapsed}
+                setSidebarCollapsed={setSidebarCollapsed}
+                sidebarOpen={sidebarOpen}
+                setSidebarOpen={setSidebarOpen}
+                clearAuth={clearAuth}
+              />
             </ProtectedRoute>
           }
         >
@@ -737,7 +752,7 @@ function App() {
           />
           <Route
             path="analytics"
-            element={<Navigate to="/reports/productpublishstatus" replace />}
+            element={<Navigate to="/reports/useractivity" replace />}
           />
           <Route
             path="reports/useractivity"
@@ -841,7 +856,7 @@ function App() {
           />
           <Route
             path="reports"
-            element={<Navigate to="/reports/productpublishstatus" replace />}
+            element={<Navigate to="/reports/useractivity" replace />}
           />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Route>

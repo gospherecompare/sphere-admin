@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  FaArrowDown,
   FaCheckCircle,
   FaExclamationCircle,
   FaExternalLinkAlt,
@@ -174,6 +173,175 @@ const buildCompareDescription = ({
   return `Compare ${joinedNames} with latest price specifications camera battery performance and features in India`;
 };
 
+const normalizeImageSource = (value) => {
+  if (!value) return "";
+
+  if (typeof value === "string") return value.trim();
+
+  if (typeof value === "object") {
+    const candidate = [
+      value.secure_url,
+      value.url,
+      value.src,
+      value.image_url,
+      value.image,
+      value.cover_image,
+      value.thumbnail,
+      value.hero_image,
+      value.featured_image,
+      value.primary_image,
+      value.path,
+      value.href,
+    ].find((entry) => typeof entry === "string" && entry.trim());
+
+    return candidate ? String(candidate).trim() : "";
+  }
+
+  return "";
+};
+
+const parseArrayLike = (value) => {
+  if (Array.isArray(value)) return value;
+  if (value && typeof value === "object") return [value];
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) return parsed;
+      if (parsed && typeof parsed === "object") return [parsed];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+};
+
+const toAbsoluteImageUrl = (value) => {
+  const normalized = normalizeImageSource(value);
+  if (!normalized) return "";
+
+  if (
+    /^(?:https?:)?\/\//i.test(normalized) ||
+    normalized.startsWith("data:") ||
+    normalized.startsWith("blob:")
+  ) {
+    return normalized;
+  }
+
+  return buildUrl(normalized.startsWith("/") ? normalized : `/${normalized}`);
+};
+
+const collectCompareImageCandidates = (...inputs) => {
+  const seen = new Set();
+  const images = [];
+
+  const visit = (value) => {
+    if (!value) return;
+
+    if (Array.isArray(value)) {
+      value.forEach(visit);
+      return;
+    }
+
+    const directCandidate = normalizeImageSource(value);
+    if (directCandidate && !seen.has(directCandidate)) {
+      seen.add(directCandidate);
+      images.push(directCandidate);
+    }
+
+    if (typeof value === "object") {
+      [value.images, value.gallery, value.media].forEach(visit);
+    }
+  };
+
+  inputs.forEach(visit);
+  return images;
+};
+
+const resolveCompareItemImage = (item) =>
+  toAbsoluteImageUrl(
+    collectCompareImageCandidates(
+      item?.thumbnail_src,
+      item?.image_url,
+      item?.image,
+      item?.thumbnail,
+      item?.cover_image,
+      item?.hero_image,
+      item?.featured_image,
+      item?.primary_image,
+      item?.imageUrl,
+      item?.thumbnailUrl,
+      item?.images,
+      item?.gallery,
+      item?.media,
+    )[0] || "",
+  );
+
+const resolveSmartphoneDetailImage = (record) =>
+  toAbsoluteImageUrl(
+    collectCompareImageCandidates(
+      record?.hero_image,
+      record?.image,
+      record?.image_url,
+      record?.thumbnail,
+      record?.cover_image,
+      record?.featured_image,
+      record?.primary_image,
+      record?.images,
+      record?.gallery,
+      record?.media,
+      record?.images_json,
+      record?.gallery_json,
+      record?.media_json,
+      parseArrayLike(record?.images_json),
+      parseArrayLike(record?.gallery_json),
+      parseArrayLike(record?.media_json),
+      parseArrayLike(record?.images),
+      parseArrayLike(record?.gallery),
+      parseArrayLike(record?.media),
+    )[0] || "",
+  );
+
+const getDeviceInitials = (value) => {
+  const parts = String(value || "Compare")
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2);
+  return parts.map((part) => part[0]?.toUpperCase() || "").join("") || "CP";
+};
+
+const DeviceThumb = ({
+  item,
+  index = 0,
+  className = "",
+  textClassName = "text-xs",
+  alt = "",
+}) => {
+  const imageSrc = resolveCompareItemImage(item);
+
+  if (imageSrc) {
+    return (
+      <div
+        className={`overflow-hidden rounded-sm border border-slate-200 bg-slate-50 ${className}`}
+      >
+        <img
+          src={imageSrc}
+          alt={alt || item?.product_name || "Device thumbnail"}
+          className="h-full w-full object-cover"
+          loading="lazy"
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={`flex items-center justify-center rounded-sm bg-gradient-to-br font-semibold text-white ${textClassName} ${DEVICE_ACCENT_CLASSES[index % DEVICE_ACCENT_CLASSES.length]} ${className}`}
+    >
+      {getDeviceInitials(item?.product_name)}
+    </div>
+  );
+};
+
 const normalizeCompareItem = (item) => {
   const productId = Number(item?.product_id ?? item?.productId ?? item?.id);
   if (!Number.isInteger(productId) || productId <= 0) return null;
@@ -185,6 +353,17 @@ const normalizeCompareItem = (item) => {
     best_price: toFiniteNumber(item?.best_price ?? item?.bestPrice),
     reason: normalizeText(item?.reason || ""),
     position: Number(item?.position) || null,
+    image_url: normalizeImageSource(item?.image_url ?? item?.imageUrl),
+    image: item?.image ?? "",
+    thumbnail: item?.thumbnail ?? "",
+    cover_image: item?.cover_image ?? "",
+    hero_image: item?.hero_image ?? "",
+    featured_image: item?.featured_image ?? "",
+    primary_image: item?.primary_image ?? "",
+    images: Array.isArray(item?.images) ? item.images : [],
+    gallery: Array.isArray(item?.gallery) ? item.gallery : [],
+    media: Array.isArray(item?.media) ? item.media : [],
+    thumbnail_src: resolveCompareItemImage(item),
   };
 };
 
@@ -262,6 +441,7 @@ export default function ComparePages() {
   const [pages, setPages] = useState([]);
   const [selectedPageId, setSelectedPageId] = useState(null);
   const [form, setForm] = useState(createEmptyForm());
+  const [deviceThumbMap, setDeviceThumbMap] = useState({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -281,6 +461,7 @@ export default function ComparePages() {
   const [isCreateModeForced, setIsCreateModeForced] = useState(false);
   const [toasts, setToasts] = useState([]);
   const searchInputRef = useRef(null);
+  const requestedThumbIdsRef = useRef(new Set());
 
   const showToast = useCallback((title, message, type = "success") => {
     const id = Date.now() + Math.random();
@@ -820,6 +1001,107 @@ export default function ComparePages() {
   const pageRangeEnd = Math.min(currentPageSafe * PAGE_SIZE, filteredPages.length);
   const isCreateMode = isCreateModeForced || !form.id;
 
+  const availableSuggestions = useMemo(() => {
+    const selectedIds = new Set(
+      form.items.map((item) => Number(item?.product_id)).filter((value) => Number.isInteger(value) && value > 0),
+    );
+    return suggestions.filter((item) => !selectedIds.has(Number(item?.product_id)));
+  }, [form.items, suggestions]);
+
+  const enhanceItemWithThumb = useCallback(
+    (item) => {
+      if (!item) return item;
+      const productId = Number(item?.product_id);
+      const thumbFromCache =
+        Number.isInteger(productId) && productId > 0 ? deviceThumbMap[productId] : "";
+      const nextThumb = thumbFromCache || resolveCompareItemImage(item);
+      if (!nextThumb || nextThumb === item?.thumbnail_src) return item;
+      return {
+        ...item,
+        thumbnail_src: nextThumb,
+      };
+    },
+    [deviceThumbMap],
+  );
+
+  useEffect(() => {
+    const pendingIds = new Map();
+    const registerItem = (item) => {
+      const productId = Number(item?.product_id);
+      if (!Number.isInteger(productId) || productId <= 0) return;
+      if (deviceThumbMap[productId]) return;
+      if (requestedThumbIdsRef.current.has(productId)) return;
+      if (resolveCompareItemImage(item)) return;
+      pendingIds.set(productId, item);
+    };
+
+    paginatedPages.forEach((page) => page.items.forEach(registerItem));
+    form.items.forEach(registerItem);
+    searchResults.forEach(registerItem);
+    suggestions.forEach(registerItem);
+    (existingPageHint?.items || []).forEach(registerItem);
+
+    if (!pendingIds.size) return undefined;
+
+    pendingIds.forEach((_, productId) => {
+      requestedThumbIdsRef.current.add(productId);
+    });
+
+    let cancelled = false;
+
+    Promise.all(
+      Array.from(pendingIds.keys()).map(async (productId) => {
+        try {
+          const token = getAuthToken();
+          const response = await fetch(
+            buildUrl(`/api/smartphone/${encodeURIComponent(productId)}`),
+            {
+              headers: token
+                ? {
+                    Authorization: `Bearer ${token}`,
+                  }
+                : {},
+            },
+          );
+
+          if (!response.ok) return [productId, ""];
+
+          const payload = await response.json().catch(() => ({}));
+          const detail = payload?.data || payload || {};
+          return [productId, resolveSmartphoneDetailImage(detail)];
+        } catch {
+          return [productId, ""];
+        }
+      }),
+    ).then((entries) => {
+      if (cancelled) return;
+
+      setDeviceThumbMap((previous) => {
+        let changed = false;
+        const next = { ...previous };
+
+        entries.forEach(([productId, imageUrl]) => {
+          if (!imageUrl || next[productId] === imageUrl) return;
+          next[productId] = imageUrl;
+          changed = true;
+        });
+
+        return changed ? next : previous;
+      });
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    deviceThumbMap,
+    existingPageHint,
+    form.items,
+    paginatedPages,
+    searchResults,
+    suggestions,
+  ]);
+
   const generationReasonOptions = useMemo(
     () =>
       [...new Set([...DEFAULT_GENERATION_REASONS, form.generation_reason].filter(Boolean))],
@@ -835,14 +1117,6 @@ export default function ComparePages() {
     }
     return pagesToShow;
   }, [currentPageSafe, totalPages]);
-
-  const getDeviceInitials = useCallback((value) => {
-    const parts = String(value || "Compare")
-      .split(" ")
-      .filter(Boolean)
-      .slice(0, 2);
-    return parts.map((part) => part[0]?.toUpperCase() || "").join("") || "CP";
-  }, []);
 
   const editorIdentity = form.id
     ? `#CMP-${String(form.id).padStart(4, "0")}`
@@ -1133,12 +1407,14 @@ export default function ComparePages() {
                           <td className="px-3 py-3 align-top">
                             <div className="flex items-center gap-1.5">
                               {page.items.slice(0, 3).map((item, index) => (
-                                <div
+                                <DeviceThumb
                                   key={`${page.id}-${item.product_id}`}
-                                  className={`flex h-10 w-8 items-center justify-center overflow-hidden rounded-sm bg-gradient-to-br text-[11px] font-semibold text-white ${DEVICE_ACCENT_CLASSES[index % DEVICE_ACCENT_CLASSES.length]}`}
-                                >
-                                  {getDeviceInitials(item.product_name)}
-                                </div>
+                                  item={enhanceItemWithThumb(item)}
+                                  index={index}
+                                  className="h-10 w-8"
+                                  textClassName="text-[11px]"
+                                  alt={`${item.product_name} thumbnail`}
+                                />
                               ))}
                               <span className="ml-1 inline-flex h-6 min-w-6 items-center justify-center rounded-full border border-slate-200 px-2 text-[11px] font-semibold text-slate-500">
                                 {page.items.length}
@@ -1248,12 +1524,14 @@ export default function ComparePages() {
 
                       <div className="mt-3 flex items-center gap-1.5">
                         {page.items.slice(0, 3).map((item, index) => (
-                          <div
+                          <DeviceThumb
                             key={`${page.id}-mobile-${item.product_id}`}
-                            className={`flex h-10 w-8 items-center justify-center overflow-hidden rounded-sm bg-gradient-to-br text-[11px] font-semibold text-white ${DEVICE_ACCENT_CLASSES[index % DEVICE_ACCENT_CLASSES.length]}`}
-                          >
-                            {getDeviceInitials(item.product_name)}
-                          </div>
+                            item={enhanceItemWithThumb(item)}
+                            index={index}
+                            className="h-10 w-8"
+                            textClassName="text-[11px]"
+                            alt={`${item.product_name} thumbnail`}
+                          />
                         ))}
                         <span className="ml-1 inline-flex h-6 min-w-6 items-center justify-center rounded-full border border-slate-200 px-2 text-[11px] font-semibold text-slate-500">
                           {page.items.length}
@@ -1384,11 +1662,12 @@ export default function ComparePages() {
                             <span className="block h-1 w-1 rounded-full bg-current" />
                             <span className="block h-1 w-1 rounded-full bg-current" />
                           </div>
-                          <div
-                            className={`flex h-14 w-10 shrink-0 items-center justify-center rounded-sm bg-gradient-to-br text-xs font-semibold text-white ${DEVICE_ACCENT_CLASSES[index % DEVICE_ACCENT_CLASSES.length]}`}
-                          >
-                            {getDeviceInitials(item.product_name)}
-                          </div>
+                          <DeviceThumb
+                            item={enhanceItemWithThumb(item)}
+                            index={index}
+                            className="h-14 w-10 shrink-0"
+                            alt={`${item.product_name} thumbnail`}
+                          />
                           <div className="min-w-0 flex-1">
                             <p className="line-clamp-2 text-sm font-semibold text-slate-900">
                               {item.product_name}
@@ -1420,7 +1699,7 @@ export default function ComparePages() {
                                 className="inline-flex h-6 w-6 items-center justify-center rounded-full text-slate-300 transition hover:bg-slate-100 hover:text-slate-500"
                                 aria-label="Move device left"
                               >
-                                <span className="text-[10px]">‹</span>
+                                <span className="text-[10px]">{"<"}</span>
                               </button>
                             ) : null}
                             {canMoveRight ? (
@@ -1430,7 +1709,7 @@ export default function ComparePages() {
                                 className="inline-flex h-6 w-6 items-center justify-center rounded-full text-slate-300 transition hover:bg-slate-100 hover:text-slate-500"
                                 aria-label="Move device right"
                               >
-                                <span className="text-[10px]">›</span>
+                                <span className="text-[10px]">{">"}</span>
                               </button>
                             ) : null}
                           </div>
@@ -1530,11 +1809,12 @@ export default function ComparePages() {
                               className="flex flex-col gap-3 px-3 py-3 sm:flex-row sm:items-center sm:justify-between"
                             >
                               <div className="flex min-w-0 items-center gap-3">
-                                <div
-                                  className={`flex h-12 w-9 shrink-0 items-center justify-center rounded-sm bg-gradient-to-br text-xs font-semibold text-white ${DEVICE_ACCENT_CLASSES[index % DEVICE_ACCENT_CLASSES.length]}`}
-                                >
-                                  {getDeviceInitials(item.product_name)}
-                                </div>
+                                <DeviceThumb
+                                  item={enhanceItemWithThumb(item)}
+                                  index={index}
+                                  className="h-12 w-9 shrink-0"
+                                  alt={`${item.product_name} thumbnail`}
+                                />
                                 <div className="min-w-0">
                                   <p className="truncate text-sm font-semibold text-slate-900">
                                     {item.product_name}
@@ -1542,7 +1822,7 @@ export default function ComparePages() {
                                   <p className="mt-1 text-xs text-slate-500">
                                     {item.brand_name || "Unknown brand"}
                                     {item.best_price != null
-                                      ? ` • Rs ${Number(item.best_price).toLocaleString("en-IN")}`
+                                      ? ` | Rs ${Number(item.best_price).toLocaleString("en-IN")}`
                                       : ""}
                                   </p>
                                 </div>
@@ -1580,28 +1860,19 @@ export default function ComparePages() {
                   </div>
                 ) : null}
 
-                {form.primary_product_id && suggestions.length ? (
+                {form.primary_product_id && availableSuggestions.length ? (
                   <div className="flex flex-wrap gap-2">
-                    {suggestions.map((item) => {
-                      const alreadyAdded = form.items.some(
-                        (entry) => entry.product_id === item.product_id,
-                      );
-                      return (
-                        <button
-                          key={`suggestion-${item.product_id}`}
-                          type="button"
-                          onClick={() => handleAddSuggestion(item)}
-                          disabled={alreadyAdded || form.items.length >= MAX_COMPARE_ITEMS}
-                          className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
-                            alreadyAdded
-                              ? "border-slate-200 bg-slate-100 text-slate-400"
-                              : "border-[#C4B5FD] bg-[#FAF7FF] text-[#6D35FF] hover:bg-[#F4F0FF]"
-                          }`}
-                        >
-                          {alreadyAdded ? "Added" : `+ ${item.product_name}`}
-                        </button>
-                      );
-                    })}
+                    {availableSuggestions.map((item) => (
+                      <button
+                        key={`suggestion-${item.product_id}`}
+                        type="button"
+                        onClick={() => handleAddSuggestion(item)}
+                        disabled={form.items.length >= MAX_COMPARE_ITEMS}
+                        className="rounded-full border border-[#C4B5FD] bg-[#FAF7FF] px-3 py-1.5 text-xs font-semibold text-[#6D35FF] transition hover:bg-[#F4F0FF] disabled:opacity-50"
+                      >
+                        {`+ ${item.product_name}`}
+                      </button>
+                    ))}
                   </div>
                 ) : null}
               </div>
@@ -1783,11 +2054,12 @@ export default function ComparePages() {
                     {form.items.length ? (
                       form.items.slice(0, MAX_COMPARE_ITEMS).map((item, index) => (
                         <React.Fragment key={`preview-${item.product_id}`}>
-                          <div
-                            className={`flex h-20 w-12 items-center justify-center rounded-sm bg-gradient-to-br text-xs font-semibold text-white ${DEVICE_ACCENT_CLASSES[index % DEVICE_ACCENT_CLASSES.length]}`}
-                          >
-                            {getDeviceInitials(item.product_name)}
-                          </div>
+                          <DeviceThumb
+                            item={enhanceItemWithThumb(item)}
+                            index={index}
+                            className="h-20 w-12"
+                            alt={`${item.product_name} preview`}
+                          />
                           {index < Math.min(form.items.length, MAX_COMPARE_ITEMS) - 1 ? (
                             <span className="text-xs font-semibold text-slate-400">VS</span>
                           ) : null}

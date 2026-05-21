@@ -337,7 +337,7 @@ const MainLayout = ({
                 <Route
                   path="/analytics"
                   element={
-                    <Navigate to="/reports/productpublishstatus" replace />
+                    <Navigate to="/reports/useractivity" replace />
                   }
                 />
                 <Route

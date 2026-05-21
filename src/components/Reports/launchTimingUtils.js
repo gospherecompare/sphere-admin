@@ -15,11 +15,10 @@ export const GROUP_OPTIONS = [
 
 export const DATE_RANGE_OPTIONS = [
   { value: "all", label: "All time" },
-  { value: "last_90", label: "90 days" },
-  { value: "last_180", label: "6 months" },
-  { value: "last_365", label: "1 year" },
-  { value: "ytd", label: "Year to date" },
-  { value: "custom", label: "Custom" },
+  { value: "last_30", label: "Last 30 days" },
+  { value: "last_90", label: "Last 90 days" },
+  { value: "last_365", label: "Last 1 year" },
+  { value: "custom", label: "Custom range" },
 ];
 
 export const GAP_BUCKETS = [
@@ -275,17 +274,12 @@ export const buildDateRangeFromPreset = (
   };
 
   switch (preset) {
+    case "last_30":
+      return { start: toDateInputValue(withOffset(-29)), end: toDateInputValue(todayUtc) };
     case "last_90":
       return { start: toDateInputValue(withOffset(-89)), end: toDateInputValue(todayUtc) };
-    case "last_180":
-      return { start: toDateInputValue(withOffset(-179)), end: toDateInputValue(todayUtc) };
     case "last_365":
       return { start: toDateInputValue(withOffset(-364)), end: toDateInputValue(todayUtc) };
-    case "ytd":
-      return {
-        start: `${todayUtc.getUTCFullYear()}-01-01`,
-        end: toDateInputValue(todayUtc),
-      };
     default:
       return { start: "", end: "" };
   }

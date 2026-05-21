@@ -113,6 +113,15 @@ const BREAKDOWN_SOLID = [
   "bg-lime-500",
 ];
 
+const REPORT_SURFACE_CLASS =
+  "overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm";
+const REPORT_SURFACE_HEADER_CLASS =
+  "border-b border-slate-200 bg-[linear-gradient(180deg,#fcfcff_0%,#f8f6ff_100%)] px-4 py-4 sm:px-6";
+const REPORT_INPUT_CLASS =
+  "w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 outline-none transition focus:border-violet-300 focus:ring-2 focus:ring-violet-100";
+const REPORT_PILL_BADGE_CLASS =
+  "inline-flex items-center rounded-md border border-violet-200 bg-violet-50 px-2 py-0.5 text-[11px] font-semibold text-violet-700";
+
 const formatMetricValue = (value, fallback = "N/A") => {
   if (value === null || value === undefined) return fallback;
   if (!Number.isFinite(Number(value))) return fallback;
@@ -246,7 +255,7 @@ const SelectionGroup = ({
   options,
   value,
   onChange,
-  activeClass = "border-blue-600 bg-blue-600 text-white",
+  activeClass = "border-violet-500 bg-violet-50 text-violet-700",
   inactiveClass = "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50",
 }) => (
   <div className="flex flex-wrap gap-2">
@@ -259,7 +268,7 @@ const SelectionGroup = ({
           key={option.value}
           type="button"
           onClick={() => onChange(option.value)}
-          className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-semibold transition ${
+          className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold transition ${
             isActive ? activeClass : inactiveClass
           }`}
         >
@@ -298,11 +307,17 @@ const StatCard = ({
   const canAnimate = Number.isFinite(numericValue);
 
   return (
-    <div className="rounded-[24px] border border-slate-200/80 bg-white/95 p-5 shadow-[0_14px_40px_rgba(15,23,42,0.08)] backdrop-blur-sm">
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0">
-          <p className="text-sm font-medium text-slate-500">{label}</p>
-          <p className="mt-3 truncate text-3xl font-bold tracking-tight text-slate-900">
+    <div className={REPORT_SURFACE_CLASS}>
+      <div className="flex items-start gap-4 p-4">
+        <div
+          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border ${toneClasses}`}
+        >
+          <Icon className="text-lg" />
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-semibold text-slate-500">{label}</p>
+          <p className="mt-1 truncate text-[1.65rem] font-bold tracking-tight text-slate-900">
             {canAnimate ? (
               <CountUp
                 end={numericValue}
@@ -313,16 +328,10 @@ const StatCard = ({
               value
             )}
             {canAnimate && suffix ? (
-              <span className="ml-1 text-lg text-slate-500">{suffix}</span>
+              <span className="ml-1 text-base text-slate-500">{suffix}</span>
             ) : null}
           </p>
-          <p className="mt-2 text-sm text-slate-500">{helper}</p>
-        </div>
-
-        <div
-          className={`flex h-11 w-11 items-center justify-center rounded-xl border ${toneClasses}`}
-        >
-          <Icon className="text-lg" />
+          <p className="mt-1 text-xs text-slate-500">{helper}</p>
         </div>
       </div>
     </div>
@@ -347,7 +356,7 @@ const TimelineChart = ({ series, maxValue, view }) => {
     return (
       <div className="overflow-x-auto pb-2">
         <div
-          className="flex items-end gap-3"
+          className="flex items-end gap-4"
           style={{ minWidth: `${Math.max(series.length * 82, 680)}px` }}
         >
           {series.map((item) => (
@@ -355,9 +364,9 @@ const TimelineChart = ({ series, maxValue, view }) => {
               key={item.key}
               className="flex min-w-[72px] flex-1 flex-col items-center gap-3"
             >
-              <div className="flex h-56 w-full items-end">
+              <div className="flex h-56 w-full items-end rounded-t-lg bg-slate-50/60 px-1">
                 <div
-                  className="w-full rounded-t-xl bg-gradient-to-b from-blue-400 via-blue-500 to-indigo-600 shadow-[0_12px_24px_rgba(14,165,233,0.18)]"
+                  className="w-full rounded-t-lg bg-gradient-to-b from-violet-400 via-violet-500 to-indigo-600"
                   style={{
                     height: `${Math.max((item.count / maxValue) * 100, 8)}%`,
                   }}
@@ -365,9 +374,6 @@ const TimelineChart = ({ series, maxValue, view }) => {
               </div>
 
               <div className="text-center">
-                <p className="text-base font-semibold text-slate-900">
-                  {item.count}
-                </p>
                 <p className="text-[11px] text-slate-500">{item.shortLabel}</p>
               </div>
             </div>
@@ -410,8 +416,8 @@ const TimelineChart = ({ series, maxValue, view }) => {
         >
           <defs>
             <linearGradient id="launch-timing-area-fill" x1="0" x2="0" y1="0" y2="1">
-              <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.32" />
-              <stop offset="100%" stopColor="#6366f1" stopOpacity="0.04" />
+              <stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.24" />
+              <stop offset="100%" stopColor="#6366f1" stopOpacity="0.02" />
             </linearGradient>
           </defs>
 
@@ -437,7 +443,7 @@ const TimelineChart = ({ series, maxValue, view }) => {
           <path
             d={linePath}
             fill="none"
-            stroke={view === "area" ? "#4f46e5" : "#0ea5e9"}
+            stroke={view === "area" ? "#6d28d9" : "#7c3aed"}
             strokeWidth="3"
             strokeLinejoin="round"
             strokeLinecap="round"
@@ -450,7 +456,7 @@ const TimelineChart = ({ series, maxValue, view }) => {
                 cy={point.y}
                 r="5"
                 fill="#ffffff"
-                stroke={view === "area" ? "#4f46e5" : "#0ea5e9"}
+                stroke={view === "area" ? "#6d28d9" : "#7c3aed"}
                 strokeWidth="3"
               />
               <text
@@ -805,6 +811,7 @@ const LaunchTimingReport = () => {
     () => sortDevicesByLaunchDateDesc(filteredDevices).slice(0, 10),
     [filteredDevices],
   );
+  const trackerDevices = useMemo(() => latestDevices.slice(0, 6), [latestDevices]);
   const activeMeta = PRODUCT_META[deviceType] || PRODUCT_META.all;
   const breakdownMeta = useMemo(
     () =>
@@ -813,6 +820,76 @@ const LaunchTimingReport = () => {
       ) || BREAKDOWN_DIMENSION_OPTIONS[0],
     [breakdownDimension],
   );
+  const comparisonMatrixRows = useMemo(
+    () => [
+      {
+        label: "Device count",
+        values: brandCompareRows.map((row) => formatMetricValue(row.count)),
+      },
+      {
+        label: "Sale coverage",
+        values: brandCompareRows.map((row) => `${row.saleCoverage}%`),
+      },
+      {
+        label: "Average gap (days)",
+        values: brandCompareRows.map((row) =>
+          row.avgGapDays === null ? "N/A" : formatMetricValue(row.avgGapDays),
+        ),
+      },
+      {
+        label: "Median gap (days)",
+        values: brandCompareRows.map((row) =>
+          row.medianGapDays === null
+            ? "N/A"
+            : formatMetricValue(row.medianGapDays),
+        ),
+      },
+      {
+        label: "Min / Max gap",
+        values: brandCompareRows.map((row) => {
+          if (row.minGapDays === null || row.maxGapDays === null) return "N/A";
+          return `${formatMetricValue(row.minGapDays)} / ${formatMetricValue(
+            row.maxGapDays,
+          )}`;
+        }),
+      },
+      {
+        label: "Within 30 days",
+        values: brandCompareRows.map((row) => `${row.within30DaysRate}%`),
+      },
+    ],
+    [brandCompareRows],
+  );
+  const highlightedFlaggedRows = useMemo(
+    () => dataQuality.flaggedRows.slice(0, 4),
+    [dataQuality.flaggedRows],
+  );
+
+  const getTrackerSpeedMeta = useCallback((gapValue) => {
+    const gap = Number(gapValue);
+    if (!Number.isFinite(gap)) {
+      return {
+        label: "Unknown",
+        className: "border-slate-200 bg-slate-50 text-slate-600",
+      };
+    }
+    if (gap <= 14) {
+      return {
+        label: "Fast",
+        className: "border-emerald-200 bg-emerald-50 text-emerald-700",
+      };
+    }
+    if (gap <= 60) {
+      return {
+        label: "Moderate",
+        className: "border-amber-200 bg-amber-50 text-amber-700",
+      };
+    }
+    return {
+      label: "Slow",
+      className: "border-rose-200 bg-rose-50 text-rose-700",
+    };
+  }, []);
 
   const renderBreakdownContent = () => {
     if (!breakdownRows.length) {
@@ -935,33 +1012,51 @@ const LaunchTimingReport = () => {
     }
 
     return (
-      <div className="space-y-4">
-        {breakdownRows.map((row, index) => (
-          <div key={row.key}>
-            <div className="mb-2 flex items-center justify-between gap-3 text-sm">
+      <div className="overflow-hidden rounded-xl border border-slate-200">
+        <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(160px,1fr)_84px_108px_108px] gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">
+          <span>{breakdownMeta.label}</span>
+          <span className="hidden sm:block">Visual</span>
+          <span className="text-right">Devices</span>
+          <span className="text-right">Sale coverage</span>
+          <span className="text-right">Avg. gap</span>
+        </div>
+
+        <div className="divide-y divide-slate-200">
+          {breakdownRows.map((row, index) => (
+            <div
+              key={row.key}
+              className="grid grid-cols-[minmax(0,1.4fr)_minmax(160px,1fr)_84px_108px_108px] items-center gap-3 px-4 py-3 text-sm"
+            >
               <div className="min-w-0">
-                <p className="truncate font-medium text-slate-700">{row.label}</p>
-                <p className="text-xs text-slate-500">
-                  Sale coverage {row.saleCoverage}% | Avg gap{" "}
-                  {row.avgGapDays === null
-                    ? "N/A"
-                    : `${formatMetricValue(row.avgGapDays)}d`}
-                </p>
+                <p className="truncate font-medium text-slate-800">{row.label}</p>
               </div>
-              <span className="font-semibold text-slate-900">{row.count}</span>
+              <div className="hidden sm:block">
+                <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+                  <div
+                    className={`h-full rounded-full ${
+                      BREAKDOWN_GRADIENTS[index % BREAKDOWN_GRADIENTS.length]
+                    }`}
+                    style={{
+                      width: `${Math.max(
+                        (row.count / maxBreakdownCount) * 100,
+                        10,
+                      )}%`,
+                    }}
+                  />
+                </div>
+              </div>
+              <span className="text-right font-semibold text-slate-900">
+                {row.count}
+              </span>
+              <span className="text-right text-slate-600">{row.saleCoverage}%</span>
+              <span className="text-right text-slate-600">
+                {row.avgGapDays === null
+                  ? "N/A"
+                  : `${formatMetricValue(row.avgGapDays)}d`}
+              </span>
             </div>
-            <div className="h-2.5 overflow-hidden rounded-full bg-slate-100">
-              <div
-                className={`h-full rounded-full ${
-                  BREAKDOWN_GRADIENTS[index % BREAKDOWN_GRADIENTS.length]
-                }`}
-                style={{
-                  width: `${Math.max((row.count / maxBreakdownCount) * 100, 10)}%`,
-                }}
-              />
-            </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     );
   };
@@ -998,25 +1093,30 @@ const LaunchTimingReport = () => {
         ))}
       </div>
 
-      <section className="rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm overflow-hidden">
-        <div className="border-b border-slate-200/70 bg-gradient-to-r from-blue-50/90 via-white to-purple-50/80 px-4 py-5 sm:px-6">
+      <section className={`${REPORT_SURFACE_CLASS} border-violet-100/80`}>
+        <div className="bg-[radial-gradient(circle_at_top_left,_rgba(124,58,237,0.08),_transparent_36%),radial-gradient(circle_at_top_right,_rgba(99,102,241,0.06),_transparent_28%),linear-gradient(180deg,#ffffff_0%,#fbfaff_100%)] px-4 py-5 sm:px-6">
           <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
             <div className="max-w-3xl">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-700/80">Reports</p>
-              <h1 className="font-semibold tracking-[-0.03em] text-slate-950 mt-2">Launch Timing Report</h1>
-              <p className="text-[15px] leading-6 text-slate-600 mt-3">
-                Track launch volume across year, month, and week, compare brands
-                side by side, export the visible dataset, and surface timing data
-                quality issues before they affect the rest of the dashboard.
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-violet-700">
+                Reports
+              </p>
+              <h1 className="mt-2 text-[2rem] font-semibold tracking-[-0.03em] text-slate-950">
+                Launch Timing Report
+              </h1>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
+                Track how long it takes for products to move from launch to sale
+                start across smartphones, laptops, TVs and all devices. Compare
+                brands, analyze timing distribution, export reports and monitor
+                data quality.
               </p>
             </div>
 
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-3">
               <button
                 type="button"
                 onClick={handleExport}
                 disabled={!filteredDevices.length}
-                className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white px-4 py-2 text-sm font-semibold text-emerald-700 transition hover:border-emerald-300 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex h-11 items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <FaDownload className="text-sm" />
                 Export CSV
@@ -1025,7 +1125,7 @@ const LaunchTimingReport = () => {
                 type="button"
                 onClick={fetchReportData}
                 disabled={loading}
-                className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-white px-4 py-2 text-sm font-semibold text-blue-700 transition hover:border-blue-300 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex h-11 items-center gap-2 rounded-lg border border-violet-600 bg-violet-600 px-4 text-sm font-semibold text-white transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <FaSyncAlt className={loading ? "animate-spin" : ""} />
                 {loading ? "Refreshing..." : "Refresh"}
@@ -1033,57 +1133,86 @@ const LaunchTimingReport = () => {
             </div>
           </div>
 
-          <div className="mt-5 space-y-4">
-            <div>
-              <p className="mb-2 text-sm font-medium text-slate-500">
-                Device family
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {PRODUCT_TYPE_OPTIONS.map((option) => {
-                  const meta = PRODUCT_META[option.value] || PRODUCT_META.all;
-                  const Icon = meta.icon;
-                  const isActive = option.value === deviceType;
+          <div className="mt-6 grid gap-4 xl:grid-cols-[minmax(0,1fr)_230px]">
+            <div className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
+              <div className="grid gap-5 lg:grid-cols-2">
+                <div>
+                  <p className="mb-3 text-sm font-medium text-slate-500">
+                    Device family
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {PRODUCT_TYPE_OPTIONS.map((option) => {
+                      const meta = PRODUCT_META[option.value] || PRODUCT_META.all;
+                      const Icon = meta.icon;
+                      const isActive = option.value === deviceType;
 
-                  return (
-                    <button
-                      key={option.value}
-                      type="button"
-                      onClick={() => setDeviceType(option.value)}
-                      className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition ${
-                        isActive ? meta.badge : meta.inactiveBadge
-                      }`}
-                    >
-                      <Icon className="text-sm" />
-                      {option.label}
-                    </button>
-                  );
-                })}
+                      return (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => setDeviceType(option.value)}
+                          className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold transition ${
+                            isActive
+                              ? "border-violet-500 bg-violet-50 text-violet-700"
+                              : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+                          }`}
+                        >
+                          <Icon className="text-sm" />
+                          {option.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div>
+                  <p className="mb-3 text-sm font-medium text-slate-500">
+                    Launch date range
+                  </p>
+                  <SelectionGroup
+                    options={DATE_RANGE_OPTIONS}
+                    value={datePreset}
+                    onChange={setDatePreset}
+                  />
+                </div>
               </div>
-            </div>
 
-            <div>
-              <p className="mb-2 text-sm font-medium text-slate-500">
-                Launch date range
-              </p>
-              <SelectionGroup
-                options={DATE_RANGE_OPTIONS}
-                value={datePreset}
-                onChange={setDatePreset}
-                activeClass="border-indigo-600 bg-indigo-600 text-white"
-              />
-            </div>
+              <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_180px_180px]">
+                <label className="block">
+                  <span className="mb-2 inline-flex items-center gap-2 text-sm font-medium text-slate-500">
+                    <FaFilter className="text-xs" />
+                    Brand
+                  </span>
+                  <select
+                    value={brandFilter}
+                    onChange={(event) => setBrandFilter(event.target.value)}
+                    className={REPORT_INPUT_CLASS}
+                  >
+                    <option value="all">All brands</option>
+                    {brandOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
 
-            {datePreset === "custom" ? (
-              <div className="grid gap-4 sm:grid-cols-2">
                 <label className="block">
                   <span className="mb-2 inline-block text-sm font-medium text-slate-500">
                     Start date
                   </span>
                   <input
                     type="date"
-                    value={customStartDate}
-                    onChange={(event) => setCustomStartDate(event.target.value)}
-                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 outline-none transition focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
+                    value={
+                      datePreset === "custom"
+                        ? customStartDate
+                        : resolvedDateRange.start
+                    }
+                    onChange={(event) => {
+                      setDatePreset("custom");
+                      setCustomStartDate(event.target.value);
+                    }}
+                    className={REPORT_INPUT_CLASS}
                   />
                 </label>
 
@@ -1093,56 +1222,86 @@ const LaunchTimingReport = () => {
                   </span>
                   <input
                     type="date"
-                    value={customEndDate}
-                    onChange={(event) => setCustomEndDate(event.target.value)}
-                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 outline-none transition focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
+                    value={
+                      datePreset === "custom"
+                        ? customEndDate
+                        : resolvedDateRange.end
+                    }
+                    onChange={(event) => {
+                      setDatePreset("custom");
+                      setCustomEndDate(event.target.value);
+                    }}
+                    className={REPORT_INPUT_CLASS}
                   />
                 </label>
               </div>
-            ) : null}
-
-            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <p className={`text-sm font-semibold ${activeMeta.accent}`}>
-                  Current scope
-                </p>
-                <p className="mt-2 text-lg font-bold text-slate-900">
-                  {[
-                    PRODUCT_TYPE_OPTIONS.find((option) => option.value === deviceType)
-                      ?.label || "All devices",
-                    brandFilter === "all" ? "All brands" : brandFilter,
-                    formatDateRangeLabel(
-                      datePreset,
-                      resolvedDateRange.start,
-                      resolvedDateRange.end,
-                    ),
-                  ].join(" | ")}
-                </p>
-                <p className="mt-1 text-sm text-slate-600">
-                  {filteredDevices.length} visible devices in the report after
-                  filters.
-                </p>
-              </div>
-
-              <label className="block">
-                <span className="mb-2 inline-flex items-center gap-2 text-sm font-medium text-slate-500">
-                  <FaFilter className="text-xs" />
-                  Brand filter
-                </span>
-                <select
-                  value={brandFilter}
-                  onChange={(event) => setBrandFilter(event.target.value)}
-                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 outline-none transition focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
-                >
-                  <option value="all">All brands</option>
-                  {brandOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
             </div>
+
+            <aside className="rounded-xl border border-slate-200 bg-white p-4">
+              <p className="text-sm font-semibold text-slate-900">Current scope</p>
+              <div className="mt-4 space-y-4 text-sm text-slate-600">
+                <div className="flex items-start gap-3">
+                  <span className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-500">
+                    <FaLayerGroup className="text-xs" />
+                  </span>
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-[0.08em] text-slate-400">
+                      Device family
+                    </p>
+                    <p className="mt-1 font-semibold text-slate-900">
+                      {PRODUCT_TYPE_OPTIONS.find((option) => option.value === deviceType)
+                        ?.label || "All devices"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <span className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-500">
+                    <FaIndustry className="text-xs" />
+                  </span>
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-[0.08em] text-slate-400">
+                      Brand
+                    </p>
+                    <p className="mt-1 font-semibold text-slate-900">
+                      {brandFilter === "all" ? "All brands" : brandFilter}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <span className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-500">
+                    <FaCalendarAlt className="text-xs" />
+                  </span>
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-[0.08em] text-slate-400">
+                      Date range
+                    </p>
+                    <p className="mt-1 font-semibold text-slate-900">
+                      {formatDateRangeLabel(
+                        datePreset,
+                        resolvedDateRange.start,
+                        resolvedDateRange.end,
+                      )}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <span className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-500">
+                    <FaSignal className="text-xs" />
+                  </span>
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-[0.08em] text-slate-400">
+                      Visible devices
+                    </p>
+                    <p className="mt-1 font-semibold text-slate-900">
+                      {summary.totalDevices.toLocaleString()} devices
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </aside>
           </div>
         </div>
       </section>
@@ -1154,7 +1313,7 @@ const LaunchTimingReport = () => {
       ) : null}
 
       {loading ? (
-        <div className="rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm px-4 py-14 text-center sm:px-6">
+        <div className={`${REPORT_SURFACE_CLASS} px-4 py-14 text-center sm:px-6`}>
           <div className="flex flex-col items-center justify-center">
             <FaSpinner className="mb-4 animate-spin text-3xl text-blue-500" />
             <p className="font-semibold text-slate-800">
@@ -1168,19 +1327,19 @@ const LaunchTimingReport = () => {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-7">
             <StatCard
               icon={FaLayerGroup}
               label="Tracked devices"
               value={summary.totalDevices}
-              helper="Devices included after the current filters"
+              helper="100% of scope"
               tone="slate"
             />
             <StatCard
               icon={FaIndustry}
               label="Brands in scope"
               value={scopeBrandCount}
-              helper="Unique brands in the visible result set"
+              helper="Across visible devices"
               tone="cyan"
             />
             <StatCard
@@ -1189,8 +1348,8 @@ const LaunchTimingReport = () => {
               value={topBrand?.label || "N/A"}
               helper={
                 topBrand
-                  ? `${topBrand.count} devices, ${topBrand.saleCoverage}% sale coverage`
-                  : "No brand data available in this scope"
+                  ? `${topBrand.count} devices`
+                  : "No brand leader"
               }
               tone="sky"
             />
@@ -1198,14 +1357,14 @@ const LaunchTimingReport = () => {
               icon={FaCalendarAlt}
               label="Launch records"
               value={summary.launchedDevices}
-              helper="Devices with a usable launch date"
+              helper="Total launches"
               tone="sky"
             />
             <StatCard
               icon={FaSignal}
               label="Sale records"
               value={summary.saleTaggedDevices}
-              helper="Devices with a usable sale start date"
+              helper={`${summary.totalDevices ? Math.round((summary.saleTaggedDevices / summary.totalDevices) * 100) : 0}% coverage`}
               tone="emerald"
             />
             <StatCard
@@ -1216,21 +1375,9 @@ const LaunchTimingReport = () => {
                   ? "N/A"
                   : formatMetricValue(summary.avgGapDays)
               }
-              helper="Average days from launch to first sale"
+              helper="Launch to sale"
               tone="indigo"
               suffix={summary.avgGapDays === null ? "" : "days"}
-            />
-            <StatCard
-              icon={FaClock}
-              label="Minimum gap"
-              value={
-                summary.minGapDays === null
-                  ? "N/A"
-                  : formatMetricValue(summary.minGapDays)
-              }
-              helper="Smallest launch-to-sale difference in the sample"
-              tone="amber"
-              suffix={summary.minGapDays === null ? "" : "days"}
             />
             <StatCard
               icon={FaChartLine}
@@ -1240,51 +1387,40 @@ const LaunchTimingReport = () => {
                   ? "N/A"
                   : formatMetricValue(summary.maxGapDays)
               }
-              helper="Largest launch-to-sale difference in the sample"
+              helper="Longest to sale"
               tone="rose"
               suffix={summary.maxGapDays === null ? "" : "days"}
             />
           </div>
 
           <div className="grid gap-4 xl:grid-cols-[1.7fr_1fr]">
-            <section className="rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm overflow-hidden">
-              <div className="border-b border-slate-200/70 bg-gradient-to-r from-blue-50/90 via-white to-purple-50/80 px-4 py-4 sm:px-6">
+            <section className={REPORT_SURFACE_CLASS}>
+              <div className={REPORT_SURFACE_HEADER_CLASS}>
                 <div className="flex flex-col gap-4">
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                     <div>
                       <h2 className="text-lg font-semibold text-slate-900">
-                        Launch volume by {groupBy}
+                        4. Launch volume by year/month/week
                       </h2>
                       <p className="mt-1 text-sm text-slate-500">
                         How many devices were launched in each selected time bucket.
                       </p>
                     </div>
-                    <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-500">
+                    <span className={REPORT_PILL_BADGE_CLASS}>
                       {launchSeries.length} periods
                     </span>
                   </div>
 
-                  <div>
-                    <p className="mb-2 text-sm font-medium text-slate-500">
-                      Chart type
-                    </p>
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                     <SelectionGroup
                       options={TIMELINE_VIEW_OPTIONS}
                       value={timelineView}
                       onChange={setTimelineView}
-                      activeClass="border-blue-600 bg-blue-600 text-white"
                     />
-                  </div>
-
-                  <div>
-                    <p className="mb-2 text-sm font-medium text-slate-500">
-                      Grouping
-                    </p>
                     <SelectionGroup
                       options={GROUP_OPTIONS}
                       value={groupBy}
                       onChange={setGroupBy}
-                      activeClass="border-indigo-600 bg-indigo-600 text-white"
                     />
                   </div>
                 </div>
@@ -1299,12 +1435,12 @@ const LaunchTimingReport = () => {
               </div>
             </section>
 
-            <section className="rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm overflow-hidden">
-              <div className="border-b border-slate-200/70 bg-gradient-to-r from-blue-50/90 via-white to-purple-50/80 px-4 py-4 sm:px-6">
+            <section className={REPORT_SURFACE_CLASS}>
+              <div className={REPORT_SURFACE_HEADER_CLASS}>
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <h2 className="text-lg font-semibold text-slate-900">
-                      Prediction window
+                      5. Prediction window
                     </h2>
                     <p className="mt-1 text-sm text-slate-500">
                       Historical probability that sale starts by a target window.
@@ -1323,22 +1459,22 @@ const LaunchTimingReport = () => {
                       {
                         label: "By launch day",
                         value: prediction.withinLaunchDay,
-                        color: "bg-amber-500",
+                        color: "bg-violet-500",
                       },
                       {
                         label: "Within 7 days",
                         value: prediction.within7Days,
-                        color: "bg-blue-500",
+                        color: "bg-violet-500",
                       },
                       {
                         label: "Within 30 days",
                         value: prediction.within30Days,
-                        color: "bg-indigo-500",
+                        color: "bg-violet-500",
                       },
                       {
                         label: "Within 60 days",
                         value: prediction.within60Days,
-                        color: "bg-emerald-500",
+                        color: "bg-violet-500",
                       },
                     ].map((row) => (
                       <div key={row.label}>
@@ -1394,18 +1530,18 @@ const LaunchTimingReport = () => {
           </div>
 
           <div className="grid gap-4 xl:grid-cols-[1fr_1fr]">
-            <section className="rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm overflow-hidden">
-              <div className="border-b border-slate-200/70 bg-gradient-to-r from-blue-50/90 via-white to-purple-50/80 px-4 py-4 sm:px-6">
+            <section className={REPORT_SURFACE_CLASS}>
+              <div className={REPORT_SURFACE_HEADER_CLASS}>
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <h2 className="text-lg font-semibold text-slate-900">
-                      Launch to sale distribution
+                      6. Launch to sale distribution
                     </h2>
                     <p className="mt-1 text-sm text-slate-500">
                       Frequency of devices grouped by launch-to-sale delay bucket.
                     </p>
                   </div>
-                  <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-500">
+                  <span className={REPORT_PILL_BADGE_CLASS}>
                     {summary.comparableDevices} comparable devices
                   </span>
                 </div>
@@ -1440,13 +1576,13 @@ const LaunchTimingReport = () => {
               </div>
             </section>
 
-            <section className="rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm overflow-hidden">
-              <div className="border-b border-slate-200/70 bg-gradient-to-r from-blue-50/90 via-white to-purple-50/80 px-4 py-4 sm:px-6">
+            <section className={REPORT_SURFACE_CLASS}>
+              <div className={REPORT_SURFACE_HEADER_CLASS}>
                 <div className="flex flex-col gap-4">
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                     <div>
                       <h2 className="text-lg font-semibold text-slate-900">
-                        Statistical breakdown
+                        7. Statistical breakdown
                       </h2>
                       <p className="mt-1 text-sm text-slate-500">
                         Switch between brand-wise, category-wise, and device-type
@@ -1458,28 +1594,34 @@ const LaunchTimingReport = () => {
                     </span>
                   </div>
 
-                  <div>
-                    <p className="mb-2 text-sm font-medium text-slate-500">
-                      Breakdown by
-                    </p>
-                    <SelectionGroup
-                      options={BREAKDOWN_DIMENSION_OPTIONS}
-                      value={breakdownDimension}
-                      onChange={setBreakdownDimension}
-                      activeClass="border-emerald-600 bg-emerald-600 text-white"
-                    />
-                  </div>
+                  <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+                    <div>
+                      <p className="mb-2 text-sm font-medium text-slate-500">
+                        Breakdown by
+                      </p>
+                      <select
+                        value={breakdownDimension}
+                        onChange={(event) => setBreakdownDimension(event.target.value)}
+                        className={REPORT_INPUT_CLASS}
+                      >
+                        {BREAKDOWN_DIMENSION_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
 
-                  <div>
-                    <p className="mb-2 text-sm font-medium text-slate-500">
-                      Graph style
-                    </p>
-                    <SelectionGroup
-                      options={BREAKDOWN_VIEW_OPTIONS}
-                      value={breakdownView}
-                      onChange={setBreakdownView}
-                      activeClass="border-indigo-600 bg-indigo-600 text-white"
-                    />
+                    <div>
+                      <p className="mb-2 text-sm font-medium text-slate-500">
+                        Graph style
+                      </p>
+                      <SelectionGroup
+                        options={BREAKDOWN_VIEW_OPTIONS}
+                        value={breakdownView}
+                        onChange={setBreakdownView}
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1511,13 +1653,13 @@ const LaunchTimingReport = () => {
           </div>
 
           <div className="grid gap-4 xl:grid-cols-[1.1fr_1fr]">
-            <section className="rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm overflow-hidden">
-              <div className="border-b border-slate-200/70 bg-gradient-to-r from-blue-50/90 via-white to-purple-50/80 px-4 py-4 sm:px-6">
+            <section className={REPORT_SURFACE_CLASS}>
+              <div className={REPORT_SURFACE_HEADER_CLASS}>
                 <div className="flex flex-col gap-4">
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                     <div>
                       <h2 className="text-lg font-semibold text-slate-900">
-                        Brand compare mode
+                        8. Brand compare mode
                       </h2>
                       <p className="mt-1 text-sm text-slate-500">
                         Compare up to {COMPARE_LIMIT} brands inside the current
@@ -1538,10 +1680,10 @@ const LaunchTimingReport = () => {
                             key={brand}
                             type="button"
                             onClick={() => handleCompareBrandToggle(brand)}
-                            className={`rounded-full border px-3 py-1.5 text-sm font-semibold transition ${
+                            className={`rounded-lg border px-3 py-2 text-sm font-semibold transition ${
                               active
-                                ? "border-blue-600 bg-blue-600 text-white"
-                                : "border-blue-200 bg-white text-blue-700 hover:border-blue-300 hover:bg-blue-50"
+                                ? "border-violet-500 bg-violet-50 text-violet-700"
+                                : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50"
                             }`}
                           >
                             {brand}
@@ -1559,81 +1701,53 @@ const LaunchTimingReport = () => {
 
               <div className="space-y-4 px-4 py-5 sm:px-6">
                 {brandCompareRows.length ? (
-                  brandCompareRows.map((row, index) => (
-                    <div
-                      key={row.brand}
-                      className="rounded-2xl border border-slate-200 bg-white p-4"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-3">
-                            <span
-                              className={`inline-flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold text-white ${
-                                BREAKDOWN_SOLID[index % BREAKDOWN_SOLID.length]
-                              }`}
+                  <div className="overflow-x-auto rounded-xl border border-slate-200">
+                    <table className="min-w-full text-sm">
+                      <thead className="bg-slate-50">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">
+                            Metric
+                          </th>
+                          {brandCompareRows.map((row, index) => (
+                            <th
+                              key={row.brand}
+                              className="min-w-[120px] px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500"
                             >
-                              {index + 1}
-                            </span>
-                            <div>
-                              <p className="truncate text-base font-semibold text-slate-900">
-                                {row.brand}
-                              </p>
-                              <p className="text-xs text-slate-500">
-                                {row.count} devices in compare scope
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                        <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">
-                          {row.saleCoverage}% sale coverage
-                        </span>
-                      </div>
-
-                      <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                        <div className="rounded-xl bg-slate-50 p-3">
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">
-                            Average
-                          </p>
-                          <p className="mt-2 text-lg font-bold text-slate-900">
-                            {row.avgGapDays === null
-                              ? "N/A"
-                              : `${formatMetricValue(row.avgGapDays)}d`}
-                          </p>
-                        </div>
-                        <div className="rounded-xl bg-slate-50 p-3">
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">
-                            Median
-                          </p>
-                          <p className="mt-2 text-lg font-bold text-slate-900">
-                            {row.medianGapDays === null
-                              ? "N/A"
-                              : `${formatMetricValue(row.medianGapDays)}d`}
-                          </p>
-                        </div>
-                        <div className="rounded-xl bg-slate-50 p-3">
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">
-                            Min / Max
-                          </p>
-                          <p className="mt-2 text-lg font-bold text-slate-900">
-                            {row.minGapDays === null
-                              ? "N/A"
-                              : `${formatMetricValue(row.minGapDays)}d`}
-                            {row.maxGapDays === null
-                              ? ""
-                              : ` / ${formatMetricValue(row.maxGapDays)}d`}
-                          </p>
-                        </div>
-                        <div className="rounded-xl bg-slate-50 p-3">
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">
-                            Within 30 days
-                          </p>
-                          <p className="mt-2 text-lg font-bold text-slate-900">
-                            {row.within30DaysRate}%
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  ))
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold text-white ${
+                                    BREAKDOWN_SOLID[index % BREAKDOWN_SOLID.length]
+                                  }`}
+                                >
+                                  {index + 1}
+                                </span>
+                                <span className="truncate text-slate-700 normal-case">
+                                  {row.brand}
+                                </span>
+                              </div>
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200 bg-white">
+                        {comparisonMatrixRows.map((metric) => (
+                          <tr key={metric.label}>
+                            <td className="whitespace-nowrap px-4 py-3 font-medium text-slate-700">
+                              {metric.label}
+                            </td>
+                            {metric.values.map((value, valueIndex) => (
+                              <td
+                                key={`${metric.label}-${valueIndex}`}
+                                className="px-4 py-3 text-slate-600"
+                              >
+                                {value}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 ) : (
                   <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center">
                     <p className="font-medium text-slate-700">
@@ -1648,12 +1762,12 @@ const LaunchTimingReport = () => {
               </div>
             </section>
 
-            <section className="rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm overflow-hidden">
-              <div className="border-b border-slate-200/70 bg-gradient-to-r from-blue-50/90 via-white to-purple-50/80 px-4 py-4 sm:px-6">
+            <section className={REPORT_SURFACE_CLASS}>
+              <div className={REPORT_SURFACE_HEADER_CLASS}>
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                   <div>
                     <h2 className="text-lg font-semibold text-slate-900">
-                      Data quality panel
+                      9. Data quality panel
                     </h2>
                     <p className="mt-1 text-sm text-slate-500">
                       Quality checks stay on the selected device family and brand
@@ -1667,84 +1781,99 @@ const LaunchTimingReport = () => {
               </div>
 
               <div className="space-y-5 px-4 py-5 sm:px-6">
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {dataQuality.issueCards.map((item, index) => (
+                <div className="grid gap-3 md:grid-cols-5">
+                  <div className="rounded-xl border border-rose-200 bg-rose-50 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.08em] text-rose-600">
+                      Flagged devices
+                    </p>
+                    <p className="mt-2 text-2xl font-bold text-rose-700">
+                      {dataQuality.flaggedDevicesCount}
+                    </p>
+                    <p className="mt-1 text-xs text-rose-600">
+                      {dataQuality.totalDevices
+                        ? `${((dataQuality.flaggedDevicesCount / dataQuality.totalDevices) * 100).toFixed(1)}% of total`
+                        : "0% of total"}
+                    </p>
+                  </div>
+
+                  {dataQuality.issueCards.slice(0, 4).map((item, index) => (
                     <div
                       key={item.key}
-                      className="rounded-2xl border border-slate-200 bg-white p-4"
+                      className="rounded-xl border border-slate-200 bg-white p-4"
                     >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold text-slate-900">
-                            {item.label}
-                          </p>
-                          <p className="mt-1 text-xs text-slate-500">
-                            {item.helper}
-                          </p>
-                        </div>
-                        <span
-                          className={`inline-flex h-8 min-w-[2rem] items-center justify-center rounded-full px-2 text-xs font-bold text-white ${
-                            BREAKDOWN_SOLID[index % BREAKDOWN_SOLID.length]
-                          }`}
-                        >
-                          {item.count}
-                        </span>
-                      </div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">
+                        {item.label}
+                      </p>
+                      <p className="mt-2 text-2xl font-bold text-slate-900">
+                        {item.count}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-500">{item.helper}</p>
                     </div>
                   ))}
                 </div>
 
-                {dataQuality.flaggedRows.length ? (
-                  <div className="space-y-3">
-                    {dataQuality.flaggedRows.map((device) => (
-                      <div
-                        key={`${device.product_type}-${device.product_id}`}
-                        className="rounded-2xl border border-slate-200 bg-white p-4"
-                      >
-                        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-semibold text-slate-900">
+                {highlightedFlaggedRows.length ? (
+                  <div className="overflow-x-auto rounded-xl border border-slate-200">
+                    <table className="min-w-full text-sm">
+                      <thead className="bg-slate-50">
+                        <tr>
+                          {[
+                            "Product name",
+                            "Brand",
+                            "Category",
+                            "Type",
+                            "Issues",
+                            "Launch date",
+                            "Sale date",
+                          ].map((label) => (
+                            <th
+                              key={label}
+                              className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500"
+                            >
+                              {label}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200 bg-white">
+                        {highlightedFlaggedRows.map((device) => (
+                          <tr key={`${device.product_type}-${device.product_id}`}>
+                            <td className="px-4 py-3 font-medium text-slate-800">
                               {device.product_name}
-                            </p>
-                            <p className="mt-1 truncate text-xs text-slate-500">
-                              {[device.brand_name || "Unknown", device.category || "Uncategorized", device.product_type]
-                                .filter(Boolean)
-                                .join(" | ")}
-                            </p>
-                          </div>
-                          <div className="flex flex-wrap gap-2">
-                            {device.issues.map((issue) => (
-                              <span
-                                key={`${device.product_id}-${issue}`}
-                                className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${getIssueTone(
-                                  issue,
-                                )}`}
-                              >
-                                {issue}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                        <div className="mt-3 grid grid-cols-2 gap-3">
-                          <div className="rounded-xl bg-slate-50 p-3">
-                            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">
-                              Launch
-                            </p>
-                            <p className="mt-2 text-sm font-semibold text-slate-900">
+                            </td>
+                            <td className="px-4 py-3 text-slate-600">
+                              {device.brand_name || "Unknown"}
+                            </td>
+                            <td className="px-4 py-3 text-slate-600">
+                              {device.category || "Uncategorized"}
+                            </td>
+                            <td className="px-4 py-3 text-slate-600">
+                              {device.product_type || "Unknown"}
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex flex-wrap gap-2">
+                                {device.issues.map((issue) => (
+                                  <span
+                                    key={`${device.product_id}-${issue}`}
+                                    className={`rounded-md border px-2 py-1 text-[11px] font-semibold ${getIssueTone(
+                                      issue,
+                                    )}`}
+                                  >
+                                    {issue}
+                                  </span>
+                                ))}
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-slate-600">
                               {formatShortDate(device.launch_date)}
-                            </p>
-                          </div>
-                          <div className="rounded-xl bg-slate-50 p-3">
-                            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">
-                              Sale
-                            </p>
-                            <p className="mt-2 text-sm font-semibold text-slate-900">
+                            </td>
+                            <td className="px-4 py-3 text-slate-600">
                               {formatShortDate(device.sale_start_date)}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 ) : (
                   <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center">
@@ -1756,99 +1885,120 @@ const LaunchTimingReport = () => {
                     </p>
                   </div>
                 )}
+
+                {highlightedFlaggedRows.length ? (
+                  <div className="text-sm font-semibold text-violet-700">
+                    View all flagged devices -&gt;
+                  </div>
+                ) : null}
               </div>
             </section>
           </div>
 
-          <section className="rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm overflow-hidden">
-            <div className="border-b border-slate-200/70 bg-gradient-to-r from-blue-50/90 via-white to-purple-50/80 px-4 py-4 sm:px-6">
+          <section className={REPORT_SURFACE_CLASS}>
+            <div className={REPORT_SURFACE_HEADER_CLASS}>
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <h2 className="text-lg font-semibold text-slate-900">
-                    Launch to sale tracker
+                    10. Launch to sale tracker
                   </h2>
                   <p className="mt-1 text-sm text-slate-500">
                     Latest devices in the selected filter with their launch and sale timing.
                   </p>
                 </div>
                 <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-500">
-                  Showing {latestDevices.length}
+                  Showing {trackerDevices.length}
                 </span>
               </div>
             </div>
 
-            <div className="grid gap-4 px-4 py-5 sm:grid-cols-2 sm:px-6 xl:grid-cols-3">
-              {latestDevices.length ? (
-                latestDevices.map((device) => {
+            <div className="space-y-4 px-4 py-5 sm:px-6">
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+                {trackerDevices.length ? (
+                  trackerDevices.map((device) => {
                   const meta = PRODUCT_META[device.product_type] || PRODUCT_META.all;
                   const Icon = meta.icon;
+                  const paceMeta = getTrackerSpeedMeta(device.sale_gap_days);
 
                   return (
                     <article
                       key={`${device.product_type}-${device.product_id}`}
-                      className="rounded-2xl border border-slate-200 bg-white p-4"
+                      className="rounded-xl border border-slate-200 bg-white p-3"
                     >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span
-                              className={`flex h-9 w-9 items-center justify-center rounded-xl border bg-slate-50 ${meta.accent}`}
-                            >
-                              <Icon className="text-sm" />
-                            </span>
-                            <div className="min-w-0">
-                              <p className="truncate font-semibold text-slate-900">
-                                {device.product_name}
-                              </p>
-                              <p className="truncate text-xs text-slate-500">
-                                {[device.brand_name, device.category]
-                                  .filter(Boolean)
-                                  .join(" | ")}
-                              </p>
-                            </div>
-                          </div>
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50">
+                          <Icon className={`text-lg ${meta.accent}`} />
                         </div>
+                        <div className="min-w-0">
+                          <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-slate-400">
+                            {PRODUCT_TYPE_OPTIONS.find(
+                              (option) => option.value === device.product_type,
+                            )?.label || "Device"}
+                          </p>
+                          <p className="mt-1 min-h-[2.5rem] text-sm font-semibold text-slate-900">
+                            {device.product_name}
+                          </p>
+                          <p className="mt-1 truncate text-xs text-slate-500">
+                            {[device.brand_name, device.category]
+                              .filter(Boolean)
+                              .join(" - ")}
+                          </p>
+                        </div>
+                      </div>
 
+                      <div className="mt-4 grid grid-cols-2 gap-2">
+                        <div className="rounded-lg bg-slate-50 p-2.5">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+                            Launch
+                          </p>
+                          <p className="mt-1 text-xs font-semibold text-slate-900">
+                            {formatShortDate(device.launch_date)}
+                          </p>
+                        </div>
+                        <div className="rounded-lg bg-slate-50 p-2.5">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+                            Sale
+                          </p>
+                          <p className="mt-1 text-xs font-semibold text-slate-900">
+                            {formatShortDate(device.sale_start_date)}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 grid grid-cols-2 gap-2">
                         <span
-                          className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${getGapTone(
+                          className={`inline-flex items-center justify-center rounded-lg border px-2 py-2 text-xs font-semibold ${getGapTone(
                             device.sale_gap_days,
                           )}`}
                         >
                           {formatGapLabel(device.sale_gap_days)}
                         </span>
-                      </div>
-
-                      <div className="mt-4 grid grid-cols-2 gap-3">
-                        <div className="rounded-xl bg-slate-50 p-3">
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">
-                            Launch
-                          </p>
-                          <p className="mt-2 text-sm font-semibold text-slate-900">
-                            {formatShortDate(device.launch_date)}
-                          </p>
-                        </div>
-                        <div className="rounded-xl bg-slate-50 p-3">
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">
-                            Sale
-                          </p>
-                          <p className="mt-2 text-sm font-semibold text-slate-900">
-                            {formatShortDate(device.sale_start_date)}
-                          </p>
-                        </div>
+                        <span
+                          className={`inline-flex items-center justify-center rounded-lg border px-2 py-2 text-xs font-semibold ${paceMeta.className}`}
+                        >
+                          {paceMeta.label}
+                        </span>
                       </div>
                     </article>
                   );
-                })
-              ) : (
-                <div className="col-span-full rounded-lg border border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center">
-                  <p className="font-medium text-slate-700">
-                    No device timing rows found
-                  </p>
-                  <p className="mt-1 text-sm text-slate-500">
-                    Change the filters or widen the date range to populate this tracker.
-                  </p>
+                  })
+                ) : (
+                  <div className="col-span-full rounded-lg border border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center">
+                    <p className="font-medium text-slate-700">
+                      No device timing rows found
+                    </p>
+                    <p className="mt-1 text-sm text-slate-500">
+                      Change the filters or widen the date range to populate this tracker.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {latestDevices.length > trackerDevices.length ? (
+                <div className="text-center text-sm font-semibold text-violet-700">
+                  View all devices -&gt;
                 </div>
-              )}
+              ) : null}
             </div>
           </section>
         </>

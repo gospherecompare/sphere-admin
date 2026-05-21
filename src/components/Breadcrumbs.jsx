@@ -245,7 +245,7 @@ const ROUTE_TRAILS = [
     path: "/reports/productcategories",
     trail: [
       DASHBOARD_CRUMB,
-      { label: "Reports", to: "/reports/productpublishstatus" },
+      { label: "Reports", to: "/reports/useractivity" },
       { label: "Product Categories" },
     ],
   },
@@ -253,7 +253,7 @@ const ROUTE_TRAILS = [
     path: "/reports/productpublishstatus",
     trail: [
       DASHBOARD_CRUMB,
-      { label: "Reports", to: "/reports/productpublishstatus" },
+      { label: "Reports", to: "/reports/useractivity" },
       { label: "Publish Status" },
     ],
   },
@@ -261,7 +261,7 @@ const ROUTE_TRAILS = [
     path: "/reports/launch-timing",
     trail: [
       DASHBOARD_CRUMB,
-      { label: "Reports", to: "/reports/productpublishstatus" },
+      { label: "Reports", to: "/reports/useractivity" },
       { label: "Launch Timing" },
     ],
   },
@@ -269,7 +269,7 @@ const ROUTE_TRAILS = [
     path: "/reports/useractivity",
     trail: [
       DASHBOARD_CRUMB,
-      { label: "Reports", to: "/reports/productpublishstatus" },
+      { label: "Reports", to: "/reports/useractivity" },
       { label: "User Activity" },
     ],
   },
@@ -277,7 +277,7 @@ const ROUTE_TRAILS = [
     path: "/reports/recentactivity",
     trail: [
       DASHBOARD_CRUMB,
-      { label: "Reports", to: "/reports/productpublishstatus" },
+      { label: "Reports", to: "/reports/useractivity" },
       { label: "Recent Activity" },
     ],
   },
@@ -285,7 +285,7 @@ const ROUTE_TRAILS = [
     path: "/reports/trending",
     trail: [
       DASHBOARD_CRUMB,
-      { label: "Reports", to: "/reports/productpublishstatus" },
+      { label: "Reports", to: "/reports/useractivity" },
       { label: "Trending Manager" },
     ],
   },
@@ -293,7 +293,7 @@ const ROUTE_TRAILS = [
     path: "/reports/hook-score",
     trail: [
       DASHBOARD_CRUMB,
-      { label: "Reports", to: "/reports/productpublishstatus" },
+      { label: "Reports", to: "/reports/useractivity" },
       { label: "Hook Score Report" },
     ],
   },
@@ -309,7 +309,7 @@ const ROUTE_TRAILS = [
     path: "/reports/search-popularity",
     trail: [
       DASHBOARD_CRUMB,
-      { label: "Reports", to: "/reports/productpublishstatus" },
+      { label: "Reports", to: "/reports/useractivity" },
       { label: "Search Popularity" },
     ],
   },

@@ -72,7 +72,7 @@ const MENU_ITEMS = [
     id: "reports",
     label: "Reports",
     icon: <FaFileAlt />,
-    path: "/reports/productpublishstatus",
+    path: "/reports/useractivity",
     requiredAnyPermissions: ["reports.view", "activity.view"],
   },
 ];

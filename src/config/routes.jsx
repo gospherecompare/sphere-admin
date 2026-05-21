@@ -295,7 +295,7 @@ export const ROUTE_CONFIG = {
   userActivityReport: {
     path: "/reports/useractivity",
     component: PublishedByUserReport,
-    label: "User Activity Report",
+    label: "Published by User",
   },
   recentActivityReport: {
     path: "/reports/recentactivity",

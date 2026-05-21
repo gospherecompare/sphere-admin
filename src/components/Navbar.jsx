@@ -619,7 +619,10 @@ const Navbar = ({ isMobile, sidebarOpen, onToggleSidebar, onLogout }) => {
           <div className="flex items-center justify-between gap-3">
             <button
               type="button"
-              onClick={onToggleSidebar}
+              onClick={(event) => {
+                event.stopPropagation();
+                onToggleSidebar();
+              }}
               className="flex h-9 w-9 items-center justify-center rounded-xl bg-transparent text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
               aria-label="Open navigation menu"
             >
