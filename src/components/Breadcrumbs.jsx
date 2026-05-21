@@ -149,12 +149,29 @@ const ROUTE_TRAILS = [
     ],
   },
   {
-    path: "/specifications/categories/create",
+    path: "/specifications/categories",
     trail: [
       DASHBOARD_CRUMB,
       { label: "Specifications", to: "/specifications/brands" },
       { label: "Categories" },
-      { label: "Configure" },
+    ],
+  },
+  {
+    path: "/specifications/categories/create",
+    trail: [
+      DASHBOARD_CRUMB,
+      { label: "Specifications", to: "/specifications/brands" },
+      { label: "Categories", to: "/specifications/categories" },
+      { label: "Create Category" },
+    ],
+  },
+  {
+    path: "/specifications/categories/edit/:categoryId",
+    trail: [
+      DASHBOARD_CRUMB,
+      { label: "Specifications", to: "/specifications/brands" },
+      { label: "Categories", to: "/specifications/categories" },
+      { label: "Edit Category" },
     ],
   },
   {
@@ -278,7 +295,7 @@ const ROUTE_TRAILS = [
     trail: [
       DASHBOARD_CRUMB,
       { label: "Reports", to: "/reports/useractivity" },
-      { label: "Recent Activity" },
+      { label: "Recent Publish Activity" },
     ],
   },
   {
@@ -310,7 +327,7 @@ const ROUTE_TRAILS = [
     trail: [
       DASHBOARD_CRUMB,
       { label: "Reports", to: "/reports/useractivity" },
-      { label: "Search Popularity" },
+      { label: "Search Popularity Report" },
     ],
   },
 ];

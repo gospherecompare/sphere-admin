@@ -148,7 +148,7 @@ const DESKTOP_SECTIONS = [
       {
         label: "Categories",
         icon: FaClipboardList,
-        path: "/specifications/categories/create",
+        path: "/specifications/categories",
         prefixes: ["/specifications/categories"],
       },
       {

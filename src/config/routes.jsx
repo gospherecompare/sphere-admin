@@ -218,7 +218,7 @@ export const ROUTE_CONFIG = {
     label: "RAM/Storage Configurations",
   },
   categoryManagement: {
-    path: "/specifications/categories/create",
+    path: "/specifications/categories",
     component: CategoryManagement,
     label: "Category Management",
   },

@@ -1,282 +1,451 @@
-import React, { useState, useEffect } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  FaHistory,
+  FaCalendarAlt,
+  FaCheckCircle,
+  FaClock,
+  FaEnvelope,
+  FaExclamationCircle,
   FaEye,
   FaEyeSlash,
-  FaUser,
-  FaEnvelope,
-  FaMobileAlt,
-  FaLaptop,
-  FaHome,
-  FaNetworkWired,
-  FaSpinner,
-  FaExclamationCircle,
-  FaCheckCircle,
-  FaTimes,
   FaFilter,
-  FaCalendarAlt,
+  FaHistory,
+  FaHome,
+  FaLaptop,
+  FaMobileAlt,
+  FaNetworkWired,
+  FaSearch,
   FaSort,
-  FaSortUp,
   FaSortDown,
-  FaExternalLinkAlt,
+  FaSortUp,
+  FaSpinner,
   FaSyncAlt,
+  FaTimes,
+  FaUser,
 } from "react-icons/fa";
 import Cookies from "js-cookie";
 import { buildUrl } from "../../api";
+
+const SURFACE_CLASS = "border border-slate-200 bg-white";
+const FIELD_CLASS =
+  "h-11 w-full border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-[#345CFF] focus:ring-0";
+const SECONDARY_BUTTON_CLASS =
+  "inline-flex h-11 items-center justify-center gap-2 border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400";
+const PRIMARY_BUTTON_CLASS =
+  "inline-flex h-11 items-center justify-center gap-2 border border-[#345CFF] bg-[#345CFF] px-4 text-sm font-semibold text-white transition hover:bg-[#274eef] disabled:cursor-not-allowed disabled:border-[#9db3ff] disabled:bg-[#9db3ff]";
+
+const DEFAULT_FILTERS = {
+  status: "all",
+  productType: "all",
+  assignment: "all",
+};
+
+const SORT_FIELD_OPTIONS = [
+  { value: "updated_at", label: "Last Updated" },
+  { value: "product_name", label: "Product Name" },
+  { value: "product_id", label: "Product ID" },
+  { value: "is_published", label: "Status" },
+  { value: "product_type", label: "Product Type" },
+  { value: "user_name", label: "Updated By" },
+];
+
+const getUserInitials = (value) =>
+  String(value || "NA")
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() || "")
+    .join("");
+
+const formatProductType = (type) =>
+  String(type || "Unknown")
+    .split("_")
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+
+const formatRelativeDate = (dateString) => {
+  const timestamp = new Date(dateString).getTime();
+  if (Number.isNaN(timestamp)) return "-";
+
+  const now = Date.now();
+  const diffMs = Math.max(0, now - timestamp);
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 1) return "Just now";
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays < 7) return `${diffDays}d ago`;
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(new Date(timestamp));
+};
+
+const formatFullDate = (dateString) => {
+  const timestamp = new Date(dateString).getTime();
+  if (Number.isNaN(timestamp)) return "-";
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(timestamp));
+};
+
+const formatTimeOnly = (dateString) => {
+  const timestamp = new Date(dateString).getTime();
+  if (Number.isNaN(timestamp)) return "-";
+
+  return new Intl.DateTimeFormat("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(timestamp));
+};
+
+const getProductTypeMeta = (type) => {
+  switch (String(type || "").toLowerCase()) {
+    case "smartphone":
+      return {
+        icon: FaMobileAlt,
+        frameClassName: "bg-blue-50 text-blue-600",
+      };
+    case "laptop":
+      return {
+        icon: FaLaptop,
+        frameClassName: "bg-violet-50 text-violet-600",
+      };
+    case "tv":
+    case "home_appliance":
+      return {
+        icon: FaHome,
+        frameClassName: "bg-emerald-50 text-emerald-600",
+      };
+    case "networking":
+      return {
+        icon: FaNetworkWired,
+        frameClassName: "bg-amber-50 text-amber-600",
+      };
+    default:
+      return {
+        icon: FaHistory,
+        frameClassName: "bg-slate-100 text-slate-600",
+      };
+  }
+};
+
+const sortActivityRows = (rows, sortConfig) => {
+  const direction = sortConfig?.direction === "asc" ? 1 : -1;
+  const key = sortConfig?.key || "updated_at";
+
+  return [...rows].sort((left, right) => {
+    let leftValue = left?.[key];
+    let rightValue = right?.[key];
+
+    if (key === "updated_at") {
+      leftValue = new Date(leftValue).getTime();
+      rightValue = new Date(rightValue).getTime();
+      leftValue = Number.isFinite(leftValue) ? leftValue : 0;
+      rightValue = Number.isFinite(rightValue) ? rightValue : 0;
+    } else if (key === "product_id") {
+      leftValue = Number(leftValue) || 0;
+      rightValue = Number(rightValue) || 0;
+    } else if (key === "is_published") {
+      leftValue = leftValue ? 1 : 0;
+      rightValue = rightValue ? 1 : 0;
+    } else {
+      leftValue = String(leftValue || "").toLowerCase();
+      rightValue = String(rightValue || "").toLowerCase();
+    }
+
+    if (leftValue < rightValue) return -1 * direction;
+    if (leftValue > rightValue) return 1 * direction;
+    return 0;
+  });
+};
+
+const StatusBadge = ({ published }) => (
+  <span
+    className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold ${
+      published
+        ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100"
+        : "bg-amber-50 text-amber-700 ring-1 ring-amber-100"
+    }`}
+  >
+    {published ? <FaEye className="text-[11px]" /> : <FaEyeSlash className="text-[11px]" />}
+    {published ? "Published" : "Draft"}
+  </span>
+);
+
+const ToastNotice = ({ toast, onDismiss }) => (
+  <div
+    className={`flex items-start gap-3 border px-4 py-3 ${
+      toast.type === "error"
+        ? "border-rose-200 bg-rose-50"
+        : "border-emerald-200 bg-emerald-50"
+    }`}
+  >
+    <div
+      className={`mt-0.5 flex h-8 w-8 items-center justify-center ${
+        toast.type === "error" ? "text-rose-600" : "text-emerald-600"
+      }`}
+    >
+      {toast.type === "error" ? <FaExclamationCircle /> : <FaCheckCircle />}
+    </div>
+    <div className="min-w-0 flex-1">
+      <p className="text-sm font-semibold text-slate-900">{toast.title}</p>
+      <p className="mt-0.5 text-sm text-slate-600">{toast.message}</p>
+    </div>
+    <button
+      type="button"
+      onClick={onDismiss}
+      className="text-slate-400 transition hover:text-slate-700"
+      aria-label="Dismiss notification"
+    >
+      <FaTimes className="text-sm" />
+    </button>
+  </div>
+);
+
+const StateBanner = ({
+  icon: Icon,
+  iconClassName,
+  title,
+  description,
+  actionLabel,
+  onAction,
+  className,
+}) => (
+  <section className={`border px-2 py-3 sm:px-3 ${className}`}>
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex min-w-0 items-start gap-3">
+        <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center ${iconClassName}`}>
+          <Icon />
+        </div>
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-slate-900">{title}</p>
+          <p className="text-sm text-slate-600">{description}</p>
+        </div>
+      </div>
+
+      {actionLabel && onAction ? (
+        <button
+          type="button"
+          onClick={onAction}
+          className="border border-current px-4 py-2 text-sm font-semibold text-inherit transition hover:bg-white/70"
+        >
+          {actionLabel}
+        </button>
+      ) : null}
+    </div>
+  </section>
+);
+
+const MetricCard = ({
+  icon: Icon,
+  iconClassName,
+  label,
+  value,
+  supporting,
+  secondary,
+  valueClassName = "",
+}) => (
+  <article className="bg-white px-4 py-4 sm:px-5">
+    <div className="flex items-start justify-between gap-3">
+      <div className={`flex h-12 w-12 items-center justify-center border border-current/10 text-lg ${iconClassName}`}>
+        <Icon />
+      </div>
+    </div>
+
+    <div className="mt-4 space-y-1">
+      <p className="text-sm font-medium text-slate-500">{label}</p>
+      <div className={`text-[1.75rem] font-bold tracking-tight text-slate-900 ${valueClassName}`}>
+        {value}
+      </div>
+    </div>
+
+    <div className="mt-2 min-h-[40px] space-y-1">
+      {supporting ? <p className="text-xs font-medium text-slate-500">{supporting}</p> : null}
+      {secondary ? <div className="text-xs font-semibold text-slate-700">{secondary}</div> : null}
+    </div>
+  </article>
+);
+
+const SortableHeader = ({ label, active, direction, onClick }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className="inline-flex items-center gap-1.5 text-left text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 transition hover:text-slate-700"
+  >
+    <span>{label}</span>
+    {active ? (
+      direction === "asc" ? (
+        <FaSortUp className="text-slate-600" />
+      ) : (
+        <FaSortDown className="text-slate-600" />
+      )
+    ) : (
+      <FaSort className="text-slate-300" />
+    )}
+  </button>
+);
 
 const RecentPublishActivity = () => {
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [toasts, setToasts] = useState([]);
-  const [filters, setFilters] = useState({
-    status: "all", // all, published, drafts
-    productType: "all", // all, smartphone, laptop, etc.
-    user: "all", // all, specific user
-  });
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filters, setFilters] = useState(DEFAULT_FILTERS);
+  const [timeRange, setTimeRange] = useState("all");
   const [sortConfig, setSortConfig] = useState({
     key: "updated_at",
     direction: "desc",
   });
-  const [timeRange, setTimeRange] = useState("all"); // all, today, week, month
 
-  // Fetch report data
-  useEffect(() => {
-    fetchActivityData();
+  const showToast = useCallback((title, message, type = "success") => {
+    const id = Date.now() + Math.random();
+    const nextToast = { id, title, message, type };
+
+    setToasts((previous) => [...previous, nextToast]);
+
+    window.setTimeout(() => {
+      setToasts((previous) => previous.filter((toast) => toast.id !== id));
+    }, 5000);
   }, []);
 
-  const fetchActivityData = async () => {
+  const fetchActivityData = useCallback(async () => {
     setLoading(true);
     setError(null);
+
     try {
       const token = Cookies.get("authToken");
-      const res = await fetch(
-        buildUrl("/api/reports/recent-publish-activity"),
-        {
-          method: "GET",
-          headers: {
-            Authorization: token ? `Bearer ${token}` : "",
-            "Content-Type": "application/json",
-          },
+      const response = await fetch(buildUrl("/api/reports/recent-publish-activity"), {
+        method: "GET",
+        headers: {
+          Authorization: token ? `Bearer ${token}` : "",
+          "Content-Type": "application/json",
         },
-      );
+      });
 
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
 
-      // Normalize the response structure
-      const normalizedData = Array.isArray(data.recent_publish_activity)
-        ? data.recent_publish_activity
+      const payload = await response.json();
+      const normalizedRows = Array.isArray(payload?.recent_publish_activity)
+        ? payload.recent_publish_activity
         : [];
 
-      setActivities(normalizedData);
+      setActivities(normalizedRows);
       showToast("Success", "Activity data loaded successfully", "success");
-    } catch (err) {
-      console.error("Failed to fetch activity:", err);
-      setError(err.message || "Failed to load activity data");
+    } catch (requestError) {
+      console.error("Failed to fetch recent publish activity:", requestError);
+      const message = requestError?.message || "Failed to load activity data";
+      setError(message);
       showToast("Error", "Failed to load activity data", "error");
     } finally {
       setLoading(false);
     }
-  };
+  }, [showToast]);
 
-  // Toast system
-  const showToast = (title, message, type = "success") => {
-    const id = Date.now();
-    const newToast = { id, title, message, type };
-    setToasts((prev) => [...prev, newToast]);
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((toast) => toast.id !== id));
-    }, 5000);
-  };
+  useEffect(() => {
+    fetchActivityData();
+  }, [fetchActivityData]);
 
-  const removeToast = (id) => {
-    setToasts((prev) => prev.filter((toast) => toast.id !== id));
-  };
+  const handleSort = useCallback((key) => {
+    setSortConfig((previous) => ({
+      key,
+      direction:
+        previous.key === key && previous.direction === "asc" ? "desc" : "asc",
+    }));
+  }, []);
 
-  // Helper function to get icon for product type
-  const getProductTypeIcon = (type) => {
-    switch (type?.toLowerCase()) {
-      case "smartphone":
-        return <FaMobileAlt className="text-blue-600" />;
-      case "laptop":
-        return <FaLaptop className="text-purple-600" />;
-      case "tv":
-      case "home_appliance":
-        return <FaHome className="text-green-600" />;
-      case "networking":
-        return <FaNetworkWired className="text-orange-600" />;
-      default:
-        return <FaHistory className="text-gray-600" />;
-    }
-  };
+  const clearFilters = useCallback(() => {
+    setSearchTerm("");
+    setFilters(DEFAULT_FILTERS);
+    setTimeRange("all");
+  }, []);
 
-  // Helper function to format product type name
-  const formatProductType = (type) => {
-    return type
-      .split("_")
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(" ");
-  };
+  const filteredBaseActivities = useMemo(() => {
+    const query = searchTerm.trim().toLowerCase();
 
-  // Format date to relative time or specific format
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now - date;
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
+    return activities.filter((activity) => {
+      if (filters.status === "published" && !activity?.is_published) return false;
+      if (filters.status === "draft" && activity?.is_published) return false;
 
-    if (diffMins < 1) return "Just now";
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
-
-    return date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-  };
-
-  // Get full date for tooltip
-  const getFullDate = (dateString) => {
-    return new Date(dateString).toLocaleString("en-US", {
-      month: "long",
-      day: "numeric",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
-  // Filter data based on selected filters
-  const filterData = (data) => {
-    return data.filter((activity) => {
-      // Filter by status
-      if (filters.status === "published" && !activity.is_published)
-        return false;
-      if (filters.status === "drafts" && activity.is_published) return false;
-
-      // Filter by product type
       if (
         filters.productType !== "all" &&
-        activity.product_type !== filters.productType
-      )
+        String(activity?.product_type || "") !== filters.productType
+      ) {
         return false;
-
-      // Filter by user
-      if (filters.user !== "all") {
-        if (filters.user === "assigned" && !activity.published_by) return false;
-        if (filters.user === "unassigned" && activity.published_by)
-          return false;
       }
 
-      // Filter by time range
-      if (timeRange !== "all") {
-        const activityDate = new Date(activity.updated_at);
-        const now = new Date();
-        let diffDays = (now - activityDate) / (1000 * 60 * 60 * 24);
+      if (filters.assignment === "assigned" && !activity?.published_by && !activity?.user_name) {
+        return false;
+      }
 
-        switch (timeRange) {
-          case "today":
-            if (diffDays > 1) return false;
-            break;
-          case "week":
-            if (diffDays > 7) return false;
-            break;
-          case "month":
-            if (diffDays > 30) return false;
-            break;
-        }
+      if (filters.assignment === "unassigned" && (activity?.published_by || activity?.user_name)) {
+        return false;
+      }
+
+      if (timeRange !== "all") {
+        const updatedAt = new Date(activity?.updated_at).getTime();
+        if (Number.isNaN(updatedAt)) return false;
+
+        const diffDays = (Date.now() - updatedAt) / (1000 * 60 * 60 * 24);
+
+        if (timeRange === "today" && diffDays > 1) return false;
+        if (timeRange === "week" && diffDays > 7) return false;
+        if (timeRange === "month" && diffDays > 30) return false;
+      }
+
+      if (query) {
+        const searchBody = [
+          activity?.product_name,
+          activity?.product_type,
+          activity?.user_name,
+          activity?.email,
+          activity?.product_id,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+
+        if (!searchBody.includes(query)) return false;
       }
 
       return true;
     });
-  };
+  }, [activities, filters, searchTerm, timeRange]);
 
-  // Sort data
-  const sortData = (data) => {
-    return [...data].sort((a, b) => {
-      let aValue = a[sortConfig.key];
-      let bValue = b[sortConfig.key];
+  const filteredActivities = useMemo(
+    () => sortActivityRows(filteredBaseActivities, sortConfig),
+    [filteredBaseActivities, sortConfig],
+  );
 
-      // Handle date comparison
-      if (sortConfig.key === "updated_at") {
-        aValue = new Date(aValue).getTime();
-        bValue = new Date(bValue).getTime();
-      }
+  const timelineActivities = useMemo(
+    () =>
+      sortActivityRows(filteredBaseActivities, {
+        key: "updated_at",
+        direction: "desc",
+      }).slice(0, 5),
+    [filteredBaseActivities],
+  );
 
-      // Handle numeric comparison for IDs
-      if (sortConfig.key === "product_id") {
-        aValue = parseInt(aValue);
-        bValue = parseInt(bValue);
-      }
-
-      // Handle boolean comparison for is_published
-      if (sortConfig.key === "is_published") {
-        aValue = aValue ? 1 : 0;
-        bValue = bValue ? 1 : 0;
-      }
-
-      if (aValue < bValue) {
-        return sortConfig.direction === "asc" ? -1 : 1;
-      }
-      if (aValue > bValue) {
-        return sortConfig.direction === "asc" ? 1 : -1;
-      }
-      return 0;
-    });
-  };
-
-  // Handle sort
-  const handleSort = (key) => {
-    let direction = "asc";
-    if (sortConfig.key === key && sortConfig.direction === "asc") {
-      direction = "desc";
-    }
-    setSortConfig({ key, direction });
-  };
-
-  // Get status badge
-  const getStatusBadge = (isPublished) => {
-    if (isPublished) {
-      return (
-        <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full flex items-center gap-1">
-          <FaEye className="text-xs" /> Published
-        </span>
-      );
-    }
-    return (
-      <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs font-medium rounded-full flex items-center gap-1">
-        <FaEyeSlash className="text-xs" /> Draft
-      </span>
-    );
-  };
-
-  // Calculate statistics
-  const calculateStats = () => {
+  const stats = useMemo(() => {
     const total = activities.length;
-    const published = activities.filter((a) => a.is_published).length;
+    const published = activities.filter((activity) => activity?.is_published).length;
     const drafts = total - published;
-    const assigned = activities.filter((a) => a.published_by).length;
-    const unassigned = total - assigned;
-
-    // Count by product type
-    const typeCounts = activities.reduce((acc, activity) => {
-      acc[activity.product_type] = (acc[activity.product_type] || 0) + 1;
-      return acc;
-    }, {});
-
-    // Most recent activity
-    const mostRecent =
-      activities.length > 0
-        ? activities.reduce((latest, current) => {
-            return new Date(current.updated_at) > new Date(latest.updated_at)
-              ? current
-              : latest;
-          })
+    const assigned = activities.filter((activity) => activity?.published_by || activity?.user_name).length;
+    const latestActivity =
+      total > 0
+        ? sortActivityRows(activities, { key: "updated_at", direction: "desc" })[0]
         : null;
 
     return {
@@ -284,625 +453,696 @@ const RecentPublishActivity = () => {
       published,
       drafts,
       assigned,
-      unassigned,
-      typeCounts,
-      mostRecent,
+      latestActivity,
     };
-  };
+  }, [activities]);
 
-  // Get unique product types
-  const uniqueProductTypes = [
-    ...new Set(activities.map((a) => a.product_type)),
-  ];
-  const uniqueUsers = [
-    ...new Set(activities.filter((a) => a.user_name).map((a) => a.user_name)),
-  ];
+  const visibleTypeCounts = useMemo(() => {
+    return filteredBaseActivities.reduce((accumulator, activity) => {
+      const key = String(activity?.product_type || "unknown");
+      accumulator[key] = (accumulator[key] || 0) + 1;
+      return accumulator;
+    }, {});
+  }, [filteredBaseActivities]);
 
-  const stats = calculateStats();
-  const filteredActivities = sortData(filterData(activities));
+  const typeDistribution = useMemo(() => {
+    return Object.entries(visibleTypeCounts)
+      .sort((left, right) => right[1] - left[1])
+      .map(([type, count]) => ({
+        type,
+        count,
+        percentage:
+          filteredBaseActivities.length > 0
+            ? Math.round((count / filteredBaseActivities.length) * 100)
+            : 0,
+      }));
+  }, [filteredBaseActivities.length, visibleTypeCounts]);
+
+  const uniqueProductTypes = useMemo(
+    () => [...new Set(activities.map((activity) => activity?.product_type).filter(Boolean))],
+    [activities],
+  );
+
+  const visibleRangeLabel = useMemo(() => {
+    if (filteredActivities.length === 0) {
+      return `Showing 0 of ${activities.length} activities`;
+    }
+
+    return `Showing 1 to ${filteredActivities.length} of ${activities.length} activities`;
+  }, [activities.length, filteredActivities.length]);
+
+  const hasActiveFilters =
+    searchTerm.trim() !== "" ||
+    filters.status !== "all" ||
+    filters.productType !== "all" ||
+    filters.assignment !== "all" ||
+    timeRange !== "all";
 
   return (
-    <div className="min-h-full bg-gray-50 p-1 sm:p-2 md:p-2">
-      {/* Toast Container */}
-      <div className="fixed top-4 right-4 z-50 space-y-2">
+    <div className="min-h-full bg-[#F5F7FF] p-2 sm:p-3">
+      <div className="fixed right-4 top-4 z-50 w-[min(22rem,calc(100vw-2rem))] space-y-2">
         {toasts.map((toast) => (
-          <div
+          <ToastNotice
             key={toast.id}
-            className={`bg-white rounded-lg shadow-lg border p-4 max-w-sm w-full flex items-start space-x-3 ${
-              toast.type === "success"
-                ? "border-green-200 bg-green-50"
-                : toast.type === "error"
-                  ? "border-red-200 bg-red-50"
-                  : "border-blue-200 bg-blue-50"
-            }`}
-          >
-            {toast.type === "success" && (
-              <FaCheckCircle className="text-green-500 mt-0.5" />
-            )}
-            {toast.type === "error" && (
-              <FaExclamationCircle className="text-red-500 mt-0.5" />
-            )}
-            <div className="flex-1">
-              <p className="text-sm font-medium text-gray-900">{toast.title}</p>
-              <p className="text-sm text-gray-600 mt-0.5">{toast.message}</p>
-            </div>
-            <button
-              onClick={() => removeToast(toast.id)}
-              className="text-gray-400 hover:text-gray-600"
-            >
-              <FaTimes className="text-sm" />
-            </button>
-          </div>
+            toast={toast}
+            onDismiss={() =>
+              setToasts((previous) => previous.filter((entry) => entry.id !== toast.id))
+            }
+          />
         ))}
       </div>
 
-      {/* Header */}
-      <div className="mb-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
-              Recent Publish Activity
-            </h1>
-            <p className="text-gray-600 mt-1">
-              Track recent changes and publishing activities across all products
-            </p>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={fetchActivityData}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2 text-sm"
-            >
-              <FaSyncAlt />
-              Refresh
-            </button>
-          </div>
-        </div>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
-          {/* Total Activities */}
-          <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500">Total Activities</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">
-                  {stats.total}
-                </p>
-                <p className="text-xs text-gray-500 mt-1">Recent updates</p>
-              </div>
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <FaHistory className="text-blue-600 text-xl" />
-              </div>
-            </div>
-          </div>
-
-          {/* Published vs Drafts */}
-          <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500">Published vs Drafts</p>
-                <div className="flex items-center space-x-4 mt-1">
-                  <div>
-                    <p className="text-xl font-bold text-green-600">
-                      {stats.published}
-                    </p>
-                    <p className="text-xs text-green-600">Published</p>
-                  </div>
-                  <div className="h-8 w-px bg-gray-200"></div>
-                  <div>
-                    <p className="text-xl font-bold text-yellow-600">
-                      {stats.drafts}
-                    </p>
-                    <p className="text-xs text-yellow-600">Drafts</p>
-                  </div>
-                </div>
-              </div>
-              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                <FaEye className="text-green-600 text-xl" />
-              </div>
-            </div>
-          </div>
-
-          {/* Assigned vs Unassigned */}
-          <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500">Assigned vs Unassigned</p>
-                <div className="flex items-center space-x-4 mt-1">
-                  <div>
-                    <p className="text-xl font-bold text-blue-600">
-                      {stats.assigned}
-                    </p>
-                    <p className="text-xs text-blue-600">Assigned</p>
-                  </div>
-                  <div className="h-8 w-px bg-gray-200"></div>
-                  <div>
-                    <p className="text-xl font-bold text-gray-600">
-                      {stats.unassigned}
-                    </p>
-                    <p className="text-xs text-gray-600">Unassigned</p>
-                  </div>
-                </div>
-              </div>
-              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                <FaUser className="text-purple-600 text-xl" />
-              </div>
-            </div>
-          </div>
-
-          {/* Most Recent */}
-          <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500">Most Recent</p>
-                <p className="text-lg font-bold text-gray-900 mt-1 truncate">
-                  {stats.mostRecent ? stats.mostRecent.product_name : "N/A"}
-                </p>
-                <p className="text-xs text-gray-500 mt-1">
-                  {stats.mostRecent
-                    ? formatDate(stats.mostRecent.updated_at)
-                    : "No activity"}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                <FaCalendarAlt className="text-orange-600 text-xl" />
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Error Message */}
-      {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center space-x-3">
-          <FaExclamationCircle className="text-red-500 flex-shrink-0" />
-          <span className="text-red-700">{error}</span>
-        </div>
-      )}
-
-      {/* Loading State */}
-      {loading && (
-        <div className="mb-6 p-8 bg-white rounded-lg border border-gray-200 shadow-sm text-center">
-          <div className="flex flex-col items-center justify-center">
-            <FaSpinner className="animate-spin text-3xl text-blue-600 mb-4" />
-            <p className="text-gray-600">Loading activity data...</p>
-          </div>
-        </div>
-      )}
-
-      {/* Filters */}
-      {!loading && activities.length > 0 && (
-        <div className="bg-white rounded-lg border border-gray-200 shadow-sm mb-6 p-4">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-            <div className="flex items-center space-x-2">
-              <FaFilter className="text-gray-400" />
-              <span className="text-sm font-medium text-gray-700">Filters</span>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              {/* Status Filter */}
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">
-                  Status
-                </label>
-                <select
-                  value={filters.status}
-                  onChange={(e) =>
-                    setFilters({ ...filters, status: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="all">All Status</option>
-                  <option value="published">Published Only</option>
-                  <option value="drafts">Drafts Only</option>
-                </select>
-              </div>
-
-              {/* Product Type Filter */}
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">
-                  Product Type
-                </label>
-                <select
-                  value={filters.productType}
-                  onChange={(e) =>
-                    setFilters({ ...filters, productType: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="all">All Types</option>
-                  {uniqueProductTypes.map((type) => (
-                    <option key={type} value={type}>
-                      {formatProductType(type)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* User Filter */}
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">
-                  Assignment
-                </label>
-                <select
-                  value={filters.user}
-                  onChange={(e) =>
-                    setFilters({ ...filters, user: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="all">All Users</option>
-                  <option value="assigned">Assigned Only</option>
-                  <option value="unassigned">Unassigned Only</option>
-                </select>
-              </div>
-
-              {/* Time Range Filter */}
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">
-                  Time Range
-                </label>
-                <select
-                  value={timeRange}
-                  onChange={(e) => setTimeRange(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="all">All Time</option>
-                  <option value="today">Today</option>
-                  <option value="week">Last 7 Days</option>
-                  <option value="month">Last 30 Days</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Activity Timeline */}
-      {!loading && (
-        <div className="bg-white rounded-lg border border-gray-200 shadow-sm mb-6 overflow-hidden">
-          {/* Table Header */}
-          <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-center space-x-2">
-                <h3 className="font-semibold text-gray-800">
-                  Recent Activity Timeline
-                </h3>
-                <span className="bg-gray-100 text-gray-600 text-sm px-2 py-1 rounded-full">
-                  {filteredActivities.length} Activities
-                </span>
-              </div>
-
-              <div className="text-sm text-gray-600">
-                Showing {filteredActivities.length} of {activities.length}{" "}
-                activities
-              </div>
-            </div>
-          </div>
-
-          {/* Activity Table */}
-          {filteredActivities.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                      onClick={() => handleSort("product_id")}
-                    >
-                      <div className="flex items-center">
-                        Product ID
-                        {sortConfig.key === "product_id" ? (
-                          sortConfig.direction === "asc" ? (
-                            <FaSortUp className="ml-1" />
-                          ) : (
-                            <FaSortDown className="ml-1" />
-                          )
-                        ) : (
-                          <FaSort className="ml-1 text-gray-300" />
-                        )}
-                      </div>
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      Product Details
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                      onClick={() => handleSort("is_published")}
-                    >
-                      <div className="flex items-center">
-                        Status
-                        {sortConfig.key === "is_published" ? (
-                          sortConfig.direction === "asc" ? (
-                            <FaSortUp className="ml-1" />
-                          ) : (
-                            <FaSortDown className="ml-1" />
-                          )
-                        ) : (
-                          <FaSort className="ml-1 text-gray-300" />
-                        )}
-                      </div>
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      Updated By
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                      onClick={() => handleSort("updated_at")}
-                    >
-                      <div className="flex items-center">
-                        Last Updated
-                        {sortConfig.key === "updated_at" ? (
-                          sortConfig.direction === "asc" ? (
-                            <FaSortUp className="ml-1" />
-                          ) : (
-                            <FaSortDown className="ml-1" />
-                          )
-                        ) : (
-                          <FaSort className="ml-1 text-gray-300" />
-                        )}
-                      </div>
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredActivities.map((activity, index) => (
-                    <tr key={index} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">
-                          #{activity.product_id}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-start space-x-3">
-                          <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-                            {getProductTypeIcon(activity.product_type)}
-                          </div>
-                          <div>
-                            <div className="font-medium text-gray-900">
-                              {activity.product_name}
-                            </div>
-                            <div className="text-sm text-gray-500">
-                              {formatProductType(activity.product_type)}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {getStatusBadge(activity.is_published)}
-                      </td>
-                      <td className="px-6 py-4">
-                        {activity.user_name ? (
-                          <div>
-                            <div className="flex items-center space-x-2">
-                              <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center">
-                                <FaUser className="text-purple-600 text-sm" />
-                              </div>
-                              <div>
-                                <div className="font-medium text-gray-900">
-                                  {activity.user_name}
-                                </div>
-                                <div className="text-sm text-gray-500 truncate max-w-[150px]">
-                                  {activity.email}
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="text-sm text-gray-500 italic">
-                            Not assigned
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div
-                          className="text-sm text-gray-900"
-                          title={getFullDate(activity.updated_at)}
-                        >
-                          {formatDate(activity.updated_at)}
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {new Date(activity.updated_at).toLocaleTimeString(
-                            [],
-                            { hour: "2-digit", minute: "2-digit" },
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex items-center space-x-2">
-                          <button className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50">
-                            <FaEye className="text-sm" />
-                          </button>
-                          <button className="text-gray-600 hover:text-gray-900 p-1 rounded hover:bg-gray-50">
-                            <FaExternalLinkAlt className="text-sm" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="p-8 text-center">
-              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                <FaHistory className="text-2xl text-gray-400" />
-              </div>
-              <p className="text-gray-500 font-medium">
-                {activities.length === 0
-                  ? "No activity data available"
-                  : "No activities match your filters"}
-              </p>
-              <p className="text-gray-400 text-sm mt-1">
-                {activities.length === 0
-                  ? "Activity will appear here when products are updated"
-                  : "Try adjusting your filter criteria"}
+      <div className="mx-auto max-w-[1480px] space-y-4 sm:space-y-5">
+        <section className="space-y-4">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+            <div>
+              <h1 className="text-[2rem] font-bold tracking-tight text-slate-950 sm:text-[2.35rem]">
+                Recent Publish Activity
+              </h1>
+              <p className="mt-2 max-w-[42rem] text-base text-slate-500">
+                Review the latest publish and draft changes across products,
+                see who made the update, and monitor activity patterns by
+                product type.
               </p>
             </div>
-          )}
-        </div>
-      )}
 
-      {/* Timeline View (Mobile/Alternate) */}
-      {!loading && filteredActivities.length > 0 && (
-        <div className="lg:hidden">
-          <div className="bg-white rounded-lg border border-gray-200 shadow-sm mb-6 p-4">
-            <h4 className="font-semibold text-gray-800 mb-4">
-              Activity Timeline
-            </h4>
-            <div className="space-y-4">
-              {filteredActivities.slice(0, 5).map((activity, index) => (
-                <div
-                  key={index}
-                  className="relative pl-8 pb-4 border-l border-gray-200 last:border-l-0 last:pb-0"
-                >
-                  <div className="absolute -left-2 top-0 w-4 h-4 rounded-full bg-blue-500"></div>
-                  <div className="bg-gray-50 rounded-lg p-3">
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex items-center space-x-2">
-                        {getProductTypeIcon(activity.product_type)}
-                        <span className="font-medium text-gray-900">
-                          {activity.product_name}
-                        </span>
-                      </div>
-                      {getStatusBadge(activity.is_published)}
-                    </div>
-                    <div className="text-sm text-gray-600 mb-2">
-                      {formatProductType(activity.product_type)} • #
-                      {activity.product_id}
-                    </div>
-                    <div className="flex items-center justify-between text-xs text-gray-500">
-                      <div>
-                        {activity.user_name ? (
-                          <span>By {activity.user_name}</span>
-                        ) : (
-                          <span className="italic">Not assigned</span>
-                        )}
-                      </div>
-                      <span>{formatDate(activity.updated_at)}</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+              <button
+                type="button"
+                onClick={clearFilters}
+                disabled={!hasActiveFilters}
+                className={`${SECONDARY_BUTTON_CLASS} w-full sm:w-auto`}
+              >
+                <FaFilter className="text-sm" />
+                Clear Filters
+              </button>
+              <button
+                type="button"
+                onClick={fetchActivityData}
+                disabled={loading}
+                className={`${PRIMARY_BUTTON_CLASS} w-full sm:w-auto`}
+              >
+                <FaSyncAlt className={loading ? "animate-spin" : ""} />
+                Refresh
+              </button>
             </div>
           </div>
-        </div>
-      )}
+        </section>
 
-      {/* Product Type Distribution */}
-      {!loading && activities.length > 0 && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
-            <h4 className="font-semibold text-gray-800 mb-4">
-              Activity by Product Type
-            </h4>
-            <div className="space-y-3">
-              {Object.entries(stats.typeCounts).map(([type, count]) => {
-                const percentage = Math.round((count / stats.total) * 100);
+        <section className="grid grid-cols-1 gap-px border border-slate-200 bg-slate-200 sm:grid-cols-2 xl:grid-cols-5">
+          <MetricCard
+            icon={FaHistory}
+            iconClassName="bg-[#EEF3FF] text-[#2F66F6]"
+            label="Total Activities"
+            value={stats.total.toLocaleString()}
+            supporting="Recent catalog updates"
+          />
+          <MetricCard
+            icon={FaEye}
+            iconClassName="bg-emerald-50 text-emerald-600"
+            label="Published"
+            value={stats.published.toLocaleString()}
+            supporting={
+              stats.total > 0
+                ? `${Math.round((stats.published / stats.total) * 100)}% visible`
+                : "No activity yet"
+            }
+          />
+          <MetricCard
+            icon={FaEyeSlash}
+            iconClassName="bg-amber-50 text-amber-600"
+            label="Drafts"
+            value={stats.drafts.toLocaleString()}
+            supporting="Still in progress"
+          />
+          <MetricCard
+            icon={FaUser}
+            iconClassName="bg-violet-50 text-violet-600"
+            label="Assigned Updates"
+            value={stats.assigned.toLocaleString()}
+            supporting={
+              stats.total > 0
+                ? `${Math.round((stats.assigned / stats.total) * 100)}% with owner`
+                : "No owners yet"
+            }
+          />
+          <MetricCard
+            icon={FaCalendarAlt}
+            iconClassName="bg-[#EEF3FF] text-[#2F66F6]"
+            label="Latest Activity"
+            value={formatRelativeDate(stats.latestActivity?.updated_at)}
+            supporting={stats.latestActivity?.product_name || "No recent update"}
+            secondary={
+              stats.latestActivity?.updated_at
+                ? formatTimeOnly(stats.latestActivity.updated_at)
+                : null
+            }
+            valueClassName="text-[1.3rem] sm:text-[1.5rem]"
+          />
+        </section>
+
+        <section className={`${SURFACE_CLASS} px-2 py-3 sm:px-3 lg:px-4`}>
+          <div className="grid grid-cols-2 gap-3 xl:grid-cols-[1.35fr_repeat(4,minmax(0,0.82fr))]">
+            <div className="col-span-2 xl:col-span-1">
+              <label className="mb-2 hidden text-sm font-semibold text-slate-700 sm:block">
+                Search
+              </label>
+              <div className="relative">
+                <FaSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400" />
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(event) => setSearchTerm(event.target.value)}
+                  placeholder="Search by product, user, email, or ID..."
+                  className={`${FIELD_CLASS} pl-10`}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="mb-2 hidden text-sm font-semibold text-slate-700 sm:block">
+                Status
+              </label>
+              <select
+                value={filters.status}
+                onChange={(event) =>
+                  setFilters((previous) => ({
+                    ...previous,
+                    status: event.target.value,
+                  }))
+                }
+                className={FIELD_CLASS}
+              >
+                <option value="all">All Status</option>
+                <option value="published">Published Only</option>
+                <option value="draft">Draft Only</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-2 hidden text-sm font-semibold text-slate-700 sm:block">
+                Product Type
+              </label>
+              <select
+                value={filters.productType}
+                onChange={(event) =>
+                  setFilters((previous) => ({
+                    ...previous,
+                    productType: event.target.value,
+                  }))
+                }
+                className={FIELD_CLASS}
+              >
+                <option value="all">All Types</option>
+                {uniqueProductTypes.map((type) => (
+                  <option key={type} value={type}>
+                    {formatProductType(type)}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-2 hidden text-sm font-semibold text-slate-700 sm:block">
+                Assignment
+              </label>
+              <select
+                value={filters.assignment}
+                onChange={(event) =>
+                  setFilters((previous) => ({
+                    ...previous,
+                    assignment: event.target.value,
+                  }))
+                }
+                className={FIELD_CLASS}
+              >
+                <option value="all">All Updates</option>
+                <option value="assigned">Assigned Only</option>
+                <option value="unassigned">Unassigned Only</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-2 hidden text-sm font-semibold text-slate-700 sm:block">
+                Time Range
+              </label>
+              <select
+                value={timeRange}
+                onChange={(event) => setTimeRange(event.target.value)}
+                className={FIELD_CLASS}
+              >
+                <option value="all">All Time</option>
+                <option value="today">Today</option>
+                <option value="week">Last 7 Days</option>
+                <option value="month">Last 30 Days</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="mt-3 grid gap-3 border-t border-slate-200 pt-3 sm:grid-cols-3 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,0.92fr)_auto]">
+            <div>
+              <label className="mb-2 hidden text-sm font-semibold text-slate-700 sm:block">
+                Sort By
+              </label>
+              <select
+                value={sortConfig.key}
+                onChange={(event) =>
+                  setSortConfig((previous) => ({
+                    ...previous,
+                    key: event.target.value,
+                  }))
+                }
+                className={FIELD_CLASS}
+              >
+                {SORT_FIELD_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-2 hidden text-sm font-semibold text-slate-700 sm:block">
+                Direction
+              </label>
+              <select
+                value={sortConfig.direction}
+                onChange={(event) =>
+                  setSortConfig((previous) => ({
+                    ...previous,
+                    direction: event.target.value,
+                  }))
+                }
+                className={FIELD_CLASS}
+              >
+                <option value="desc">Newest first</option>
+                <option value="asc">Oldest first</option>
+              </select>
+            </div>
+
+            <div className="sm:self-end">
+              <button
+                type="button"
+                onClick={clearFilters}
+                disabled={!hasActiveFilters}
+                className={`${SECONDARY_BUTTON_CLASS} w-full xl:min-w-[144px]`}
+              >
+                <FaFilter className="text-sm" />
+                Reset
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-4 text-sm font-medium text-slate-600">
+            {visibleRangeLabel}
+          </div>
+        </section>
+
+        {error ? (
+          <StateBanner
+            icon={FaExclamationCircle}
+            iconClassName="bg-rose-100 text-rose-600"
+            title="Failed to load recent activity."
+            description={error || "Please try again."}
+            actionLabel="Try Again"
+            onAction={fetchActivityData}
+            className="border-rose-200 bg-rose-50 text-rose-600"
+          />
+        ) : null}
+
+        {loading ? (
+          <StateBanner
+            icon={FaSpinner}
+            iconClassName="bg-[#EEF3FF] text-[#2F66F6]"
+            title="Loading recent publish activity..."
+            description="Please wait while we fetch the latest catalog changes."
+            className="border-[#DCE5FF] bg-white text-[#2F66F6]"
+          />
+        ) : null}
+
+        {!loading && filteredActivities.length === 0 ? (
+          <StateBanner
+            icon={FaHistory}
+            iconClassName="bg-[#EEF3FF] text-[#2F66F6]"
+            title={activities.length === 0 ? "No activity data available" : "No activities match your filters"}
+            description={
+              activities.length === 0
+                ? "Activity will appear here when products are updated."
+                : "Try adjusting your filters or search query."
+            }
+            className="border-[#DCE5FF] bg-white text-[#2F66F6]"
+          />
+        ) : null}
+
+        {!loading && filteredActivities.length > 0 ? (
+          <>
+            <section className={`${SURFACE_CLASS} overflow-hidden lg:hidden`}>
+              {filteredActivities.map((activity, index) => {
+                const typeMeta = getProductTypeMeta(activity?.product_type);
+                const TypeIcon = typeMeta.icon;
+
                 return (
-                  <div key={type} className="space-y-1">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        {getProductTypeIcon(type)}
-                        <span className="text-sm font-medium text-gray-700">
-                          {formatProductType(type)}
-                        </span>
+                  <article
+                    key={`${activity?.product_id}-${activity?.updated_at}-${index}`}
+                    className="border-b border-slate-200 last:border-b-0"
+                  >
+                    <div className="px-2 py-3 sm:px-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex min-w-0 items-start gap-3">
+                          <div
+                            className={`flex h-11 w-11 shrink-0 items-center justify-center border border-current/10 ${typeMeta.frameClassName}`}
+                          >
+                            <TypeIcon />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold text-slate-900">
+                              {activity?.product_name || "Unnamed product"}
+                            </p>
+                            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                              <span>{formatProductType(activity?.product_type)}</span>
+                              <span className="text-slate-300">/</span>
+                              <span>#{activity?.product_id || "-"}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <StatusBadge published={Boolean(activity?.is_published)} />
                       </div>
-                      <div className="text-sm text-gray-600">
-                        {count} ({percentage}%)
+
+                      <div className="mt-3 grid grid-cols-2 gap-3 border-t border-slate-200 pt-3 text-sm">
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+                            Updated By
+                          </p>
+                          <div className="mt-1 flex items-center gap-2 text-slate-700">
+                            <div className="flex h-7 w-7 items-center justify-center bg-violet-50 text-[11px] font-bold text-violet-600">
+                              {getUserInitials(activity?.user_name)}
+                            </div>
+                            <span className="truncate font-medium">
+                              {activity?.user_name || "Not assigned"}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+                            Last Updated
+                          </p>
+                          <p
+                            className="mt-1 font-medium text-slate-700"
+                            title={formatFullDate(activity?.updated_at)}
+                          >
+                            {formatRelativeDate(activity?.updated_at)}
+                          </p>
+                        </div>
+
+                        <div className="col-span-2">
+                          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+                            Contact
+                          </p>
+                          <div className="mt-1 flex items-center gap-2 text-slate-600">
+                            <FaEnvelope className="text-xs text-slate-400" />
+                            <span className="truncate">
+                              {activity?.email || "No email available"}
+                            </span>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                    <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full ${
-                          type === "smartphone"
-                            ? "bg-blue-500"
-                            : type === "laptop"
-                              ? "bg-purple-500"
-                              : type === "home_appliance" || type === "tv"
-                                ? "bg-green-500"
-                                : "bg-orange-500"
-                        }`}
-                        style={{ width: `${percentage}%` }}
-                      />
-                    </div>
-                  </div>
+                  </article>
                 );
               })}
-            </div>
-          </div>
+            </section>
 
-          {/* Summary */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <h4 className="font-semibold text-blue-800 mb-3">
-              Activity Summary
-            </h4>
-            <p className="text-sm text-blue-700 mb-3">
-              This report shows the most recent publishing activities across all
-              product types. You can see who published what, when, and the
-              current status of each product.
-            </p>
-            <ul className="text-sm text-blue-700 space-y-2">
-              <li className="flex items-start">
-                <FaEye className="text-green-600 mt-0.5 mr-2 flex-shrink-0" />
-                <span>
-                  <strong>Published</strong> products are live and visible to
-                  customers
-                </span>
-              </li>
-              <li className="flex items-start">
-                <FaEyeSlash className="text-yellow-600 mt-0.5 mr-2 flex-shrink-0" />
-                <span>
-                  <strong>Drafts</strong> are still in progress and not visible
-                  to customers
-                </span>
-              </li>
-              <li className="flex items-start">
-                <FaUser className="text-purple-600 mt-0.5 mr-2 flex-shrink-0" />
-                <span>
-                  <strong>Assigned</strong> activities have a user who performed
-                  the action
-                </span>
-              </li>
-            </ul>
-          </div>
-        </div>
-      )}
+            <section className={`${SURFACE_CLASS} hidden overflow-hidden lg:block`}>
+              <div className="border-b border-slate-200 px-4 py-3 lg:px-5">
+                <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+                  <div>
+                    <h2 className="text-base font-semibold text-slate-900">
+                      Recent Activity Timeline
+                    </h2>
+                    <p className="mt-1 text-sm text-slate-500">
+                      Latest publish and draft changes across your product catalog
+                    </p>
+                  </div>
+                  <div className="text-sm font-medium text-slate-500">
+                    Showing {filteredActivities.length} visible updates
+                  </div>
+                </div>
+              </div>
 
-      {/* Help Text */}
-      <div className="mt-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
-        <div className="flex items-start space-x-3">
-          <FaHistory className="text-gray-400 mt-0.5" />
-          <div>
-            <p className="text-sm text-gray-700">
-              <strong>Tip:</strong> Use the filters to focus on specific types
-              of activities. Click on column headers to sort the table. The
-              timeline view provides a quick overview of recent changes in your
-              product catalog.
-            </p>
-          </div>
-        </div>
+              <div className="overflow-x-auto">
+                <table className="min-w-full">
+                  <thead className="border-b border-slate-200 bg-slate-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left lg:px-5">
+                        <SortableHeader
+                          label="Product"
+                          active={sortConfig.key === "product_name"}
+                          direction={sortConfig.direction}
+                          onClick={() => handleSort("product_name")}
+                        />
+                      </th>
+                      <th className="px-4 py-3 text-left">
+                        <SortableHeader
+                          label="Type"
+                          active={sortConfig.key === "product_type"}
+                          direction={sortConfig.direction}
+                          onClick={() => handleSort("product_type")}
+                        />
+                      </th>
+                      <th className="px-4 py-3 text-left">
+                        <SortableHeader
+                          label="Status"
+                          active={sortConfig.key === "is_published"}
+                          direction={sortConfig.direction}
+                          onClick={() => handleSort("is_published")}
+                        />
+                      </th>
+                      <th className="px-4 py-3 text-left">
+                        <SortableHeader
+                          label="Updated By"
+                          active={sortConfig.key === "user_name"}
+                          direction={sortConfig.direction}
+                          onClick={() => handleSort("user_name")}
+                        />
+                      </th>
+                      <th className="px-4 py-3 text-left">
+                        <SortableHeader
+                          label="Last Updated"
+                          active={sortConfig.key === "updated_at"}
+                          direction={sortConfig.direction}
+                          onClick={() => handleSort("updated_at")}
+                        />
+                      </th>
+                      <th className="px-4 py-3 text-left lg:px-5">
+                        <SortableHeader
+                          label="Product ID"
+                          active={sortConfig.key === "product_id"}
+                          direction={sortConfig.direction}
+                          onClick={() => handleSort("product_id")}
+                        />
+                      </th>
+                    </tr>
+                  </thead>
+
+                  <tbody className="divide-y divide-slate-200 bg-white">
+                    {filteredActivities.map((activity, index) => {
+                      const typeMeta = getProductTypeMeta(activity?.product_type);
+                      const TypeIcon = typeMeta.icon;
+
+                      return (
+                        <tr
+                          key={`${activity?.product_id}-${activity?.updated_at}-${index}`}
+                          className="transition hover:bg-slate-50"
+                        >
+                          <td className="px-4 py-4 align-top lg:px-5">
+                            <div className="flex items-start gap-3">
+                              <div
+                                className={`mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center border border-current/10 ${typeMeta.frameClassName}`}
+                              >
+                                <TypeIcon />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="font-semibold text-slate-900">
+                                  {activity?.product_name || "Unnamed product"}
+                                </p>
+                                <p className="mt-1 text-sm text-slate-500">
+                                  {activity?.email || "No email available"}
+                                </p>
+                              </div>
+                            </div>
+                          </td>
+
+                          <td className="px-4 py-4 align-top">
+                            <p className="text-sm font-medium text-slate-700">
+                              {formatProductType(activity?.product_type)}
+                            </p>
+                          </td>
+
+                          <td className="px-4 py-4 align-top">
+                            <StatusBadge published={Boolean(activity?.is_published)} />
+                          </td>
+
+                          <td className="px-4 py-4 align-top">
+                            {activity?.user_name ? (
+                              <div className="flex items-center gap-2">
+                                <div className="flex h-8 w-8 items-center justify-center bg-violet-50 text-[11px] font-bold text-violet-600">
+                                  {getUserInitials(activity.user_name)}
+                                </div>
+                                <div>
+                                  <p className="text-sm font-medium text-slate-900">
+                                    {activity.user_name}
+                                  </p>
+                                  <p className="text-xs text-slate-500">
+                                    {activity.email || "No email available"}
+                                  </p>
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="text-sm italic text-slate-500">
+                                Not assigned
+                              </span>
+                            )}
+                          </td>
+
+                          <td className="px-4 py-4 align-top">
+                            <p
+                              className="text-sm font-medium text-slate-900"
+                              title={formatFullDate(activity?.updated_at)}
+                            >
+                              {formatRelativeDate(activity?.updated_at)}
+                            </p>
+                            <p className="mt-1 text-xs text-slate-500">
+                              {formatTimeOnly(activity?.updated_at)}
+                            </p>
+                          </td>
+
+                          <td className="px-4 py-4 align-top lg:px-5">
+                            <span className="text-sm font-semibold text-slate-700">
+                              #{activity?.product_id || "-"}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+            <section className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
+              <section className={`${SURFACE_CLASS} px-4 py-4 lg:px-5`}>
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-base font-semibold text-slate-900">
+                      Activity by Product Type
+                    </h3>
+                    <p className="mt-1 text-sm text-slate-500">
+                      Distribution across the currently visible activity set
+                    </p>
+                  </div>
+                  <div className="text-sm font-medium text-slate-500">
+                    {filteredBaseActivities.length} updates
+                  </div>
+                </div>
+
+                <div className="mt-4 space-y-3">
+                  {typeDistribution.map((entry) => {
+                    const typeMeta = getProductTypeMeta(entry.type);
+                    const TypeIcon = typeMeta.icon;
+
+                    return (
+                      <div key={entry.type} className="space-y-1.5">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
+                            <span
+                              className={`flex h-8 w-8 items-center justify-center border border-current/10 ${typeMeta.frameClassName}`}
+                            >
+                              <TypeIcon className="text-sm" />
+                            </span>
+                            <span>{formatProductType(entry.type)}</span>
+                          </div>
+                          <div className="text-sm text-slate-500">
+                            {entry.count} ({entry.percentage}%)
+                          </div>
+                        </div>
+
+                        <div className="h-2 overflow-hidden bg-slate-100">
+                          <div
+                            className="h-full bg-[#345CFF]"
+                            style={{ width: `${entry.percentage}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+
+              <section className={`${SURFACE_CLASS} px-4 py-4 lg:px-5`}>
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-base font-semibold text-slate-900">
+                      Latest Visible Updates
+                    </h3>
+                    <p className="mt-1 text-sm text-slate-500">
+                      Freshest changes after the active filters are applied
+                    </p>
+                  </div>
+                  <div className="text-sm font-medium text-slate-500">
+                    {timelineActivities.length} items
+                  </div>
+                </div>
+
+                <div className="mt-4 space-y-3">
+                  {timelineActivities.map((activity, index) => {
+                    const typeMeta = getProductTypeMeta(activity?.product_type);
+                    const TypeIcon = typeMeta.icon;
+
+                    return (
+                      <div
+                        key={`${activity?.product_id}-${activity?.updated_at}-${index}`}
+                        className="border border-slate-200 px-3 py-3"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex min-w-0 items-start gap-3">
+                            <div
+                              className={`flex h-10 w-10 shrink-0 items-center justify-center border border-current/10 ${typeMeta.frameClassName}`}
+                            >
+                              <TypeIcon className="text-sm" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-semibold text-slate-900">
+                                {activity?.product_name || "Unnamed product"}
+                              </p>
+                              <p className="mt-1 text-xs text-slate-500">
+                                {formatProductType(activity?.product_type)} / #
+                                {activity?.product_id || "-"}
+                              </p>
+                            </div>
+                          </div>
+                          <StatusBadge published={Boolean(activity?.is_published)} />
+                        </div>
+
+                        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-slate-500">
+                          <span>
+                            By {activity?.user_name || "Not assigned"}
+                          </span>
+                          <span>{formatRelativeDate(activity?.updated_at)}</span>
+                          <span>{formatTimeOnly(activity?.updated_at)}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            </section>
+          </>
+        ) : null}
       </div>
     </div>
   );
 };
 
 export default RecentPublishActivity;
-
-

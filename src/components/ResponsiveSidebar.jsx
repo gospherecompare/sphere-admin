@@ -65,7 +65,7 @@ const MENU_ITEMS = [
     submenu: [
       { label: "Specifications", path: "/specifications-manager" },
       { label: "Brands", path: "/specifications/brands" },
-      { label: "Categories", path: "/specifications/categories/create" },
+      { label: "Categories", path: "/specifications/categories" },
     ],
   },
   {

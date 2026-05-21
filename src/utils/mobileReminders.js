@@ -484,6 +484,7 @@ const sortReminders = (left, right) => {
 
 const EMPTY_SUMMARY = {
   items: [],
+  allItems: [],
   total: 0,
   hiddenCount: 0,
   counts: {
@@ -512,6 +513,7 @@ const createMobileReminderSummary = (mobiles = []) => {
 
   return {
     items: items.slice(0, MAX_REMINDERS),
+    allItems: items,
     total: items.length,
     hiddenCount: Math.max(items.length - MAX_REMINDERS, 0),
     counts,

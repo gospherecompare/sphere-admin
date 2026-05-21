@@ -4,7 +4,7 @@ import {
   FaChartPie,
   FaMobileAlt,
   FaLaptop,
-  FaHome,
+  FaTv,
   FaNetworkWired,
   FaSpinner,
   FaExclamationCircle,
@@ -14,13 +14,391 @@ import {
   FaEdit,
   FaSyncAlt,
   FaEye,
-  FaEyeSlash,
   FaListUl,
   FaTable,
   FaQuestionCircle,
+  FaHeadphones,
+  FaCube,
+  FaClock,
 } from "react-icons/fa";
 import Cookies from "js-cookie";
 import { buildUrl } from "../../api";
+
+const PAGE_CLASS =
+  "mx-auto w-full max-w-[1720px] space-y-5 bg-[radial-gradient(circle_at_top,rgba(37,99,235,0.05),transparent_28%),linear-gradient(180deg,#ffffff_0%,#fbfcff_100%)] px-2 py-3 sm:px-3 md:px-4";
+const SURFACE_CLASS =
+  "overflow-hidden rounded-[26px] border border-slate-200/80 bg-white shadow-[0_20px_55px_-40px_rgba(15,23,42,0.22)]";
+const PANEL_CLASS =
+  "rounded-[24px] border border-slate-200/80 bg-white shadow-[0_20px_55px_-42px_rgba(15,23,42,0.2)]";
+const BUTTON_BASE_CLASS =
+  "inline-flex h-11 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60";
+const PRIMARY_BUTTON_CLASS = `${BUTTON_BASE_CLASS} border-[#245CFF] bg-[#245CFF] text-white hover:bg-[#174ee9]`;
+const GHOST_BUTTON_CLASS = `${BUTTON_BASE_CLASS} border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50`;
+const TOGGLE_WRAPPER_CLASS =
+  "inline-flex items-center rounded-2xl border border-slate-200 bg-white p-1 shadow-[0_14px_38px_-34px_rgba(15,23,42,0.24)]";
+
+const numberFormatter = new Intl.NumberFormat("en-US");
+
+const PRODUCT_TYPE_META = {
+  smartphone: {
+    label: "Smartphones",
+    icon: FaMobileAlt,
+    iconClassName: "border-blue-100 bg-blue-50 text-blue-600",
+  },
+  laptop: {
+    label: "Laptops",
+    icon: FaLaptop,
+    iconClassName: "border-violet-100 bg-violet-50 text-violet-600",
+  },
+  tv: {
+    label: "TVs & Appliances",
+    icon: FaTv,
+    iconClassName: "border-cyan-100 bg-cyan-50 text-cyan-600",
+  },
+  home_appliance: {
+    label: "TVs & Appliances",
+    icon: FaTv,
+    iconClassName: "border-cyan-100 bg-cyan-50 text-cyan-600",
+  },
+  networking: {
+    label: "Networking",
+    icon: FaNetworkWired,
+    iconClassName: "border-orange-100 bg-orange-50 text-orange-600",
+  },
+  accessories: {
+    label: "Accessories",
+    icon: FaHeadphones,
+    iconClassName: "border-indigo-100 bg-indigo-50 text-indigo-600",
+  },
+};
+
+const LEGEND_ITEMS = [
+  {
+    label: "Excellent",
+    threshold: "75% and above",
+    note: "Strong publication health",
+    dotClassName: "bg-emerald-500",
+  },
+  {
+    label: "Good",
+    threshold: "50% to 74%",
+    note: "Good coverage, room to grow",
+    dotClassName: "bg-blue-500",
+  },
+  {
+    label: "Needs Work",
+    threshold: "25% to 49%",
+    note: "Needs improvement",
+    dotClassName: "bg-amber-500",
+  },
+  {
+    label: "Critical",
+    threshold: "Below 25%",
+    note: "Immediate attention needed",
+    dotClassName: "bg-rose-500",
+  },
+];
+
+const normalizeCount = (value) => {
+  const parsed = Number.parseInt(value ?? 0, 10);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const formatCount = (value) => numberFormatter.format(normalizeCount(value));
+
+const getDecimalCount = (value) => (Number.isInteger(value) ? 0 : 1);
+
+const formatTimestamp = (value) => {
+  if (!value) return "Not available";
+
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "Not available";
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(date);
+};
+
+const calculatePercentageValue = (part, total) => {
+  if (!total) return 0;
+  return Number(((part / total) * 100).toFixed(1));
+};
+
+const getProductTypeMeta = (type) => {
+  const key = String(type || "").toLowerCase();
+  const meta = PRODUCT_TYPE_META[key];
+  if (meta) return meta;
+
+  return {
+    label: String(type || "Other")
+      .split("_")
+      .filter(Boolean)
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" "),
+    icon: FaCube,
+    iconClassName: "border-slate-200 bg-slate-50 text-slate-500",
+  };
+};
+
+const getStatusConfig = (percentage) => {
+  if (percentage >= 75) {
+    return {
+      label: "Excellent",
+      badgeClassName: "border-emerald-200 bg-emerald-50 text-emerald-700",
+      progressClassName: "bg-emerald-500",
+      dotClassName: "bg-emerald-500",
+    };
+  }
+
+  if (percentage >= 50) {
+    return {
+      label: "Good",
+      badgeClassName: "border-blue-200 bg-blue-50 text-blue-700",
+      progressClassName: "bg-blue-500",
+      dotClassName: "bg-blue-500",
+    };
+  }
+
+  if (percentage >= 25) {
+    return {
+      label: "Needs Work",
+      badgeClassName: "border-amber-200 bg-amber-50 text-amber-700",
+      progressClassName: "bg-amber-500",
+      dotClassName: "bg-amber-500",
+    };
+  }
+
+  return {
+    label: "Critical",
+    badgeClassName: "border-rose-200 bg-rose-50 text-rose-700",
+    progressClassName: "bg-rose-500",
+    dotClassName: "bg-rose-500",
+  };
+};
+
+const ToastCard = ({ toast, onDismiss }) => (
+  <div
+    className={`flex w-full max-w-sm items-start gap-3 rounded-2xl border px-4 py-3 shadow-[0_24px_55px_-40px_rgba(15,23,42,0.32)] ${
+      toast.type === "success"
+        ? "border-emerald-200 bg-emerald-50"
+        : toast.type === "error"
+          ? "border-rose-200 bg-rose-50"
+          : "border-blue-200 bg-blue-50"
+    }`}
+  >
+    <div className="mt-0.5">
+      {toast.type === "success" ? (
+        <FaCheckCircle className="text-emerald-500" />
+      ) : toast.type === "error" ? (
+        <FaExclamationCircle className="text-rose-500" />
+      ) : (
+        <FaGlobe className="text-blue-500" />
+      )}
+    </div>
+    <div className="min-w-0 flex-1">
+      <p className="text-sm font-semibold text-slate-900">{toast.title}</p>
+      <p className="mt-0.5 text-sm text-slate-600">{toast.message}</p>
+    </div>
+    <button
+      type="button"
+      onClick={() => onDismiss(toast.id)}
+      className="text-slate-400 transition hover:text-slate-700"
+    >
+      <FaTimes className="text-sm" />
+    </button>
+  </div>
+);
+
+const OverviewCard = ({
+  title,
+  value,
+  suffix,
+  supporting,
+  accent,
+  icon: Icon,
+  iconClassName,
+  ringPercentage,
+}) => (
+  <article className={`${SURFACE_CLASS} p-5`}>
+    <div className="flex items-center gap-4">
+      <div
+        className={`flex h-20 w-20 shrink-0 items-center justify-center rounded-[24px] border ${
+          iconClassName || "border-slate-200 bg-slate-50 text-slate-600"
+        }`}
+      >
+        {typeof ringPercentage === "number" ? (
+          <div
+            className="grid h-14 w-14 place-items-center rounded-full"
+            style={{
+              background: `conic-gradient(#245CFF ${Math.max(
+                0,
+                Math.min(100, ringPercentage),
+              )}%, #E6EAF2 0)`,
+            }}
+          >
+            <div className="grid h-10 w-10 place-items-center rounded-full bg-white text-[10px] font-semibold text-[#245CFF]">
+              {`${Number(ringPercentage).toFixed(getDecimalCount(ringPercentage))}%`}
+            </div>
+          </div>
+        ) : Icon ? (
+          <Icon className="text-[1.75rem]" />
+        ) : null}
+      </div>
+
+      <div className="min-w-0">
+        <p className="text-sm font-medium text-slate-500">{title}</p>
+        <p className="mt-2 text-[2rem] font-semibold tracking-tight text-slate-950">
+          <CountUp
+            end={value}
+            duration={1.2}
+            decimals={getDecimalCount(value)}
+            suffix={suffix || ""}
+          />
+        </p>
+        <p className="mt-1 text-sm text-slate-500">{supporting}</p>
+        {accent ? (
+          <p className="mt-1 text-xs font-medium text-slate-400">{accent}</p>
+        ) : null}
+      </div>
+    </div>
+  </article>
+);
+
+const ReportBanner = ({
+  icon: Icon,
+  title,
+  description,
+  className,
+  actionLabel,
+  onAction,
+}) => (
+  <section className={`rounded-[22px] border px-4 py-4 sm:px-5 ${className}`}>
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-start gap-3">
+        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/70 text-lg">
+          <Icon />
+        </div>
+        <div>
+          <p className="text-sm font-semibold">{title}</p>
+          <p className="mt-1 text-sm opacity-90">{description}</p>
+        </div>
+      </div>
+
+      {actionLabel && onAction ? (
+        <button
+          type="button"
+          onClick={onAction}
+          className="inline-flex h-10 items-center justify-center rounded-xl border border-current/20 bg-white px-4 text-sm font-semibold"
+        >
+          {actionLabel}
+        </button>
+      ) : null}
+    </div>
+  </section>
+);
+
+const ProductTypeCard = ({ item }) => {
+  const total = normalizeCount(item.total);
+  const published = normalizeCount(item.published);
+  const drafts = normalizeCount(item.drafts);
+  const publishPercentage = calculatePercentageValue(published, total);
+  const draftPercentage = calculatePercentageValue(drafts, total);
+  const status = getStatusConfig(publishPercentage);
+  const meta = getProductTypeMeta(item.product_type);
+  const Icon = meta.icon;
+
+  return (
+    <article className={`${PANEL_CLASS} p-4 sm:p-5`}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-start gap-3">
+          <div
+            className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border text-xl ${meta.iconClassName}`}
+          >
+            <Icon />
+          </div>
+          <div className="min-w-0">
+            <h3 className="truncate text-lg font-semibold text-slate-950">
+              {meta.label}
+            </h3>
+            <p className="mt-1 text-sm text-slate-500">Total Products</p>
+            <p className="mt-1 text-[2rem] font-semibold tracking-tight text-slate-950">
+              <CountUp end={total} duration={1.1} />
+            </p>
+          </div>
+        </div>
+
+        <span
+          className={`inline-flex shrink-0 rounded-full border px-3 py-1 text-sm font-semibold ${status.badgeClassName}`}
+        >
+          <CountUp
+            end={publishPercentage}
+            duration={1}
+            decimals={getDecimalCount(publishPercentage)}
+            suffix="%"
+          />
+        </span>
+      </div>
+
+      <div className="mt-5 space-y-5">
+        <div>
+          <div className="mb-2 flex items-center justify-between gap-3 text-sm">
+            <span className="font-medium text-slate-600">Published</span>
+            <span className="font-semibold text-slate-900">
+              {formatCount(published)} ({publishPercentage}%)
+            </span>
+          </div>
+          <div className="h-2 rounded-full bg-slate-100">
+            <div
+              className={`h-full rounded-full ${status.progressClassName}`}
+              style={{ width: `${Math.min(100, publishPercentage)}%` }}
+            />
+          </div>
+        </div>
+
+        <div>
+          <div className="mb-2 flex items-center justify-between gap-3 text-sm">
+            <span className="font-medium text-slate-600">Drafts</span>
+            <span className="font-semibold text-slate-900">
+              {formatCount(drafts)} ({draftPercentage}%)
+            </span>
+          </div>
+          <div className="h-2 rounded-full bg-slate-100">
+            <div
+              className="h-full rounded-full bg-amber-400"
+              style={{ width: `${Math.min(100, draftPercentage)}%` }}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-5 grid grid-cols-2 gap-3 border-t border-slate-100 pt-4">
+        <div className="rounded-2xl border border-emerald-100 bg-emerald-50/80 px-3 py-3">
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-emerald-700">
+            <FaEye className="text-sm" />
+            Published
+          </div>
+          <p className="mt-2 text-2xl font-semibold text-slate-950">
+            {formatCount(published)}
+          </p>
+        </div>
+
+        <div className="rounded-2xl border border-amber-100 bg-amber-50/80 px-3 py-3">
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-amber-700">
+            <FaEdit className="text-sm" />
+            Drafts
+          </div>
+          <p className="mt-2 text-2xl font-semibold text-slate-950">
+            {formatCount(drafts)}
+          </p>
+        </div>
+      </div>
+    </article>
+  );
+};
 
 const ProductPublishStatusReport = () => {
   const [reportData, setReportData] = useState([]);
@@ -28,18 +406,29 @@ const ProductPublishStatusReport = () => {
   const [error, setError] = useState(null);
   const [toasts, setToasts] = useState([]);
   const [viewMode, setViewMode] = useState("cards");
+  const [lastUpdated, setLastUpdated] = useState(null);
 
-  // Fetch report data
-  useEffect(() => {
-    fetchReportData();
+  const showToast = useCallback((title, message, type = "success") => {
+    const id = Date.now() + Math.random();
+    const nextToast = { id, title, message, type };
+
+    setToasts((previous) => [...previous, nextToast]);
+    window.setTimeout(() => {
+      setToasts((previous) => previous.filter((toast) => toast.id !== id));
+    }, 5000);
+  }, []);
+
+  const removeToast = useCallback((id) => {
+    setToasts((previous) => previous.filter((toast) => toast.id !== id));
   }, []);
 
   const fetchReportData = useCallback(async () => {
     setLoading(true);
     setError(null);
+
     try {
       const token = Cookies.get("authToken");
-      const res = await fetch(buildUrl("/api/reports/publish-status"), {
+      const response = await fetch(buildUrl("/api/reports/publish-status"), {
         method: "GET",
         headers: {
           Authorization: token ? `Bearer ${token}` : "",
@@ -47,591 +436,370 @@ const ProductPublishStatusReport = () => {
         },
       });
 
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
 
-      const normalizedData = Array.isArray(data.publish_by_type)
+      const data = await response.json();
+      const normalized = Array.isArray(data.publish_by_type)
         ? data.publish_by_type
         : [];
 
-      setReportData(normalizedData);
+      setReportData(normalized);
+      setLastUpdated(new Date());
       showToast("Success", "Publish status loaded successfully", "success");
-    } catch (err) {
-      console.error("Failed to fetch report:", err);
-      setError(err.message || "Failed to load publish status data");
+    } catch (requestError) {
+      console.error("Failed to fetch report:", requestError);
+      setError(requestError.message || "Failed to load publish status data");
       showToast("Error", "Failed to load publish status", "error");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [showToast]);
 
-  // Toast system
-  const showToast = useCallback((title, message, type = "success") => {
-    const id = Date.now();
-    const newToast = { id, title, message, type };
-    setToasts((prev) => [...prev, newToast]);
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((toast) => toast.id !== id));
-    }, 5000);
-  }, []);
+  useEffect(() => {
+    fetchReportData();
+  }, [fetchReportData]);
 
-  const removeToast = useCallback((id) => {
-    setToasts((prev) => prev.filter((toast) => toast.id !== id));
-  }, []);
+  const totals = useMemo(
+    () =>
+      reportData.reduce(
+        (accumulator, item) => {
+          accumulator.total += normalizeCount(item.total);
+          accumulator.published += normalizeCount(item.published);
+          accumulator.drafts += normalizeCount(item.drafts);
+          return accumulator;
+        },
+        { total: 0, published: 0, drafts: 0 },
+      ),
+    [reportData],
+  );
 
-  // Helper functions
-  const getProductTypeIcon = useCallback((type) => {
-    switch (type?.toLowerCase()) {
-      case "smartphone":
-        return <FaMobileAlt className="text-blue-500" />;
-      case "laptop":
-        return <FaLaptop className="text-purple-500" />;
-      case "tv":
-      case "home_appliance":
-        return <FaHome className="text-green-500" />;
-      case "networking":
-        return <FaNetworkWired className="text-orange-500" />;
-      default:
-        return <FaChartPie className="text-gray-500" />;
-    }
-  }, []);
+  const overallPublishPercentage = useMemo(
+    () => calculatePercentageValue(totals.published, totals.total),
+    [totals.published, totals.total],
+  );
 
-  const formatProductType = useCallback((type) => {
-    return type
-      .split("_")
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(" ");
-  }, []);
+  const overallDraftPercentage = useMemo(
+    () => calculatePercentageValue(totals.drafts, totals.total),
+    [totals.drafts, totals.total],
+  );
 
-  // Calculate statistics
-  const { totals, overallPublishPercentage } = useMemo(() => {
-    const totals = reportData.reduce(
-      (acc, item) => ({
-        total: acc.total + parseInt(item.total || 0),
-        published: acc.published + parseInt(item.published || 0),
-        drafts: acc.drafts + parseInt(item.drafts || 0),
-      }),
-      { total: 0, published: 0, drafts: 0 },
-    );
-
-    const overallPublishPercentage =
-      totals.total > 0
-        ? Math.round((totals.published / totals.total) * 100)
-        : 0;
-
-    return { totals, overallPublishPercentage };
-  }, [reportData]);
-
-  const calculatePercentage = useCallback((part, total) => {
-    if (total === 0) return 0;
-    return Math.round((parseInt(part) / parseInt(total)) * 100);
-  }, []);
-
-  const getStatusConfig = useCallback(
-    (published, total) => {
-      const percentage = calculatePercentage(published, total);
-      let colorClass = "";
-      let bgClass = "";
-      let text = "";
-
-      if (percentage >= 75) {
-        colorClass = "text-green-600";
-        bgClass = "bg-green-50 border-green-200";
-        text = "Excellent";
-      } else if (percentage >= 50) {
-        colorClass = "text-yellow-600";
-        bgClass = "bg-yellow-50 border-yellow-200";
-        text = "Good";
-      } else if (percentage >= 25) {
-        colorClass = "text-orange-600";
-        bgClass = "bg-orange-50 border-orange-200";
-        text = "Needs Work";
-      } else {
-        colorClass = "text-red-600";
-        bgClass = "bg-red-50 border-red-200";
-        text = "Critical";
-      }
-
-      return { percentage, colorClass, bgClass, text };
-    },
-    [calculatePercentage],
+  const overviewCards = useMemo(
+    () => [
+      {
+        title: "Overall Publish Rate",
+        value: overallPublishPercentage,
+        suffix: "%",
+        supporting: "Across all product types",
+        accent: `${formatCount(totals.published)} of ${formatCount(totals.total)} products`,
+        ringPercentage: overallPublishPercentage,
+      },
+      {
+        title: "Published Products",
+        value: totals.published,
+        supporting: "Products are live and visible",
+        accent: `${overallPublishPercentage}% of total catalog`,
+        icon: FaEye,
+        iconClassName: "border-emerald-100 bg-emerald-50 text-emerald-600",
+      },
+      {
+        title: "Draft Products",
+        value: totals.drafts,
+        supporting: "Products in draft mode",
+        accent: `${overallDraftPercentage}% of total catalog`,
+        icon: FaEdit,
+        iconClassName: "border-amber-100 bg-amber-50 text-amber-600",
+      },
+      {
+        title: "Total Products",
+        value: totals.total,
+        supporting: "Across all product types",
+        accent: `${reportData.length} product types tracked`,
+        icon: FaChartPie,
+        iconClassName: "border-violet-100 bg-violet-50 text-violet-600",
+      },
+    ],
+    [
+      overallDraftPercentage,
+      overallPublishPercentage,
+      reportData.length,
+      totals.drafts,
+      totals.published,
+      totals.total,
+    ],
   );
 
   return (
-    <div className="min-h-full bg-gray-50 p-1 sm:p-2 md:p-2">
-      {/* Toast Container */}
-      <div className="fixed top-4 right-4 z-50 space-y-2">
+    <div className={PAGE_CLASS}>
+      <div className="fixed right-4 top-4 z-50 space-y-2">
         {toasts.map((toast) => (
-          <div
-            key={toast.id}
-            className={`bg-white rounded-lg shadow-lg border p-4 max-w-sm w-full flex items-start space-x-3 ${
-              toast.type === "success"
-                ? "border-green-200 bg-green-50"
-                : toast.type === "error"
-                  ? "border-red-200 bg-red-50"
-                  : "border-blue-200 bg-blue-50"
-            }`}
-          >
-            {toast.type === "success" && (
-              <FaCheckCircle className="text-green-500 mt-0.5" />
-            )}
-            {toast.type === "error" && (
-              <FaExclamationCircle className="text-red-500 mt-0.5" />
-            )}
-            <div className="flex-1">
-              <p className="text-sm font-medium text-gray-900">{toast.title}</p>
-              <p className="text-sm text-gray-600 mt-0.5">{toast.message}</p>
-            </div>
-            <button
-              onClick={() => removeToast(toast.id)}
-              className="text-gray-400 hover:text-gray-600"
-            >
-              <FaTimes className="text-sm" />
-            </button>
-          </div>
+          <ToastCard key={toast.id} toast={toast} onDismiss={removeToast} />
         ))}
       </div>
 
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+      <section className="border-b border-slate-200 pb-4">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
+            <h1 className="text-3xl font-semibold tracking-tight text-slate-950 sm:text-[2.25rem]">
               Product Publish Status
             </h1>
-            <p className="text-gray-600 mt-2">
+            <p className="mt-2 text-sm text-slate-500 sm:text-base">
               Track publication status across all product types
             </p>
           </div>
 
-          <div className="flex items-center space-x-3">
-            <div className="flex items-center space-x-1 border border-gray-200 rounded-lg p-1 bg-white">
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap xl:justify-end">
+            <div className={TOGGLE_WRAPPER_CLASS}>
               <button
+                type="button"
                 onClick={() => setViewMode("cards")}
-                className={`px-3 py-1.5 rounded text-sm font-medium flex items-center gap-2 transition-all ${
+                className={`inline-flex h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold transition ${
                   viewMode === "cards"
-                    ? "bg-blue-50 text-blue-600 border border-blue-200"
-                    : "text-gray-600 hover:bg-gray-50"
+                    ? "bg-[#245CFF] text-white shadow-[0_18px_40px_-26px_rgba(36,92,255,0.65)]"
+                    : "text-slate-600 hover:bg-slate-50"
                 }`}
               >
                 <FaListUl className="text-sm" />
                 Cards
               </button>
               <button
+                type="button"
                 onClick={() => setViewMode("table")}
-                className={`px-3 py-1.5 rounded text-sm font-medium flex items-center gap-2 transition-all ${
+                className={`inline-flex h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold transition ${
                   viewMode === "table"
-                    ? "bg-blue-50 text-blue-600 border border-blue-200"
-                    : "text-gray-600 hover:bg-gray-50"
+                    ? "bg-[#245CFF] text-white shadow-[0_18px_40px_-26px_rgba(36,92,255,0.65)]"
+                    : "text-slate-600 hover:bg-slate-50"
                 }`}
               >
                 <FaTable className="text-sm" />
                 Table
               </button>
             </div>
+
             <button
+              type="button"
               onClick={fetchReportData}
               disabled={loading}
-              className="px-4 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 flex items-center gap-2 text-sm font-medium shadow-sm hover:shadow"
+              className={GHOST_BUTTON_CLASS}
             >
-              <FaSyncAlt className={`${loading ? "animate-spin" : ""}`} />
+              <FaSyncAlt className={loading ? "animate-spin" : ""} />
               {loading ? "Refreshing..." : "Refresh"}
             </button>
           </div>
         </div>
+      </section>
 
-        {/* Overall Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {/* Overall Publish Rate */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600 mb-2">
-                  Overall Publish Rate
-                </p>
-                <p className="text-3xl font-bold text-gray-900 mb-1">
-                  <CountUp
-                    end={overallPublishPercentage}
-                    duration={1.5}
-                    suffix="%"
-                  />
-                </p>
-                <p className="text-sm text-gray-500">
-                  <CountUp end={totals.published} duration={1.5} /> of{" "}
-                  <CountUp end={totals.total} duration={1.5} /> products
-                </p>
-              </div>
-              <div className="w-12 h-12 rounded-lg bg-blue-50 flex items-center justify-center border border-blue-100">
-                <FaGlobe className="text-xl text-blue-500" />
-              </div>
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {overviewCards.map((card) => (
+          <OverviewCard key={card.title} {...card} />
+        ))}
+      </section>
+
+      {error ? (
+        <ReportBanner
+          icon={FaExclamationCircle}
+          title="Error Loading Report"
+          description={error}
+          actionLabel="Try Again"
+          onAction={fetchReportData}
+          className="border-rose-200 bg-rose-50 text-rose-700"
+        />
+      ) : null}
+
+      {loading ? (
+        <ReportBanner
+          icon={FaSpinner}
+          title="Loading publish status"
+          description="Fetching the latest product publication data."
+          className="border-blue-200 bg-blue-50 text-blue-700"
+        />
+      ) : null}
+
+      {!loading && reportData.length === 0 ? (
+        <section className={`${SURFACE_CLASS} px-5 py-12 text-center sm:px-8`}>
+          <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full border border-slate-200 bg-slate-50">
+            <FaChartPie className="text-3xl text-slate-400" />
+          </div>
+          <h2 className="mt-5 text-xl font-semibold text-slate-950">
+            No Publish Status Data
+          </h2>
+          <p className="mx-auto mt-2 max-w-xl text-sm text-slate-500 sm:text-base">
+            There is no publish status data available right now. Publish some
+            products to see the report here.
+          </p>
+          <div className="mt-6">
+            <button
+              type="button"
+              onClick={fetchReportData}
+              className={PRIMARY_BUTTON_CLASS}
+            >
+              <FaSyncAlt />
+              Try Again
+            </button>
+          </div>
+        </section>
+      ) : null}
+
+      {!loading && reportData.length > 0 && viewMode === "cards" ? (
+        <section className={`${SURFACE_CLASS} p-4 sm:p-5`}>
+          <div className="mb-5 flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-semibold text-slate-950">
+                Product Type Breakdown
+              </h2>
             </div>
-          </div>
-
-          {/* Published Products */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600 mb-2">
-                  Published
-                </p>
-                <p className="text-3xl font-bold text-gray-900 mb-1">
-                  <CountUp end={totals.published} duration={1.5} />
-                </p>
-                <p className="text-sm text-gray-500">Live products</p>
-              </div>
-              <div className="w-12 h-12 rounded-lg bg-green-50 flex items-center justify-center border border-green-100">
-                <FaEye className="text-xl text-green-500" />
-              </div>
-            </div>
-          </div>
-
-          {/* Draft Products */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600 mb-2">Drafts</p>
-                <p className="text-3xl font-bold text-gray-900 mb-1">
-                  <CountUp end={totals.drafts} duration={1.5} />
-                </p>
-                <p className="text-sm text-gray-500">In progress</p>
-              </div>
-              <div className="w-12 h-12 rounded-lg bg-yellow-50 flex items-center justify-center border border-yellow-100">
-                <FaEdit className="text-xl text-yellow-500" />
-              </div>
-            </div>
-          </div>
-
-          {/* Total Products */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600 mb-2">
-                  Total Products
-                </p>
-                <p className="text-3xl font-bold text-gray-900 mb-1">
-                  <CountUp end={totals.total} duration={1.5} />
-                </p>
-                <p className="text-sm text-gray-500">All product types</p>
-              </div>
-              <div className="w-12 h-12 rounded-lg bg-purple-50 flex items-center justify-center border border-purple-100">
-                <FaChartPie className="text-xl text-purple-500" />
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Error Message */}
-      {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center space-x-3">
-          <FaExclamationCircle className="text-red-500 flex-shrink-0" />
-          <div>
-            <p className="font-medium text-red-800">Error</p>
-            <p className="text-red-700 text-sm">{error}</p>
-          </div>
-        </div>
-      )}
-
-      {/* Loading State */}
-      {loading && (
-        <div className="mb-6 p-12 bg-white rounded-xl border border-gray-200 shadow-sm text-center">
-          <div className="flex flex-col items-center justify-center">
-            <FaSpinner className="animate-spin text-3xl text-blue-500 mb-4" />
-            <p className="text-gray-700 font-medium">
-              Loading publish status...
-            </p>
-            <p className="text-gray-500 text-sm mt-1">
-              Fetching the latest data
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Report Data - Cards View */}
-      {!loading && viewMode === "cards" && reportData.length > 0 && (
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold text-gray-900">
-              Product Type Breakdown
-            </h2>
-            <span className="text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
-              {reportData.length} types
+            <span className="inline-flex h-9 min-w-9 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm font-semibold text-slate-600">
+              {reportData.length}
             </span>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {reportData.map((item, index) => {
-              const publishPercentage = calculatePercentage(
-                item.published,
-                item.total,
-              );
-              const draftPercentage = calculatePercentage(
-                item.drafts,
-                item.total,
-              );
-              const status = getStatusConfig(item.published, item.total);
 
-              return (
-                <div
-                  key={index}
-                  className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300"
-                >
-                  <div className="p-5">
-                    {/* Header with Icon */}
-                    <div className="flex items-center justify-between mb-5">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-12 h-12 rounded-lg border border-gray-100 flex items-center justify-center">
-                          {getProductTypeIcon(item.product_type)}
-                        </div>
-                        <div>
-                          <h3 className="font-bold text-gray-900">
-                            {formatProductType(item.product_type)}
-                          </h3>
-                          <p className="text-sm text-gray-500">
-                            <CountUp
-                              end={parseInt(item.total || 0)}
-                              duration={1.2}
-                            />{" "}
-                            products
-                          </p>
-                        </div>
-                      </div>
-                      <span
-                        className={`px-3 py-1.5 rounded-full text-xs font-medium border ${status.bgClass} ${status.colorClass}`}
-                      >
-                        <CountUp end={publishPercentage} duration={1.2} />%
-                        Published
-                      </span>
-                    </div>
-
-                    {/* Progress Bars */}
-                    <div className="space-y-4">
-                      <div>
-                        <div className="flex justify-between text-sm mb-2">
-                          <span className="font-medium text-gray-700 flex items-center gap-2">
-                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                            Published
-                          </span>
-                          <span className="font-medium text-gray-900">
-                            <CountUp
-                              end={parseInt(item.published || 0)}
-                              duration={1.2}
-                            />{" "}
-                            <span className="text-gray-500">
-                              ({publishPercentage}%)
-                            </span>
-                          </span>
-                        </div>
-                        <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-green-500 rounded-full transition-all duration-1000"
-                            style={{ width: `${publishPercentage}%` }}
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <div className="flex justify-between text-sm mb-2">
-                          <span className="font-medium text-gray-700 flex items-center gap-2">
-                            <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                            Drafts
-                          </span>
-                          <span className="font-medium text-gray-900">
-                            <CountUp
-                              end={parseInt(item.drafts || 0)}
-                              duration={1.2}
-                            />{" "}
-                            <span className="text-gray-500">
-                              ({draftPercentage}%)
-                            </span>
-                          </span>
-                        </div>
-                        <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-yellow-500 rounded-full transition-all duration-1000"
-                            style={{ width: `${draftPercentage}%` }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Quick Stats */}
-                    <div className="mt-6 pt-5 border-t border-gray-100 grid grid-cols-2 gap-3">
-                      <div className="text-center p-3 border border-gray-100 rounded-lg">
-                        <p className="text-2xl font-bold text-green-600">
-                          <CountUp
-                            end={parseInt(item.published || 0)}
-                            duration={1.2}
-                          />
-                        </p>
-                        <p className="text-xs text-gray-600 font-medium">
-                          Published
-                        </p>
-                      </div>
-                      <div className="text-center p-3 border border-gray-100 rounded-lg">
-                        <p className="text-2xl font-bold text-yellow-600">
-                          <CountUp
-                            end={parseInt(item.drafts || 0)}
-                            duration={1.2}
-                          />
-                        </p>
-                        <p className="text-xs text-gray-600 font-medium">
-                          Drafts
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+            {reportData.map((item, index) => (
+              <ProductTypeCard
+                key={`${item.product_type || "type"}-${index}`}
+                item={item}
+              />
+            ))}
           </div>
-        </div>
-      )}
+        </section>
+      ) : null}
 
-      {/* Table View */}
-      {!loading && viewMode === "table" && reportData.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm mb-8 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <div className="flex items-center justify-between">
+      {!loading && reportData.length > 0 && viewMode === "table" ? (
+        <section className={SURFACE_CLASS}>
+          <div className="border-b border-slate-200 px-5 py-4 sm:px-6">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h3 className="font-bold text-gray-900 text-lg">
+                <h2 className="text-xl font-semibold text-slate-950">
                   Publish Status by Product Type
-                </h3>
-                <p className="text-gray-600 text-sm mt-1">
-                  Detailed breakdown of publication status
+                </h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  Detailed breakdown of publication health across every tracked
+                  product type
                 </p>
               </div>
-              <span className="text-sm text-gray-600 bg-gray-100 px-3 py-1.5 rounded-full">
+              <span className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm font-semibold text-slate-600">
                 {reportData.length} types
               </span>
             </div>
           </div>
+
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead>
-                <tr className="bg-gray-50">
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    Product Type
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    Total
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    Published
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    Drafts
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    Publish Rate
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    Status
-                  </th>
+            <table className="min-w-full text-sm">
+              <thead className="border-b border-slate-200 bg-slate-50/70">
+                <tr>
+                  {[
+                    "Product Type",
+                    "Total",
+                    "Published",
+                    "Drafts",
+                    "Publish Rate",
+                    "Status",
+                  ].map((heading) => (
+                    <th
+                      key={heading}
+                      className="whitespace-nowrap px-5 py-3 text-left text-xs font-semibold uppercase tracking-[0.14em] text-slate-500"
+                    >
+                      {heading}
+                    </th>
+                  ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
+
+              <tbody className="divide-y divide-slate-100 bg-white">
                 {reportData.map((item, index) => {
-                  const status = getStatusConfig(item.published, item.total);
-                  const publishPercentage = status.percentage;
-                  const draftPercentage = calculatePercentage(
-                    item.drafts,
-                    item.total,
+                  const total = normalizeCount(item.total);
+                  const published = normalizeCount(item.published);
+                  const drafts = normalizeCount(item.drafts);
+                  const publishPercentage = calculatePercentageValue(
+                    published,
+                    total,
                   );
+                  const draftPercentage = calculatePercentageValue(
+                    drafts,
+                    total,
+                  );
+                  const status = getStatusConfig(publishPercentage);
+                  const meta = getProductTypeMeta(item.product_type);
+                  const Icon = meta.icon;
 
                   return (
                     <tr
-                      key={index}
-                      className="hover:bg-gray-50 transition-colors"
+                      key={`${item.product_type || "type"}-${index}`}
+                      className="transition hover:bg-slate-50"
                     >
-                      <td className="px-6 py-4">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 rounded-lg border border-gray-100 flex items-center justify-center">
-                            {getProductTypeIcon(item.product_type)}
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`flex h-11 w-11 items-center justify-center rounded-2xl border ${meta.iconClassName}`}
+                          >
+                            <Icon />
                           </div>
                           <div>
-                            <p className="font-medium text-gray-900">
-                              {formatProductType(item.product_type)}
+                            <p className="font-semibold text-slate-950">
+                              {meta.label}
                             </p>
-                            <p className="text-sm text-gray-500">Type</p>
+                            <p className="text-xs text-slate-500">Product type</p>
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
-                        <div>
-                          <p className="text-2xl font-bold text-gray-900">
-                            <CountUp
-                              end={parseInt(item.total || 0)}
-                              duration={1.2}
-                            />
-                          </p>
-                          <p className="text-sm text-gray-500">Products</p>
-                        </div>
+
+                      <td className="whitespace-nowrap px-5 py-4 text-lg font-semibold text-slate-950">
+                        {formatCount(total)}
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center space-x-2">
-                          <div className="w-8 h-8 rounded bg-green-50 border border-green-100 flex items-center justify-center">
-                            <FaEye className="text-green-500 text-sm" />
+
+                      <td className="whitespace-nowrap px-5 py-4">
+                        <div className="flex items-center gap-2">
+                          <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-emerald-100 bg-emerald-50 text-emerald-600">
+                            <FaEye className="text-sm" />
                           </div>
                           <div>
-                            <p className="font-bold text-green-600 text-lg">
-                              <CountUp
-                                end={parseInt(item.published || 0)}
-                                duration={1.2}
-                              />
+                            <p className="font-semibold text-slate-950">
+                              {formatCount(published)}
                             </p>
-                            <p className="text-xs text-gray-500">Published</p>
+                            <p className="text-xs text-slate-500">Published</p>
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center space-x-2">
-                          <div className="w-8 h-8 rounded bg-yellow-50 border border-yellow-100 flex items-center justify-center">
-                            <FaEdit className="text-yellow-500 text-sm" />
+
+                      <td className="whitespace-nowrap px-5 py-4">
+                        <div className="flex items-center gap-2">
+                          <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-amber-100 bg-amber-50 text-amber-600">
+                            <FaEdit className="text-sm" />
                           </div>
                           <div>
-                            <p className="font-bold text-yellow-600 text-lg">
-                              <CountUp
-                                end={parseInt(item.drafts || 0)}
-                                duration={1.2}
-                              />
+                            <p className="font-semibold text-slate-950">
+                              {formatCount(drafts)}
                             </p>
-                            <p className="text-xs text-gray-500">Drafts</p>
+                            <p className="text-xs text-slate-500">Drafts</p>
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="w-48">
-                          <div className="flex justify-between text-sm mb-2">
-                            <span className="font-medium text-gray-700">
-                              <CountUp end={publishPercentage} duration={1.2} />
-                              %
+
+                      <td className="px-5 py-4">
+                        <div className="min-w-[220px]">
+                          <div className="mb-2 flex items-center justify-between gap-3 text-sm">
+                            <span className="font-semibold text-slate-900">
+                              {publishPercentage}%
                             </span>
-                            <span className="text-gray-500">
-                              <CountUp end={draftPercentage} duration={1.2} />%
-                              drafts
+                            <span className="text-slate-500">
+                              {draftPercentage}% drafts
                             </span>
                           </div>
-                          <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                          <div className="h-2 rounded-full bg-slate-100">
                             <div
-                              className={`h-full rounded-full transition-all duration-1000 ${
-                                publishPercentage >= 75
-                                  ? "bg-green-500"
-                                  : publishPercentage >= 50
-                                    ? "bg-yellow-500"
-                                    : publishPercentage >= 25
-                                      ? "bg-orange-500"
-                                      : "bg-red-500"
-                              }`}
-                              style={{ width: `${publishPercentage}%` }}
+                              className={`h-full rounded-full ${status.progressClassName}`}
+                              style={{ width: `${Math.min(100, publishPercentage)}%` }}
                             />
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
+
+                      <td className="whitespace-nowrap px-5 py-4">
                         <span
-                          className={`px-3 py-1.5 rounded-full text-xs font-medium border ${status.bgClass} ${status.colorClass}`}
+                          className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${status.badgeClassName}`}
                         >
-                          {status.text}
+                          {status.label}
                         </span>
                       </td>
                     </tr>
@@ -640,147 +808,173 @@ const ProductPublishStatusReport = () => {
               </tbody>
             </table>
           </div>
-        </div>
-      )}
+        </section>
+      ) : null}
 
-      {/* Empty State */}
-      {!loading && reportData.length === 0 && (
-        <div className="mb-8 p-12 bg-white rounded-xl border border-gray-200 shadow-sm text-center">
-          <div className="flex flex-col items-center justify-center">
-            <div className="w-20 h-20 rounded-full bg-gray-50 border border-gray-200 flex items-center justify-center mb-4">
-              <FaChartPie className="text-3xl text-gray-400" />
-            </div>
-            <h3 className="text-lg font-bold text-gray-900 mb-2">
-              No Publish Status Data
-            </h3>
-            <p className="text-gray-600 mb-6 max-w-md">
-              There's no publish status data available at the moment. Publish
-              some products to see the report here.
-            </p>
-            <button
-              onClick={fetchReportData}
-              className="px-5 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 flex items-center gap-2 text-sm font-medium"
-            >
-              <FaSyncAlt />
-              Try Again
-            </button>
+      {!loading && reportData.length > 0 ? (
+        <section className={`${SURFACE_CLASS} p-4 sm:p-5`}>
+          <div className="mb-5">
+            <h2 className="text-xl font-semibold text-slate-950">
+              Bottom insights
+            </h2>
           </div>
-        </div>
-      )}
 
-      {/* Summary & Help */}
-      {!loading && reportData.length > 0 && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
-          {/* Status Legend */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-            <h4 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <FaQuestionCircle className="text-gray-500" />
-              Status Legend
-            </h4>
-            <div className="space-y-3">
-              {[
-                { label: "Excellent", color: "green", threshold: "≥75%" },
-                { label: "Good", color: "yellow", threshold: "50-74%" },
-                { label: "Needs Work", color: "orange", threshold: "25-49%" },
-                { label: "Critical", color: "red", threshold: "<25%" },
-              ].map((item) => (
-                <div
-                  key={item.color}
-                  className="flex items-center justify-between p-3 border border-gray-100 rounded-lg"
-                >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`w-3 h-3 rounded-full bg-${item.color}-500`}
-                    ></div>
-                    <span className="font-medium text-gray-900">
-                      {item.label}
-                    </span>
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+            <article className={`${PANEL_CLASS} p-5`}>
+              <h3 className="flex items-center gap-2 text-lg font-semibold text-slate-950">
+                <FaQuestionCircle className="text-slate-400" />
+                Status Legend
+              </h3>
+
+              <div className="mt-5 space-y-4">
+                {LEGEND_ITEMS.map((item) => (
+                  <div
+                    key={item.label}
+                    className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 rounded-2xl border border-slate-100 px-4 py-3"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span
+                        className={`inline-block h-3 w-3 rounded-full ${item.dotClassName}`}
+                      />
+                      <span className="font-semibold text-slate-900">
+                        {item.label}
+                      </span>
+                    </div>
+                    <div className="text-sm text-slate-500">{item.threshold}</div>
+                    <div />
+                    <div className="text-sm text-slate-500">{item.note}</div>
                   </div>
-                  <span className="text-sm text-gray-600">
-                    {item.threshold}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
+                ))}
+              </div>
+            </article>
 
-          {/* Summary Statistics */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-            <h4 className="font-bold text-gray-900 mb-4">Summary Statistics</h4>
-            <div className="space-y-4">
-              <div>
-                <div className="flex justify-between mb-1">
-                  <span className="text-sm text-gray-600">
-                    Publication Rate
+            <article className={`${PANEL_CLASS} p-5`}>
+              <h3 className="text-lg font-semibold text-slate-950">
+                Summary Statistics
+              </h3>
+
+              <div className="mt-5">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-medium text-slate-500">
+                    Overall Publish Rate
                   </span>
-                  <span className="text-sm font-medium text-gray-900">
+                  <span className="text-3xl font-semibold tracking-tight text-slate-950">
                     {overallPublishPercentage}%
                   </span>
                 </div>
-                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+
+                <div className="mt-4">
                   <div
-                    className="h-full bg-blue-500 rounded-full"
-                    style={{ width: `${overallPublishPercentage}%` }}
-                  />
+                    className="relative h-3 rounded-full"
+                    style={{
+                      background:
+                        "linear-gradient(90deg,#16a34a 0%,#22c55e 65%,#f59e0b 84%,#ef4444 100%)",
+                    }}
+                  >
+                    <span
+                      className="absolute top-1/2 h-5 w-1.5 -translate-y-1/2 rounded-full bg-white shadow-[0_10px_18px_-12px_rgba(15,23,42,0.4)]"
+                      style={{
+                        left: `calc(${Math.max(
+                          0,
+                          Math.min(100, overallPublishPercentage),
+                        )}% - 3px)`,
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-3 border border-gray-100 rounded-lg">
-                  <p className="text-2xl font-bold text-green-600">
-                    {totals.published}
+
+              <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="rounded-2xl border border-emerald-100 bg-emerald-50/80 p-4">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-emerald-700">
+                    <FaEye />
+                    Published Products
+                  </div>
+                  <p className="mt-3 text-[2rem] font-semibold tracking-tight text-slate-950">
+                    {formatCount(totals.published)}
                   </p>
-                  <p className="text-sm text-gray-600">Published Products</p>
+                  <p className="mt-1 text-sm text-slate-500">
+                    {overallPublishPercentage}% of total
+                  </p>
                 </div>
-                <div className="p-3 border border-gray-100 rounded-lg">
-                  <p className="text-2xl font-bold text-yellow-600">
-                    {totals.drafts}
+
+                <div className="rounded-2xl border border-amber-100 bg-amber-50/80 p-4">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-amber-700">
+                    <FaEdit />
+                    Draft Products
+                  </div>
+                  <p className="mt-3 text-[2rem] font-semibold tracking-tight text-slate-950">
+                    {formatCount(totals.drafts)}
                   </p>
-                  <p className="text-sm text-gray-600">Draft Products</p>
+                  <p className="mt-1 text-sm text-slate-500">
+                    {overallDraftPercentage}% of total
+                  </p>
                 </div>
               </div>
-            </div>
-          </div>
+            </article>
 
-          {/* Help Text */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-            <h4 className="font-bold text-gray-900 mb-4">How This Works</h4>
-            <p className="text-gray-700 text-sm mb-3">
-              This report shows the publication status of products across
-              different types. Published products are live and visible to
-              customers, while drafts are still in progress.
-            </p>
-            <ul className="text-sm text-gray-600 space-y-2">
-              <li className="flex items-start">
-                <div className="w-1.5 h-1.5 bg-blue-500 rounded-full mt-1.5 mr-2 flex-shrink-0"></div>
-                <span>
-                  Use the toggle to switch between card and table views
-                </span>
-              </li>
-              <li className="flex items-start">
-                <div className="w-1.5 h-1.5 bg-green-500 rounded-full mt-1.5 mr-2 flex-shrink-0"></div>
-                <span>Status indicates publication completion percentage</span>
-              </li>
-              <li className="flex items-start">
-                <div className="w-1.5 h-1.5 bg-purple-500 rounded-full mt-1.5 mr-2 flex-shrink-0"></div>
-                <span>Refresh to get the latest data</span>
-              </li>
-            </ul>
-          </div>
-        </div>
-      )}
+            <article className={`${PANEL_CLASS} p-5`}>
+              <h3 className="text-lg font-semibold text-slate-950">
+                How This Works
+              </h3>
 
-      {/* Last Updated */}
-      {!loading && (
-        <div className="mt-8 pt-6 border-t border-gray-200 text-center">
-          <p className="text-gray-500 text-sm">
-            Report last updated: {new Date().toLocaleString()}
-          </p>
+              <div className="mt-5 space-y-4">
+                <div className="flex items-start gap-3 rounded-2xl border border-slate-100 px-4 py-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
+                    <FaListUl />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-slate-900">
+                      Cards / Table Toggle
+                    </p>
+                    <p className="mt-1 text-sm text-slate-500">
+                      Switch between card view for quick insights or table view
+                      for detailed analysis.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3 rounded-2xl border border-slate-100 px-4 py-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
+                    <FaCheckCircle />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-slate-900">
+                      Publish Percentage
+                    </p>
+                    <p className="mt-1 text-sm text-slate-500">
+                      Calculated as Published / Total x 100. Higher percentage
+                      means better publication health.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3 rounded-2xl border border-slate-100 px-4 py-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-violet-50 text-violet-600">
+                    <FaSyncAlt />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-slate-900">Refresh Data</p>
+                    <p className="mt-1 text-sm text-slate-500">
+                      Click the refresh button to get the latest publication
+                      status directly from the server.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </article>
+          </div>
+        </section>
+      ) : null}
+
+      {!loading ? (
+        <div className="flex items-center justify-center gap-2 pt-2 text-sm text-slate-500">
+          <FaClock className="text-slate-400" />
+          <span>Report last updated: {formatTimestamp(lastUpdated)}</span>
         </div>
-      )}
+      ) : null}
     </div>
   );
 };
 
 export default ProductPublishStatusReport;
-
-

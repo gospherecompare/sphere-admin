@@ -241,7 +241,7 @@ const MainLayout = ({
                   element={<ROUTE_CONFIG.ramStorageConfig.component />}
                 />
                 <Route
-                  path="/specifications/categories/create"
+                  path="/specifications/categories"
                   element={<ROUTE_CONFIG.categoryManagement.component />}
                 />
                 <Route

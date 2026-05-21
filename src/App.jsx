@@ -582,6 +582,18 @@ function App() {
             element={<RamStorageConfig />}
           />
           <Route
+            path="specifications/categories"
+            element={
+              <AccessGate
+                requiredAnyPermissions={["settings.view", "products.view"]}
+                title="Category management access required"
+                message="This screen is limited to product and settings roles."
+              >
+                <CategoryManagement mode="list" />
+              </AccessGate>
+            }
+          />
+          <Route
             path="specifications/categories/create"
             element={
               <AccessGate
@@ -589,7 +601,19 @@ function App() {
                 title="Category management access required"
                 message="This screen is limited to product and settings roles."
               >
-                <CategoryManagement />
+                <CategoryManagement mode="create" />
+              </AccessGate>
+            }
+          />
+          <Route
+            path="specifications/categories/edit/:categoryId"
+            element={
+              <AccessGate
+                requiredAnyPermissions={["settings.view", "products.view"]}
+                title="Category management access required"
+                message="This screen is limited to product and settings roles."
+              >
+                <CategoryManagement mode="edit" />
               </AccessGate>
             }
           />

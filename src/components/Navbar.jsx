@@ -8,19 +8,26 @@ import React, {
 import { useLocation, useNavigate } from "react-router-dom";
 import Cookies from "js-cookie";
 import {
+  FaArrowRight,
   FaBars,
   FaBell,
+  FaBoxOpen,
+  FaCalendarCheck,
   FaCheckCircle,
   FaChevronDown,
   FaCog,
+  FaDatabase,
   FaEnvelope,
   FaExclamationTriangle,
+  FaFileAlt,
   FaHeadset,
   FaSearch,
   FaSignOutAlt,
   FaSpinner,
+  FaShieldAlt,
   FaTimes,
   FaUser,
+  FaChartLine,
 } from "react-icons/fa";
 import { buildUrl, getAuthToken } from "../api";
 import { getSearchNavigationTarget } from "../utils/searchNavigation";
@@ -28,6 +35,21 @@ import {
   EMPTY_SUMMARY,
   createMobileReminderSummary,
 } from "../utils/mobileReminders";
+
+const MOBILE_ROUTE_TITLES = [
+  {
+    match: (pathname) => pathname === "/reports/recentactivity",
+    title: "Recent Publish Activity",
+  },
+  {
+    match: (pathname) => pathname === "/reports/search-popularity",
+    title: "Search Popularity Report",
+  },
+  {
+    match: (pathname) => pathname === "/reports/hook-score",
+    title: "Hook Score Report",
+  },
+];
 
 const extractSmartphoneRows = (payload) => {
   if (Array.isArray(payload)) return payload;
@@ -133,85 +155,170 @@ const SearchSuggestions = ({
   );
 };
 
-const NotificationPanel = ({ summary, loading, error, onSelect }) => {
+const getNotificationVisual = (item = {}) => {
+  const kind = String(item?.kind || "").trim().toLowerCase();
+  const group = String(item?.group || "").trim().toLowerCase();
+
+  if (
+    kind === "launch_sale_today" ||
+    kind === "sale_today" ||
+    kind === "launch_today"
+  ) {
+    return {
+      icon: FaCalendarCheck,
+      iconClassName: "text-[#2962FF]",
+      frameClassName:
+        "bg-[linear-gradient(180deg,#EFF5FF_0%,#E9F1FF_100%)] ring-1 ring-[#D8E5FF]",
+    };
+  }
+
+  if (kind === "upcoming_launch" || kind === "upcoming_sale" || group === "upcoming") {
+    return {
+      icon: FaBoxOpen,
+      iconClassName: "text-emerald-600",
+      frameClassName:
+        "bg-[linear-gradient(180deg,#ECFDF5_0%,#E5F9EF_100%)] ring-1 ring-emerald-100",
+    };
+  }
+
+  if (kind === "missing_info" || group === "update") {
+    return {
+      icon: FaFileAlt,
+      iconClassName: "text-violet-600",
+      frameClassName:
+        "bg-[linear-gradient(180deg,#F6F0FF_0%,#F1E9FF_100%)] ring-1 ring-violet-100",
+    };
+  }
+
+  if (kind === "released_recent" || group === "released") {
+    return {
+      icon: FaChartLine,
+      iconClassName: "text-slate-500",
+      frameClassName:
+        "bg-[linear-gradient(180deg,#F8FAFC_0%,#F1F5F9_100%)] ring-1 ring-slate-200",
+    };
+  }
+
+  return {
+    icon: FaShieldAlt,
+    iconClassName: "text-amber-500",
+    frameClassName:
+      "bg-[linear-gradient(180deg,#FFF7ED_0%,#FFF2E2_100%)] ring-1 ring-amber-100",
+  };
+};
+
+const NotificationPanel = ({ summary, loading, error, onSelect, isMobile }) => {
   const items = summary?.items || [];
+  const visibleItems = items.slice(0, isMobile ? 4 : 6);
 
   return (
-    <div className="absolute right-0 top-[calc(100%+12px)] z-50 w-[min(24rem,calc(100vw-1.5rem))] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_25px_55px_rgba(15,23,42,0.14)]">
-      <div className="flex items-center justify-between border-b border-slate-100 px-4 py-4">
-        <h3 className="text-sm font-semibold text-slate-950">Notifications</h3>
-        <button type="button" className="text-xs font-semibold text-[#345CFF]">
+    <div
+      className={`absolute right-0 top-[calc(100%+12px)] z-50 overflow-hidden rounded-[22px] border border-slate-200/90 bg-white shadow-[0_28px_60px_rgba(15,23,42,0.12)] ${
+        isMobile
+          ? "w-[min(22rem,calc(100vw-1rem))]"
+          : "w-[min(43rem,calc(100vw-2rem))]"
+      }`}
+    >
+      <div className="pointer-events-none absolute left-auto right-8 top-0 h-4 w-4 -translate-y-1/2 rotate-45 border-l border-t border-slate-200 bg-white" />
+
+      <div className="relative flex items-center justify-between border-b border-slate-200 px-4 py-4 sm:px-5 sm:py-5">
+        <div className="sm:hidden absolute left-1/2 top-2 h-1 w-10 -translate-x-1/2 rounded-full bg-slate-200" />
+        <h3 className="pt-2 text-[1.05rem] font-semibold tracking-[-0.01em] text-slate-950 sm:pt-0">
+          Notifications
+        </h3>
+        <button
+          type="button"
+          className="pt-2 text-sm font-semibold text-[#315EFB] transition hover:text-[#2249D8] sm:pt-0"
+        >
           Mark all as read
         </button>
       </div>
 
       {loading ? (
-        <div className="px-4 py-8 text-center">
-          <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 text-slate-500">
-            <FaSpinner className="animate-spin text-base" />
+        <div className="flex min-h-[21rem] flex-col items-center justify-center px-5 py-10 text-center">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-[22px] bg-[linear-gradient(180deg,#F8FAFF_0%,#EEF3FF_100%)] text-[#315EFB] ring-1 ring-[#E1E9FF]">
+            <FaSpinner className="animate-spin text-lg" />
           </div>
-          <p className="mt-3 text-sm font-semibold text-slate-800">
+          <p className="mt-4 text-base font-semibold text-slate-900">
             Loading notifications
+          </p>
+          <p className="mt-1 text-sm text-slate-500">
+            Syncing the latest activity for your workspace.
           </p>
         </div>
       ) : error && items.length === 0 ? (
-        <div className="px-4 py-8 text-center">
-          <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-rose-50 text-rose-500">
-            <FaExclamationTriangle className="text-base" />
+        <div className="flex min-h-[21rem] flex-col items-center justify-center px-5 py-10 text-center">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-[22px] bg-[linear-gradient(180deg,#FFF1F2_0%,#FFE7EA_100%)] text-rose-500 ring-1 ring-rose-100">
+            <FaExclamationTriangle className="text-lg" />
           </div>
-          <p className="mt-3 text-sm font-semibold text-slate-800">
+          <p className="mt-4 text-base font-semibold text-slate-900">
             Failed to load notifications
           </p>
-          <p className="mt-1 text-xs text-slate-500">{error}</p>
-          <div className="mt-4 text-xs font-semibold text-[#345CFF]">
+          <p className="mt-2 max-w-[18rem] text-sm leading-6 text-slate-500">
+            {error}
+          </p>
+          <div className="mt-4 text-sm font-semibold text-[#315EFB]">
             Tap the bell again to retry
           </div>
         </div>
       ) : items.length === 0 ? (
-        <div className="px-4 py-8 text-center">
-          <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-500">
-            <FaCheckCircle className="text-base" />
+        <div className="flex min-h-[26rem] flex-col items-center justify-center px-5 py-10 text-center">
+          <div className="mx-auto flex h-28 w-28 items-center justify-center rounded-full bg-[radial-gradient(circle_at_top,#EEF2FF_0%,#F6F7FF_58%,#FBFCFF_100%)] text-[#8CA0FF] ring-1 ring-[#E9ECFF]">
+            <FaBell className="text-4xl" />
           </div>
-          <p className="mt-3 text-sm font-semibold text-slate-800">
-            No new notifications
+          <p className="mt-7 text-[1.7rem] font-semibold tracking-[-0.02em] text-slate-950">
+            You're all caught up!
+          </p>
+          <p className="mt-3 max-w-[17rem] text-sm leading-6 text-slate-500">
+            No new notifications at the moment.
           </p>
         </div>
       ) : (
         <>
-          <div className="max-h-[22rem] overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:w-0">
-            {items.slice(0, 4).map((item) => (
+          <div className="max-h-[34rem] overflow-y-auto [scrollbar-width:thin] [scrollbar-color:#CBD5E1_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-track]:bg-transparent">
+            {visibleItems.map((item) => {
+              const visual = getNotificationVisual(item);
+              const Icon = visual.icon;
+
+              return (
               <button
                 key={item.id}
                 type="button"
                 onClick={() => onSelect(item)}
-                className="flex w-full items-start gap-3 border-b border-slate-100 px-4 py-4 text-left transition hover:bg-slate-50"
+                className="flex w-full items-start gap-3 border-b border-slate-100 px-4 py-4 text-left transition hover:bg-slate-50/80 sm:gap-4 sm:px-5 sm:py-5"
               >
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F5F7FF] text-slate-500">
-                  <FaBell className="text-sm" />
+                <div
+                  className={`mt-0.5 flex h-14 w-14 shrink-0 items-center justify-center rounded-[18px] ${visual.frameClassName}`}
+                >
+                  <Icon className={`text-[1.35rem] ${visual.iconClassName}`} />
                 </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-slate-900">
-                    {item.title}
-                  </p>
-                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                <div className="min-w-0 flex-1 pr-2">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="pr-2 text-base font-semibold tracking-[-0.01em] text-slate-950">
+                      {item.title}
+                    </p>
+                    <span className="shrink-0 text-sm text-slate-400">
+                      {item.whenLabel || "Now"}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-sm leading-7 text-slate-600">
                     {item.description}
                   </p>
                 </div>
-                <div className="flex min-w-[48px] flex-col items-end gap-2">
-                  <span className="text-xs text-slate-400">
-                    {item.whenLabel || "Now"}
-                  </span>
-                  <span className="h-2.5 w-2.5 rounded-full bg-[#345CFF]" />
+                <div className="flex min-h-[3.5rem] shrink-0 items-center pl-1">
+                  <span className="h-2.5 w-2.5 rounded-full bg-[#2F63FF]" />
                 </div>
               </button>
-            ))}
+              );
+            })}
           </div>
-          <div className="border-t border-slate-100 px-4 py-4 text-center">
+          <div className="border-t border-slate-200 px-4 py-4 text-center sm:px-5 sm:py-5">
             <button
               type="button"
-              className="text-sm font-semibold text-[#4A55FF]"
+              className="inline-flex items-center gap-2 text-base font-semibold text-[#315EFB] transition hover:text-[#2249D8]"
             >
               View all notifications
+              <FaArrowRight className="text-sm" />
             </button>
           </div>
         </>
@@ -313,6 +420,12 @@ const Navbar = ({ isMobile, sidebarOpen, onToggleSidebar, onLogout }) => {
     Cookies.get("userEmail") || Cookies.get("username") || "John Doe";
   const role = Cookies.get("userRole") || Cookies.get("role") || "Super Admin";
   const userName = Cookies.get("userName") || email;
+  const mobilePageTitle = useMemo(() => {
+    const pathname = location.pathname || "";
+    return (
+      MOBILE_ROUTE_TITLES.find((entry) => entry.match(pathname))?.title || ""
+    );
+  }, [location.pathname]);
 
   const notificationCountLabel = useMemo(() => {
     if (notificationSummary.total <= 0) return "12";
@@ -616,7 +729,7 @@ const Navbar = ({ isMobile, sidebarOpen, onToggleSidebar, onLogout }) => {
     return (
       <nav className="sticky top-0 z-40 border-b border-slate-200 bg-white shadow-[0_14px_35px_rgba(15,23,42,0.06)]">
         <div className="px-2 py-3">
-          <div className="flex items-center justify-between gap-3">
+          <div className="relative flex items-center justify-between gap-3">
             <button
               type="button"
               onClick={(event) => {
@@ -628,6 +741,14 @@ const Navbar = ({ isMobile, sidebarOpen, onToggleSidebar, onLogout }) => {
             >
               <FaBars className="text-base" />
             </button>
+
+            {!mobileSearchOpen && mobilePageTitle ? (
+              <div className="pointer-events-none absolute left-12 right-24 flex items-center justify-center">
+                <p className="truncate px-2 text-sm font-semibold tracking-[-0.01em] text-slate-900">
+                  {mobilePageTitle}
+                </p>
+              </div>
+            ) : null}
 
             <div className="flex items-center gap-2">
               <button
@@ -661,6 +782,7 @@ const Navbar = ({ isMobile, sidebarOpen, onToggleSidebar, onLogout }) => {
                     loading={notificationsLoading}
                     error={notificationError}
                     onSelect={handleReminderSelect}
+                    isMobile
                   />
                 ) : null}
               </div>
@@ -732,6 +854,7 @@ const Navbar = ({ isMobile, sidebarOpen, onToggleSidebar, onLogout }) => {
                 loading={notificationsLoading}
                 error={notificationError}
                 onSelect={handleReminderSelect}
+                isMobile={false}
               />
             ) : null}
           </div>
