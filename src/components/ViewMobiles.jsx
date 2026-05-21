@@ -24,7 +24,13 @@ import {
 } from "react-icons/fa";
 import Cookies from "js-cookie";
 import { buildUrl } from "../api";
-import { isUpcomingOrPreorder } from "../utils/mobileStatus";
+import {
+  formatLaunchStageLabel,
+  formatSaleStageLabel,
+  formatStoreStageLabel,
+  getMobileLifecycleState,
+  isUpcomingOrPreorder,
+} from "../utils/mobileStatus";
 
 const DEFAULT_TITLE = "View Mobiles";
 const DEFAULT_SUBTITLE = "Manage and view all smartphone listings on your platform.";
@@ -41,6 +47,22 @@ const clampScore = (value) => {
   const parsed = toScore(value);
   if (parsed === null) return null;
   return Math.max(0, Math.min(100, Math.round(parsed)));
+};
+
+const normalizeScore100Value = (value) => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return null;
+  if (parsed <= 1) return Math.max(0, Math.min(100, parsed * 100));
+  if (parsed <= 10) return Math.max(0, Math.min(100, parsed * 10));
+  return Math.max(0, Math.min(100, parsed));
+};
+
+const resolveFirstNormalizedScore = (...values) => {
+  for (const value of values) {
+    const normalized = normalizeScore100Value(value);
+    if (normalized !== null) return normalized;
+  }
+  return null;
 };
 
 const normalizeText = (value) =>
@@ -107,7 +129,8 @@ const collectStorageTech = (mobile, variant = null) =>
   );
 
 const getStatusValue = (mobile) => {
-  if (isUpcomingOrPreorder(mobile)) return "upcoming";
+  if (["rumored", "announced", "upcoming"].includes(mobile.launchStage))
+    return "upcoming";
   return mobile.published ? "published" : "draft";
 };
 
@@ -265,25 +288,49 @@ const resolveHas5G = (mobile) => {
   return searchableText.includes("5g");
 };
 
-const resolveCompareScore = (mobile) => {
+const resolveSpecScore = (mobile) => {
   const raw = mobile.raw || mobile;
-  return clampScore(
-    firstFilledValue(
-      getFirstPathValue(raw, ["compare_score", "compareScore", "scores.compare"]),
-      mobile.buyer_intent,
-      mobile.hook_score !== null && mobile.hook_score !== undefined ? Number(mobile.hook_score) - 1 : null,
-    ),
-  );
-};
-
-const resolveCameraScore = (mobile) => {
-  const raw = mobile.raw || mobile;
-  return clampScore(
-    firstFilledValue(
-      getFirstPathValue(raw, ["camera_score", "cameraScore", "scores.camera", "camera.score"]),
-      mobile.freshness,
-      mobile.hook_score !== null && mobile.hook_score !== undefined ? Number(mobile.hook_score) + 2 : null,
-    ),
+  return resolveFirstNormalizedScore(
+    getFirstPathValue(raw, [
+      "spec_score_v2_display_80_98",
+      "specScoreV2Display8098",
+      "overall_score_v2_display_80_98",
+      "overallScoreV2Display8098",
+      "spec_score_display",
+      "specScoreDisplay",
+      "overall_score_display",
+      "overallScoreDisplay",
+    ]),
+    getFirstPathValue(raw, [
+      "spec_score_v2",
+      "specScoreV2",
+      "overall_score_v2",
+      "overallScoreV2",
+      "spec_score",
+      "specScore",
+      "overall_score",
+      "overallScore",
+    ]),
+    getFirstPathValue(mobile, [
+      "spec_score_v2_display_80_98",
+      "specScoreV2Display8098",
+      "overall_score_v2_display_80_98",
+      "overallScoreV2Display8098",
+      "spec_score_display",
+      "specScoreDisplay",
+      "overall_score_display",
+      "overallScoreDisplay",
+    ]),
+    getFirstPathValue(mobile, [
+      "spec_score_v2",
+      "specScoreV2",
+      "overall_score_v2",
+      "overallScoreV2",
+      "spec_score",
+      "specScore",
+      "overall_score",
+      "overallScore",
+    ]),
   );
 };
 
@@ -723,15 +770,24 @@ const ViewMobiles = ({
 
   const enhancedMobiles = useMemo(
     () =>
-      mobiles.map((mobile) => ({
-        ...mobile,
-        os: resolveOperatingSystem(mobile),
-        has5g: resolveHas5G(mobile),
-        compareScore: resolveCompareScore(mobile),
-        cameraScore: resolveCameraScore(mobile),
-        performanceScore: resolvePerformanceScore(mobile),
-        compareEnabled: resolveCompareScore(mobile) !== null,
-      })),
+      mobiles.map((mobile) => {
+        const lifecycle = getMobileLifecycleState(mobile);
+        const scoredMobile = {
+          ...mobile,
+          launchStage: lifecycle.launchStage,
+          saleStage: lifecycle.saleStage,
+          storeStage: lifecycle.storeStage,
+        };
+        const specScore = resolveSpecScore(scoredMobile);
+        return {
+          ...scoredMobile,
+          os: resolveOperatingSystem(mobile),
+          has5g: resolveHas5G(mobile),
+          specScore,
+          performanceScore: resolvePerformanceScore(mobile),
+          hasSpecScore: specScore !== null,
+        };
+      }),
     [mobiles],
   );
 
@@ -930,7 +986,7 @@ const ViewMobiles = ({
   const publishedMobiles = enhancedMobiles.filter((mobile) => getStatusValue(mobile) === "published").length;
   const draftMobiles = enhancedMobiles.filter((mobile) => getStatusValue(mobile) === "draft").length;
   const upcomingMobiles = enhancedMobiles.filter((mobile) => getStatusValue(mobile) === "upcoming").length;
-  const compareEnabledCount = enhancedMobiles.filter((mobile) => mobile.compareEnabled).length;
+  const specScoreReadyCount = enhancedMobiles.filter((mobile) => mobile.hasSpecScore).length;
   const averageHookScore = (() => {
     const scores = enhancedMobiles.map((mobile) => clampScore(mobile.hook_score)).filter((value) => value !== null);
     if (scores.length === 0) return "N/A";
@@ -1162,7 +1218,7 @@ const ViewMobiles = ({
           title: mobile.name,
           slug: slugify(mobile.name),
           publishEnabled: mobile.published,
-          launchStatus: getStatusValue(mobile) === "upcoming" ? "upcoming" : mobile.published ? "released" : "announced",
+          launchStatus: mobile.launchStage || "released",
           savedAt: new Date().toISOString(),
           formData: {
             product: {
@@ -1278,8 +1334,8 @@ const ViewMobiles = ({
           <StatCard
             icon={FaFilter}
             iconClassName="bg-blue-50 text-blue-600"
-            label="Compare Enabled"
-            value={compareEnabledCount}
+            label="Spec Score Ready"
+            value={specScoreReadyCount}
             delta="15.2%"
           />
           <StatCard
@@ -1444,8 +1500,7 @@ const ViewMobiles = ({
                 <th className="px-3 py-3">Launch Date</th>
                 <th className="px-3 py-3">Price Range</th>
                 <th className="px-3 py-3">Hook Score</th>
-                <th className="px-3 py-3">Compare Score</th>
-                <th className="px-3 py-3">Camera Score</th>
+                <th className="px-3 py-3">Spec Score</th>
                 <th className="px-3 py-3">Performance Score</th>
                 <th className="px-3 py-3">Search Volume</th>
                 <th className="px-3 py-3">Status</th>
@@ -1456,7 +1511,7 @@ const ViewMobiles = ({
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="13" className="px-4 py-16 text-center">
+                  <td colSpan="12" className="px-4 py-16 text-center">
                     <div className="flex flex-col items-center gap-3 text-slate-500">
                       <FaSpinner className="animate-spin text-2xl text-[#5A49FF]" />
                       Loading mobile inventory...
@@ -1465,7 +1520,7 @@ const ViewMobiles = ({
                 </tr>
               ) : paginatedMobiles.length === 0 ? (
                 <tr>
-                  <td colSpan="13" className="px-4 py-16 text-center">
+                  <td colSpan="12" className="px-4 py-16 text-center">
                     <div className="flex flex-col items-center gap-3 text-slate-500">
                       <FaMobile className="text-4xl text-slate-300" />
                       <p className="text-base font-semibold text-slate-700">
@@ -1523,7 +1578,17 @@ const ViewMobiles = ({
                         <div className="font-medium text-slate-900">{mobile.brand}</div>
                       </td>
 
-                      <td className="px-3 py-3 text-slate-700">{formatDate(mobile.launch_date)}</td>
+                      <td className="px-3 py-3 text-slate-700">
+                        <div>
+                          <div>{formatDate(mobile.launch_date)}</div>
+                          <div className="mt-1 text-xs text-slate-500">
+                            {formatLaunchStageLabel(mobile.launchStage) || "Released"}
+                          </div>
+                          <div className="text-xs text-slate-400">
+                            {formatSaleStageLabel(mobile.saleStage) || "Sale Date TBA"}
+                          </div>
+                        </div>
+                      </td>
 
                       <td className="px-3 py-3 font-medium text-slate-700">{formatPriceRange(mobile)}</td>
 
@@ -1535,13 +1600,7 @@ const ViewMobiles = ({
 
                       <td className="px-3 py-3">
                         <span className="inline-flex min-w-[2.5rem] items-center justify-center border border-indigo-200 bg-indigo-50 px-3 py-1 text-sm font-semibold text-indigo-700">
-                          {formatScoreChip(mobile.compareScore)}
-                        </span>
-                      </td>
-
-                      <td className="px-3 py-3">
-                        <span className="inline-flex min-w-[2.5rem] items-center justify-center border border-blue-200 bg-blue-50 px-3 py-1 text-sm font-semibold text-blue-700">
-                          {formatScoreChip(mobile.cameraScore)}
+                          {formatScoreChip(mobile.specScore)}
                         </span>
                       </td>
 
@@ -1554,16 +1613,21 @@ const ViewMobiles = ({
                       <td className="px-3 py-3 font-medium text-slate-700">{resolveSearchVolume(mobile, startIndex + index)}</td>
 
                       <td className="px-3 py-3">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (getStatusValue(mobile) === "upcoming") return;
-                            togglePublish(mobile);
-                          }}
-                          className={`inline-flex px-2 py-1 text-xs font-semibold ${getStatusClasses(mobile)}`}
-                        >
-                          {getStatusLabel(mobile)}
-                        </button>
+                        <div className="flex flex-col items-start gap-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (getStatusValue(mobile) === "upcoming") return;
+                              togglePublish(mobile);
+                            }}
+                            className={`inline-flex px-2 py-1 text-xs font-semibold ${getStatusClasses(mobile)}`}
+                          >
+                            {getStatusLabel(mobile)}
+                          </button>
+                          <span className="text-xs text-slate-500">
+                            {formatStoreStageLabel(mobile.storeStage) || "No Store Listing"}
+                          </span>
+                        </div>
                       </td>
 
                       <td className="px-3 py-3">
@@ -1709,6 +1773,18 @@ const ViewMobiles = ({
 
                           <div className="pt-1">
                             <MobileInfoRow label="Launch Date" value={formatDate(mobile.launch_date)} />
+                            <MobileInfoRow
+                              label="Launch Stage"
+                              value={formatLaunchStageLabel(mobile.launchStage) || "Released"}
+                            />
+                            <MobileInfoRow
+                              label="Sale Stage"
+                              value={formatSaleStageLabel(mobile.saleStage) || "Sale Date TBA"}
+                            />
+                            <MobileInfoRow
+                              label="Store State"
+                              value={formatStoreStageLabel(mobile.storeStage) || "No Store Listing"}
+                            />
                             <MobileInfoRow label="Price Range" value={formatPriceRange(mobile)} />
                             <MobileInfoRow label="Search Volume" value={resolveSearchVolume(mobile, startIndex + index)} />
                             <MobileInfoRow
@@ -1729,14 +1805,9 @@ const ViewMobiles = ({
                               className="border-emerald-200 bg-emerald-50 text-emerald-700"
                             />
                             <MobileInlineScore
-                              label="Compare"
-                              value={formatScoreChip(mobile.compareScore)}
+                              label="Spec Score"
+                              value={formatScoreChip(mobile.specScore)}
                               className="border-indigo-200 bg-indigo-50 text-indigo-700"
-                            />
-                            <MobileInlineScore
-                              label="Camera"
-                              value={formatScoreChip(mobile.cameraScore)}
-                              className="border-blue-200 bg-blue-50 text-blue-700"
                             />
                             <MobileInlineScore
                               label="Performance"

@@ -271,7 +271,7 @@ const ROUTE_TRAILS = [
     trail: [
       DASHBOARD_CRUMB,
       { label: "Reports", to: "/reports/useractivity" },
-      { label: "Publish Status" },
+      { label: "Product Publish Status" },
     ],
   },
   {

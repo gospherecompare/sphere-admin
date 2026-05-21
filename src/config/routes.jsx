@@ -285,7 +285,7 @@ export const ROUTE_CONFIG = {
   productPublishStatusReport: {
     path: "/reports/productpublishstatus",
     component: ProductPublishStatusReport,
-    label: "Product Publish Status Report",
+    label: "Product Publish Status",
   },
   launchTimingReport: {
     path: "/reports/launch-timing",

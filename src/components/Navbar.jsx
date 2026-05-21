@@ -38,6 +38,10 @@ import {
 
 const MOBILE_ROUTE_TITLES = [
   {
+    match: (pathname) => pathname === "/reports/productpublishstatus",
+    title: "Product Publish Status",
+  },
+  {
     match: (pathname) => pathname === "/reports/recentactivity",
     title: "Recent Publish Activity",
   },

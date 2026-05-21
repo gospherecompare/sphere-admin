@@ -70,7 +70,7 @@ const TITLE_ROUTES = [
   routeMeta("/reports", "Reporting Command Center", "Analytics Operations Cloud"),
   routeMeta("/analytics", "Publishing by User Analytics", "Analytics Operations Cloud"),
   routeMeta("/reports/productcategories", "Product Category Insights", "Analytics Operations Cloud"),
-  routeMeta("/reports/productpublishstatus", "Publish Status Analytics", "Analytics Operations Cloud"),
+  routeMeta("/reports/productpublishstatus", "Product Publish Status", "Analytics Operations Cloud"),
   routeMeta("/reports/launch-timing", "Launch Timing Intelligence", "Analytics Operations Cloud"),
   routeMeta("/reports/useractivity", "Publishing by User Analytics", "Analytics Operations Cloud"),
   routeMeta("/reports/recentactivity", "Recent Publish Activity Monitor", "Analytics Operations Cloud"),

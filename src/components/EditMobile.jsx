@@ -11,6 +11,13 @@ import {
   saveSmartphonePreviewSnapshot,
 } from "../utils/smartphonePreview";
 import {
+  formatLaunchStageLabel,
+  formatSaleStageLabel,
+  formatStoreStageLabel,
+  getSmartphoneLifecycle,
+  isUpcomingLaunchStage,
+} from "../utils/smartphoneLifecycle";
+import {
   editorCardClassName,
   editorDangerButtonClassName,
   editorFieldClassName,
@@ -67,75 +74,6 @@ import {
   FaPercent,
   FaSimCard,
 } from "react-icons/fa";
-
-const getEarliestSaleStartDate = (variants = []) => {
-  const dates = [];
-  const parseDate = (value) => {
-    if (!value) return null;
-    const isoMatch = String(value).trim().match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if (isoMatch) {
-      const d = new Date(`${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}T00:00:00`);
-      return Number.isNaN(d.getTime()) ? null : d;
-    }
-    const parsed = new Date(value);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
-  };
-
-  (Array.isArray(variants) ? variants : []).forEach((variant) => {
-    const direct = parseDate(
-      variant?.sale_start_date ||
-        variant?.saleStartDate ||
-        variant?.sale_date ||
-        variant?.saleDate ||
-        null,
-    );
-    if (direct) dates.push(direct);
-    const stores = Array.isArray(variant?.stores)
-      ? variant.stores
-      : Array.isArray(variant?.store_prices)
-        ? variant.store_prices
-        : [];
-    stores.forEach((store) => {
-      const storeDate = parseDate(
-        store?.sale_start_date ||
-          store?.saleStartDate ||
-          store?.sale_date ||
-          store?.saleDate ||
-          store?.available_from ||
-          store?.availableFrom ||
-          null,
-      );
-      if (storeDate) dates.push(storeDate);
-    });
-  });
-
-  if (!dates.length) return null;
-  return dates.sort((a, b) => a - b)[0];
-};
-
-const getLaunchStatus = (launchDate, preorderUrl, variants = []) => {
-  const hasPreorder = Boolean(String(preorderUrl || "").trim());
-  const saleStart = getEarliestSaleStartDate(variants);
-  if (saleStart) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return saleStart > today ? "upcoming" : "available";
-  }
-  const date = launchDate ? new Date(launchDate) : null;
-  const dateValid = date && !Number.isNaN(date.getTime());
-  if (hasPreorder) return "upcoming";
-  if (dateValid) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return date > today ? "upcoming" : "released";
-  }
-  return "released";
-};
-
-const formatLaunchStatusLabel = (status) => {
-  if (!status) return "";
-  return status.charAt(0).toUpperCase() + status.slice(1);
-};
 
 const stripSphereFields = (section, disableSphere) => {
   if (!disableSphere || !section || typeof section !== "object") return section;
@@ -242,11 +180,11 @@ const EditMobile = () => {
     enabled: dataLoaded,
   });
 
-  const launchStatusAuto = getLaunchStatus(
-    formData.launch_date,
-    formData.official_preorder_url,
-    formData.variants,
-  );
+  const autoLifecycleState = getSmartphoneLifecycle({
+    launchDate: formData.launch_date,
+    officialPreorderUrl: formData.official_preorder_url,
+    variants: formData.variants,
+  });
   const launchStatusOverrideRaw = String(
     formData.launch_status_override || "",
   ).trim();
@@ -254,10 +192,17 @@ const EditMobile = () => {
     launchStatusOverrideRaw === "preorder"
       ? "upcoming"
       : launchStatusOverrideRaw;
-  const effectiveLaunchStatus = launchStatusOverride || launchStatusAuto;
-  const isUpcomingDevice = ["rumored", "announced", "upcoming"].includes(
-    effectiveLaunchStatus,
-  );
+  const resolvedLifecycleState = getSmartphoneLifecycle({
+    launchDate: formData.launch_date,
+    officialPreorderUrl: formData.official_preorder_url,
+    launchStatus: launchStatusOverride,
+    variants: formData.variants,
+  });
+  const launchStatusAuto = autoLifecycleState.launchStage;
+  const effectiveLaunchStatus = resolvedLifecycleState.launchStage;
+  const saleStage = resolvedLifecycleState.saleStage;
+  const storeStage = resolvedLifecycleState.storeStage;
+  const isUpcomingDevice = isUpcomingLaunchStage(effectiveLaunchStatus);
   const specEditorHiddenKeys = [
     "score",
     "sphere_score",
@@ -3626,19 +3571,22 @@ const EditMobile = () => {
                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
                   >
                     <option value="auto">
-                      Auto (detected: {formatLaunchStatusLabel(launchStatusAuto)})
+                      Auto (detected: {formatLaunchStageLabel(launchStatusAuto)})
                     </option>
                     <option value="rumored">Rumored</option>
                     <option value="announced">Announced</option>
                     <option value="upcoming">Upcoming</option>
                     <option value="released">Released</option>
-                    <option value="available">Available</option>
+                    <option value="available">Available (sale live)</option>
                   </select>
-                  <p className="mt-1 text-xs text-gray-500">
-                    Effective status:{" "}
-                    {formatLaunchStatusLabel(effectiveLaunchStatus)}{" "}
-                    {launchStatusOverride ? "(manual override)" : "(auto)"}
-                  </p>
+                  <div className="mt-1 space-y-1 text-xs text-gray-500">
+                    <p>
+                      Launch stage: {formatLaunchStageLabel(effectiveLaunchStatus)}{" "}
+                      {launchStatusOverride ? "(manual override)" : "(auto)"}
+                    </p>
+                    <p>Sale stage: {formatSaleStageLabel(saleStage) || "Sale Date TBA"}</p>
+                    <p>Store state: {formatStoreStageLabel(storeStage) || "No Store Listing"}</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -5022,7 +4970,15 @@ const EditMobile = () => {
             />
             <EditorSidebarRow
               label="Launch Status"
-              value={formatLaunchStatusLabel(effectiveLaunchStatus) || "Not set"}
+              value={formatLaunchStageLabel(effectiveLaunchStatus) || "Not set"}
+            />
+            <EditorSidebarRow
+              label="Sale Stage"
+              value={formatSaleStageLabel(saleStage) || "Sale Date TBA"}
+            />
+            <EditorSidebarRow
+              label="Store State"
+              value={formatStoreStageLabel(storeStage) || "No Store Listing"}
             />
             <EditorSidebarRow
               label="Launch Date"
