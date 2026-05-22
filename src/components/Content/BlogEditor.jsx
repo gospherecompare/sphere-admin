@@ -72,6 +72,7 @@ const STORY_CATEGORY_OPTIONS = [
 
 const HERO_IMAGE_SOURCE = {
   ASSET: "asset",
+  NONE: "none",
   URL: "url",
 };
 
@@ -82,6 +83,8 @@ const normalizeHeroImageSource = (value) => {
   if (!text) return "";
   if (text === "asset" || text === "product" || text === "product_asset")
     return HERO_IMAGE_SOURCE.ASSET;
+  if (text === "none" || text === "removed" || text === "empty")
+    return HERO_IMAGE_SOURCE.NONE;
   if (text === "url" || text === "upload" || text === "custom")
     return HERO_IMAGE_SOURCE.URL;
   return "";
@@ -153,6 +156,16 @@ const collectImageCandidates = (...inputs) => {
 const getFirstImageCandidate = (...inputs) =>
   collectImageCandidates(...inputs)[0] || "";
 
+const getProductThumbnail = (product) =>
+  getFirstImageCandidate(
+    product?.image,
+    product?.hero_image,
+    product?.image_url,
+    product?.cover_image,
+    product?.thumbnail,
+    product?.images,
+  );
+
 const formatDateLabel = (value) => {
   if (!value) return "Not updated yet";
 
@@ -166,16 +179,6 @@ const formatDateLabel = (value) => {
     hour: "2-digit",
     minute: "2-digit",
   }).format(date);
-};
-
-const formatCompactNumber = (value) => {
-  const num = Number(value);
-  if (!Number.isFinite(num)) return "--";
-
-  return new Intl.NumberFormat(undefined, {
-    notation: "compact",
-    maximumFractionDigits: 1,
-  }).format(num);
 };
 
 const formatDateParts = (value) => {
@@ -283,6 +286,74 @@ const formatCommaSeparatedList = (values = []) =>
 
 const getDefaultStoryCategory = (mode = "general") =>
   mode === "product" ? "launches" : "news";
+
+const normalizeSelectedProductIds = (...sources) => {
+  const seen = new Set();
+  const ids = [];
+
+  const pushValue = (value) => {
+    const normalized = Number(
+      value && typeof value === "object"
+        ? value.product_id ?? value.productId ?? value.id
+        : value,
+    );
+    if (!Number.isInteger(normalized) || normalized <= 0 || seen.has(normalized)) {
+      return;
+    }
+    seen.add(normalized);
+    ids.push(normalized);
+  };
+
+  sources.forEach((source) => {
+    if (Array.isArray(source)) {
+      source.forEach(pushValue);
+      return;
+    }
+    pushValue(source);
+  });
+
+  return ids;
+};
+
+const orderSelectedProducts = (products = [], productIds = []) => {
+  const byId = new Map(
+    (Array.isArray(products) ? products : [])
+      .map((product) => [Number(product?.product_id), product])
+      .filter(([productId]) => Number.isInteger(productId) && productId > 0),
+  );
+  const orderedIds = normalizeSelectedProductIds(productIds);
+  return orderedIds
+    .map((productId) => byId.get(productId))
+    .filter(Boolean);
+};
+
+const buildSelectedProductNames = (products = []) =>
+  (Array.isArray(products) ? products : [])
+    .map((product) => String(product?.name || "").trim())
+    .filter(Boolean);
+
+const buildDefaultProductStoryTitle = (products = []) => {
+  const names = buildSelectedProductNames(products);
+  if (names.length === 0) return "";
+  if (names.length === 1) {
+    return `${names[0]} - Specs, Price and Highlights`;
+  }
+  if (names.length === 2) {
+    return `${names[0]} vs ${names[1]}: Specs, price and key differences`;
+  }
+  if (names.length === 3) {
+    return `${names[0]}, ${names[1]} and ${names[2]}: Launches, pricing and highlights`;
+  }
+  return `${names[0]}, ${names[1]} and ${names.length - 2} more: Launch roundup`;
+};
+
+const buildProductSelectionAlt = (products = []) => {
+  const names = buildSelectedProductNames(products);
+  if (names.length === 0) return "";
+  if (names.length === 1) return names[0];
+  if (names.length === 2) return `${names[0]} and ${names[1]}`;
+  return `${names[0]}, ${names[1]} and more`;
+};
 
 const normalizeBlogTags = (value) => {
   if (Array.isArray(value)) {
@@ -546,7 +617,7 @@ const BlogEditor = () => {
   // Auto-load article if route param is present and not already loaded
   useEffect(() => {
     if (routeArticleId && String(blogId) !== String(routeArticleId)) {
-      loadGeneralArticle(Number(routeArticleId));
+      loadBlogArticle(Number(routeArticleId));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [routeArticleId]);
@@ -554,6 +625,9 @@ const BlogEditor = () => {
   const [productType, setProductType] = useState("smartphone");
   const [candidates, setCandidates] = useState([]);
   const [candidatesLoading, setCandidatesLoading] = useState(false);
+  const [candidateProductId, setCandidateProductId] = useState(null);
+  const [selectedProductIds, setSelectedProductIds] = useState([]);
+  const [selectedProducts, setSelectedProducts] = useState([]);
   const [selectedProductId, setSelectedProductId] = useState(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [tokenMap, setTokenMap] = useState({});
@@ -588,6 +662,10 @@ const BlogEditor = () => {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [linkDialogOpen, setLinkDialogOpen] = useState(false);
+  const [linkDialogUrl, setLinkDialogUrl] = useState("");
+  const [linkDialogText, setLinkDialogText] = useState("");
+  const [linkDialogError, setLinkDialogError] = useState("");
   const [libraryRows, setLibraryRows] = useState([]);
   const [libraryLoading, setLibraryLoading] = useState(false);
   const [libraryError, setLibraryError] = useState("");
@@ -629,6 +707,7 @@ const BlogEditor = () => {
   const storyEditorRef = useRef(null);
   const heroImageInputRef = useRef(null);
   const inlineImageInputRef = useRef(null);
+  const linkUrlInputRef = useRef(null);
   const slugInputRef = useRef(null);
   const tagsInputRef = useRef(null);
   const deferredLibraryQuery = useDeferredValue(libraryQuery);
@@ -760,6 +839,7 @@ const BlogEditor = () => {
         row.slug,
         row.category,
         row.author_name,
+        row.product_names,
         row.product_name,
         row.brand_name,
         row.product_type,
@@ -816,6 +896,53 @@ const BlogEditor = () => {
     return filteredLibrary.slice(start, start + libraryPageSize);
   }, [filteredLibrary, libraryPage, libraryPageSize]);
 
+  const selectedCandidateProduct = useMemo(() => {
+    const normalizedId = Number(candidateProductId);
+    if (!Number.isInteger(normalizedId) || normalizedId <= 0) return null;
+
+    return (
+      candidates.find(
+        (row) => Number(row?.product_id) === normalizedId,
+      ) || null
+    );
+  }, [candidateProductId, candidates]);
+
+  const selectedCandidateProductImage = useMemo(
+    () => getProductThumbnail(selectedCandidateProduct),
+    [selectedCandidateProduct],
+  );
+
+  const selectedPrimaryProductImage = useMemo(
+    () => getProductThumbnail(selectedProduct),
+    [selectedProduct],
+  );
+
+  const selectedProductImageChoices = useMemo(
+    () =>
+      collectImageCandidates(
+        selectedProduct?.hero_image,
+        selectedProduct?.image,
+        selectedProduct?.image_url,
+        selectedProduct?.cover_image,
+        selectedProduct?.thumbnail,
+        selectedProduct?.images,
+      ),
+    [selectedProduct],
+  );
+
+  const defaultSelectedProductImage = selectedProductImageChoices[0] || "";
+
+  const currentHeroImageSource = useMemo(
+    () => normalizeHeroImageSource(heroImageSource),
+    [heroImageSource],
+  );
+
+  const defaultHeroAltText = useMemo(() => {
+    const productAlt =
+      blogMode === "product" ? buildProductSelectionAlt(selectedProducts) : "";
+    return title.trim() || productAlt || "Article thumbnail";
+  }, [blogMode, selectedProducts, title]);
+
   const renderedTemplatePreview = useMemo(
     () => renderBlogTemplatePreview(contentTemplate, tokenMap),
     [contentTemplate, tokenMap],
@@ -840,9 +967,126 @@ const BlogEditor = () => {
     setContentTemplate(nextContent);
   };
 
+  const applyProductSelection = (products = [], preferredProductIds = []) => {
+    const orderedProducts = orderSelectedProducts(products, preferredProductIds);
+    const orderedIds = normalizeSelectedProductIds(
+      preferredProductIds.length ? preferredProductIds : orderedProducts,
+    );
+    const primaryProduct = orderedProducts[0] || null;
+    const primaryProductId = orderedIds[0] || null;
+
+    setSelectedProducts(orderedProducts);
+    setSelectedProductIds(orderedIds);
+    setSelectedProduct(primaryProduct);
+    setSelectedProductId(primaryProductId);
+  };
+
+  const resetProductContext = () => {
+    applyProductSelection([], []);
+    setTokenMap({});
+    setTokenKeys([]);
+  };
+
+  const hydrateProductStoryDraft = (products = [], existing = null) => {
+    const orderedProducts = orderSelectedProducts(
+      products,
+      normalizeSelectedProductIds(products),
+    );
+    const primaryProduct = orderedProducts[0] || null;
+    const primaryImages = collectImageCandidates(
+      primaryProduct?.hero_image,
+      primaryProduct?.image,
+      primaryProduct?.image_url,
+      primaryProduct?.cover_image,
+      primaryProduct?.thumbnail,
+      primaryProduct?.images,
+    );
+
+    if (existing) {
+      const existingHeroSource = normalizeHeroImageSource(
+        existing.hero_image_source,
+      );
+      setBlogId(existing.id || null);
+      setSelectedLibraryId(existing.id || null);
+      setTitle(existing.title || "");
+      setSlug(existing.slug || "");
+      setExcerpt(existing.excerpt || "");
+      setCategory(existing.category || getDefaultStoryCategory("product"));
+      setAuthorName(existing.author_name || "");
+      setAuthorUserId(
+        existing.author_user_id ? String(existing.author_user_id) : "",
+      );
+      setMetaTitle(existing.meta_title || "");
+      setMetaDescription(existing.meta_description || "");
+      const heroChoice =
+        existingHeroSource === HERO_IMAGE_SOURCE.NONE
+          ? ""
+          : existing.hero_image ||
+            getFirstImageCandidate(
+              primaryProduct?.hero_image,
+              primaryProduct?.image,
+              primaryProduct?.image_url,
+              primaryProduct?.cover_image,
+              primaryProduct?.thumbnail,
+              primaryProduct?.images,
+            );
+      setHeroImage(heroChoice);
+      setHeroImageSource(
+        existingHeroSource ||
+          inferHeroImageSource(heroChoice, primaryImages),
+      );
+      setHeroImageAlt(
+        existing.hero_image_alt || buildProductSelectionAlt(orderedProducts),
+      );
+      setHeroImageCaption(existing.hero_image_caption || "");
+      setTagsInput(tagsToInputValue(existing.tags));
+      setFeatured(normalizeBoolean(existing.featured));
+      setTrending(normalizeBoolean(existing.trending));
+      setPinned(normalizeBoolean(existing.pinned));
+      setPublishedAt(toDateTimeLocalValue(existing.published_at));
+      setStatus(existing.status === "published" ? "published" : "draft");
+      loadEditorTemplate(
+        resolveStoredArticleContent(existing, DEFAULT_PRODUCT_TEMPLATE),
+      );
+      setMessage("Loaded saved product-linked story.");
+      return;
+    }
+
+    setBlogId(null);
+    setSelectedLibraryId(null);
+    setTitle(buildDefaultProductStoryTitle(orderedProducts));
+    setSlug("");
+    setExcerpt("");
+    setCategory(getDefaultStoryCategory("product"));
+    setAuthorName(getDefaultAuthorName());
+    setAuthorUserId("");
+    setMetaTitle("");
+    setMetaDescription("");
+    const heroChoice = getFirstImageCandidate(
+      primaryProduct?.hero_image,
+      primaryProduct?.image,
+      primaryProduct?.image_url,
+      primaryProduct?.cover_image,
+      primaryProduct?.thumbnail,
+      primaryProduct?.images,
+    );
+    setHeroImage(heroChoice);
+    setHeroImageSource(inferHeroImageSource(heroChoice, primaryImages));
+    setHeroImageAlt(buildProductSelectionAlt(orderedProducts));
+    setHeroImageCaption("");
+    setTagsInput("");
+    setFeatured(false);
+    setTrending(false);
+    setPinned(false);
+    setPublishedAt("");
+    setStatus("draft");
+    loadEditorTemplate(DEFAULT_PRODUCT_TEMPLATE);
+    setMessage("Ready to draft a new product-linked story.");
+  };
+
   const startNewProductStory = (nextType = productType) => {
     setError("");
-    setMessage("Choose a product to start a linked story.");
+    setMessage("Choose one or more products to start a linked story.");
     setWorkspaceView("composer");
     setComposerSidebarTab("post");
     setComposerPreviewOpen(false);
@@ -850,6 +1094,9 @@ const BlogEditor = () => {
     setProductType(nextType);
     setBlogId(null);
     setSelectedLibraryId(null);
+    setCandidateProductId(null);
+    setSelectedProductIds([]);
+    setSelectedProducts([]);
     setSelectedProductId(null);
     setSelectedProduct(null);
     setTokenMap({});
@@ -871,7 +1118,6 @@ const BlogEditor = () => {
     setTrending(false);
     setPinned(false);
     setPublishedAt("");
-    setUploadingHeroImage(false);
     setStatus("draft");
     loadEditorTemplate(DEFAULT_PRODUCT_TEMPLATE);
   };
@@ -885,6 +1131,9 @@ const BlogEditor = () => {
     setBlogMode("general");
     setBlogId(null);
     setSelectedLibraryId(null);
+    setCandidateProductId(null);
+    setSelectedProductIds([]);
+    setSelectedProducts([]);
     setSelectedProductId(null);
     setSelectedProduct(null);
     setTokenMap({});
@@ -906,7 +1155,6 @@ const BlogEditor = () => {
     setTrending(false);
     setPinned(false);
     setPublishedAt("");
-    setUploadingHeroImage(false);
     setStatus("draft");
     loadEditorTemplate(DEFAULT_CUSTOM_TEMPLATE);
   };
@@ -964,194 +1212,148 @@ const BlogEditor = () => {
       setCandidates(rows);
 
       if (!rows.length) {
-        setSelectedProductId(null);
-        setSelectedProduct(null);
+        setCandidateProductId(null);
         return;
       }
 
       const preferredId =
-        Number(preferredProductId || selectedProductId) || null;
+        Number(preferredProductId || candidateProductId || selectedProductId) ||
+        null;
       const hasPreferred = preferredId
         ? rows.some((row) => row.product_id === preferredId)
         : false;
-      setSelectedProductId(hasPreferred ? preferredId : rows[0].product_id);
+      setCandidateProductId(hasPreferred ? preferredId : rows[0].product_id);
     } catch (err) {
       setError(err.message || "Failed to load story candidates");
       setCandidates([]);
-      setSelectedProductId(null);
-      setSelectedProduct(null);
+      setCandidateProductId(null);
     } finally {
       setCandidatesLoading(false);
     }
   };
 
-  const loadSuggestions = async (productId) => {
-    if (!productId) return;
+  const loadProductContext = async (
+    productIds,
+    { resetDraft = false, hydrateExisting = false } = {},
+  ) => {
+    const normalizedIds = normalizeSelectedProductIds(productIds);
+    if (normalizedIds.length === 0) {
+      resetProductContext();
+      return;
+    }
 
     setError("");
 
     try {
-      const response = await fetch(
-        buildUrl(`/api/admin/blogs/suggestions/${productId}`),
-        {
-          headers: authHeaders,
-        },
-      );
+      const response = await fetch(buildUrl("/api/admin/blogs/context"), {
+        method: "POST",
+        headers: authHeaders,
+        body: JSON.stringify({
+          product_ids: normalizedIds,
+          primary_product_id: normalizedIds[0],
+          match_existing: hydrateExisting,
+        }),
+      });
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
         throw new Error(data?.message || "Failed to load story suggestions");
       }
 
-      const product = data?.product || null;
-      const existing = data?.existing_blog || null;
-
-      setSelectedProduct(product);
+      const orderedIds = normalizeSelectedProductIds(
+        data?.product_ids?.length ? data.product_ids : normalizedIds,
+      );
+      const products = orderSelectedProducts(data?.products || [], orderedIds);
+      applyProductSelection(products, orderedIds);
       setTokenMap(data?.token_map || {});
       setTokenKeys(Array.isArray(data?.token_keys) ? data.token_keys : []);
 
-      if (existing) {
-        setBlogId(existing.id || null);
-        setSelectedLibraryId(existing.id || null);
-        setTitle(existing.title || "");
-        setSlug(existing.slug || "");
-        setExcerpt(existing.excerpt || "");
-        setCategory(existing.category || getDefaultStoryCategory("product"));
-        setAuthorName(existing.author_name || "");
-        setAuthorUserId(
-          existing.author_user_id ? String(existing.author_user_id) : "",
+      if (resetDraft) {
+        hydrateProductStoryDraft(
+          products,
+          hydrateExisting ? data?.existing_blog || null : null,
         );
-        setMetaTitle(existing.meta_title || "");
-        setMetaDescription(existing.meta_description || "");
-        const heroChoice =
-          existing.hero_image ||
-          getFirstImageCandidate(
-            product?.hero_image,
-            product?.image,
-            product?.image_url,
-            product?.cover_image,
-            product?.thumbnail,
-            product?.images,
-          );
-        const productImageChoices = collectImageCandidates(
-          product?.hero_image,
-          product?.image,
-          product?.image_url,
-          product?.cover_image,
-          product?.thumbnail,
-          product?.images,
-        );
-        setHeroImage(heroChoice);
-        setHeroImageSource(
-          normalizeHeroImageSource(existing.hero_image_source) ||
-            inferHeroImageSource(heroChoice, productImageChoices),
-        );
-        setHeroImageAlt(
-          existing.hero_image_alt ||
-            (product?.name ? String(product.name).trim() : ""),
-        );
-        setHeroImageCaption(existing.hero_image_caption || "");
-        setTagsInput(tagsToInputValue(existing.tags));
-        setFeatured(normalizeBoolean(existing.featured));
-        setTrending(normalizeBoolean(existing.trending));
-        setPinned(normalizeBoolean(existing.pinned));
-        setPublishedAt(toDateTimeLocalValue(existing.published_at));
-        setStatus(existing.status === "published" ? "published" : "draft");
-        loadEditorTemplate(
-          resolveStoredArticleContent(existing, DEFAULT_PRODUCT_TEMPLATE),
-        );
-        setMessage("Loaded saved product-linked story.");
-      } else {
-        const productName = product?.name || "";
-        setBlogId(null);
-        setSelectedLibraryId(null);
-        setTitle(
-          productName ? `${productName} - Specs, Price and Highlights` : "",
-        );
-        setSlug("");
-        setExcerpt("");
-        setCategory(getDefaultStoryCategory("product"));
-        setAuthorName(getDefaultAuthorName());
-        setAuthorUserId("");
-        setMetaTitle("");
-        setMetaDescription("");
-        const heroChoice = getFirstImageCandidate(
-          product?.hero_image,
-          product?.image,
-          product?.image_url,
-          product?.cover_image,
-          product?.thumbnail,
-          product?.images,
-        );
-        setHeroImage(heroChoice);
-        setHeroImageSource(
-          inferHeroImageSource(
-            heroChoice,
-            collectImageCandidates(
-              product?.hero_image,
-              product?.image,
-              product?.image_url,
-              product?.cover_image,
-              product?.thumbnail,
-              product?.images,
-            ),
-          ),
-        );
-        setHeroImageAlt(productName || "");
-        setHeroImageCaption("");
-        setTagsInput("");
-        setFeatured(false);
-        setTrending(false);
-        setPinned(false);
-        setPublishedAt("");
-        setStatus("draft");
-        loadEditorTemplate(DEFAULT_PRODUCT_TEMPLATE);
-        setMessage("Ready to draft a new product-linked story.");
+        return;
       }
+
+      const primaryProduct = products[0] || null;
+      const primaryImages = collectImageCandidates(
+        primaryProduct?.hero_image,
+        primaryProduct?.image,
+        primaryProduct?.image_url,
+        primaryProduct?.cover_image,
+        primaryProduct?.thumbnail,
+        primaryProduct?.images,
+      );
+      const fallbackHero = getFirstImageCandidate(
+        primaryProduct?.hero_image,
+        primaryProduct?.image,
+        primaryProduct?.image_url,
+        primaryProduct?.cover_image,
+        primaryProduct?.thumbnail,
+        primaryProduct?.images,
+      );
+      const currentHeroSource = normalizeHeroImageSource(heroImageSource);
+
+      if (!title.trim()) {
+        setTitle(buildDefaultProductStoryTitle(products));
+      }
+      if (!heroImage || currentHeroSource === HERO_IMAGE_SOURCE.ASSET) {
+        setHeroImage(fallbackHero);
+        setHeroImageSource(inferHeroImageSource(fallbackHero, primaryImages));
+      }
+      if (!heroImageAlt || currentHeroSource === HERO_IMAGE_SOURCE.ASSET) {
+        setHeroImageAlt(buildProductSelectionAlt(products));
+      }
+
+      setMessage(
+        products.length > 1
+          ? "Product selection updated for this story."
+          : "Product context loaded for this story.",
+      );
     } catch (err) {
       setError(err.message || "Failed to load product suggestions");
-      setBlogId(null);
-      setSelectedLibraryId(null);
-      setSelectedProduct(null);
-      setTokenMap({});
-      setTokenKeys([]);
-      setHeroImage("");
-      setCategory(getDefaultStoryCategory("product"));
-      setAuthorName(getDefaultAuthorName());
-      setAuthorUserId("");
-      setHeroImageAlt("");
-      setHeroImageCaption("");
-      setTagsInput("");
-      setFeatured(false);
-      setTrending(false);
-      setPinned(false);
-      setPublishedAt("");
     }
   };
 
-  const handleHeroImageUpload = async (file) => {
-    if (!file) return;
-
-    setUploadingHeroImage(true);
-    setError("");
-
-    try {
-      const data = await uploadToCloudinary(file, "banners", {
-        resourceType: "image",
-      });
-
-      if (!data?.secure_url) {
-        throw new Error("No secure_url returned from upload");
-      }
-
-      setHeroImage(data.secure_url);
-      setHeroImageSource(HERO_IMAGE_SOURCE.URL);
-      setMessage("Hero image uploaded successfully.");
-    } catch (err) {
-      setError(err?.message || "Failed to upload hero image");
-    } finally {
-      setUploadingHeroImage(false);
+  const handleAddCandidateProduct = () => {
+    const nextId = Number(candidateProductId);
+    if (!Number.isInteger(nextId) || nextId <= 0) return;
+    if (selectedProductIds.includes(nextId)) {
+      setMessage("That product is already linked to this story.");
+      return;
     }
+
+    const nextIds = [...selectedProductIds, nextId];
+    const shouldResetDraft = selectedProductIds.length === 0 && !blogId;
+    loadProductContext(nextIds, {
+      resetDraft: shouldResetDraft,
+      hydrateExisting: false,
+    });
+  };
+
+  const handleRemoveSelectedProduct = (productIdToRemove) => {
+    const nextIds = selectedProductIds.filter(
+      (productId) => productId !== productIdToRemove,
+    );
+
+    if (!nextIds.length) {
+      resetProductContext();
+      setHeroImage("");
+      setHeroImageAlt("");
+      setMessage("All linked products were removed from this story.");
+      return;
+    }
+
+    loadProductContext(nextIds, { resetDraft: false, hydrateExisting: false });
+  };
+
+  const handleSetPrimaryProduct = (productIdToPromote) => {
+    const nextIds = [
+      productIdToPromote,
+      ...selectedProductIds.filter((productId) => productId !== productIdToPromote),
+    ];
+    loadProductContext(nextIds, { resetDraft: false, hydrateExisting: false });
   };
 
   const insertInlineImage = ({
@@ -1221,7 +1423,66 @@ const BlogEditor = () => {
     input.click();
   };
 
-  const loadGeneralArticle = async (articleId) => {
+  const openHeroImagePicker = () => {
+    const input = heroImageInputRef.current;
+    if (!input) return;
+    input.click();
+  };
+
+  const handleHeroImageUpload = async (file) => {
+    if (!file) return;
+
+    setUploadingHeroImage(true);
+    setError("");
+
+    try {
+      const data = await uploadToCloudinary(file, "banners", {
+        resourceType: "image",
+      });
+
+      if (!data?.secure_url) {
+        throw new Error("No secure_url returned from upload");
+      }
+
+      setHeroImage(data.secure_url);
+      setHeroImageSource(HERO_IMAGE_SOURCE.URL);
+      if (!heroImageAlt.trim()) {
+        setHeroImageAlt(defaultHeroAltText);
+      }
+      setMessage("Thumbnail image uploaded.");
+    } catch (err) {
+      setError(err?.message || "Failed to upload thumbnail image");
+    } finally {
+      setUploadingHeroImage(false);
+    }
+  };
+
+  const handleUsePrimaryProductImage = () => {
+    if (!defaultSelectedProductImage) {
+      setError("Primary product image is not available.");
+      return;
+    }
+
+    setHeroImage(defaultSelectedProductImage);
+    setHeroImageSource(
+      inferHeroImageSource(
+        defaultSelectedProductImage,
+        selectedProductImageChoices,
+      ),
+    );
+    if (!heroImageAlt.trim()) {
+      setHeroImageAlt(defaultHeroAltText);
+    }
+    setMessage("Primary product image applied as the thumbnail.");
+  };
+
+  const handleRemoveHeroImage = () => {
+    setHeroImage("");
+    setHeroImageSource(HERO_IMAGE_SOURCE.NONE);
+    setMessage("Thumbnail removed from this story.");
+  };
+
+  const loadBlogArticle = async (articleId) => {
     if (!articleId) return;
 
     setWorkspaceView("composer");
@@ -1244,18 +1505,41 @@ const BlogEditor = () => {
       const article = data?.blog || null;
       if (!article) throw new Error("Article not found");
 
-      const nextTokenMap = toPlainObject(article.token_snapshot);
-      setBlogMode("general");
+      const productIds = normalizeSelectedProductIds(
+        article.product_ids,
+        article.products,
+        article.product_id,
+      );
+      const nextProducts = orderSelectedProducts(
+        article.products || [],
+        productIds,
+      );
+      const nextTokenMap = toPlainObject(
+        article.token_map || article.token_snapshot,
+      );
+      const isProductStory = productIds.length > 0;
+
+      setBlogMode(isProductStory ? "product" : "general");
+      setProductType(
+        article.product_type || nextProducts[0]?.product_type || "smartphone",
+      );
       setSelectedLibraryId(article.id || null);
       setBlogId(article.id || null);
-      setSelectedProductId(null);
-      setSelectedProduct(null);
+      setCandidateProductId(null);
+      applyProductSelection(nextProducts, productIds);
       setTokenMap(nextTokenMap);
-      setTokenKeys(Object.keys(nextTokenMap).sort());
+      setTokenKeys(
+        Array.isArray(article.token_keys)
+          ? article.token_keys
+          : Object.keys(nextTokenMap).sort(),
+      );
       setTitle(article.title || "");
       setSlug(article.slug || "");
       setExcerpt(article.excerpt || "");
-      setCategory(article.category || getDefaultStoryCategory("general"));
+      setCategory(
+        article.category ||
+          getDefaultStoryCategory(isProductStory ? "product" : "general"),
+      );
       setAuthorName(article.author_name || "");
       setAuthorUserId(
         article.author_user_id ? String(article.author_user_id) : "",
@@ -1265,7 +1549,7 @@ const BlogEditor = () => {
       setHeroImage(article.hero_image || "");
       setHeroImageSource(
         normalizeHeroImageSource(article.hero_image_source) ||
-          HERO_IMAGE_SOURCE.URL,
+          (isProductStory ? HERO_IMAGE_SOURCE.ASSET : HERO_IMAGE_SOURCE.URL),
       );
       setHeroImageAlt(article.hero_image_alt || "");
       setHeroImageCaption(article.hero_image_caption || "");
@@ -1276,12 +1560,20 @@ const BlogEditor = () => {
       setPublishedAt(toDateTimeLocalValue(article.published_at));
       setStatus(article.status === "published" ? "published" : "draft");
       loadEditorTemplate(
-        resolveStoredArticleContent(article, DEFAULT_CUSTOM_TEMPLATE),
+        resolveStoredArticleContent(
+          article,
+          isProductStory ? DEFAULT_PRODUCT_TEMPLATE : DEFAULT_CUSTOM_TEMPLATE,
+        ),
       );
-      setMessage("Loaded saved article.");
+      setMessage(
+        isProductStory ? "Loaded saved product-linked story." : "Loaded saved article.",
+      );
     } catch (err) {
       setError(err.message || "Failed to load article");
       setBlogMode("general");
+      setCandidateProductId(null);
+      setSelectedProductIds([]);
+      setSelectedProducts([]);
       setSelectedLibraryId(null);
       setBlogId(null);
       setSelectedProductId(null);
@@ -1331,10 +1623,16 @@ const BlogEditor = () => {
   }, [blogMode, productType]);
 
   useEffect(() => {
-    if (blogMode !== "product" || !selectedProductId) return;
-    loadSuggestions(selectedProductId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [blogMode, selectedProductId]);
+    if (!linkDialogOpen) return undefined;
+    if (typeof window === "undefined") return undefined;
+
+    const frameId = window.requestAnimationFrame(() => {
+      linkUrlInputRef.current?.focus();
+      linkUrlInputRef.current?.select?.();
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [linkDialogOpen]);
 
   const insertEditorHtml = (html) =>
     Boolean(storyEditorRef.current?.insertHtml?.(html));
@@ -1350,28 +1648,59 @@ const BlogEditor = () => {
   const getSavedEditorSelectionText = () =>
     String(storyEditorRef.current?.getSelectedText?.() || "").trim();
 
+  const closeLinkDialog = () => {
+    setLinkDialogOpen(false);
+    setLinkDialogUrl("");
+    setLinkDialogText("");
+    setLinkDialogError("");
+  };
+
   const applyLink = () => {
-    if (typeof window === "undefined") return;
+    const selectionText = getSavedEditorSelectionText();
+    const currentHref = String(
+      storyEditorRef.current?.getCurrentLinkHref?.() || "",
+    ).trim();
 
-    runEditorPromptTask(() => {
-      const nextUrl = window.prompt("Enter the link URL");
-      if (!nextUrl) return;
+    setLinkDialogUrl(currentHref);
+    setLinkDialogText(selectionText || "");
+    setLinkDialogError("");
+    setLinkDialogOpen(true);
+  };
 
-      const normalizedUrl = String(nextUrl).trim();
-      if (!normalizedUrl) return;
+  const submitLinkDialog = () => {
+    const normalizedUrl = String(linkDialogUrl || "").trim();
+    if (!normalizedUrl) {
+      setLinkDialogError("Link URL is required.");
+      return;
+    }
 
-      const selectionText = getSavedEditorSelectionText();
-      if (selectionText) {
-        storyEditorRef.current?.setLink?.(normalizedUrl);
-        return;
-      }
+    const selectionText = getSavedEditorSelectionText();
+    const normalizedText = String(linkDialogText || "").trim();
+    const currentHref = String(
+      storyEditorRef.current?.getCurrentLinkHref?.() || "",
+    ).trim();
+    const isEditingExistingLink = editorUiState.isLink || Boolean(currentHref);
 
-      insertEditorHtml(
-        `<a href="${escapeHtml(normalizedUrl)}">${escapeHtml(
-          normalizedUrl,
-        )}</a>`,
-      );
-    });
+    if (selectionText && (!normalizedText || normalizedText === selectionText)) {
+      storyEditorRef.current?.setLink?.(normalizedUrl);
+      setMessage("Link updated in content.");
+      closeLinkDialog();
+      return;
+    }
+
+    if (!selectionText && isEditingExistingLink && !normalizedText) {
+      storyEditorRef.current?.setLink?.(normalizedUrl);
+      setMessage("Link updated in content.");
+      closeLinkDialog();
+      return;
+    }
+
+    const linkLabel = normalizedText || selectionText || normalizedUrl;
+    insertEditorHtml(
+      `<a href="${escapeHtml(normalizedUrl)}">${escapeHtml(linkLabel)}</a>`,
+    );
+    setMessage("Link added to content.");
+    closeLinkDialog();
   };
 
   const insertStarterLayout = () =>
@@ -1566,7 +1895,9 @@ const BlogEditor = () => {
   };
 
   const saveBlog = async (statusOverride = null) => {
-    const productIdForSave = blogMode === "product" ? selectedProductId : null;
+    const productIdsForSave =
+      blogMode === "product" ? normalizeSelectedProductIds(selectedProductIds) : [];
+    const productIdForSave = productIdsForSave[0] || null;
     const nextStatus = statusOverride || status;
     const productImageChoices =
       blogMode === "product"
@@ -1583,10 +1914,10 @@ const BlogEditor = () => {
       blogMode === "product"
         ? normalizeHeroImageSource(heroImageSource) ||
           inferHeroImageSource(heroImage, productImageChoices)
-        : HERO_IMAGE_SOURCE.URL;
+        : normalizeHeroImageSource(heroImageSource) || HERO_IMAGE_SOURCE.URL;
 
-    if (blogMode === "product" && !productIdForSave) {
-      setError("Select a product first");
+    if (blogMode === "product" && productIdsForSave.length === 0) {
+      setError("Select at least one product first");
       return;
     }
     if (!title.trim()) {
@@ -1609,6 +1940,8 @@ const BlogEditor = () => {
         body: JSON.stringify({
           blog_id: blogId || null,
           product_id: productIdForSave || null,
+          product_ids: productIdsForSave,
+          primary_product_id: productIdForSave || null,
           title,
           slug,
           excerpt,
@@ -1646,6 +1979,12 @@ const BlogEditor = () => {
         setBlogId(data.blog.id);
         setSelectedLibraryId(data.blog.id);
       }
+      if (Array.isArray(data?.blog?.product_ids)) {
+        applyProductSelection(
+          selectedProducts,
+          data.blog.product_ids,
+        );
+      }
       setStatus(nextStatus);
       if (data?.blog?.slug) setSlug(data.blog.slug);
       if (data?.blog?.category) setCategory(data.blog.category);
@@ -1657,10 +1996,19 @@ const BlogEditor = () => {
           data.blog.author_user_id ? String(data.blog.author_user_id) : "",
         );
       }
-      if (data?.blog?.hero_image) setHeroImage(data.blog.hero_image);
-      if (data?.blog?.hero_image_source) {
+      if (
+        data?.blog &&
+        Object.prototype.hasOwnProperty.call(data.blog, "hero_image")
+      ) {
+        setHeroImage(data.blog.hero_image || "");
+      }
+      if (
+        data?.blog &&
+        Object.prototype.hasOwnProperty.call(data.blog, "hero_image_source")
+      ) {
         setHeroImageSource(
-          normalizeHeroImageSource(data.blog.hero_image_source),
+          normalizeHeroImageSource(data.blog.hero_image_source) ||
+            HERO_IMAGE_SOURCE.URL,
         );
       }
       if (typeof data?.blog?.hero_image_alt !== "undefined") {
@@ -1683,6 +2031,12 @@ const BlogEditor = () => {
       }
       if (typeof data?.blog?.published_at !== "undefined") {
         setPublishedAt(toDateTimeLocalValue(data.blog.published_at));
+      }
+      if (data?.blog?.token_map) {
+        setTokenMap(data.blog.token_map);
+      }
+      if (Array.isArray(data?.blog?.token_keys)) {
+        setTokenKeys(data.blog.token_keys);
       }
       await loadLibrary();
     } catch (err) {
@@ -1730,12 +2084,19 @@ const BlogEditor = () => {
         blogId === targetId || selectedLibraryId === targetId;
 
       if (isCurrentEntry && row?.product_id) {
+        const nextProductIds = normalizeSelectedProductIds(
+          row?.product_ids,
+          row?.products,
+          row?.product_id,
+        );
         setBlogMode("product");
         setProductType(row.product_type || "smartphone");
         setSelectedLibraryId(null);
         setBlogId(null);
-        setSelectedProductId(Number(row.product_id));
-        await loadSuggestions(Number(row.product_id));
+        await loadProductContext(nextProductIds, {
+          resetDraft: true,
+          hydrateExisting: false,
+        });
         setMessage("Deleted saved story. You can continue with a fresh draft.");
       } else if (isCurrentEntry) {
         startNewGeneralArticle();
@@ -1758,17 +2119,9 @@ const BlogEditor = () => {
     setWorkspaceView("composer");
     setComposerSidebarTab("post");
     setComposerPreviewOpen(false);
-    if (row.product_id) {
-      setError("");
-      setMessage("Loading selected story...");
-      setSelectedLibraryId(row.id);
-      setBlogMode("product");
-      setProductType(row.product_type || "smartphone");
-      setSelectedProductId(Number(row.product_id));
-      return;
-    }
-
-    void loadGeneralArticle(Number(row.id));
+    setError("");
+    setMessage("Loading selected story...");
+    void loadBlogArticle(Number(row.id));
   };
 
   const clearLibraryFilters = () => {
@@ -1817,7 +2170,7 @@ const BlogEditor = () => {
       status: getListingStatusLabel(row),
       published_at: row.published_at ?? "",
       updated_at: row.updated_at ?? "",
-      product_name: row.product_name ?? "",
+      product_name: row.product_names ?? row.product_name ?? "",
       brand_name: row.brand_name ?? "",
       tags: normalizeBlogTags(row.tags).join(", "),
     }));
@@ -1944,18 +2297,6 @@ const BlogEditor = () => {
     [libraryStats],
   );
 
-  const productImages = useMemo(
-    () =>
-      collectImageCandidates(
-        selectedProduct?.hero_image,
-        selectedProduct?.image,
-        selectedProduct?.image_url,
-        selectedProduct?.cover_image,
-        selectedProduct?.thumbnail,
-        selectedProduct?.images,
-      ),
-    [selectedProduct],
-  );
   const activeTagList = useMemo(() => normalizeBlogTags(tagsInput), [tagsInput]);
   const activeComposerRow = useMemo(() => {
     const activeId = Number(blogId || selectedLibraryId);
@@ -2474,6 +2815,11 @@ const BlogEditor = () => {
                                     ? `/blog/${row.slug}`
                                     : "Slug will be generated on save"}
                                 </div>
+                                {row.product_names ? (
+                                  <div className="mt-1 line-clamp-2 text-xs text-slate-500">
+                                    Products: {row.product_names}
+                                  </div>
+                                ) : null}
                               </div>
                             </div>
                           </td>
@@ -2672,6 +3018,11 @@ const BlogEditor = () => {
                                 ? `/blog/${row.slug}`
                                 : "Slug will be generated on save"}
                             </div>
+                            {row.product_names ? (
+                              <div className="mt-1 line-clamp-2 text-xs text-slate-500">
+                                Products: {row.product_names}
+                              </div>
+                            ) : null}
                           </div>
                         </div>
 
@@ -3147,6 +3498,18 @@ const BlogEditor = () => {
                         </div>
 
                         <input
+                          ref={heroImageInputRef}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={async (event) => {
+                            const file = event.target.files?.[0] || null;
+                            await handleHeroImageUpload(file);
+                            event.target.value = "";
+                          }}
+                        />
+
+                        <input
                           ref={inlineImageInputRef}
                           type="file"
                           accept="image/*"
@@ -3288,6 +3651,10 @@ const BlogEditor = () => {
                               title,
                               product_id:
                                 blogMode === "product" ? selectedProductId : null,
+                              product_ids:
+                                blogMode === "product" ? selectedProductIds : [],
+                              products:
+                                blogMode === "product" ? selectedProducts : [],
                               product_type:
                                 blogMode === "product" ? productType : null,
                             })
@@ -3414,6 +3781,127 @@ const BlogEditor = () => {
                       />
                       <div className="mt-2 text-right text-xs font-medium text-slate-400">
                         {excerptCharacterCount} / 160
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="border-b border-slate-200 bg-white">
+                    <div className="border-b border-slate-200 px-2 py-4 md:px-4">
+                      <h3 className="text-base font-semibold text-slate-900">
+                        Thumbnail Image
+                      </h3>
+                    </div>
+                    <div className="space-y-4 px-2 py-4 md:px-4">
+                      <div className="overflow-hidden border border-slate-200 bg-slate-50">
+                        <div className="aspect-[16/9]">
+                          {heroImage ? (
+                            <img
+                              src={heroImage}
+                              alt={heroImageAlt || defaultHeroAltText}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-full items-center justify-center px-4 text-center text-sm text-slate-400">
+                              <div>
+                                <FaImage className="mx-auto text-2xl" />
+                                <div className="mt-3">
+                                  No thumbnail selected for this story
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={openHeroImagePicker}
+                          disabled={uploadingHeroImage}
+                          className={`${composerButtonClassName} h-11 px-4 disabled:opacity-60`}
+                        >
+                          <FaUpload className="text-xs" />
+                          {uploadingHeroImage ? "Uploading..." : "Upload Image"}
+                        </button>
+
+                        {blogMode === "product" && defaultSelectedProductImage ? (
+                          <button
+                            type="button"
+                            onClick={handleUsePrimaryProductImage}
+                            className={`${composerButtonClassName} h-11 px-4`}
+                          >
+                            Use Product Image
+                          </button>
+                        ) : null}
+
+                        <button
+                          type="button"
+                          onClick={handleRemoveHeroImage}
+                          disabled={
+                            !heroImage &&
+                            currentHeroImageSource === HERO_IMAGE_SOURCE.NONE
+                          }
+                          className={`${composerDangerButtonClassName} h-11 px-4 disabled:opacity-60`}
+                        >
+                          <FaTrashAlt className="text-xs" />
+                          Remove
+                        </button>
+                      </div>
+
+                      <div>
+                        <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                          Image URL
+                        </label>
+                        <input
+                          value={
+                            currentHeroImageSource === HERO_IMAGE_SOURCE.NONE
+                              ? ""
+                              : heroImage
+                          }
+                          onChange={(event) => {
+                            const nextValue = String(event.target.value || "").trim();
+                            setHeroImage(nextValue);
+                            setHeroImageSource(
+                              nextValue
+                                ? HERO_IMAGE_SOURCE.URL
+                                : HERO_IMAGE_SOURCE.NONE,
+                            );
+                          }}
+                          placeholder="https://example.com/story-thumbnail.jpg"
+                          className={composerFieldClassName}
+                        />
+                        <div className="mt-2 text-xs leading-5 text-slate-500">
+                          {blogMode === "product"
+                            ? "Upload a custom thumbnail, paste an image URL, or switch back to the primary product image."
+                            : "Upload a custom thumbnail or paste an external image URL."}
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                          Alt Text
+                        </label>
+                        <input
+                          value={heroImageAlt}
+                          onChange={(event) => setHeroImageAlt(event.target.value)}
+                          placeholder={defaultHeroAltText}
+                          className={composerFieldClassName}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                          Caption
+                        </label>
+                        <textarea
+                          value={heroImageCaption}
+                          onChange={(event) =>
+                            setHeroImageCaption(event.target.value)
+                          }
+                          rows={3}
+                          placeholder="Optional photo caption or credit"
+                          className={composerTextareaClassName}
+                        />
                       </div>
                     </div>
                   </div>
@@ -3562,9 +4050,7 @@ const BlogEditor = () => {
                             </label>
                             <select
                               value={productType}
-                              onChange={(event) =>
-                                startNewProductStory(event.target.value)
-                              }
+                              onChange={(event) => setProductType(event.target.value)}
                               className={composerFieldClassName}
                             >
                               <option value="smartphone">Smartphones</option>
@@ -3577,40 +4063,205 @@ const BlogEditor = () => {
                             <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
                               Candidate Product
                             </label>
-                            <select
-                              value={selectedProductId || ""}
-                              onChange={(event) =>
-                                setSelectedProductId(Number(event.target.value))
-                              }
-                              disabled={candidatesLoading || candidates.length === 0}
-                              className={`${composerFieldClassName} disabled:bg-slate-50`}
-                            >
-                              {candidates.length === 0 ? (
-                                <option value="">
-                                  {candidatesLoading
-                                    ? "Loading..."
-                                    : "No candidates"}
-                                </option>
-                              ) : null}
-                              {candidates.map((row) => (
-                                <option key={row.product_id} value={row.product_id}>
-                                  {row.name} ({row.brand_name || "Brand"})
-                                </option>
-                              ))}
-                            </select>
+                            <div className="flex gap-2">
+                              <select
+                                value={candidateProductId || ""}
+                                onChange={(event) =>
+                                  setCandidateProductId(
+                                    Number(event.target.value) || null,
+                                  )
+                                }
+                                disabled={candidatesLoading || candidates.length === 0}
+                                className={`${composerFieldClassName} disabled:bg-slate-50`}
+                              >
+                                {candidates.length === 0 ? (
+                                  <option value="">
+                                    {candidatesLoading ? "Loading..." : "No candidates"}
+                                  </option>
+                                ) : null}
+                                {candidates.map((row) => (
+                                  <option key={row.product_id} value={row.product_id}>
+                                    {row.name} ({row.brand_name || "Brand"})
+                                    {selectedProductIds.includes(Number(row.product_id))
+                                      ? " - Linked"
+                                      : ""}
+                                  </option>
+                                ))}
+                              </select>
+                              <button
+                                type="button"
+                                onClick={handleAddCandidateProduct}
+                                disabled={
+                                  !candidateProductId ||
+                                  candidatesLoading ||
+                                  selectedProductIds.includes(
+                                    Number(candidateProductId),
+                                  )
+                                }
+                                className={`${composerButtonClassName} h-11 shrink-0 px-4 disabled:opacity-50`}
+                              >
+                                Add
+                              </button>
+                            </div>
+                            <div className="mt-2 text-xs leading-5 text-slate-500">
+                              Change the type filter anytime to add smartphones,
+                              laptops, and TVs into one story.
+                            </div>
+                            {selectedCandidateProduct ? (
+                              <div className="mt-3 flex items-center gap-3 border border-slate-200 bg-white px-3 py-3">
+                                <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden border border-slate-200 bg-slate-100">
+                                  {selectedCandidateProductImage ? (
+                                    <img
+                                      src={selectedCandidateProductImage}
+                                      alt={selectedCandidateProduct?.name || "Product"}
+                                      className="h-full w-full object-cover"
+                                    />
+                                  ) : (
+                                    <div className="flex h-full w-full items-center justify-center text-slate-400">
+                                      <FaImage className="text-lg" />
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <div className="truncate font-semibold text-slate-900">
+                                    {selectedCandidateProduct?.name || "Unnamed product"}
+                                  </div>
+                                  <div className="mt-1 text-xs text-slate-500">
+                                    {[
+                                      selectedCandidateProduct?.brand_name,
+                                      selectedCandidateProduct?.product_type,
+                                    ]
+                                      .filter(Boolean)
+                                      .join(" / ") || "Product details"}
+                                  </div>
+                                  <div className="mt-1 text-sm text-slate-700">
+                                    {selectedCandidateProduct?.price || "No price"}
+                                  </div>
+                                </div>
+                              </div>
+                            ) : null}
                           </div>
 
                           <div className="border border-slate-200 bg-slate-50 px-2 py-4 text-sm text-slate-700 md:px-4">
                             <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                              Product Snapshot
+                              Linked Products
                             </div>
-                            <div className="mt-2 font-semibold text-slate-900">
-                              {selectedProduct?.name || "-"}
+                            {selectedProducts.length === 0 ? (
+                              <div className="mt-2 text-sm leading-6 text-slate-500">
+                                Add products from the candidate list to build a
+                                multi-product story. The first linked item becomes
+                                the primary product for hero defaults and summary
+                                tokens.
+                              </div>
+                            ) : (
+                              <div className="mt-3 space-y-3">
+                                {selectedProducts.map((product, index) => {
+                                  const productThumbnail = getProductThumbnail(product);
+
+                                  return (
+                                    <div
+                                      key={product.product_id}
+                                      className="border border-slate-200 bg-white px-3 py-3"
+                                    >
+                                      <div className="flex items-start justify-between gap-3">
+                                        <div className="flex min-w-0 flex-1 items-start gap-3">
+                                          <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden border border-slate-200 bg-slate-100">
+                                            {productThumbnail ? (
+                                              <img
+                                                src={productThumbnail}
+                                                alt={product?.name || "Product"}
+                                                className="h-full w-full object-cover"
+                                              />
+                                            ) : (
+                                              <div className="flex h-full w-full items-center justify-center text-slate-400">
+                                                <FaImage className="text-lg" />
+                                              </div>
+                                            )}
+                                          </div>
+                                          <div className="min-w-0">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                              <div className="font-semibold text-slate-900">
+                                                {product?.name || "Unnamed product"}
+                                              </div>
+                                              {index === 0 ? (
+                                                <span className="inline-flex border border-violet-200 bg-violet-50 px-2 py-0.5 text-[11px] font-semibold text-violet-700">
+                                                  Primary
+                                                </span>
+                                              ) : null}
+                                            </div>
+                                            <div className="mt-1 text-xs text-slate-500">
+                                              {[product?.brand_name, product?.product_type]
+                                                .filter(Boolean)
+                                                .join(" / ") || "Product details"}
+                                            </div>
+                                            <div className="mt-1 text-sm text-slate-700">
+                                              {product?.price || "-"}
+                                            </div>
+                                          </div>
+                                        </div>
+
+                                        <div className="flex shrink-0 gap-2">
+                                          {index > 0 ? (
+                                            <button
+                                              type="button"
+                                              onClick={() =>
+                                                handleSetPrimaryProduct(
+                                                  Number(product.product_id),
+                                                )
+                                              }
+                                              className="inline-flex h-8 items-center justify-center border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+                                            >
+                                              Make Primary
+                                            </button>
+                                          ) : null}
+                                          <button
+                                            type="button"
+                                            onClick={() =>
+                                              handleRemoveSelectedProduct(
+                                                Number(product.product_id),
+                                              )
+                                            }
+                                            className="inline-flex h-8 items-center justify-center border border-red-200 bg-red-50 px-3 text-[11px] font-semibold text-red-600 transition hover:border-red-300 hover:bg-red-100"
+                                          >
+                                            Remove
+                                          </button>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="border border-slate-200 bg-slate-50 px-2 py-4 text-sm text-slate-700 md:px-4">
+                            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                              Primary Product Snapshot
                             </div>
-                            <div className="mt-1">
-                              {selectedProduct?.brand_name || "-"}
+                            <div className="mt-3 flex items-start gap-3">
+                              <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden border border-slate-200 bg-white">
+                                {selectedPrimaryProductImage ? (
+                                  <img
+                                    src={selectedPrimaryProductImage}
+                                    alt={selectedProduct?.name || "Primary product"}
+                                    className="h-full w-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="flex h-full w-full items-center justify-center text-slate-400">
+                                    <FaImage className="text-xl" />
+                                  </div>
+                                )}
+                              </div>
+                              <div className="min-w-0">
+                                <div className="font-semibold text-slate-900">
+                                  {selectedProduct?.name || "-"}
+                                </div>
+                                <div className="mt-1">
+                                  {selectedProduct?.brand_name || "-"}
+                                </div>
+                                <div className="mt-1">{selectedProduct?.price || "-"}</div>
+                              </div>
                             </div>
-                            <div className="mt-1">{selectedProduct?.price || "-"}</div>
                           </div>
                         </>
                       ) : (
@@ -3802,6 +4453,83 @@ const BlogEditor = () => {
       ) : null}
 
       </div>
+      {linkDialogOpen ? (
+        <div className="fixed inset-0 z-50 bg-slate-950/40 p-4 backdrop-blur-sm sm:p-6">
+          <div className="mx-auto w-full max-w-lg overflow-hidden rounded-[22px] border border-slate-200 bg-white shadow-2xl">
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                submitLinkDialog();
+              }}
+            >
+              <div className="border-b border-slate-200 px-5 py-4">
+                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  Content Link
+                </div>
+                <div className="mt-1 text-base font-semibold text-slate-900">
+                  Add or edit a link
+                </div>
+              </div>
+
+              <div className="space-y-4 px-5 py-5">
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    Link URL
+                  </label>
+                  <input
+                    ref={linkUrlInputRef}
+                    value={linkDialogUrl}
+                    onChange={(event) => {
+                      setLinkDialogUrl(event.target.value);
+                      if (linkDialogError) setLinkDialogError("");
+                    }}
+                    placeholder="https://example.com"
+                    className={composerFieldClassName}
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    Link Text
+                  </label>
+                  <input
+                    value={linkDialogText}
+                    onChange={(event) => setLinkDialogText(event.target.value)}
+                    placeholder="Optional. Leave blank to use selected text or the URL."
+                    className={composerFieldClassName}
+                  />
+                  <div className="mt-2 text-xs leading-5 text-slate-500">
+                    This opens inline in the editor now, so mobile users do not
+                    get a browser alert prompt.
+                  </div>
+                </div>
+
+                {linkDialogError ? (
+                  <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+                    {linkDialogError}
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="flex flex-col-reverse gap-2 border-t border-slate-200 px-5 py-4 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={closeLinkDialog}
+                  className={`${composerButtonClassName} h-11 px-4`}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className={`${composerButtonClassName} h-11 px-4`}
+                >
+                  Apply Link
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
       {composerPreviewOpen ? (
         <div className="fixed inset-0 z-40 bg-slate-950/40 p-4 backdrop-blur-sm sm:p-6">
           <div className="mx-auto flex h-full w-full max-w-6xl flex-col overflow-hidden rounded-[22px] border border-slate-200 bg-white shadow-2xl">

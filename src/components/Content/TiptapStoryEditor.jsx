@@ -343,6 +343,13 @@ const TiptapStoryEditor = forwardRef(function TiptapStoryEditor(
         rememberSelection(instance);
         return true;
       },
+      getCurrentLinkHref: () => {
+        const instance = editorInstanceRef.current;
+        if (!instance) return "";
+
+        const href = instance.getAttributes("link")?.href;
+        return String(href || "").trim();
+      },
       getSelectedText: () => {
         const instance = editorInstanceRef.current;
         if (!instance) return "";
