@@ -284,6 +284,17 @@ const parseCommaSeparatedList = (value) =>
 const formatCommaSeparatedList = (values = []) =>
   Array.isArray(values) ? values.join(", ") : "";
 
+const countWords = (value) =>
+  String(value || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean).length;
+
+const formatWordCountLabel = (value) => {
+  const count = countWords(value);
+  return `${count} ${count === 1 ? "word" : "words"}`;
+};
+
 const getDefaultStoryCategory = (mode = "general") =>
   mode === "product" ? "launches" : "news";
 
@@ -2343,10 +2354,12 @@ const BlogEditor = () => {
           : editorUiState.isOrderedList
             ? "numbers"
             : "paragraph";
-  const titleCharacterCount = String(title || "").length;
-  const excerptCharacterCount = String(excerpt || "").length;
-  const metaTitleCharacterCount = String(metaTitle || "").length;
-  const metaDescriptionCharacterCount = String(metaDescription || "").length;
+  const titleWordCountLabel = formatWordCountLabel(title);
+  const excerptWordCountLabel = formatWordCountLabel(excerpt);
+  const heroImageAltWordCountLabel = formatWordCountLabel(heroImageAlt);
+  const heroImageCaptionWordCountLabel = formatWordCountLabel(heroImageCaption);
+  const metaTitleWordCountLabel = formatWordCountLabel(metaTitle);
+  const metaDescriptionWordCountLabel = formatWordCountLabel(metaDescription);
   const articlePlainText = useMemo(
     () =>
       normalizeArticleContent(renderedTemplatePreview)
@@ -2355,10 +2368,7 @@ const BlogEditor = () => {
         .trim(),
     [renderedTemplatePreview],
   );
-  const articleWordCount = articlePlainText
-    ? articlePlainText.split(/\s+/).filter(Boolean).length
-    : 0;
-  const articleCharacterCount = articlePlainText.length;
+  const articleWordCount = countWords(articlePlainText);
   const seoScore = Math.min(
     100,
     [
@@ -2374,6 +2384,8 @@ const BlogEditor = () => {
     seoScore >= 85 ? "Great job!" : seoScore >= 65 ? "Almost there" : "Needs work";
   const seoScorePercent = Math.max(0, Math.min(100, Number(seoScore) || 0));
   const focusKeywordValue = activeTagList[0] || "";
+  const focusKeywordWordCountLabel = formatWordCountLabel(focusKeywordValue);
+  const authorNameWordCountLabel = formatWordCountLabel(authorName);
   const isLoadingStoryMessage = message === "Loading selected story...";
   const focusSlugField = () => {
     setComposerSidebarTab("block");
@@ -3194,17 +3206,14 @@ const BlogEditor = () => {
                       <label className="mb-2 block text-sm font-semibold text-slate-900">
                         Title <span className="text-red-500">*</span>
                       </label>
-                      <div className="relative">
-                        <input
-                          value={title}
-                          onChange={(event) => setTitle(event.target.value)}
-                          maxLength={100}
-                          placeholder="Enter the post title"
-                          className="h-12 w-full border border-slate-200 bg-white px-2 pr-20 text-sm text-slate-800 outline-none transition focus:border-slate-400 focus:ring-0 md:px-4"
-                        />
-                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-4 text-xs font-medium text-slate-400">
-                          {titleCharacterCount} / 100
-                        </div>
+                      <input
+                        value={title}
+                        onChange={(event) => setTitle(event.target.value)}
+                        placeholder="Enter the post title"
+                        className="h-12 w-full border border-slate-200 bg-white px-2 text-sm text-slate-800 outline-none transition focus:border-slate-400 focus:ring-0 md:px-4"
+                      />
+                      <div className="mt-2 text-right text-xs font-medium text-slate-400">
+                        {titleWordCountLabel}
                       </div>
                     </div>
 
@@ -3535,7 +3544,6 @@ const BlogEditor = () => {
                         <div className="flex flex-col gap-2 border-t border-slate-200 px-2 py-3 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between md:px-4">
                           <div className="flex flex-wrap items-center gap-4">
                             <span>Words: {articleWordCount}</span>
-                            <span>Characters: {articleCharacterCount}</span>
                           </div>
 
                           <div className="flex flex-wrap items-center gap-3">
@@ -3775,12 +3783,11 @@ const BlogEditor = () => {
                         value={excerpt}
                         onChange={(event) => setExcerpt(event.target.value)}
                         rows={4}
-                        maxLength={160}
                         placeholder="Write a short summary for cards and search results"
                         className={composerTextareaClassName}
                       />
                       <div className="mt-2 text-right text-xs font-medium text-slate-400">
-                        {excerptCharacterCount} / 160
+                        {excerptWordCountLabel}
                       </div>
                     </div>
                   </div>
@@ -3887,6 +3894,9 @@ const BlogEditor = () => {
                           placeholder={defaultHeroAltText}
                           className={composerFieldClassName}
                         />
+                        <div className="mt-1 text-right text-xs font-medium text-slate-400">
+                          {heroImageAltWordCountLabel}
+                        </div>
                       </div>
 
                       <div>
@@ -3902,6 +3912,9 @@ const BlogEditor = () => {
                           placeholder="Optional photo caption or credit"
                           className={composerTextareaClassName}
                         />
+                        <div className="mt-1 text-right text-xs font-medium text-slate-400">
+                          {heroImageCaptionWordCountLabel}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -3923,11 +3936,10 @@ const BlogEditor = () => {
                         <input
                           value={metaTitle}
                           onChange={(event) => setMetaTitle(event.target.value)}
-                          maxLength={60}
                           className={composerFieldClassName}
                         />
                         <div className="mt-1 text-right text-xs font-medium text-slate-400">
-                          {metaTitleCharacterCount} / 60
+                          {metaTitleWordCountLabel}
                         </div>
                       </div>
 
@@ -3941,11 +3953,10 @@ const BlogEditor = () => {
                             setMetaDescription(event.target.value)
                           }
                           rows={3}
-                          maxLength={160}
                           className={composerTextareaClassName}
                         />
                         <div className="mt-1 text-right text-xs font-medium text-slate-400">
-                          {metaDescriptionCharacterCount} / 160
+                          {metaDescriptionWordCountLabel}
                         </div>
                       </div>
 
@@ -3979,6 +3990,9 @@ const BlogEditor = () => {
                           }}
                           className={composerFieldClassName}
                         />
+                        <div className="mt-1 text-right text-xs font-medium text-slate-400">
+                          {focusKeywordWordCountLabel}
+                        </div>
                       </div>
 
                       <div className="border border-emerald-100 bg-emerald-50 px-2 py-3 md:px-4">
@@ -4317,6 +4331,9 @@ const BlogEditor = () => {
                           onChange={(event) => setAuthorName(event.target.value)}
                           className={composerFieldClassName}
                         />
+                        <div className="mt-1 text-right text-xs font-medium text-slate-400">
+                          {authorNameWordCountLabel}
+                        </div>
                       </div>
 
                       <div>
