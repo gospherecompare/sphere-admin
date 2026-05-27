@@ -497,7 +497,10 @@ function App() {
             element={<EditHomeAppliance />}
           />
           <Route path="products/tvs/:id/edit" element={<EditHomeAppliance />} />
-          <Route path="products/smartphones/create" element={<CreateMobile />} />
+          <Route
+            path="products/smartphones/create"
+            element={<CreateMobile />}
+          />
           <Route
             path="products/smartphones/preview"
             element={<SmartphonePreview />}
@@ -535,7 +538,10 @@ function App() {
           />
           <Route path="products/tvs/create" element={<CreateHomeAppliance />} />
           <Route path="edit-mobile/:id" element={<EditMobile />} />
-          <Route path="users" element={<Navigate to="/user-management" replace />} />
+          <Route
+            path="users"
+            element={<Navigate to="/user-management" replace />}
+          />
           <Route
             path="roles"
             element={<Navigate to="/permission-management" replace />}

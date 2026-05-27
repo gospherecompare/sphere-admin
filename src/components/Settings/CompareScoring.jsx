@@ -54,9 +54,23 @@ const normalizeRules = (rules) => {
   }));
 };
 
+const formatDateTime = (value) => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+};
+
 export default function CompareScoring() {
   const [weights, setWeights] = useState(DEFAULT_WEIGHTS);
   const [chipsetRules, setChipsetRules] = useState([]);
+  const [updatedAt, setUpdatedAt] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -90,6 +104,7 @@ export default function CompareScoring() {
       const data = await response.json();
       setWeights(normalizeWeights(data?.weights));
       setChipsetRules(normalizeRules(data?.chipset_rules));
+      setUpdatedAt(data?.updated_at ?? null);
     } catch (err) {
       setError("Failed to load compare scoring settings");
     } finally {
@@ -162,6 +177,7 @@ export default function CompareScoring() {
       const data = await response.json();
       setWeights(normalizeWeights(data?.weights));
       setChipsetRules(normalizeRules(data?.chipset_rules));
+      setUpdatedAt(data?.updated_at ?? null);
       showToast("Saved", "Compare scoring settings updated", "success");
     } catch (err) {
       setError("Failed to save compare scoring settings");
@@ -216,6 +232,11 @@ export default function CompareScoring() {
           </h1>
           <p className="text-sm text-gray-600 mt-1">
             Manage compare score weights and chipset scoring rules from admin.
+          </p>
+          <p className="text-xs text-gray-500 mt-2">
+            {updatedAt
+              ? `Last updated: ${formatDateTime(updatedAt)}`
+              : "Last updated: Not available yet"}
           </p>
         </div>
         <div className="flex items-center gap-2">
