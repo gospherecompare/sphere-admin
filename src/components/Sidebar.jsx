@@ -406,7 +406,7 @@ const DesktopSidebar = ({ collapsed, location }) => (
           to="/dashboard"
           className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/6 ring-1 ring-white/10"
         >
-          <HookLogo showText={false} className="h-8 w-8" />
+          <img src={HookLogo} className="h-8 w-8" showText={false} />
         </Link>
       ) : (
         <Link to="/dashboard" className="flex min-w-0 items-center gap-3">
