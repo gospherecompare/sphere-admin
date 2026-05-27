@@ -29,7 +29,7 @@ import {
   FaUserShield,
   FaUsers,
 } from "react-icons/fa";
-import HookLogo from "./Ui/hooklogo";
+import HookLogo from "./../../public/hook-logo.png";
 
 const DESKTOP_SECTIONS = [
   {
