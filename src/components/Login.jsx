@@ -26,7 +26,7 @@ const STEPS = {
   pinSetup: "pin_setup",
 };
 
-const MIN_PIN_LENGTH = 4;
+const MIN_PIN_LENGTH = 7;
 const MAX_PIN_LENGTH = 7;
 
 const INPUT_WRAPPER =
@@ -736,7 +736,7 @@ const Login = ({ onLogin }) => {
     if (
       !new RegExp(`^\\d{${MIN_PIN_LENGTH},${MAX_PIN_LENGTH}}$`).test(newPin)
     ) {
-      return `Organization PIN must be ${MIN_PIN_LENGTH} to ${MAX_PIN_LENGTH} digits.`;
+      return "Organization PIN must be exactly 7 digits.";
     }
 
     if (newPin !== confirmPin) {

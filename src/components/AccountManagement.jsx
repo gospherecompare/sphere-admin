@@ -19,7 +19,7 @@ import {
   FaShieldAlt,
 } from "react-icons/fa";
 
-const PIN_PATTERN = /^\d{4,10}$/;
+const PIN_PATTERN = /^\d{7}$/;
 const AccountManagement = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("profile");
@@ -191,13 +191,13 @@ const AccountManagement = () => {
         return "Current organization PIN is required";
       }
       if (value && !PIN_PATTERN.test(value)) {
-        return "PIN must be 4 to 10 digits";
+        return "PIN must be exactly 7 digits";
       }
     }
 
     if (name === "newPin") {
       if (!value) return "New organization PIN is required";
-      if (!PIN_PATTERN.test(value)) return "PIN must be 4 to 10 digits";
+      if (!PIN_PATTERN.test(value)) return "PIN must be exactly 7 digits";
       if (pinStatus.isConfigured && value === nextForm.currentPin) {
         return "New PIN must be different from current PIN";
       }
@@ -1021,7 +1021,7 @@ const AccountManagement = () => {
                         onChange={handlePinChange}
                         onBlur={handlePinBlur}
                         inputMode="numeric"
-                        maxLength={10}
+                        maxLength={7}
                         className={`w-full px-4 py-2 rounded-lg border transition-colors pr-10 ${
                           pinErrors.currentPin && pinTouched.currentPin
                             ? "border-red-300 focus:border-red-500 focus:ring-red-200"
@@ -1058,7 +1058,7 @@ const AccountManagement = () => {
                       onChange={handlePinChange}
                       onBlur={handlePinBlur}
                       inputMode="numeric"
-                      maxLength={10}
+                      maxLength={7}
                       className={`w-full px-4 py-2 rounded-lg border transition-colors pr-10 ${
                         pinErrors.newPin && pinTouched.newPin
                           ? "border-red-300 focus:border-red-500 focus:ring-red-200"
@@ -1092,7 +1092,7 @@ const AccountManagement = () => {
                       onChange={handlePinChange}
                       onBlur={handlePinBlur}
                       inputMode="numeric"
-                      maxLength={10}
+                      maxLength={7}
                       className={`w-full px-4 py-2 rounded-lg border transition-colors pr-10 ${
                         pinErrors.confirmPin && pinTouched.confirmPin
                           ? "border-red-300 focus:border-red-500 focus:ring-red-200"
@@ -1115,7 +1115,7 @@ const AccountManagement = () => {
                 </div>
 
                 <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
-                  Use a 4 to 10 digit PIN for your admin team. You can rotate it
+                  Use a 7 digit PIN for your admin team. You can rotate it
                   here whenever access needs to change.
                 </div>
 
