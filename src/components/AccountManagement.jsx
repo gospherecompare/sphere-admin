@@ -4,22 +4,53 @@ import Cookies from "js-cookie";
 import axios from "axios";
 import { buildUrl } from "../api";
 import {
-  FaUser,
-  FaEnvelope,
-  FaPhone,
-  FaLock,
+  FaCalendarAlt,
+  FaCheck,
+  FaChevronRight,
+  FaDesktop,
   FaEdit,
-  FaSave,
-  FaTimes,
+  FaEnvelope,
+  FaExclamationCircle,
   FaEye,
   FaEyeSlash,
-  FaCheck,
-  FaExclamationCircle,
-  FaSpinner,
+  FaHistory,
+  FaInfoCircle,
+  FaKey,
+  FaLock,
+  FaPhone,
+  FaQuestionCircle,
+  FaRegCreditCard,
+  FaSave,
   FaShieldAlt,
+  FaSpinner,
+  FaTimes,
+  FaUser,
+  FaUserEdit,
 } from "react-icons/fa";
 
 const PIN_PATTERN = /^\d{7}$/;
+const INPUT_CLASS =
+  "h-11 w-full rounded-lg border border-slate-200 bg-white px-4 text-base text-slate-700 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-700 sm:text-sm";
+const ERROR_INPUT_CLASS =
+  "h-11 w-full rounded-lg border border-red-300 bg-white px-4 text-base text-slate-700 outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-100 sm:text-sm";
+
+const getInputClass = (hasError = false, extraClass = "") =>
+  `${hasError ? ERROR_INPUT_CLASS : INPUT_CLASS} ${extraClass}`;
+
+const FieldError = ({ visible, children }) =>
+  visible ? <p className="mt-1 text-xs text-red-600">{children}</p> : null;
+
+const VisibilityButton = ({ visible, onClick, label }) => (
+  <button
+    type="button"
+    aria-label={label}
+    onClick={onClick}
+    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-slate-700"
+  >
+    {visible ? <FaEyeSlash /> : <FaEye />}
+  </button>
+);
+
 const AccountManagement = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("profile");
@@ -39,7 +70,6 @@ const AccountManagement = () => {
     last_name: "",
     gender: "",
   });
-
   const [profileErrors, setProfileErrors] = useState({});
   const [profileTouched, setProfileTouched] = useState({});
 
@@ -48,7 +78,6 @@ const AccountManagement = () => {
     newPassword: "",
     confirmPassword: "",
   });
-
   const [passwordErrors, setPasswordErrors] = useState({});
   const [passwordTouched, setPasswordTouched] = useState({});
   const [showPasswords, setShowPasswords] = useState({
@@ -76,16 +105,8 @@ const AccountManagement = () => {
     confirm: false,
   });
 
-  useEffect(() => {
-    loadAccountData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const getToken = () => Cookies.get("authToken");
-
-  const getAuthHeaders = (token) => ({
-    Authorization: `Bearer ${token}`,
-  });
+  const getAuthHeaders = (token) => ({ Authorization: `Bearer ${token}` });
 
   const populateProfileForm = (user) => {
     setProfileForm({
@@ -117,9 +138,8 @@ const AccountManagement = () => {
       ]);
 
       if (profileResponse.data.success) {
-        const user = profileResponse.data.user;
-        setUserData(user);
-        populateProfileForm(user);
+        setUserData(profileResponse.data.user);
+        populateProfileForm(profileResponse.data.user);
       }
 
       if (pinStatusResponse.data.success) {
@@ -131,57 +151,58 @@ const AccountManagement = () => {
       }
 
       setMessage({ type: "", text: "" });
-    } catch (err) {
-      console.error("Error loading account management data:", err);
-      setMessage({
-        type: "error",
-        text: "Failed to load account details",
-      });
+    } catch (error) {
+      console.error("Error loading account management data:", error);
+      if ([401, 403].includes(error.response?.status)) {
+        navigate("/login");
+        return;
+      }
+      setMessage({ type: "error", text: "Failed to load account details" });
     } finally {
       setInitialLoading(false);
     }
   };
 
+  useEffect(() => {
+    loadAccountData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const validateProfileField = (name, value) => {
     if (name === "email") {
       if (!value.trim()) return "Email is required";
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value))
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
         return "Invalid email address";
+      }
     }
-
-    if (name === "phone") {
-      if (value && !/^[\d\s+()-]+$/.test(value))
-        return "Invalid phone number";
+    if (name === "phone" && value && !/^[\d\s+()-]+$/.test(value)) {
+      return "Invalid phone number";
     }
-
-    if (name === "first_name" || name === "last_name") {
-      if (value && !/^[A-Za-z\s-]+$/.test(value))
-        return "Only letters allowed";
+    if (
+      (name === "first_name" || name === "last_name") &&
+      value &&
+      !/^[A-Za-z\s-]+$/.test(value)
+    ) {
+      return "Only letters allowed";
     }
-
     return "";
   };
 
-  const validatePasswordField = (name, value) => {
-    if (name === "currentPassword") {
-      if (!value) return "Current password is required";
+  const validatePasswordField = (name, value, nextForm = passwordForm) => {
+    if (name === "currentPassword" && !value) {
+      return "Current password is required";
     }
-
     if (name === "newPassword") {
       if (!value) return "New password is required";
       if (value.length < 8) return "Password must be at least 8 characters";
-      if (!/[A-Z]/.test(value))
-        return "Must contain at least one uppercase letter";
-      if (!/[a-z]/.test(value))
-        return "Must contain at least one lowercase letter";
-      if (!/[0-9]/.test(value)) return "Must contain at least one number";
+      if (!/[A-Z]/.test(value)) return "Must contain an uppercase letter";
+      if (!/[a-z]/.test(value)) return "Must contain a lowercase letter";
+      if (!/[0-9]/.test(value)) return "Must contain a number";
     }
-
     if (name === "confirmPassword") {
       if (!value) return "Please confirm your password";
-      if (value !== passwordForm.newPassword) return "Passwords do not match";
+      if (value !== nextForm.newPassword) return "Passwords do not match";
     }
-
     return "";
   };
 
@@ -194,7 +215,6 @@ const AccountManagement = () => {
         return "PIN must be exactly 7 digits";
       }
     }
-
     if (name === "newPin") {
       if (!value) return "New organization PIN is required";
       if (!PIN_PATTERN.test(value)) return "PIN must be exactly 7 digits";
@@ -202,93 +222,93 @@ const AccountManagement = () => {
         return "New PIN must be different from current PIN";
       }
     }
-
     if (name === "confirmPin") {
       if (!value) return "Please confirm the organization PIN";
       if (value !== nextForm.newPin) return "PINs do not match";
     }
-
     return "";
   };
 
-  const handleProfileChange = (e) => {
-    const { name, value } = e.target;
-    setProfileForm((prev) => ({ ...prev, [name]: value }));
-
+  const handleProfileChange = (event) => {
+    const { name, value } = event.target;
+    setProfileForm((previous) => ({ ...previous, [name]: value }));
     if (profileTouched[name]) {
-      const error = validateProfileField(name, value);
-      setProfileErrors((prev) => ({ ...prev, [name]: error }));
+      setProfileErrors((previous) => ({
+        ...previous,
+        [name]: validateProfileField(name, value),
+      }));
     }
   };
 
-  const handleProfileBlur = (e) => {
-    const { name, value } = e.target;
-    setProfileTouched((prev) => ({ ...prev, [name]: true }));
-    const error = validateProfileField(name, value);
-    setProfileErrors((prev) => ({ ...prev, [name]: error }));
+  const handleProfileBlur = (event) => {
+    const { name, value } = event.target;
+    setProfileTouched((previous) => ({ ...previous, [name]: true }));
+    setProfileErrors((previous) => ({
+      ...previous,
+      [name]: validateProfileField(name, value),
+    }));
   };
 
-  const handlePasswordChange = (e) => {
-    const { name, value } = e.target;
-    setPasswordForm((prev) => ({ ...prev, [name]: value }));
+  const checkPasswordStrength = (password) => {
+    let score = 0;
+    if (password.length >= 8) score += 1;
+    if (/[A-Z]/.test(password)) score += 1;
+    if (/[a-z]/.test(password)) score += 1;
+    if (/[0-9]/.test(password)) score += 1;
+    if (/[^A-Za-z0-9]/.test(password)) score += 1;
+    setPasswordStrength(score);
+  };
+
+  const handlePasswordChange = (event) => {
+    const { name, value } = event.target;
+    const nextForm = { ...passwordForm, [name]: value };
+    setPasswordForm(nextForm);
 
     if (passwordTouched[name]) {
-      const error = validatePasswordField(name, value);
-      setPasswordErrors((prev) => ({ ...prev, [name]: error }));
+      setPasswordErrors((previous) => ({
+        ...previous,
+        [name]: validatePasswordField(name, value, nextForm),
+      }));
     }
-
     if (name === "newPassword") {
       checkPasswordStrength(value);
       if (passwordTouched.confirmPassword) {
-        setPasswordErrors((prev) => ({
-          ...prev,
+        setPasswordErrors((previous) => ({
+          ...previous,
           confirmPassword: validatePasswordField(
             "confirmPassword",
-            passwordForm.confirmPassword,
+            nextForm.confirmPassword,
+            nextForm,
           ),
         }));
       }
     }
   };
 
-  const handlePasswordBlur = (e) => {
-    const { name, value } = e.target;
-    setPasswordTouched((prev) => ({ ...prev, [name]: true }));
-    const error = validatePasswordField(name, value);
-    setPasswordErrors((prev) => ({ ...prev, [name]: error }));
+  const handlePasswordBlur = (event) => {
+    const { name, value } = event.target;
+    setPasswordTouched((previous) => ({ ...previous, [name]: true }));
+    setPasswordErrors((previous) => ({
+      ...previous,
+      [name]: validatePasswordField(name, value),
+    }));
   };
 
-  const checkPasswordStrength = (password) => {
-    let score = 0;
-    if (password.length >= 8) score++;
-    if (/[A-Z]/.test(password)) score++;
-    if (/[a-z]/.test(password)) score++;
-    if (/[0-9]/.test(password)) score++;
-    if (/[^A-Za-z0-9]/.test(password)) score++;
-    setPasswordStrength(score);
-  };
-
-  const togglePasswordVisibility = (field) => {
-    setShowPasswords((prev) => ({ ...prev, [field]: !prev[field] }));
-  };
-
-  const handlePinChange = (e) => {
-    const { name, value } = e.target;
-    const normalizedValue = value.replace(/\D/g, "").slice(0, 10);
+  const handlePinChange = (event) => {
+    const { name, value } = event.target;
+    const normalizedValue = value.replace(/\D/g, "").slice(0, 7);
     const nextForm = { ...pinForm, [name]: normalizedValue };
-
     setPinForm(nextForm);
 
     if (pinTouched[name]) {
-      setPinErrors((prev) => ({
-        ...prev,
+      setPinErrors((previous) => ({
+        ...previous,
         [name]: validatePinField(name, normalizedValue, nextForm),
       }));
     }
-
     if (name === "newPin" && pinTouched.confirmPin) {
-      setPinErrors((prev) => ({
-        ...prev,
+      setPinErrors((previous) => ({
+        ...previous,
         confirmPin: validatePinField(
           "confirmPin",
           nextForm.confirmPin,
@@ -298,20 +318,15 @@ const AccountManagement = () => {
     }
   };
 
-  const handlePinBlur = (e) => {
-    const { name, value } = e.target;
-    const normalizedValue = value.replace(/\D/g, "").slice(0, 10);
+  const handlePinBlur = (event) => {
+    const { name, value } = event.target;
+    const normalizedValue = value.replace(/\D/g, "").slice(0, 7);
     const nextForm = { ...pinForm, [name]: normalizedValue };
-
-    setPinTouched((prev) => ({ ...prev, [name]: true }));
-    setPinErrors((prev) => ({
-      ...prev,
+    setPinTouched((previous) => ({ ...previous, [name]: true }));
+    setPinErrors((previous) => ({
+      ...previous,
       [name]: validatePinField(name, normalizedValue, nextForm),
     }));
-  };
-
-  const togglePinVisibility = (field) => {
-    setShowPins((prev) => ({ ...prev, [field]: !prev[field] }));
   };
 
   const validateProfileForm = () => {
@@ -323,7 +338,7 @@ const AccountManagement = () => {
     return errors;
   };
 
-  const validatePasswordFormFunc = () => {
+  const validatePasswordForm = () => {
     const errors = {};
     Object.keys(passwordForm).forEach((field) => {
       const error = validatePasswordField(field, passwordForm[field]);
@@ -335,21 +350,17 @@ const AccountManagement = () => {
   const validatePinForm = () => {
     const errors = {};
     Object.keys(pinForm).forEach((field) => {
-      if (!pinStatus.isConfigured && field === "currentPin") {
-        return;
-      }
-
+      if (!pinStatus.isConfigured && field === "currentPin") return;
       const error = validatePinField(field, pinForm[field], pinForm);
       if (error) errors[field] = error;
     });
     return errors;
   };
 
-  const handleUpdateProfile = async (e) => {
-    e.preventDefault();
+  const handleUpdateProfile = async (event) => {
+    event.preventDefault();
     const errors = validateProfileForm();
-
-    if (Object.keys(errors).length > 0) {
+    if (Object.keys(errors).length) {
       setProfileErrors(errors);
       setMessage({ type: "error", text: "Please fix all errors" });
       return;
@@ -357,8 +368,6 @@ const AccountManagement = () => {
 
     try {
       setProfileSaving(true);
-      const token = getToken();
-
       const response = await axios.put(
         buildUrl("/api/auth/profile"),
         {
@@ -368,9 +377,8 @@ const AccountManagement = () => {
           last_name: profileForm.last_name,
           gender: profileForm.gender,
         },
-        { headers: getAuthHeaders(token) },
+        { headers: getAuthHeaders(getToken()) },
       );
-
       if (response.data.success) {
         setUserData(response.data.user);
         populateProfileForm(response.data.user);
@@ -378,22 +386,21 @@ const AccountManagement = () => {
         setMessage({ type: "success", text: "Profile updated successfully" });
         setTimeout(() => setMessage({ type: "", text: "" }), 3000);
       }
-    } catch (err) {
-      console.error("Error updating profile:", err);
+    } catch (error) {
+      console.error("Error updating profile:", error);
       setMessage({
         type: "error",
-        text: err.response?.data?.message || "Failed to update profile",
+        text: error.response?.data?.message || "Failed to update profile",
       });
     } finally {
       setProfileSaving(false);
     }
   };
 
-  const handleChangePassword = async (e) => {
-    e.preventDefault();
-    const errors = validatePasswordFormFunc();
-
-    if (Object.keys(errors).length > 0) {
+  const handleChangePassword = async (event) => {
+    event.preventDefault();
+    const errors = validatePasswordForm();
+    if (Object.keys(errors).length) {
       setPasswordErrors(errors);
       setMessage({ type: "error", text: "Please fix all errors" });
       return;
@@ -401,17 +408,14 @@ const AccountManagement = () => {
 
     try {
       setPasswordSaving(true);
-      const token = getToken();
-
       const response = await axios.post(
         buildUrl("/api/auth/change-password"),
         {
           currentPassword: passwordForm.currentPassword,
           newPassword: passwordForm.newPassword,
         },
-        { headers: getAuthHeaders(token) },
+        { headers: getAuthHeaders(getToken()) },
       );
-
       if (response.data.success || response.status === 200) {
         setPasswordForm({
           currentPassword: "",
@@ -424,22 +428,21 @@ const AccountManagement = () => {
         setMessage({ type: "success", text: "Password changed successfully" });
         setTimeout(() => setMessage({ type: "", text: "" }), 3000);
       }
-    } catch (err) {
-      console.error("Error changing password:", err);
+    } catch (error) {
+      console.error("Error changing password:", error);
       setMessage({
         type: "error",
-        text: err.response?.data?.message || "Failed to change password",
+        text: error.response?.data?.message || "Failed to change password",
       });
     } finally {
       setPasswordSaving(false);
     }
   };
 
-  const handleUpdateOrganizationPin = async (e) => {
-    e.preventDefault();
+  const handleUpdateOrganizationPin = async (event) => {
+    event.preventDefault();
     const errors = validatePinForm();
-
-    if (Object.keys(errors).length > 0) {
+    if (Object.keys(errors).length) {
       setPinErrors(errors);
       setMessage({ type: "error", text: "Please fix all errors" });
       return;
@@ -447,22 +450,16 @@ const AccountManagement = () => {
 
     try {
       setPinSaving(true);
-      const token = getToken();
       const response = await axios.put(
         buildUrl("/api/auth/organization-pin"),
         {
           currentPin: pinStatus.isConfigured ? pinForm.currentPin : "",
           newPin: pinForm.newPin,
         },
-        { headers: getAuthHeaders(token) },
+        { headers: getAuthHeaders(getToken()) },
       );
-
       if (response.data.success) {
-        setPinForm({
-          currentPin: "",
-          newPin: "",
-          confirmPin: "",
-        });
+        setPinForm({ currentPin: "", newPin: "", confirmPin: "" });
         setPinErrors({});
         setPinTouched({});
         setPinStatus({
@@ -477,35 +474,20 @@ const AccountManagement = () => {
         });
         setTimeout(() => setMessage({ type: "", text: "" }), 3000);
       }
-    } catch (err) {
-      console.error("Error updating organization PIN:", err);
+    } catch (error) {
+      console.error("Error updating organization PIN:", error);
       setMessage({
         type: "error",
         text:
-          err.response?.data?.message || "Failed to update organization PIN",
+          error.response?.data?.message || "Failed to update organization PIN",
       });
     } finally {
       setPinSaving(false);
     }
   };
 
-  const getPasswordStrengthColor = () => {
-    if (passwordStrength === 0) return "bg-red-500";
-    if (passwordStrength <= 2) return "bg-orange-500";
-    if (passwordStrength <= 3) return "bg-yellow-500";
-    return "bg-green-500";
-  };
-
-  const getPasswordStrengthText = () => {
-    if (passwordStrength === 0) return "Very Weak";
-    if (passwordStrength <= 2) return "Weak";
-    if (passwordStrength <= 3) return "Fair";
-    return "Strong";
-  };
-
   const formatPinUpdatedAt = (value) => {
     if (!value) return "Not updated yet";
-
     try {
       return new Date(value).toLocaleString("en-IN", {
         dateStyle: "medium",
@@ -516,105 +498,178 @@ const AccountManagement = () => {
     }
   };
 
+  const getPasswordStrengthColor = () => {
+    if (passwordStrength <= 1) return "bg-red-500";
+    if (passwordStrength <= 2) return "bg-orange-500";
+    if (passwordStrength <= 3) return "bg-yellow-500";
+    return "bg-green-500";
+  };
+
+  const getPasswordStrengthText = () => {
+    if (passwordStrength <= 1) return "Very weak";
+    if (passwordStrength <= 2) return "Weak";
+    if (passwordStrength <= 3) return "Fair";
+    return "Strong";
+  };
+
+  const updatedByLabel = pinStatus.updated_by
+    ? userData?.email || `Admin user #${pinStatus.updated_by}`
+    : "Not updated yet";
+
+  const quickActions = [
+    {
+      title: "Change Password",
+      description: "Update your account password",
+      icon: FaLock,
+      iconClass: "bg-[#2864dc]",
+      onClick: () => setActiveTab("password"),
+    },
+    {
+      title: "Organization PIN",
+      description: "Rotate your shared access PIN",
+      icon: FaKey,
+      iconClass: "bg-[#8457dc]",
+      onClick: () => setActiveTab("pin"),
+    },
+    {
+      title: "Profile Details",
+      description: "Review your account information",
+      icon: FaUserEdit,
+      iconClass: "bg-[#17a866]",
+      onClick: () => {
+        setActiveTab("profile");
+        setIsEditing(true);
+      },
+    },
+    {
+      title: "Security Status",
+      description: "Review account protection",
+      icon: FaHistory,
+      iconClass: "bg-[#f28a16]",
+      onClick: () => setActiveTab("pin"),
+    },
+  ];
+
   if (initialLoading && !userData) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="flex min-h-[520px] items-center justify-center">
         <div className="text-center">
-          <FaSpinner className="animate-spin text-4xl text-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600">Loading your account...</p>
+          <FaSpinner className="mx-auto mb-4 animate-spin text-4xl text-[#2864dc]" />
+          <p className="text-sm font-medium text-slate-500">
+            Loading account settings...
+          </p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1720px] flex flex-col gap-6 py-2 sm:py-3">
-      {/* Header */}
-
-      <div className="max-w-6xl mx-auto">
-        {/* Message Alert */}
-        {message.text && (
-          <div
-            className={`mb-6 p-4 flex items-center space-x-3 ${
-              message.type === "success"
-                ? "bg-green-50 border border-green-200 text-green-800"
-                : "bg-red-50 border border-red-200 text-red-800"
-            }`}
-          >
-            {message.type === "success" ? (
-              <FaCheck className="text-lg flex-shrink-0" />
-            ) : (
-              <FaExclamationCircle className="text-lg flex-shrink-0" />
-            )}
-            <span>{message.text}</span>
-            <button
-              onClick={() => setMessage({ type: "", text: "" })}
-              className="ml-auto p-1 hover:bg-gray-200 rounded"
-            >
-              <FaTimes />
-            </button>
+    <div className="mx-auto w-full max-w-[1560px] space-y-4 pb-2 sm:space-y-5">
+      <section className="flex flex-col gap-3 sm:gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <p className="mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-blue-600">
+            System Administration
+          </p>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-950 sm:text-[28px]">
+            Account Settings
+          </h1>
+          <p className="mt-1 text-sm text-slate-600">
+            Manage your profile, security settings and organization preferences.
+          </p>
+        </div>
+        <div className="flex w-full items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-3 shadow-[0_10px_35px_rgba(15,23,42,0.04)] sm:px-4 lg:w-auto">
+          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-50 text-blue-600">
+            <FaQuestionCircle />
+          </span>
+          <div>
+            <p className="text-sm font-semibold text-slate-800">Need help?</p>
+            <p className="text-xs text-slate-500">View account documentation</p>
           </div>
-        )}
+        </div>
+      </section>
 
-        {/* Tabs */}
-        <div className="rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm mb-8 flex flex-wrap gap-2 p-2">
+      {message.text && (
+        <div
+          className={`flex items-center gap-3 rounded-xl border px-4 py-3 text-sm shadow-sm ${
+            message.type === "success"
+              ? "border-green-200 bg-green-50 text-green-800"
+              : "border-red-200 bg-red-50 text-red-800"
+          }`}
+        >
+          {message.type === "success" ? <FaCheck /> : <FaExclamationCircle />}
+          <span>{message.text}</span>
           <button
-            onClick={() => {
-              setActiveTab("profile");
-              setIsEditing(false);
-            }}
-            className={`pb-4 px-2 font-medium transition-colors ${
-              activeTab === "profile"
-                ? "text-blue-600 border-b-2 border-blue-600"
-                : "text-gray-600 hover:text-gray-900"
-            }`}
+            type="button"
+            aria-label="Dismiss notification"
+            onClick={() => setMessage({ type: "", text: "" })}
+            className="ml-auto rounded p-1 transition hover:bg-black/5"
           >
-            <FaUser className="inline mr-2" />
-            Profile
-          </button>
-          <button
-            onClick={() => setActiveTab("password")}
-            className={`pb-4 px-2 font-medium transition-colors ${
-              activeTab === "password"
-                ? "text-blue-600 border-b-2 border-blue-600"
-                : "text-gray-600 hover:text-gray-900"
-            }`}
-          >
-            <FaLock className="inline mr-2" />
-            Security
+            <FaTimes />
           </button>
         </div>
+      )}
 
-        {/* Profile Tab */}
-        {activeTab === "profile" && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Profile Info Card */}
+      <nav
+        aria-label="Account settings sections"
+        className="flex max-w-full overflow-x-auto rounded-xl border border-slate-200 bg-white px-1 shadow-[0_10px_35px_rgba(15,23,42,0.04)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:px-3"
+      >
+        {[
+          { id: "profile", label: "Profile", icon: FaUser },
+          { id: "password", label: "Security", icon: FaLock },
+          { id: "pin", label: "Organization PIN", icon: FaRegCreditCard },
+        ].map(({ id, label, icon: Icon }) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => {
+              setActiveTab(id);
+              if (id !== "profile") setIsEditing(false);
+            }}
+            className={`flex min-w-fit shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-3 py-3.5 text-sm font-semibold transition sm:px-4 sm:py-4 ${
+              activeTab === id
+                ? "border-blue-600 text-blue-600"
+                : "border-transparent text-slate-500 hover:text-slate-800"
+            }`}
+          >
+            {React.createElement(Icon)}
+            {label}
+          </button>
+        ))}
+      </nav>
 
-            {/* Profile Form */}
-            <div className="lg:col-span-2">
-              <div className="rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm p-3 sm:p-4 md:p-6">
-                <div className="flex items-center justify-between mb-4 sm:mb-6">
-                  <h3 className="text-lg font-bold text-gray-900">
+      {activeTab === "profile" && (
+        <>
+          <section className="grid gap-4 xl:grid-cols-[1.18fr_0.98fr]">
+            <article className="min-w-0 rounded-xl border border-slate-200 bg-white p-4 shadow-[0_12px_36px_rgba(15,23,42,0.045)] sm:p-6">
+              <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-bold text-slate-950">
                     Profile Information
-                  </h3>
-                  {!isEditing && (
-                    <button
-                      onClick={() => setIsEditing(true)}
-                      className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                    >
-                      <FaEdit />
-                      <span>Edit Profile</span>
-                    </button>
-                  )}
+                  </h2>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Update your personal details and how others see you.
+                  </p>
                 </div>
+                {!isEditing && (
+                  <button
+                    type="button"
+                    onClick={() => setIsEditing(true)}
+                    className="inline-flex h-10 items-center gap-2 rounded-lg border border-blue-200 px-4 text-sm font-semibold text-blue-600 transition hover:border-blue-300 hover:bg-blue-50"
+                  >
+                    <FaEdit />
+                    Edit Profile
+                  </button>
+                )}
+              </div>
 
-                <form onSubmit={handleUpdateProfile} className="space-y-4">
-                  {/* Email */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      <FaEnvelope className="inline mr-2" />
-                      Email
-                    </label>
+              <form onSubmit={handleUpdateProfile} className="space-y-4">
+                <div>
+                  <label className="mb-2 flex items-center gap-2 text-xs font-semibold text-slate-600">
+                    <FaEnvelope className="text-slate-400" />
+                    Email Address
+                  </label>
+                  <div className="relative">
+                    <FaEnvelope className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-xs text-slate-400" />
                     <input
                       type="email"
                       name="email"
@@ -622,25 +677,26 @@ const AccountManagement = () => {
                       onChange={handleProfileChange}
                       onBlur={handleProfileBlur}
                       disabled={!isEditing}
-                      className={`w-full px-4 py-2 rounded-lg border transition-colors disabled:bg-gray-50 ${
-                        profileErrors.email && profileTouched.email
-                          ? "border-red-300 focus:border-red-500 focus:ring-red-200"
-                          : "border-gray-300 focus:border-blue-500 focus:ring-blue-200"
-                      } focus:outline-none focus:ring-2`}
+                      className={getInputClass(
+                        profileErrors.email && profileTouched.email,
+                        "pl-11",
+                      )}
                     />
-                    {profileErrors.email && profileTouched.email && (
-                      <p className="mt-1 text-sm text-red-600">
-                        {profileErrors.email}
-                      </p>
-                    )}
                   </div>
+                  <FieldError
+                    visible={profileErrors.email && profileTouched.email}
+                  >
+                    {profileErrors.email}
+                  </FieldError>
+                </div>
 
-                  {/* Phone */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      <FaPhone className="inline mr-2" />
-                      Phone
-                    </label>
+                <div>
+                  <label className="mb-2 flex items-center gap-2 text-xs font-semibold text-slate-600">
+                    <FaPhone className="text-slate-400" />
+                    Phone Number
+                  </label>
+                  <div className="relative">
+                    <FaPhone className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-xs text-slate-400" />
                     <input
                       type="tel"
                       name="phone"
@@ -648,505 +704,564 @@ const AccountManagement = () => {
                       onChange={handleProfileChange}
                       onBlur={handleProfileBlur}
                       disabled={!isEditing}
-                      className={`w-full px-4 py-2 rounded-lg border transition-colors disabled:bg-gray-50 ${
-                        profileErrors.phone && profileTouched.phone
-                          ? "border-red-300 focus:border-red-500 focus:ring-red-200"
-                          : "border-gray-300 focus:border-blue-500 focus:ring-blue-200"
-                      } focus:outline-none focus:ring-2`}
                       placeholder="+1 (555) 000-0000"
-                    />
-                    {profileErrors.phone && profileTouched.phone && (
-                      <p className="mt-1 text-sm text-red-600">
-                        {profileErrors.phone}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* First Name and Last Name */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        First Name
-                      </label>
-                      <input
-                        type="text"
-                        name="first_name"
-                        value={profileForm.first_name}
-                        onChange={handleProfileChange}
-                        onBlur={handleProfileBlur}
-                        disabled={!isEditing}
-                        className={`w-full px-4 py-2 rounded-lg border transition-colors disabled:bg-gray-50 ${
-                          profileErrors.first_name && profileTouched.first_name
-                            ? "border-red-300 focus:border-red-500 focus:ring-red-200"
-                            : "border-gray-300 focus:border-blue-500 focus:ring-blue-200"
-                        } focus:outline-none focus:ring-2`}
-                      />
-                      {profileErrors.first_name &&
-                        profileTouched.first_name && (
-                          <p className="mt-1 text-sm text-red-600">
-                            {profileErrors.first_name}
-                          </p>
-                        )}
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Last Name
-                      </label>
-                      <input
-                        type="text"
-                        name="last_name"
-                        value={profileForm.last_name}
-                        onChange={handleProfileChange}
-                        onBlur={handleProfileBlur}
-                        disabled={!isEditing}
-                        className={`w-full px-4 py-2 rounded-lg border transition-colors disabled:bg-gray-50 ${
-                          profileErrors.last_name && profileTouched.last_name
-                            ? "border-red-300 focus:border-red-500 focus:ring-red-200"
-                            : "border-gray-300 focus:border-blue-500 focus:ring-blue-200"
-                        } focus:outline-none focus:ring-2`}
-                      />
-                      {profileErrors.last_name && profileTouched.last_name && (
-                        <p className="mt-1 text-sm text-red-600">
-                          {profileErrors.last_name}
-                        </p>
+                      className={getInputClass(
+                        profileErrors.phone && profileTouched.phone,
+                        "pl-11",
                       )}
-                    </div>
-                  </div>
-
-                  {/* Gender */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Gender
-                    </label>
-                    <select
-                      name="gender"
-                      value={profileForm.gender}
-                      onChange={handleProfileChange}
-                      disabled={!isEditing}
-                      className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none disabled:bg-gray-50 transition-colors"
-                    >
-                      <option value="">Select Gender</option>
-                      <option value="male">Male</option>
-                      <option value="female">Female</option>
-                      <option value="other">Other</option>
-                    </select>
-                  </div>
-
-                  {/* Action Buttons */}
-                  {isEditing && (
-                    <div className="flex space-x-3 pt-4">
-                      <button
-                        type="submit"
-                        disabled={profileSaving}
-                        className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center justify-center space-x-2"
-                      >
-                        {profileSaving ? (
-                          <FaSpinner className="animate-spin" />
-                        ) : (
-                          <FaSave />
-                        )}
-                        <span>Save Changes</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsEditing(false);
-                          setProfileErrors({});
-                          setProfileTouched({});
-                          if (userData) {
-                            populateProfileForm(userData);
-                          }
-                        }}
-                        className="flex-1 bg-gray-200 text-gray-900 py-2 rounded-lg hover:bg-gray-300 transition-colors flex items-center justify-center space-x-2"
-                      >
-                        <FaTimes />
-                        <span>Cancel</span>
-                      </button>
-                    </div>
-                  )}
-                </form>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Password Tab */}
-        {activeTab === "password" && (
-          <div className="max-w-2xl mx-auto space-y-6">
-            <div className="rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm p-3 sm:p-4 md:p-6">
-              <h3 className="text-lg font-bold text-gray-900 mb-6">
-                Change Password
-              </h3>
-
-              <form onSubmit={handleChangePassword} className="space-y-4">
-                {/* Current Password */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Current Password
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showPasswords.current ? "text" : "password"}
-                      name="currentPassword"
-                      value={passwordForm.currentPassword}
-                      onChange={handlePasswordChange}
-                      onBlur={handlePasswordBlur}
-                      className={`w-full px-4 py-2 rounded-lg border transition-colors pr-10 ${
-                        passwordErrors.currentPassword &&
-                        passwordTouched.currentPassword
-                          ? "border-red-300 focus:border-red-500 focus:ring-red-200"
-                          : "border-gray-300 focus:border-blue-500 focus:ring-blue-200"
-                      } focus:outline-none focus:ring-2`}
                     />
-                    <button
-                      type="button"
-                      onClick={() => togglePasswordVisibility("current")}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                    >
-                      {showPasswords.current ? <FaEyeSlash /> : <FaEye />}
-                    </button>
                   </div>
-                  {passwordErrors.currentPassword &&
-                    passwordTouched.currentPassword && (
-                      <p className="mt-1 text-sm text-red-600">
-                        {passwordErrors.currentPassword}
-                      </p>
-                    )}
-                </div>
-
-                {/* New Password */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    New Password
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showPasswords.new ? "text" : "password"}
-                      name="newPassword"
-                      value={passwordForm.newPassword}
-                      onChange={handlePasswordChange}
-                      onBlur={handlePasswordBlur}
-                      className={`w-full px-4 py-2 rounded-lg border transition-colors pr-10 ${
-                        passwordErrors.newPassword &&
-                        passwordTouched.newPassword
-                          ? "border-red-300 focus:border-red-500 focus:ring-red-200"
-                          : "border-gray-300 focus:border-blue-500 focus:ring-blue-200"
-                      } focus:outline-none focus:ring-2`}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => togglePasswordVisibility("new")}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                    >
-                      {showPasswords.new ? <FaEyeSlash /> : <FaEye />}
-                    </button>
-                  </div>
-                  {passwordErrors.newPassword &&
-                    passwordTouched.newPassword && (
-                      <p className="mt-1 text-sm text-red-600">
-                        {passwordErrors.newPassword}
-                      </p>
-                    )}
-
-                  {/* Password Strength */}
-                  {passwordForm.newPassword && (
-                    <div className="mt-3">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <span className="text-sm text-gray-600">Strength:</span>
-                        <div className="flex-1 bg-gray-200 h-2 rounded-full overflow-hidden">
-                          <div
-                            className={`h-full ${getPasswordStrengthColor()} transition-all`}
-                            style={{
-                              width: `${(passwordStrength / 5) * 100}%`,
-                            }}
-                          />
-                        </div>
-                        <span className="text-xs font-medium text-gray-600">
-                          {getPasswordStrengthText()}
-                        </span>
-                      </div>
-                      <ul className="text-xs text-gray-600 space-y-1">
-                        <li
-                          className={
-                            passwordForm.newPassword.length >= 8
-                              ? "text-green-600"
-                              : ""
-                          }
-                        >
-                          ✓ At least 8 characters
-                        </li>
-                        <li
-                          className={
-                            /[A-Z]/.test(passwordForm.newPassword)
-                              ? "text-green-600"
-                              : ""
-                          }
-                        >
-                          ✓ Contains uppercase letter
-                        </li>
-                        <li
-                          className={
-                            /[a-z]/.test(passwordForm.newPassword)
-                              ? "text-green-600"
-                              : ""
-                          }
-                        >
-                          ✓ Contains lowercase letter
-                        </li>
-                        <li
-                          className={
-                            /[0-9]/.test(passwordForm.newPassword)
-                              ? "text-green-600"
-                              : ""
-                          }
-                        >
-                          ✓ Contains number
-                        </li>
-                      </ul>
-                    </div>
-                  )}
-                </div>
-
-                {/* Confirm Password */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Confirm Password
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showPasswords.confirm ? "text" : "password"}
-                      name="confirmPassword"
-                      value={passwordForm.confirmPassword}
-                      onChange={handlePasswordChange}
-                      onBlur={handlePasswordBlur}
-                      className={`w-full px-4 py-2 rounded-lg border transition-colors pr-10 ${
-                        passwordErrors.confirmPassword &&
-                        passwordTouched.confirmPassword
-                          ? "border-red-300 focus:border-red-500 focus:ring-red-200"
-                          : "border-gray-300 focus:border-blue-500 focus:ring-blue-200"
-                      } focus:outline-none focus:ring-2`}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => togglePasswordVisibility("confirm")}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                    >
-                      {showPasswords.confirm ? <FaEyeSlash /> : <FaEye />}
-                    </button>
-                  </div>
-                  {passwordErrors.confirmPassword &&
-                    passwordTouched.confirmPassword && (
-                      <p className="mt-1 text-sm text-red-600">
-                        {passwordErrors.confirmPassword}
-                      </p>
-                    )}
-                </div>
-
-                {/* Submit Button */}
-                <div className="pt-4">
-                  <button
-                    type="submit"
-                    disabled={passwordSaving}
-                    className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center justify-center space-x-2"
+                  <FieldError
+                    visible={profileErrors.phone && profileTouched.phone}
                   >
-                    {passwordSaving ? (
-                      <FaSpinner className="animate-spin" />
-                    ) : (
-                      <FaLock />
-                    )}
-                    <span>Change Password</span>
-                  </button>
+                    {profileErrors.phone}
+                  </FieldError>
                 </div>
-              </form>
 
-              {/* Security Tips */}
-              <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                <h4 className="font-semibold text-blue-900 mb-2">
-                  Security Tips:
-                </h4>
-                <ul className="text-sm text-blue-800 space-y-1">
-                  <li>
-                    • Use a strong password with a mix of letters, numbers, and
-                    symbols
-                  </li>
-                  <li>• Never share your password with anyone</li>
-                  <li>• Change your password regularly</li>
-                  <li>• Use a unique password for this account</li>
-                </ul>
-              </div>
-            </div>
-
-            <div className="rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm p-3 sm:p-4 md:p-6">
-              <div className="flex items-start justify-between gap-4 mb-6">
-                <div>
-                  <h3 className="text-lg font-bold text-gray-900">
-                    Organization PIN
-                  </h3>
-                  <p className="mt-1 text-sm text-gray-600">
-                    This PIN is required after password verification during admin
-                    login.
-                  </p>
-                </div>
-                <span
-                  className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${
-                    pinStatus.isConfigured
-                      ? "bg-green-100 text-green-700"
-                      : "bg-amber-100 text-amber-700"
-                  }`}
-                >
-                  <FaShieldAlt />
-                  {pinStatus.isConfigured ? "Configured" : "Not Set"}
-                </span>
-              </div>
-
-              <div className="mb-5 rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
-                <div>Last updated: {formatPinUpdatedAt(pinStatus.updated_at)}</div>
-                <div className="mt-1">
-                  Stored securely on the server using one-way hashing.
-                </div>
-              </div>
-
-              <form onSubmit={handleUpdateOrganizationPin} className="space-y-4">
-                {pinStatus.isConfigured && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Current Organization PIN
-                    </label>
-                    <div className="relative">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {[
+                    { name: "first_name", label: "First Name" },
+                    { name: "last_name", label: "Last Name" },
+                  ].map(({ name, label }) => (
+                    <div key={name}>
+                      <label className="mb-2 block text-xs font-semibold text-slate-600">
+                        {label}
+                      </label>
                       <input
-                        type={showPins.current ? "text" : "password"}
-                        name="currentPin"
-                        value={pinForm.currentPin}
-                        onChange={handlePinChange}
-                        onBlur={handlePinBlur}
-                        inputMode="numeric"
-                        maxLength={7}
-                        className={`w-full px-4 py-2 rounded-lg border transition-colors pr-10 ${
-                          pinErrors.currentPin && pinTouched.currentPin
-                            ? "border-red-300 focus:border-red-500 focus:ring-red-200"
-                            : "border-gray-300 focus:border-blue-500 focus:ring-blue-200"
-                        } focus:outline-none focus:ring-2`}
+                        type="text"
+                        name={name}
+                        value={profileForm[name]}
+                        onChange={handleProfileChange}
+                        onBlur={handleProfileBlur}
+                        disabled={!isEditing}
+                        className={getInputClass(
+                          profileErrors[name] && profileTouched[name],
+                        )}
                       />
-                      <button
-                        type="button"
-                        onClick={() => togglePinVisibility("current")}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                      <FieldError
+                        visible={profileErrors[name] && profileTouched[name]}
                       >
-                        {showPins.current ? <FaEyeSlash /> : <FaEye />}
-                      </button>
+                        {profileErrors[name]}
+                      </FieldError>
                     </div>
-                    {pinErrors.currentPin && pinTouched.currentPin && (
-                      <p className="mt-1 text-sm text-red-600">
-                        {pinErrors.currentPin}
-                      </p>
-                    )}
+                  ))}
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-xs font-semibold text-slate-600">
+                    Gender
+                  </label>
+                  <select
+                    name="gender"
+                    value={profileForm.gender}
+                    onChange={handleProfileChange}
+                    disabled={!isEditing}
+                    className={getInputClass()}
+                  >
+                    <option value="">Select Gender</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+
+                {isEditing && (
+                  <div className="flex flex-col gap-3 pt-2 sm:flex-row">
+                    <button
+                      type="submit"
+                      disabled={profileSaving}
+                      className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {profileSaving ? (
+                        <FaSpinner className="animate-spin" />
+                      ) : (
+                        <FaSave />
+                      )}
+                      Save Changes
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsEditing(false);
+                        setProfileErrors({});
+                        setProfileTouched({});
+                        if (userData) populateProfileForm(userData);
+                      }}
+                      className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-lg border border-slate-200 px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                    >
+                      <FaTimes />
+                      Cancel
+                    </button>
                   </div>
                 )}
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    {pinStatus.isConfigured
-                      ? "New Organization PIN"
-                      : "Organization PIN"}
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showPins.new ? "text" : "password"}
-                      name="newPin"
-                      value={pinForm.newPin}
-                      onChange={handlePinChange}
-                      onBlur={handlePinBlur}
-                      inputMode="numeric"
-                      maxLength={7}
-                      className={`w-full px-4 py-2 rounded-lg border transition-colors pr-10 ${
-                        pinErrors.newPin && pinTouched.newPin
-                          ? "border-red-300 focus:border-red-500 focus:ring-red-200"
-                          : "border-gray-300 focus:border-blue-500 focus:ring-blue-200"
-                      } focus:outline-none focus:ring-2`}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => togglePinVisibility("new")}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                    >
-                      {showPins.new ? <FaEyeSlash /> : <FaEye />}
-                    </button>
-                  </div>
-                  {pinErrors.newPin && pinTouched.newPin && (
-                    <p className="mt-1 text-sm text-red-600">
-                      {pinErrors.newPin}
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Confirm Organization PIN
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showPins.confirm ? "text" : "password"}
-                      name="confirmPin"
-                      value={pinForm.confirmPin}
-                      onChange={handlePinChange}
-                      onBlur={handlePinBlur}
-                      inputMode="numeric"
-                      maxLength={7}
-                      className={`w-full px-4 py-2 rounded-lg border transition-colors pr-10 ${
-                        pinErrors.confirmPin && pinTouched.confirmPin
-                          ? "border-red-300 focus:border-red-500 focus:ring-red-200"
-                          : "border-gray-300 focus:border-blue-500 focus:ring-blue-200"
-                      } focus:outline-none focus:ring-2`}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => togglePinVisibility("confirm")}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                    >
-                      {showPins.confirm ? <FaEyeSlash /> : <FaEye />}
-                    </button>
-                  </div>
-                  {pinErrors.confirmPin && pinTouched.confirmPin && (
-                    <p className="mt-1 text-sm text-red-600">
-                      {pinErrors.confirmPin}
-                    </p>
-                  )}
-                </div>
-
-                <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
-                  Use a 7 digit PIN for your admin team. You can rotate it
-                  here whenever access needs to change.
-                </div>
-
-                <div className="pt-2">
-                  <button
-                    type="submit"
-                    disabled={pinSaving}
-                    className="w-full bg-gray-900 text-white py-2 rounded-lg hover:bg-gray-800 disabled:opacity-50 transition-colors flex items-center justify-center space-x-2"
-                  >
-                    {pinSaving ? (
-                      <FaSpinner className="animate-spin" />
-                    ) : (
-                      <FaShieldAlt />
-                    )}
-                    <span>
-                      {pinStatus.isConfigured
-                        ? "Update Organization PIN"
-                        : "Create Organization PIN"}
-                    </span>
-                  </button>
-                </div>
               </form>
+
+              <div className="mt-5 flex items-start gap-3 rounded-lg border border-blue-100 bg-blue-50/70 px-4 py-3">
+                <FaInfoCircle className="mt-0.5 text-blue-600" />
+                <div>
+                  <p className="text-xs font-semibold text-blue-700">
+                    Profile Visibility
+                  </p>
+                  <p className="mt-1 text-xs text-slate-600">
+                    Your profile information is visible to authorized team
+                    members only.
+                  </p>
+                </div>
+              </div>
+            </article>
+
+            <article className="min-w-0 rounded-xl border border-slate-200 bg-white p-4 shadow-[0_12px_36px_rgba(15,23,42,0.045)] sm:p-6">
+              <div className="flex items-start gap-3">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-green-50 text-green-600">
+                  <FaShieldAlt />
+                </span>
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="text-lg font-bold text-slate-950">
+                      Organization PIN
+                    </h2>
+                    <span
+                      className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${
+                        pinStatus.isConfigured
+                          ? "bg-green-50 text-green-700"
+                          : "bg-amber-50 text-amber-700"
+                      }`}
+                    >
+                      {pinStatus.isConfigured ? "Configured" : "Not Set"}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-sm leading-6 text-slate-500">
+                    Your organization PIN adds an extra layer of security after
+                    password verification.
+                  </p>
+                </div>
+              </div>
+
+              <div
+                className={`mt-6 flex gap-3 rounded-lg border px-4 py-4 ${
+                  pinStatus.isConfigured
+                    ? "border-green-100 bg-green-50/70"
+                    : "border-amber-100 bg-amber-50/70"
+                }`}
+              >
+                <FaLock
+                  className={`mt-0.5 ${
+                    pinStatus.isConfigured ? "text-green-600" : "text-amber-600"
+                  }`}
+                />
+                <div>
+                  <p className="text-sm font-semibold text-slate-800">
+                    PIN Status
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-slate-600">
+                    {pinStatus.isConfigured
+                      ? "The organization PIN is configured and active."
+                      : "Create the organization PIN to finish securing admin login."}
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid gap-4 border-b border-slate-100 py-6 sm:grid-cols-2">
+                <div className="flex gap-3">
+                  <FaCalendarAlt className="mt-0.5 text-blue-600" />
+                  <div>
+                    <p className="text-xs font-semibold text-blue-600">
+                      Last Updated
+                    </p>
+                    <p className="mt-1 text-sm font-medium text-slate-700">
+                      {formatPinUpdatedAt(pinStatus.updated_at)}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <FaUser className="mt-0.5 text-blue-600" />
+                  <div>
+                    <p className="text-xs font-semibold text-blue-600">
+                      Updated By
+                    </p>
+                    <p className="mt-1 break-all text-sm font-medium text-slate-700">
+                      {updatedByLabel}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab("pin")}
+                className="mt-4 inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-blue-300 text-sm font-semibold text-blue-600 transition hover:bg-blue-50"
+              >
+                <FaKey />
+                {pinStatus.isConfigured ? "Change PIN" : "Create PIN"}
+              </button>
+
+              <div className="mt-4 flex items-start gap-3 rounded-lg border border-amber-100 bg-amber-50/70 px-4 py-3">
+                <FaExclamationCircle className="mt-0.5 text-amber-500" />
+                <div>
+                  <p className="text-xs font-semibold text-slate-800">
+                    Important
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-slate-600">
+                    You will need to enter your current PIN before making any
+                    changes.
+                  </p>
+                </div>
+              </div>
+            </article>
+          </section>
+
+          <section className="min-w-0 rounded-xl border border-slate-200 bg-white p-4 shadow-[0_12px_36px_rgba(15,23,42,0.045)] sm:p-5">
+            <div className="mb-4">
+              <h2 className="text-base font-bold text-slate-950">
+                Quick Actions
+              </h2>
+              <p className="mt-1 text-xs text-slate-500">
+                Common account and security actions
+              </p>
             </div>
-          </div>
-        )}
-      </div>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              {quickActions.map(
+                ({ title, description, icon: Icon, iconClass, onClick }) => (
+                  <button
+                    key={title}
+                    type="button"
+                    onClick={onClick}
+                    className="group flex min-w-0 items-center gap-3 rounded-lg border border-slate-100 bg-slate-50/60 px-3 py-3 text-left transition hover:border-blue-100 hover:bg-blue-50/40"
+                  >
+                    <span
+                      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white ${iconClass}`}
+                    >
+                      {React.createElement(Icon, { className: "text-sm" })}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-xs font-bold text-slate-800">
+                        {title}
+                      </span>
+                      <span className="mt-1 block text-[11px] text-slate-500">
+                        {description}
+                      </span>
+                    </span>
+                    <FaChevronRight className="text-xs text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-blue-500" />
+                  </button>
+                ),
+              )}
+            </div>
+          </section>
+
+          <p className="flex items-center justify-center gap-2 py-1 text-xs text-slate-500">
+            <FaShieldAlt />
+            Your account is protected with organization-level security.
+          </p>
+        </>
+      )}
+
+      {activeTab === "password" && (
+        <section className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+          <article className="min-w-0 rounded-xl border border-slate-200 bg-white p-4 shadow-[0_12px_36px_rgba(15,23,42,0.045)] sm:p-6">
+            <div className="mb-6">
+              <h2 className="text-lg font-bold text-slate-950">
+                Change Password
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Use a strong, unique password for your admin account.
+              </p>
+            </div>
+
+            <form onSubmit={handleChangePassword} className="space-y-4">
+              {[
+                {
+                  name: "currentPassword",
+                  label: "Current Password",
+                  visibility: "current",
+                },
+                {
+                  name: "newPassword",
+                  label: "New Password",
+                  visibility: "new",
+                },
+                {
+                  name: "confirmPassword",
+                  label: "Confirm Password",
+                  visibility: "confirm",
+                },
+              ].map(({ name, label, visibility }) => (
+                <div key={name}>
+                  <label className="mb-2 block text-xs font-semibold text-slate-600">
+                    {label}
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showPasswords[visibility] ? "text" : "password"}
+                      name={name}
+                      value={passwordForm[name]}
+                      onChange={handlePasswordChange}
+                      onBlur={handlePasswordBlur}
+                      className={getInputClass(
+                        passwordErrors[name] && passwordTouched[name],
+                        "pr-11",
+                      )}
+                    />
+                    <VisibilityButton
+                      visible={showPasswords[visibility]}
+                      label={`${showPasswords[visibility] ? "Hide" : "Show"} ${label.toLowerCase()}`}
+                      onClick={() =>
+                        setShowPasswords((previous) => ({
+                          ...previous,
+                          [visibility]: !previous[visibility],
+                        }))
+                      }
+                    />
+                  </div>
+                  <FieldError
+                    visible={passwordErrors[name] && passwordTouched[name]}
+                  >
+                    {passwordErrors[name]}
+                  </FieldError>
+                </div>
+              ))}
+
+              {passwordForm.newPassword && (
+                <div className="rounded-lg border border-slate-100 bg-slate-50 px-4 py-3">
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <span className="text-xs font-semibold text-slate-600">
+                      Password strength
+                    </span>
+                    <span className="text-xs font-semibold text-slate-500">
+                      {getPasswordStrengthText()}
+                    </span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-slate-200">
+                    <div
+                      className={`h-full rounded-full ${getPasswordStrengthColor()} transition-all`}
+                      style={{ width: `${(passwordStrength / 5) * 100}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={passwordSaving}
+                className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {passwordSaving ? (
+                  <FaSpinner className="animate-spin" />
+                ) : (
+                  <FaLock />
+                )}
+                Change Password
+              </button>
+            </form>
+          </article>
+
+          <aside className="space-y-4">
+            <div className="rounded-xl border border-blue-100 bg-blue-50/70 p-5">
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-white">
+                <FaShieldAlt />
+              </span>
+              <h3 className="mt-4 text-base font-bold text-slate-900">
+                Password guidance
+              </h3>
+              <p className="mt-2 text-sm leading-6 text-slate-600">
+                Use a unique password with uppercase and lowercase letters,
+                numbers, and symbols. Avoid reusing credentials from another
+                service.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setActiveTab("pin")}
+              className="group flex w-full items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 text-left shadow-[0_12px_36px_rgba(15,23,42,0.045)] transition hover:border-blue-200"
+            >
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-violet-50 text-violet-600">
+                <FaKey />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-bold text-slate-800">
+                  Organization PIN
+                </span>
+                <span className="mt-1 block text-xs text-slate-500">
+                  Review your second login step
+                </span>
+              </span>
+              <FaChevronRight className="text-slate-400 transition group-hover:translate-x-0.5" />
+            </button>
+          </aside>
+        </section>
+      )}
+
+      {activeTab === "pin" && (
+        <section className="grid gap-4 lg:grid-cols-[1.08fr_0.92fr]">
+          <article className="min-w-0 rounded-xl border border-slate-200 bg-white p-4 shadow-[0_12px_36px_rgba(15,23,42,0.045)] sm:p-6">
+            <div className="mb-6 flex items-start gap-3">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-violet-50 text-violet-600">
+                <FaKey />
+              </span>
+              <div>
+                <h2 className="text-lg font-bold text-slate-950">
+                  {pinStatus.isConfigured
+                    ? "Change Organization PIN"
+                    : "Create Organization PIN"}
+                </h2>
+                <p className="mt-1 text-sm leading-6 text-slate-500">
+                  This shared seven-digit PIN is required after email and
+                  password verification.
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleUpdateOrganizationPin} className="space-y-4">
+              {pinStatus.isConfigured && (
+                <div>
+                  <label className="mb-2 block text-xs font-semibold text-slate-600">
+                    Current Organization PIN
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showPins.current ? "text" : "password"}
+                      name="currentPin"
+                      value={pinForm.currentPin}
+                      onChange={handlePinChange}
+                      onBlur={handlePinBlur}
+                      inputMode="numeric"
+                      maxLength={7}
+                      className={getInputClass(
+                        pinErrors.currentPin && pinTouched.currentPin,
+                        "pr-11 tracking-[0.28em]",
+                      )}
+                    />
+                    <VisibilityButton
+                      visible={showPins.current}
+                      label="Toggle current organization PIN visibility"
+                      onClick={() =>
+                        setShowPins((previous) => ({
+                          ...previous,
+                          current: !previous.current,
+                        }))
+                      }
+                    />
+                  </div>
+                  <FieldError
+                    visible={pinErrors.currentPin && pinTouched.currentPin}
+                  >
+                    {pinErrors.currentPin}
+                  </FieldError>
+                </div>
+              )}
+
+              {[
+                {
+                  name: "newPin",
+                  label: pinStatus.isConfigured
+                    ? "New Organization PIN"
+                    : "Organization PIN",
+                  visibility: "new",
+                },
+                {
+                  name: "confirmPin",
+                  label: "Confirm Organization PIN",
+                  visibility: "confirm",
+                },
+              ].map(({ name, label, visibility }) => (
+                <div key={name}>
+                  <label className="mb-2 block text-xs font-semibold text-slate-600">
+                    {label}
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showPins[visibility] ? "text" : "password"}
+                      name={name}
+                      value={pinForm[name]}
+                      onChange={handlePinChange}
+                      onBlur={handlePinBlur}
+                      inputMode="numeric"
+                      maxLength={7}
+                      className={getInputClass(
+                        pinErrors[name] && pinTouched[name],
+                        "pr-11 tracking-[0.28em]",
+                      )}
+                    />
+                    <VisibilityButton
+                      visible={showPins[visibility]}
+                      label={`Toggle ${label.toLowerCase()} visibility`}
+                      onClick={() =>
+                        setShowPins((previous) => ({
+                          ...previous,
+                          [visibility]: !previous[visibility],
+                        }))
+                      }
+                    />
+                  </div>
+                  <FieldError visible={pinErrors[name] && pinTouched[name]}>
+                    {pinErrors[name]}
+                  </FieldError>
+                </div>
+              ))}
+
+              <div className="rounded-lg border border-blue-100 bg-blue-50/70 px-4 py-3 text-xs leading-5 text-slate-600">
+                Use an exact seven-digit PIN for your admin team. The stored PIN
+                is protected with one-way hashing.
+              </div>
+
+              <button
+                type="submit"
+                disabled={pinSaving}
+                className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-slate-900 px-4 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {pinSaving ? (
+                  <FaSpinner className="animate-spin" />
+                ) : (
+                  <FaShieldAlt />
+                )}
+                {pinStatus.isConfigured
+                  ? "Update Organization PIN"
+                  : "Create Organization PIN"}
+              </button>
+            </form>
+          </article>
+
+          <aside className="space-y-4">
+            <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-[0_12px_36px_rgba(15,23,42,0.045)]">
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-green-50 text-green-600">
+                <FaShieldAlt />
+              </span>
+              <h3 className="mt-4 text-base font-bold text-slate-900">
+                PIN security status
+              </h3>
+              <p className="mt-2 text-sm leading-6 text-slate-600">
+                {pinStatus.isConfigured
+                  ? "Your organization PIN is configured and required after password verification."
+                  : "No organization PIN exists yet. Create one to complete the admin login flow."}
+              </p>
+              <div className="mt-5 space-y-3 border-t border-slate-100 pt-4">
+                <div className="flex items-center gap-3 text-xs text-slate-600">
+                  <FaCalendarAlt className="text-blue-600" />
+                  {formatPinUpdatedAt(pinStatus.updated_at)}
+                </div>
+                <div className="flex items-center gap-3 text-xs text-slate-600">
+                  <FaDesktop className="text-blue-600" />
+                  Applied to all admin logins
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3 rounded-xl border border-amber-100 bg-amber-50/70 p-4">
+              <FaExclamationCircle className="mt-0.5 text-amber-500" />
+              <div>
+                <p className="text-xs font-bold text-slate-800">
+                  Keep this PIN private
+                </p>
+                <p className="mt-1 text-xs leading-5 text-slate-600">
+                  Share the organization PIN only with authorized admin team
+                  members and rotate it when access changes.
+                </p>
+              </div>
+            </div>
+          </aside>
+        </section>
+      )}
     </div>
   );
 };
 
 export default AccountManagement;
-
-
-
