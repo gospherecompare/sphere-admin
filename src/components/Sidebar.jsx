@@ -422,7 +422,7 @@ const DesktopSidebar = ({ collapsed, location }) => (
               hooks
             </p>
             <p className="mt-1 text-[10px] uppercase tracking-[0.24em] text-slate-400">
-              Gadget Intelligence Platform
+              Gadget Intelligence
             </p>
           </div>
         </Link>
@@ -629,7 +629,7 @@ const MobileDrawer = ({ mobileOpen, setMobileOpen, location, onLogout }) => {
               hooks
             </p>
             <p className="mt-1 text-[10px] uppercase tracking-[0.24em] text-slate-400">
-              Gadget Intelligence Platform
+              Gadget Intelligence
             </p>
           </Link>
 

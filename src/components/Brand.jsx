@@ -232,7 +232,11 @@ function StatCard({ label, value, helper, icon: Icon, tone = "violet" }) {
         <div>
           <p className="text-sm font-medium text-slate-500">{label}</p>
           <p className="mt-2 text-3xl font-semibold tracking-tight text-slate-950">
-            {typeof value === "number" ? <CountUp end={value} duration={0.8} /> : value}
+            {typeof value === "number" ? (
+              <CountUp end={value} duration={0.8} />
+            ) : (
+              value
+            )}
           </p>
           <p className="mt-2 text-xs text-slate-500">{helper}</p>
         </div>
@@ -271,7 +275,8 @@ function BrandOverviewRing({ activeCount, inactiveCount, total }) {
             <span className="text-slate-600">Active</span>
           </div>
           <span className="font-semibold text-slate-900">
-            {activeCount} ({total ? ((activeCount / total) * 100).toFixed(1) : "0.0"}%)
+            {activeCount} (
+            {total ? ((activeCount / total) * 100).toFixed(1) : "0.0"}%)
           </span>
         </div>
         <div className="flex items-center justify-between gap-3 text-sm">
@@ -280,7 +285,8 @@ function BrandOverviewRing({ activeCount, inactiveCount, total }) {
             <span className="text-slate-600">Inactive</span>
           </div>
           <span className="font-semibold text-slate-900">
-            {inactiveCount} ({total ? ((inactiveCount / total) * 100).toFixed(1) : "0.0"}%)
+            {inactiveCount} (
+            {total ? ((inactiveCount / total) * 100).toFixed(1) : "0.0"}%)
           </span>
         </div>
       </div>
@@ -355,10 +361,8 @@ const Brand = () => {
           status: String(brand.status || "active").toLowerCase(),
           featured: Boolean(stored.featured),
           sortOrder: String(stored.sort_order || "0"),
-          metaTitle:
-            stored.meta_title || buildBrandMetaTitle(normalizedName),
-          metaDescription:
-            stored.meta_description || brand.description || "",
+          metaTitle: stored.meta_title || buildBrandMetaTitle(normalizedName),
+          metaDescription: stored.meta_description || brand.description || "",
           product_count:
             Number(
               brand.product_count ??
@@ -409,7 +413,8 @@ const Brand = () => {
 
       if (name === "name") {
         const previousAutoSlug = prev.slug || slugifyValue(prev.name);
-        const previousAutoTitle = prev.metaTitle || buildBrandMetaTitle(prev.name);
+        const previousAutoTitle =
+          prev.metaTitle || buildBrandMetaTitle(prev.name);
         const previousAutoMarketing = prev.marketingName || prev.name;
 
         if (!prev.slug || prev.slug === previousAutoSlug) {
@@ -420,12 +425,18 @@ const Brand = () => {
           next.metaTitle = buildBrandMetaTitle(value);
         }
 
-        if (!prev.marketingName || prev.marketingName === previousAutoMarketing) {
+        if (
+          !prev.marketingName ||
+          prev.marketingName === previousAutoMarketing
+        ) {
           next.marketingName = value;
         }
       }
 
-      if (name === "description" && (!prev.metaDescription || prev.metaDescription === prev.description)) {
+      if (
+        name === "description" &&
+        (!prev.metaDescription || prev.metaDescription === prev.description)
+      ) {
         next.metaDescription = value;
       }
 
@@ -603,9 +614,7 @@ const Brand = () => {
 
   const handleDelete = async (brand) => {
     if (
-      !window.confirm(
-        `Delete ${brand.name}? This action cannot be undone.`,
-      )
+      !window.confirm(`Delete ${brand.name}? This action cannot be undone.`)
     ) {
       return;
     }
@@ -795,13 +804,17 @@ const Brand = () => {
     () =>
       [...normalizedBrands]
         .sort(
-          (a, b) => b.productCount - a.productCount || a.name.localeCompare(b.name),
+          (a, b) =>
+            b.productCount - a.productCount || a.name.localeCompare(b.name),
         )
         .slice(0, 5),
     [normalizedBrands],
   );
 
-  const maxTopCount = Math.max(...topBrands.map((brand) => brand.productCount), 1);
+  const maxTopCount = Math.max(
+    ...topBrands.map((brand) => brand.productCount),
+    1,
+  );
   const totalPages = Math.max(1, Math.ceil(filteredBrands.length / PAGE_SIZE));
   const currentPageSafe = Math.min(currentPage, totalPages);
   const startIndex = (currentPageSafe - 1) * PAGE_SIZE;
@@ -880,14 +893,18 @@ const Brand = () => {
     },
   ];
 
-  const pageNumbers = Array.from({ length: totalPages }, (_, index) => index + 1)
-    .slice(Math.max(0, currentPageSafe - 2), Math.max(0, currentPageSafe - 2) + 5);
+  const pageNumbers = Array.from(
+    { length: totalPages },
+    (_, index) => index + 1,
+  ).slice(
+    Math.max(0, currentPageSafe - 2),
+    Math.max(0, currentPageSafe - 2) + 5,
+  );
 
   const foundedYearOptions = useMemo(() => {
     const currentYear = new Date().getFullYear();
-    return Array.from(
-      { length: currentYear - 1950 + 1 },
-      (_, index) => String(currentYear - index),
+    return Array.from({ length: currentYear - 1950 + 1 }, (_, index) =>
+      String(currentYear - index),
     );
   }, []);
 
@@ -899,7 +916,9 @@ const Brand = () => {
     formData.slug.trim() || slugifyValue(formData.name)
   }`;
   const editorWebsiteHref = buildWebsiteHref(formData.website);
-  const previewLinkHref = formData.website.trim() ? editorWebsiteHref : publicBrandUrl;
+  const previewLinkHref = formData.website.trim()
+    ? editorWebsiteHref
+    : publicBrandUrl;
 
   if (showEditor) {
     return (
@@ -949,7 +968,9 @@ const Brand = () => {
                 <h1 className="text-3xl font-semibold tracking-tight text-slate-950">
                   {editorTitle}
                 </h1>
-                <p className="mt-2 text-sm text-slate-500">{editorDescription}</p>
+                <p className="mt-2 text-sm text-slate-500">
+                  {editorDescription}
+                </p>
               </div>
 
               <div className="flex flex-col gap-2 sm:flex-row">
@@ -966,7 +987,11 @@ const Brand = () => {
                   <button
                     type="button"
                     onClick={() =>
-                      window.open(previewLinkHref, "_blank", "noopener,noreferrer")
+                      window.open(
+                        previewLinkHref,
+                        "_blank",
+                        "noopener,noreferrer",
+                      )
                     }
                     className={GHOST_BUTTON_CLASS}
                   >
@@ -980,7 +1005,9 @@ const Brand = () => {
 
           <form onSubmit={handleSubmit} className="divide-y divide-slate-200">
             <section className="px-4 py-6 sm:px-5">
-              <h2 className="text-lg font-semibold text-slate-950">Basic Information</h2>
+              <h2 className="text-lg font-semibold text-slate-950">
+                Basic Information
+              </h2>
               <div className="mt-5 grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
                 <div className="space-y-4">
                   <div className="grid gap-4 md:grid-cols-2">
@@ -1019,7 +1046,8 @@ const Brand = () => {
 
                   <div>
                     <label className="mb-2 block text-sm font-medium text-slate-700">
-                      Marketing Name <span className="text-slate-400">(Optional)</span>
+                      Marketing Name{" "}
+                      <span className="text-slate-400">(Optional)</span>
                     </label>
                     <input
                       type="text"
@@ -1047,7 +1075,9 @@ const Brand = () => {
                             const file = event.target.files?.[0];
                             if (!file) return;
                             if (file.size > 2 * 1024 * 1024) {
-                              setError("File size too large. Maximum 2MB allowed.");
+                              setError(
+                                "File size too large. Maximum 2MB allowed.",
+                              );
                               return;
                             }
                             handleLogoUpload(file);
@@ -1075,7 +1105,9 @@ const Brand = () => {
                               <FaUpload className="mx-auto mb-2 text-xl text-slate-400" />
                             )}
                             <p className="text-sm font-medium text-slate-700">
-                              {isUploading ? "Uploading logo..." : "Upload logo"}
+                              {isUploading
+                                ? "Uploading logo..."
+                                : "Upload logo"}
                             </p>
                             <p className="mt-1 text-xs text-slate-500">
                               PNG, JPG or SVG (Max. 2MB)
@@ -1101,7 +1133,8 @@ const Brand = () => {
 
                   <div>
                     <label className="mb-2 block text-sm font-medium text-slate-700">
-                      Brand Banner <span className="text-slate-400">(Optional)</span>
+                      Brand Banner{" "}
+                      <span className="text-slate-400">(Optional)</span>
                     </label>
                     <div className="overflow-hidden rounded-md border border-slate-200">
                       <div className="relative flex min-h-[112px] items-center justify-center bg-white px-4 py-4 text-center">
@@ -1113,7 +1146,9 @@ const Brand = () => {
                             const file = event.target.files?.[0];
                             if (!file) return;
                             if (file.size > 5 * 1024 * 1024) {
-                              setError("Banner size too large. Maximum 5MB allowed.");
+                              setError(
+                                "Banner size too large. Maximum 5MB allowed.",
+                              );
                               return;
                             }
                             handleBannerUpload(file);
@@ -1141,7 +1176,9 @@ const Brand = () => {
                               <FaUpload className="mx-auto mb-2 text-xl text-slate-400" />
                             )}
                             <p className="text-sm font-medium text-slate-700">
-                              {isUploading ? "Uploading banner..." : "Upload banner"}
+                              {isUploading
+                                ? "Uploading banner..."
+                                : "Upload banner"}
                             </p>
                             <p className="mt-1 text-xs text-slate-500">
                               PNG, JPG or SVG (Max. 5MB)
@@ -1169,7 +1206,9 @@ const Brand = () => {
             </section>
 
             <section className="px-4 py-6 sm:px-5">
-              <h2 className="text-lg font-semibold text-slate-950">Additional Details</h2>
+              <h2 className="text-lg font-semibold text-slate-950">
+                Additional Details
+              </h2>
               <div className="mt-5 grid gap-4 md:grid-cols-3">
                 <div>
                   <label className="mb-2 block text-sm font-medium text-slate-700">
@@ -1192,7 +1231,8 @@ const Brand = () => {
 
                 <div>
                   <label className="mb-2 block text-sm font-medium text-slate-700">
-                    Founded Year <span className="text-slate-400">(Optional)</span>
+                    Founded Year{" "}
+                    <span className="text-slate-400">(Optional)</span>
                   </label>
                   <select
                     name="foundedYear"
@@ -1226,7 +1266,8 @@ const Brand = () => {
 
               <div className="mt-4">
                 <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Short Description <span className="text-slate-400">(Optional)</span>
+                  Short Description{" "}
+                  <span className="text-slate-400">(Optional)</span>
                 </label>
                 <textarea
                   name="description"
@@ -1313,7 +1354,8 @@ const Brand = () => {
 
             <section className="px-4 py-6 sm:px-5">
               <h2 className="text-lg font-semibold text-slate-950">
-                Meta Information <span className="text-slate-400">(Optional)</span>
+                Meta Information{" "}
+                <span className="text-slate-400">(Optional)</span>
               </h2>
               <div className="mt-5 grid gap-4 md:grid-cols-2">
                 <div>
@@ -1365,7 +1407,9 @@ const Brand = () => {
 
               <button
                 type="submit"
-                disabled={isLoading || isUploading || !formData.name || !formData.logo}
+                disabled={
+                  isLoading || isUploading || !formData.name || !formData.logo
+                }
                 className={PRIMARY_BUTTON_CLASS}
               >
                 {isLoading ? (
@@ -1547,14 +1591,24 @@ const Brand = () => {
                     </th>
                     <th className="px-4 py-3 text-left font-semibold">Brand</th>
                     <th className="px-4 py-3 text-left font-semibold">Slug</th>
-                    <th className="px-4 py-3 text-left font-semibold">Category</th>
-                    <th className="px-4 py-3 text-left font-semibold">Products</th>
-                    <th className="px-4 py-3 text-left font-semibold">Status</th>
-                    <th className="px-4 py-3 text-left font-semibold">Website</th>
+                    <th className="px-4 py-3 text-left font-semibold">
+                      Category
+                    </th>
+                    <th className="px-4 py-3 text-left font-semibold">
+                      Products
+                    </th>
+                    <th className="px-4 py-3 text-left font-semibold">
+                      Status
+                    </th>
+                    <th className="px-4 py-3 text-left font-semibold">
+                      Website
+                    </th>
                     <th className="px-4 py-3 text-left font-semibold">
                       Sort Order
                     </th>
-                    <th className="px-4 py-3 text-left font-semibold">Actions</th>
+                    <th className="px-4 py-3 text-left font-semibold">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 bg-white">
@@ -1572,7 +1626,11 @@ const Brand = () => {
                       return (
                         <tr
                           key={brand.id}
-                          className={isSelected ? "bg-violet-50/50" : "hover:bg-slate-50/70"}
+                          className={
+                            isSelected
+                              ? "bg-violet-50/50"
+                              : "hover:bg-slate-50/70"
+                          }
                         >
                           <td className="px-4 py-4">
                             <input
@@ -1614,7 +1672,9 @@ const Brand = () => {
                               </div>
                             </div>
                           </td>
-                          <td className="px-4 py-4 text-slate-500">{brand.slug}</td>
+                          <td className="px-4 py-4 text-slate-500">
+                            {brand.slug}
+                          </td>
                           <td className="px-4 py-4">
                             <span className="inline-flex rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-700">
                               {brand.category || "Unassigned"}
@@ -1955,7 +2015,9 @@ const Brand = () => {
           </section>
 
           <section className={CARD_CLASS}>
-            <div className={`${SECTION_HEADER_CLASS} flex items-center justify-between`}>
+            <div
+              className={`${SECTION_HEADER_CLASS} flex items-center justify-between`}
+            >
               <h2 className="text-lg font-semibold text-slate-950">
                 Top Brands by Products
               </h2>
@@ -2061,7 +2123,9 @@ const Brand = () => {
 
           <section className={CARD_CLASS}>
             <div className={SECTION_HEADER_CLASS}>
-              <h2 className="text-lg font-semibold text-slate-950">Need Help?</h2>
+              <h2 className="text-lg font-semibold text-slate-950">
+                Need Help?
+              </h2>
             </div>
             <div className="space-y-3 px-3 py-4 text-sm text-slate-500 sm:px-4">
               <p>
