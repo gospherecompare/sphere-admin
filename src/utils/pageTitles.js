@@ -66,6 +66,11 @@ const TITLE_ROUTES = [
 
   routeMeta("/marketing", "Banner Campaign Studio", "Marketing Operations Cloud"),
   routeMeta("/marketing/banners", "Banner Campaign Studio", "Marketing Operations Cloud"),
+  routeMeta(
+    "/marketing/affiliate-links",
+    "Affiliate Link Command Center",
+    "Marketing Operations Cloud",
+  ),
 
   routeMeta("/reports", "Reporting Command Center", "Analytics Operations Cloud"),
   routeMeta("/analytics", "Publishing by User Analytics", "Analytics Operations Cloud"),

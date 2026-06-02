@@ -29,7 +29,8 @@ import {
   FaUserShield,
   FaUsers,
 } from "react-icons/fa";
-import HookLogo from "./../../public/hook-logo.png";
+
+const HOOK_LOGO_URL = "/hook-logo.png";
 
 const DESKTOP_SECTIONS = [
   {
@@ -179,6 +180,12 @@ const DESKTOP_SECTIONS = [
         icon: FaFileAlt,
         path: "/marketing/banners",
         prefixes: ["/marketing/banners"],
+      },
+      {
+        label: "Affiliate Links",
+        icon: FaLink,
+        path: "/marketing/affiliate-links",
+        prefixes: ["/marketing/affiliate-links"],
       },
     ],
   },
@@ -406,7 +413,7 @@ const DesktopSidebar = ({ collapsed, location }) => (
           to="/dashboard"
           className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/6 ring-1 ring-white/10"
         >
-          <img src={HookLogo} className="h-8 w-8" showText={false} />
+          <img src={HOOK_LOGO_URL} className="h-8 w-8" showText={false} />
         </Link>
       ) : (
         <Link to="/dashboard" className="flex min-w-0 items-center gap-3">
@@ -415,7 +422,7 @@ const DesktopSidebar = ({ collapsed, location }) => (
               hooks
             </p>
             <p className="mt-1 text-[10px] uppercase tracking-[0.24em] text-slate-400">
-              Gadget Intelligence
+              Gadget Intelligence Platform
             </p>
           </div>
         </Link>
@@ -622,7 +629,7 @@ const MobileDrawer = ({ mobileOpen, setMobileOpen, location, onLogout }) => {
               hooks
             </p>
             <p className="mt-1 text-[10px] uppercase tracking-[0.24em] text-slate-400">
-              Gadget Intelligence
+              Gadget Intelligence Platform
             </p>
           </Link>
 

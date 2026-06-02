@@ -46,6 +46,7 @@ import FeatureClicksReport from "./components/Reports/FeatureClicksReport";
 import SearchPopularityReport from "./components/Reports/SearchPopularityReport";
 import CareerApplications from "./components/Reports/CareerApplications";
 import BannerManager from "./components/BannerManager";
+import AffiliatePlacementManager from "./components/AffiliatePlacementManager";
 import EditLaptop from "./components/EditLaptop";
 import EditHomeAppliance from "./components/EditAppliance";
 import CompareScoring from "./components/Settings/CompareScoring";
@@ -741,6 +742,18 @@ function App() {
                 message="You need marketing access to open this page."
               >
                 <BannerManager />
+              </AccessGate>
+            }
+          />
+          <Route
+            path="marketing/affiliate-links"
+            element={
+              <AccessGate
+                requiredAnyPermissions={["marketing.view"]}
+                title="Marketing access required"
+                message="You need marketing access to open affiliate link controls."
+              >
+                <AffiliatePlacementManager />
               </AccessGate>
             }
           />

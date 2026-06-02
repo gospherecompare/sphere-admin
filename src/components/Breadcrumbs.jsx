@@ -257,6 +257,14 @@ const ROUTE_TRAILS = [
       { label: "All Posts" },
     ],
   },
+  {
+    path: "/marketing/affiliate-links",
+    trail: [
+      DASHBOARD_CRUMB,
+      { label: "Marketing", to: "/marketing/banners" },
+      { label: "Affiliate Links" },
+    ],
+  },
 
   {
     path: "/reports/productcategories",

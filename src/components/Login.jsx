@@ -115,7 +115,7 @@ const HeroBrand = ({ dark = true, compact = false }) => (
           dark ? "text-[#6f7897]" : "text-white/75"
         }`}
       >
-        Gadget Intelligence
+        Gadget Intelligence Platform
       </div>
     </div>
   </div>
