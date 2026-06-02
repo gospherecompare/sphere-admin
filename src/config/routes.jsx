@@ -145,41 +145,41 @@ export const ROUTE_CONFIG = {
     label: "Edit Laptop",
   },
 
-  // Products - Home Appliances & TVs
+  // Products - Television
   createAppliance: {
     path: "/products/appliances/create",
     component: CreateHomeAppliance,
-    label: "Create Appliance",
+    label: "Create Television",
   },
   createHomeAppliance: {
     path: "/create-home-appliance",
     component: CreateHomeAppliance,
-    label: "Create Home Appliance",
+    label: "Create Television",
   },
   createTV: {
     path: "/products/tvs/create",
     component: CreateHomeAppliance,
-    label: "Create TV",
+    label: "Create Television",
   },
   applianceInventory: {
     path: "/products/homeappliances/inventory",
     component: ViewTVs,
-    label: "Appliance Inventory",
+    label: "Television Inventory",
   },
   tvInventory: {
     path: "/products/tvs/inventory",
     component: ViewTVs,
-    label: "TV Inventory",
+    label: "Television Inventory",
   },
   editAppliance: {
     path: "/products/homeappliances/:id/edit",
     component: EditHomeAppliance,
-    label: "Edit Appliance",
+    label: "Edit Television",
   },
   editTV: {
     path: "/products/tvs/:id/edit",
     component: EditHomeAppliance,
-    label: "Edit TV",
+    label: "Edit Television",
   },
 
   // User Management

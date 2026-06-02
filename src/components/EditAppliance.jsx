@@ -49,7 +49,7 @@ const EditHomeAppliance = () => {
       brand_id: "",
     },
     home_appliance: {
-      appliance_type: "",
+      appliance_type: "television",
       model_number: "",
       release_year: new Date().getFullYear(),
       country_of_origin: "",
@@ -129,24 +129,9 @@ const EditHomeAppliance = () => {
   const storageDropdownRefs = useRef({});
   const storeDropdownRefs = useRef({});
 
-  // Appliance types with icons
+  // Television catalog type
   const applianceTypes = [
-    { value: "washing_machine", label: "Washing Machine", icon: FaWater },
-    { value: "refrigerator", label: "Refrigerator", icon: FaSnowflake },
-    { value: "air_conditioner", label: "Air Conditioner", icon: FaFan },
     { value: "television", label: "Television", icon: FaTv },
-    { value: "microwave", label: "Microwave Oven", icon: FaTemperatureHigh },
-    { value: "oven", label: "Oven", icon: FaTemperatureHigh },
-    { value: "dishwasher", label: "Dishwasher", icon: FaWater },
-    { value: "vacuum_cleaner", label: "Vacuum Cleaner", icon: FaFan },
-    { value: "blender", label: "Blender/Mixer", icon: FaBlender },
-    { value: "water_purifier", label: "Water Purifier", icon: FaWater },
-    { value: "air_purifier", label: "Air Purifier", icon: FaFan },
-    { value: "iron", label: "Iron", icon: FaTemperatureHigh },
-    { value: "water_heater", label: "Water Heater", icon: FaTemperatureHigh },
-    { value: "chimney", label: "Chimney", icon: FaFan },
-    { value: "induction_cooktop", label: "Induction Cooktop", icon: FaBolt },
-    { value: "other", label: "Other Appliance", icon: FaHome },
   ];
 
   // Generate years for dropdown (2000 to current year + 1)
@@ -348,7 +333,7 @@ const EditHomeAppliance = () => {
 
         if (!res.ok) {
           if (res.status === 404) {
-            showToast("Not Found", "Appliance not found", "error");
+            showToast("Not Found", "Television not found", "error");
             setIsFetching(false);
             return;
           }
@@ -364,12 +349,7 @@ const EditHomeAppliance = () => {
         const ha = data.tv || data.home_appliance || data;
         setTvSource(ha);
 
-        const applianceTypeValue =
-          ha.appliance_type ||
-          ha.applianceType ||
-          ha.category ||
-          (ha.product_type === "tv" ? "television" : "") ||
-          "television";
+        const applianceTypeValue = "television";
 
         const sourceWarranty = toObject(ha.warranty_json);
         const sourcePhysical = toObject(ha.physical_json);
@@ -551,7 +531,7 @@ const EditHomeAppliance = () => {
               data.product?.brand_id ?? data.brand_id ?? ha.brand_id ?? "",
           },
           home_appliance: {
-            appliance_type: applianceTypeValue,
+            appliance_type: "television",
             model_number:
               ha.model_number ||
               ha.modelNumber ||
@@ -617,7 +597,7 @@ const EditHomeAppliance = () => {
         setCustomJsonFields(customFields);
       } catch (error) {
         console.error("Error fetching appliance:", error);
-        showToast("Error", "Failed to load appliance data", "error");
+        showToast("Error", "Failed to load television data", "error");
       } finally {
         setIsFetching(false);
       }
@@ -1418,7 +1398,7 @@ const EditHomeAppliance = () => {
 
     // Basic validation
     if (!formData.product.name.trim()) {
-      showToast("Validation Error", "Appliance name is required", "error");
+      showToast("Validation Error", "Television name is required", "error");
       setIsLoading(false);
       return;
     }
@@ -1430,7 +1410,7 @@ const EditHomeAppliance = () => {
     }
 
     if (!formData.home_appliance.appliance_type) {
-      showToast("Validation Error", "Appliance type is required", "error");
+      showToast("Validation Error", "Television type is required", "error");
       setIsLoading(false);
       return;
     }
@@ -1650,7 +1630,7 @@ const EditHomeAppliance = () => {
         },
         product_name: formData.product.name,
         brand_id: brandId,
-        category: formData.home_appliance.appliance_type || "television",
+        category: "television",
         model: formData.home_appliance.model_number,
         publish: Boolean(formData.published),
         key_specs_json: {
@@ -1700,7 +1680,7 @@ const EditHomeAppliance = () => {
         variants_json: tvVariants,
         // Backward compatibility for legacy transformer.
         home_appliance: {
-          appliance_type: formData.home_appliance.appliance_type,
+          appliance_type: "television",
           model_number: formData.home_appliance.model_number,
           release_year: releaseYear,
           country_of_origin: countryOfOrigin,
@@ -1767,7 +1747,7 @@ const EditHomeAppliance = () => {
     }));
     showToast(
       "Status Changed",
-      `Appliance set to ${!formData.published ? "published" : "draft"}`,
+      `Television set to ${!formData.published ? "published" : "draft"}`,
       "info",
     );
   };
@@ -1995,11 +1975,11 @@ const EditHomeAppliance = () => {
                 <FaEdit className="text-blue-600" />
               </div>
               <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
-                Edit Home Appliance
+                Edit Television
               </h1>
             </div>
             <p className="text-gray-600 mt-1">
-              Update appliance details for{" "}
+              Update television details for{" "}
               <span className="font-medium">{formData.product.name}</span>
             </p>
           </div>
@@ -2017,7 +1997,7 @@ const EditHomeAppliance = () => {
               className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               {isLoading ? <FaSpinner className="animate-spin" /> : <FaSave />}
-              {isLoading ? "Updating..." : "Update Appliance"}
+              {isLoading ? "Updating..." : "Update Television"}
             </button>
           </div>
         </div>
@@ -2039,7 +2019,7 @@ const EditHomeAppliance = () => {
                   Basic Information
                 </h2>
                 <p className="text-sm text-gray-600">
-                  Name, brand, model and appliance details
+                  Name, brand, model and television details
                 </p>
               </div>
             </div>
@@ -2051,7 +2031,7 @@ const EditHomeAppliance = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Appliance Name *
+                    Television Name *
                   </label>
                   <input
                     type="text"
@@ -2060,7 +2040,7 @@ const EditHomeAppliance = () => {
                     onChange={handleChange}
                     required
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="e.g., LG 9kg Top Load Washing Machine"
+                    placeholder="e.g., Samsung OLED 4K Smart TV"
                   />
                 </div>
 
@@ -2085,20 +2065,13 @@ const EditHomeAppliance = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Appliance Type *
+                    Product Type
                   </label>
-                  <CustomDropdown
-                    value={formData.home_appliance.appliance_type}
-                    placeholder="Select Appliance Type"
-                    isOpen={showApplianceDropdown}
-                    setIsOpen={setShowApplianceDropdown}
-                    searchValue={applianceSearch}
-                    setSearchValue={setApplianceSearch}
-                    filteredOptions={filteredApplianceTypes}
-                    onSelect={handleApplianceSelect}
-                    selectedLabel={getSelectedApplianceLabel()}
-                    dropdownRef={applianceDropdownRef}
-                    type="appliance"
+                  <input
+                    type="text"
+                    value="Television"
+                    readOnly
+                    className="w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-gray-700"
                   />
                 </div>
 
@@ -2164,7 +2137,7 @@ const EditHomeAppliance = () => {
                             : formData.home_appliance.appliance_type ===
                                 "air_conditioner"
                               ? "Enter tonnage, cooling capacity, ISEER rating, etc."
-                              : "Enter relevant specifications for this appliance"}
+                              : "Enter the display, audio, smart TV, connectivity, and physical specifications."}
                       </p>
                     </div>
                   </div>
@@ -2838,8 +2811,8 @@ const EditHomeAppliance = () => {
                   </div>
                   <div className="text-sm text-gray-600">
                     {formData.published
-                      ? "Appliance is currently published"
-                      : "Appliance is saved as draft"}
+                      ? "Television is currently published"
+                      : "Television is saved as draft"}
                   </div>
                 </div>
               </div>
@@ -2873,7 +2846,7 @@ const EditHomeAppliance = () => {
             ) : (
               <>
                 <FaSave />
-                <span>Update Appliance</span>
+                <span>Update Television</span>
               </>
             )}
           </button>

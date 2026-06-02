@@ -107,8 +107,8 @@ const ROUTE_TRAILS = [
     trail: [
       DASHBOARD_CRUMB,
       { label: "Products", to: "/products" },
-      { label: "TVs", to: "/products/tvs/inventory" },
-      { label: "Create TV" },
+      { label: "Television", to: "/products/tvs/inventory" },
+      { label: "Create Television" },
     ],
   },
   {
@@ -116,8 +116,8 @@ const ROUTE_TRAILS = [
     trail: [
       DASHBOARD_CRUMB,
       { label: "Products", to: "/products" },
-      { label: "TVs", to: "/products/tvs/inventory" },
-      { label: "Create TV" },
+      { label: "Television", to: "/products/tvs/inventory" },
+      { label: "Create Television" },
     ],
   },
   {
@@ -125,8 +125,8 @@ const ROUTE_TRAILS = [
     trail: [
       DASHBOARD_CRUMB,
       { label: "Products", to: "/products" },
-      { label: "TVs", to: "/products/tvs/inventory" },
-      { label: "Edit TV" },
+      { label: "Television", to: "/products/tvs/inventory" },
+      { label: "Edit Television" },
     ],
   },
   {
@@ -134,8 +134,8 @@ const ROUTE_TRAILS = [
     trail: [
       DASHBOARD_CRUMB,
       { label: "Products", to: "/products" },
-      { label: "TVs", to: "/products/tvs/inventory" },
-      { label: "Edit TV" },
+      { label: "Television", to: "/products/tvs/inventory" },
+      { label: "Edit Television" },
     ],
   },
 

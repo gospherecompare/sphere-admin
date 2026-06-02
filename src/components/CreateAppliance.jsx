@@ -43,7 +43,7 @@ const createInitialApplianceFormData = () => ({
     brand_id: "",
   },
   home_appliance: {
-    appliance_type: "",
+    appliance_type: "television",
     model_number: "",
     release_year: new Date().getFullYear(),
     release_date: "",
@@ -122,24 +122,9 @@ const CreateHomeAppliance = () => {
     setValue: setFormData,
   });
 
-  // Appliance types with icons
+  // Television catalog type
   const applianceTypes = [
-    { value: "washing_machine", label: "Washing Machine", icon: FaWater },
-    { value: "refrigerator", label: "Refrigerator", icon: FaSnowflake },
-    { value: "air_conditioner", label: "Air Conditioner", icon: FaFan },
     { value: "television", label: "Television", icon: FaTv },
-    { value: "microwave", label: "Microwave Oven", icon: FaTemperatureHigh },
-    { value: "oven", label: "Oven", icon: FaTemperatureHigh },
-    { value: "dishwasher", label: "Dishwasher", icon: FaWater },
-    { value: "vacuum_cleaner", label: "Vacuum Cleaner", icon: FaFan },
-    { value: "blender", label: "Blender/Mixer", icon: FaBlender },
-    { value: "water_purifier", label: "Water Purifier", icon: FaWater },
-    { value: "air_purifier", label: "Air Purifier", icon: FaFan },
-    { value: "iron", label: "Iron", icon: FaTemperatureHigh },
-    { value: "water_heater", label: "Water Heater", icon: FaTemperatureHigh },
-    { value: "chimney", label: "Chimney", icon: FaFan },
-    { value: "induction_cooktop", label: "Induction Cooktop", icon: FaBolt },
-    { value: "other", label: "Other Appliance", icon: FaHome },
   ];
 
   // Generate years for dropdown (2000 to current year + 1)
@@ -793,7 +778,7 @@ const CreateHomeAppliance = () => {
 
     // Basic validation
     if (!formData.product.name.trim()) {
-      showToast("Validation Error", "Appliance name is required", "error");
+      showToast("Validation Error", "Television name is required", "error");
       setIsLoading(false);
       return;
     }
@@ -805,7 +790,7 @@ const CreateHomeAppliance = () => {
     }
 
     if (!formData.home_appliance.appliance_type) {
-      showToast("Validation Error", "Appliance type is required", "error");
+      showToast("Validation Error", "Television type is required", "error");
       setIsLoading(false);
       return;
     }
@@ -915,7 +900,7 @@ const CreateHomeAppliance = () => {
         },
         product_name: formData.product.name,
         brand_id: Number(formData.product.brand_id),
-        category: formData.home_appliance.appliance_type || "television",
+        category: "television",
         model: formData.home_appliance.model_number,
         publish: Boolean(publishEnabled),
         key_specs_json: formData.home_appliance.specifications || {},
@@ -936,7 +921,7 @@ const CreateHomeAppliance = () => {
         images_json: formData.images,
         variants_json: tvVariants,
         home_appliance: {
-          appliance_type: formData.home_appliance.appliance_type,
+          appliance_type: "television",
           model_number: formData.home_appliance.model_number,
           release_year: releaseYear,
           country_of_origin: countryOfOrigin,
@@ -965,7 +950,7 @@ const CreateHomeAppliance = () => {
 
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.message || "Failed to create appliance");
+        throw new Error(errorData.message || "Failed to create television");
       }
 
       showToast(
@@ -1430,10 +1415,10 @@ const CreateHomeAppliance = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
-              Create Home Appliance
+              Create Television
             </h1>
             <p className="text-gray-600 mt-1">
-              Add a new home appliance to your inventory
+              Add a new television to your inventory
             </p>
           </div>
 
@@ -1450,7 +1435,7 @@ const CreateHomeAppliance = () => {
               className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               {isLoading ? <FaSpinner className="animate-spin" /> : <FaSave />}
-              {isLoading ? "Creating..." : "Create Appliance"}
+              {isLoading ? "Creating..." : "Create Television"}
             </button>
           </div>
         </div>
@@ -1472,7 +1457,7 @@ const CreateHomeAppliance = () => {
                   Basic Information
                 </h2>
                 <p className="text-sm text-gray-600">
-                  Name, brand, model and appliance details
+                  Name, brand, model and television details
                 </p>
               </div>
             </div>
@@ -1484,7 +1469,7 @@ const CreateHomeAppliance = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Appliance Name *
+                    Television Name *
                   </label>
                   <input
                     type="text"
@@ -1493,7 +1478,7 @@ const CreateHomeAppliance = () => {
                     onChange={handleChange}
                     required
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="e.g., LG 9kg Top Load Washing Machine"
+                    placeholder="e.g., Samsung OLED 4K Smart TV"
                   />
                 </div>
 
@@ -1518,20 +1503,13 @@ const CreateHomeAppliance = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Appliance Type *
+                    Product Type
                   </label>
-                  <CustomDropdown
-                    value={formData.home_appliance.appliance_type}
-                    placeholder="Select Appliance Type"
-                    isOpen={showApplianceDropdown}
-                    setIsOpen={setShowApplianceDropdown}
-                    searchValue={applianceSearch}
-                    setSearchValue={setApplianceSearch}
-                    filteredOptions={filteredApplianceTypes}
-                    onSelect={handleApplianceSelect}
-                    selectedLabel={getSelectedApplianceLabel()}
-                    dropdownRef={applianceDropdownRef}
-                    type="appliance"
+                  <input
+                    type="text"
+                    value="Television"
+                    readOnly
+                    className="w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-gray-700"
                   />
                 </div>
 
@@ -1597,7 +1575,7 @@ const CreateHomeAppliance = () => {
                             : formData.home_appliance.appliance_type ===
                                 "air_conditioner"
                               ? "Enter tonnage, cooling capacity, ISEER rating, etc."
-                              : "Enter relevant specifications for this appliance"}
+                              : "Enter the display, audio, smart TV, connectivity, and physical specifications."}
                       </p>
                     </div>
                   </div>
@@ -2273,7 +2251,7 @@ const CreateHomeAppliance = () => {
                   </div>
                   <div className="text-sm text-gray-600">
                     {publishEnabled
-                      ? "Appliance will be published immediately"
+                      ? "Television will be published immediately"
                       : "Save as draft"}
                   </div>
                 </div>
@@ -2308,7 +2286,7 @@ const CreateHomeAppliance = () => {
             ) : (
               <>
                 <FaSave />
-                <span>Create Appliance</span>
+                <span>Create Television</span>
               </>
             )}
           </button>

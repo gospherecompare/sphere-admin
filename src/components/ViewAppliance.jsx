@@ -39,7 +39,9 @@ const ViewTVs = () => {
   const [activeDropdown, setActiveDropdown] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [applianceTypeFilter, setApplianceTypeFilter] = useState("all");
+  const [brandFilter, setBrandFilter] = useState("all");
+  const [screenSizeFilter, setScreenSizeFilter] = useState("all");
+  const [panelTypeFilter, setPanelTypeFilter] = useState("all");
   const [sortBy, setSortBy] = useState("newest");
   const [currentPage, setCurrentPage] = useState(1);
   const [toasts, setToasts] = useState([]);
@@ -78,6 +80,18 @@ const ViewTVs = () => {
       }
     }
     return String(value);
+  };
+
+  const resolveImageUrl = (value) => {
+    if (typeof value === "string") return value.trim();
+    const image = asObject(value);
+    return String(
+      image.image_url ||
+        image.url ||
+        image.secure_url ||
+        image.src ||
+        "",
+    ).trim();
   };
 
   // Fetch appliances from API
@@ -148,6 +162,11 @@ const ViewTVs = () => {
               : Array.isArray(variant.stores)
                 ? variant.stores
                 : [];
+            const images = Array.isArray(variant.images)
+              ? variant.images
+              : Array.isArray(variant.images_json)
+                ? variant.images_json
+                : [];
             return {
               variant_id: variant.variant_id || variant.id || index + 1,
               variant_key:
@@ -169,6 +188,7 @@ const ViewTVs = () => {
                       : null,
                 }))
                 .filter((store) => store.store_name),
+              images: images.map(resolveImageUrl).filter(Boolean),
             };
           });
           const variantSizes = Array.from(
@@ -192,6 +212,20 @@ const ViewTVs = () => {
           const minVariantPrice = variantPrices.length
             ? Math.min(...variantPrices)
             : null;
+          const productImages = Array.isArray(appliance.images)
+            ? appliance.images
+            : Array.isArray(appliance.images_json)
+              ? appliance.images_json
+              : [];
+          const heroImage =
+            [
+              ...productImages,
+              appliance.image_url,
+              appliance.image,
+              ...normalizedVariants.flatMap((variant) => variant.images),
+            ]
+              .map(resolveImageUrl)
+              .find(Boolean) || "";
 
           const applianceTypeRaw =
             appliance.category ||
@@ -205,6 +239,8 @@ const ViewTVs = () => {
             keySpecs.resolution ||
             display.resolution ||
             "N/A";
+          const panelType =
+            keySpecs.panel_type || display.panel_type || "N/A";
           const capacity =
             keySpecs.screen_size ||
             display.screen_size ||
@@ -227,7 +263,7 @@ const ViewTVs = () => {
           const depth = physicalDetails.depth || "";
           const dimensions =
             width || height || depth
-              ? `${width || "-"} × ${height || "-"} × ${depth || "-"}`
+              ? `${width || "-"} Ã— ${height || "-"} Ã— ${depth || "-"}`
               : "N/A";
 
           return {
@@ -247,6 +283,7 @@ const ViewTVs = () => {
                     .replace(/\b\w/g, (l) => l.toUpperCase())
                 : "Television",
             type: formatScalar(type),
+            panelType: formatScalar(panelType),
             motor: formatScalar(motor),
             capacity: formatScalar(capacity),
             variantCount: normalizedVariants.length,
@@ -278,15 +315,16 @@ const ViewTVs = () => {
             ),
             launch_date: appliance.created_at || appliance.updated_at || null,
             variants: normalizedVariants,
+            heroImage,
             raw: appliance,
           };
         });
         setAppliances(processedAppliances);
-        showToast("Success", "TVs loaded successfully", "success");
+        showToast("Success", "Televisions loaded successfully", "success");
       } catch (err) {
         console.error("Failed to fetch TVs:", err);
-        setError(err.message || "Failed to load TVs");
-        showToast("Error", "Failed to load TVs", "error");
+        setError(err.message || "Failed to load televisions");
+        showToast("Error", "Failed to load televisions", "error");
       } finally {
         setLoading(false);
       }
@@ -309,7 +347,22 @@ const ViewTVs = () => {
     setToasts((prev) => prev.filter((toast) => toast.id !== id));
   };
 
-  // Filter and sort appliances
+  const normalizeFilterValue = (value) =>
+    String(value || "")
+      .trim()
+      .toLowerCase();
+
+  const getTvScreenSizes = (television) => {
+    const variantSizes = Array.isArray(television.variantSizes)
+      ? television.variantSizes.filter(Boolean)
+      : [];
+    if (variantSizes.length) return variantSizes;
+    return television.capacity && television.capacity !== "N/A"
+      ? [television.capacity]
+      : [];
+  };
+
+  // Filter and sort televisions
   const filteredAndSortedAppliances = appliances
     .filter((appliance) => {
       // Status filter
@@ -319,21 +372,38 @@ const ViewTVs = () => {
       return true;
     })
     .filter((appliance) => {
-      // Appliance type filter
-      if (applianceTypeFilter === "all") return true;
-      return (
-        appliance.applianceType.toLowerCase() ===
-        applianceTypeFilter.toLowerCase()
+      if (brandFilter === "all") return true;
+      return normalizeFilterValue(appliance.brand) === brandFilter;
+    })
+    .filter((appliance) => {
+      if (screenSizeFilter === "all") return true;
+      return getTvScreenSizes(appliance).some(
+        (screenSize) => normalizeFilterValue(screenSize) === screenSizeFilter,
       );
+    })
+    .filter((appliance) => {
+      if (panelTypeFilter === "all") return true;
+      return normalizeFilterValue(appliance.panelType) === panelTypeFilter;
     })
     .filter(
       (appliance) =>
-        appliance.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        appliance.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        appliance.model.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        appliance.applianceType
-          .toLowerCase()
-          .includes(searchTerm.toLowerCase()),
+        normalizeFilterValue(appliance.name).includes(
+          normalizeFilterValue(searchTerm),
+        ) ||
+        normalizeFilterValue(appliance.brand).includes(
+          normalizeFilterValue(searchTerm),
+        ) ||
+        normalizeFilterValue(appliance.model).includes(
+          normalizeFilterValue(searchTerm),
+        ) ||
+        normalizeFilterValue(appliance.panelType).includes(
+          normalizeFilterValue(searchTerm),
+        ) ||
+        getTvScreenSizes(appliance).some((screenSize) =>
+          normalizeFilterValue(screenSize).includes(
+            normalizeFilterValue(searchTerm),
+          ),
+        ),
     )
     .sort((a, b) => {
       if (sortBy === "newest") {
@@ -348,21 +418,54 @@ const ViewTVs = () => {
       if (sortBy === "brand") {
         return a.brand.localeCompare(b.brand);
       }
-      if (sortBy === "capacity") {
+      if (sortBy === "screen-size") {
         const aCap = parseFloat(a.capacity) || 0;
         const bCap = parseFloat(b.capacity) || 0;
         return bCap - aCap;
       }
-      if (sortBy === "type") {
-        return a.applianceType.localeCompare(b.applianceType);
+      if (sortBy === "panel-type") {
+        return a.panelType.localeCompare(b.panelType);
       }
       return 0;
     });
 
-  // Get unique appliance types for filter
-  const applianceTypes = [
-    ...new Set(appliances.map((a) => a.applianceType.toLowerCase())),
-  ].filter(Boolean);
+  const brandOptions = [...new Set(appliances.map((tv) => tv.brand))]
+    .filter((brand) => brand && brand !== "Unknown")
+    .sort((a, b) => a.localeCompare(b));
+  const screenSizeOptions = [
+    ...new Set(appliances.flatMap((tv) => getTvScreenSizes(tv))),
+  ]
+    .filter(Boolean)
+    .sort((a, b) => (parseFloat(a) || 0) - (parseFloat(b) || 0));
+  const panelTypeOptions = [...new Set(appliances.map((tv) => tv.panelType))]
+    .filter((panelType) => panelType && panelType !== "N/A")
+    .sort((a, b) => a.localeCompare(b));
+  const hasActiveFilters =
+    Boolean(searchTerm.trim()) ||
+    statusFilter !== "all" ||
+    brandFilter !== "all" ||
+    screenSizeFilter !== "all" ||
+    panelTypeFilter !== "all";
+
+  const clearFilters = () => {
+    setSearchTerm("");
+    setStatusFilter("all");
+    setBrandFilter("all");
+    setScreenSizeFilter("all");
+    setPanelTypeFilter("all");
+    setSortBy("newest");
+  };
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [
+    searchTerm,
+    statusFilter,
+    brandFilter,
+    screenSizeFilter,
+    panelTypeFilter,
+    sortBy,
+  ]);
 
   // Pagination
   const totalPages = Math.ceil(
@@ -629,10 +732,10 @@ const ViewTVs = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
-              TV Management
+              Television Management
             </h1>
             <p className="text-gray-600 mt-1">
-              Manage your TV inventory and specifications
+              Manage your television inventory and specifications
             </p>
           </div>
 
@@ -642,7 +745,7 @@ const ViewTVs = () => {
               className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium"
             >
               <FaPlus className="text-sm" />
-              <span>Add TV</span>
+              <span>Add Television</span>
             </button>
           </div>
         </div>
@@ -652,7 +755,7 @@ const ViewTVs = () => {
           <div className="rounded-[24px] border border-slate-200/80 bg-white/95 p-5 shadow-[0_14px_40px_rgba(15,23,42,0.08)] backdrop-blur-sm">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500">Total TVs</p>
+                <p className="text-sm text-gray-500">Total Televisions</p>
                 <p className="text-2xl font-bold text-gray-900">
                   <CountUp end={totalAppliances} duration={1.0} />
                 </p>
@@ -705,7 +808,9 @@ const ViewTVs = () => {
         <div className="border-b border-slate-200/70 bg-gradient-to-r from-blue-50/90 via-white to-purple-50/80 px-4 py-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center space-x-2">
-              <h2 className="font-semibold text-gray-800">TVs List</h2>
+              <h2 className="font-semibold text-gray-800">
+                Television Inventory
+              </h2>
               <span className="bg-gray-100 text-gray-600 text-sm px-2 py-1 rounded-full">
                 {filteredAndSortedAppliances.length}
               </span>
@@ -721,13 +826,13 @@ const ViewTVs = () => {
                   type="text"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Search TVs..."
+                  placeholder="Search by television, brand, model..."
                   className="pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full sm:w-64"
                 />
               </div>
 
               {/* Filter & Sort */}
-              <div className="flex space-x-2">
+              <div className="flex flex-wrap gap-2">
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
@@ -739,14 +844,46 @@ const ViewTVs = () => {
                 </select>
 
                 <select
-                  value={applianceTypeFilter}
-                  onChange={(e) => setApplianceTypeFilter(e.target.value)}
+                  value={brandFilter}
+                  onChange={(e) => setBrandFilter(e.target.value)}
                   className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                 >
-                  <option value="all">All Types</option>
-                  {applianceTypes.map((type) => (
-                    <option key={type} value={type}>
-                      {type.replace(/\b\w/g, (l) => l.toUpperCase())}
+                  <option value="all">All Brands</option>
+                  {brandOptions.map((brand) => (
+                    <option key={brand} value={normalizeFilterValue(brand)}>
+                      {brand}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  value={screenSizeFilter}
+                  onChange={(e) => setScreenSizeFilter(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                >
+                  <option value="all">All Screen Sizes</option>
+                  {screenSizeOptions.map((screenSize) => (
+                    <option
+                      key={screenSize}
+                      value={normalizeFilterValue(screenSize)}
+                    >
+                      {screenSize}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  value={panelTypeFilter}
+                  onChange={(e) => setPanelTypeFilter(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                >
+                  <option value="all">All Panel Types</option>
+                  {panelTypeOptions.map((panelType) => (
+                    <option
+                      key={panelType}
+                      value={normalizeFilterValue(panelType)}
+                    >
+                      {panelType}
                     </option>
                   ))}
                 </select>
@@ -760,9 +897,19 @@ const ViewTVs = () => {
                   <option value="oldest">Oldest</option>
                   <option value="name">Name A-Z</option>
                   <option value="brand">Brand</option>
-                  <option value="capacity">Capacity</option>
-                  <option value="type">TV Type</option>
+                  <option value="screen-size">Screen Size</option>
+                  <option value="panel-type">Panel Type</option>
                 </select>
+                {hasActiveFilters ? (
+                  <button
+                    type="button"
+                    onClick={clearFilters}
+                    className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  >
+                    <FaTimes className="text-xs" />
+                    Clear
+                  </button>
+                ) : null}
               </div>
 
               {/* Export/Import */}
@@ -802,7 +949,7 @@ const ViewTVs = () => {
                   scope="col"
                   className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                 >
-                  Appliance
+                  Television Model
                 </th>
                 <th
                   scope="col"
@@ -857,12 +1004,27 @@ const ViewTVs = () => {
                     key={appliance.id || `appliance-${startIndex + idx}`}
                     className="hover:bg-gray-50"
                   >
-                    {/* Appliance Info */}
+                    {/* Television Info */}
                     <td className="px-4 py-3">
                       <div className="flex items-center">
                         <div className="flex-shrink-0 h-12 w-12">
-                          <div className="h-12 w-12 rounded-md bg-gradient-to-r from-indigo-500 to-purple-600 flex items-center justify-center">
-                            <FaTv className="text-white text-lg" />
+                          <div className="h-12 w-12 rounded-md border border-slate-200 bg-white flex items-center justify-center overflow-hidden">
+                            {appliance.heroImage ? (
+                              <img
+                                src={appliance.heroImage}
+                                alt={appliance.name}
+                                className="h-full w-full object-contain p-1"
+                                onError={(event) => {
+                                  event.currentTarget.style.display = "none";
+                                  event.currentTarget.nextElementSibling?.classList.remove(
+                                    "hidden",
+                                  );
+                                }}
+                              />
+                            ) : null}
+                            <FaTv
+                              className={`${appliance.heroImage ? "hidden" : ""} text-indigo-600 text-lg`}
+                            />
                           </div>
                         </div>
                         <div className="ml-3">
@@ -874,7 +1036,7 @@ const ViewTVs = () => {
                               {appliance.brand}
                             </span>
                             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-green-100 text-green-800">
-                              {appliance.applianceType}
+                              {appliance.panelType}
                             </span>
                             <div className="flex items-center gap-1 text-xs text-gray-600">
                               <FaFlag className="text-xs" />
@@ -889,7 +1051,7 @@ const ViewTVs = () => {
                           </div>
                           {appliance.minPrice ? (
                             <div className="text-xs text-emerald-600 mt-1 font-semibold">
-                              Starts at ?{Number(appliance.minPrice).toLocaleString()}
+                              Starts at â‚¹{Number(appliance.minPrice).toLocaleString()}
                             </div>
                           ) : null}
                         </div>
@@ -1044,7 +1206,7 @@ const ViewTVs = () => {
                               : "text-gray-400 cursor-not-allowed"
                           }`}
                           disabled={!(appliance.editId || appliance.id)}
-                          title="Edit TV"
+                          title="Edit Television"
                         >
                           <FaEdit />
                         </button>
@@ -1102,14 +1264,14 @@ const ViewTVs = () => {
                     <div className="flex flex-col items-center">
                       <FaTv className="text-4xl text-gray-300 mb-3" />
                       <p className="text-gray-500 font-medium">
-                        {searchTerm
-                          ? "No TVs found"
-                          : "No TVs yet"}
+                        {hasActiveFilters
+                          ? "No televisions match your filters"
+                          : "No televisions yet"}
                       </p>
                       <p className="text-gray-400 text-sm mt-1">
-                        {searchTerm
-                          ? "Try adjusting your search"
-                          : "Add your first TV using the form"}
+                        {hasActiveFilters
+                          ? "Try adjusting or clearing the table filters"
+                          : "Add your first television using the form"}
                       </p>
                     </div>
                   </td>
@@ -1135,7 +1297,7 @@ const ViewTVs = () => {
                 <span className="font-medium">
                   {filteredAndSortedAppliances.length}
                 </span>{" "}
-                TVs
+                televisions
               </div>
               <div className="flex items-center space-x-2">
                 <button

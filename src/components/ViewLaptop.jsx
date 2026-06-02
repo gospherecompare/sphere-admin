@@ -29,6 +29,17 @@ import {
 import Cookies from "js-cookie";
 import { buildUrl } from "../api";
 
+const normalizeFilterValue = (value) => String(value || "").trim().toLowerCase();
+
+const resolveImageUrl = (value) => {
+  if (typeof value === "string") return value.trim();
+  if (!value || typeof value !== "object" || Array.isArray(value)) return "";
+
+  return String(
+    value.image_url || value.url || value.secure_url || value.src || "",
+  ).trim();
+};
+
 const ViewLaptops = () => {
   const [laptops, setLaptops] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -36,6 +47,11 @@ const ViewLaptops = () => {
   const [activeDropdown, setActiveDropdown] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [brandFilter, setBrandFilter] = useState("all");
+  const [processorFilter, setProcessorFilter] = useState("all");
+  const [ramFilter, setRamFilter] = useState("all");
+  const [storageFilter, setStorageFilter] = useState("all");
+  const [osFilter, setOsFilter] = useState("all");
   const [sortBy, setSortBy] = useState("newest");
   const [currentPage, setCurrentPage] = useState(1);
   const [toasts, setToasts] = useState([]);
@@ -122,6 +138,21 @@ const ViewLaptops = () => {
           // Get weight
           const weight = laptop.physical?.weight || "N/A";
 
+          const rawImages = Array.isArray(laptop.images)
+            ? laptop.images
+            : Array.isArray(laptop.images_json)
+              ? laptop.images_json
+              : [];
+          const heroImage =
+            [
+              ...rawImages,
+              laptop.image_url,
+              laptop.image,
+              laptop.thumbnail,
+            ]
+              .map(resolveImageUrl)
+              .find(Boolean) || "";
+
           return {
             id: laptop.product_id || laptop.id || laptop._id || null,
             name: laptop.name || "Unnamed Laptop",
@@ -139,6 +170,7 @@ const ViewLaptops = () => {
             published: laptop.is_published || laptop.published || false,
             launch_date: laptop.created_at || laptop.launch_date,
             warranty_years: laptop.warranty?.years || "N/A",
+            heroImage,
             raw: laptop,
           };
         });
@@ -181,9 +213,35 @@ const ViewLaptops = () => {
     })
     .filter(
       (laptop) =>
+        brandFilter === "all" ||
+        normalizeFilterValue(laptop.brand) === brandFilter,
+    )
+    .filter(
+      (laptop) =>
+        processorFilter === "all" ||
+        normalizeFilterValue(laptop.cpu) === processorFilter,
+    )
+    .filter(
+      (laptop) =>
+        ramFilter === "all" ||
+        normalizeFilterValue(laptop.memory) === ramFilter,
+    )
+    .filter(
+      (laptop) =>
+        storageFilter === "all" ||
+        normalizeFilterValue(laptop.storage) === storageFilter,
+    )
+    .filter(
+      (laptop) =>
+        osFilter === "all" || normalizeFilterValue(laptop.os) === osFilter,
+    )
+    .filter(
+      (laptop) =>
         laptop.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         laptop.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
         laptop.cpu.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        laptop.memory.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        laptop.storage.toLowerCase().includes(searchTerm.toLowerCase()) ||
         laptop.os.toLowerCase().includes(searchTerm.toLowerCase()),
     )
     .sort((a, b) => {
@@ -204,6 +262,58 @@ const ViewLaptops = () => {
       }
       return 0;
     });
+
+  const brandOptions = [...new Set(laptops.map((laptop) => laptop.brand))]
+    .filter((value) => value && value !== "Unknown")
+    .sort((first, second) => first.localeCompare(second));
+  const processorOptions = [...new Set(laptops.map((laptop) => laptop.cpu))]
+    .filter((value) => value && value !== "N/A")
+    .sort((first, second) => first.localeCompare(second));
+  const ramOptions = [...new Set(laptops.map((laptop) => laptop.memory))]
+    .filter((value) => value && value !== "N/A")
+    .sort((first, second) =>
+      first.localeCompare(second, undefined, { numeric: true }),
+    );
+  const storageOptions = [...new Set(laptops.map((laptop) => laptop.storage))]
+    .filter((value) => value && value !== "N/A")
+    .sort((first, second) =>
+      first.localeCompare(second, undefined, { numeric: true }),
+    );
+  const osOptions = [...new Set(laptops.map((laptop) => laptop.os))]
+    .filter((value) => value && value !== "N/A")
+    .sort((first, second) => first.localeCompare(second));
+  const hasActiveFilters =
+    Boolean(searchTerm.trim()) ||
+    statusFilter !== "all" ||
+    brandFilter !== "all" ||
+    processorFilter !== "all" ||
+    ramFilter !== "all" ||
+    storageFilter !== "all" ||
+    osFilter !== "all";
+
+  const clearFilters = () => {
+    setSearchTerm("");
+    setStatusFilter("all");
+    setBrandFilter("all");
+    setProcessorFilter("all");
+    setRamFilter("all");
+    setStorageFilter("all");
+    setOsFilter("all");
+    setSortBy("newest");
+  };
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [
+    searchTerm,
+    statusFilter,
+    brandFilter,
+    processorFilter,
+    ramFilter,
+    storageFilter,
+    osFilter,
+    sortBy,
+  ]);
 
   // Pagination
   const totalPages = Math.ceil(filteredAndSortedLaptops.length / itemsPerPage);
@@ -588,13 +698,13 @@ const ViewLaptops = () => {
                   type="text"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Search laptops..."
+                  placeholder="Search by laptop, brand, processor..."
                   className="pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full sm:w-64"
                 />
               </div>
 
               {/* Filter & Sort */}
-              <div className="flex space-x-2">
+              <div className="flex flex-wrap gap-2">
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
@@ -603,6 +713,74 @@ const ViewLaptops = () => {
                   <option value="all">All Status</option>
                   <option value="published">Published</option>
                   <option value="unpublished">Drafts</option>
+                </select>
+
+                <select
+                  value={brandFilter}
+                  onChange={(e) => setBrandFilter(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                >
+                  <option value="all">All Brands</option>
+                  {brandOptions.map((brand) => (
+                    <option key={brand} value={normalizeFilterValue(brand)}>
+                      {brand}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  value={processorFilter}
+                  onChange={(e) => setProcessorFilter(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                >
+                  <option value="all">All Processors</option>
+                  {processorOptions.map((processor) => (
+                    <option
+                      key={processor}
+                      value={normalizeFilterValue(processor)}
+                    >
+                      {processor}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  value={ramFilter}
+                  onChange={(e) => setRamFilter(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                >
+                  <option value="all">All RAM</option>
+                  {ramOptions.map((ram) => (
+                    <option key={ram} value={normalizeFilterValue(ram)}>
+                      {ram}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  value={storageFilter}
+                  onChange={(e) => setStorageFilter(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                >
+                  <option value="all">All Storage</option>
+                  {storageOptions.map((storage) => (
+                    <option key={storage} value={normalizeFilterValue(storage)}>
+                      {storage}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  value={osFilter}
+                  onChange={(e) => setOsFilter(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                >
+                  <option value="all">All Operating Systems</option>
+                  {osOptions.map((os) => (
+                    <option key={os} value={normalizeFilterValue(os)}>
+                      {os}
+                    </option>
+                  ))}
                 </select>
 
                 <select
@@ -616,6 +794,17 @@ const ViewLaptops = () => {
                   <option value="brand">Brand</option>
                   <option value="cpu">CPU</option>
                 </select>
+
+                {hasActiveFilters ? (
+                  <button
+                    type="button"
+                    onClick={clearFilters}
+                    className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  >
+                    <FaTimes className="text-xs" />
+                    Clear
+                  </button>
+                ) : null}
               </div>
 
               {/* Export/Import */}
@@ -708,8 +897,23 @@ const ViewLaptops = () => {
                     <td className="px-4 py-3">
                       <div className="flex items-center">
                         <div className="flex-shrink-0 h-12 w-12">
-                          <div className="h-12 w-12 rounded-md bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
-                            <FaLaptop className="text-white text-lg" />
+                          <div className="h-12 w-12 rounded-md border border-slate-200 bg-white flex items-center justify-center overflow-hidden">
+                            {laptop.heroImage ? (
+                              <img
+                                src={laptop.heroImage}
+                                alt={laptop.name}
+                                className="h-full w-full object-contain p-1"
+                                onError={(event) => {
+                                  event.currentTarget.style.display = "none";
+                                  event.currentTarget.nextElementSibling?.classList.remove(
+                                    "hidden",
+                                  );
+                                }}
+                              />
+                            ) : null}
+                            <FaLaptop
+                              className={`${laptop.heroImage ? "hidden" : ""} text-blue-600 text-lg`}
+                            />
                           </div>
                         </div>
                         <div className="ml-3">
@@ -883,11 +1087,11 @@ const ViewLaptops = () => {
                     <div className="flex flex-col items-center">
                       <FaLaptop className="text-4xl text-gray-300 mb-3" />
                       <p className="text-gray-500 font-medium">
-                        {searchTerm ? "No laptops found" : "No laptops yet"}
+                        {hasActiveFilters ? "No laptops found" : "No laptops yet"}
                       </p>
                       <p className="text-gray-400 text-sm mt-1">
-                        {searchTerm
-                          ? "Try adjusting your search"
+                        {hasActiveFilters
+                          ? "Try adjusting your filters"
                           : "Add your first laptop using the form"}
                       </p>
                     </div>
