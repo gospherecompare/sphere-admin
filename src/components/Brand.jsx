@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Cookies from "js-cookie";
 import CountUp from "react-countup";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   FaCheckCircle,
   FaChevronLeft,
@@ -24,6 +24,7 @@ import {
 } from "react-icons/fa";
 import { buildUrl } from "../api";
 import { uploadToCloudinary } from "../config/cloudinary";
+import { getProductEditRoute } from "../utils/searchNavigation";
 import {
   EditorStatusChip,
   editorGhostButtonClassName,
@@ -316,6 +317,7 @@ function BrandOverviewRing({ activeCount, inactiveCount, total }) {
 
 const Brand = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [formData, setFormData] = useState(DEFAULT_FORM_DATA);
   const [brands, setBrands] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -341,6 +343,9 @@ const Brand = () => {
   const [assignedProductsStatusFilter, setAssignedProductsStatusFilter] =
     useState("all");
   const [assignedProductsPage, setAssignedProductsPage] = useState(1);
+  const [selectedAssignedProductIds, setSelectedAssignedProductIds] = useState(
+    [],
+  );
 
   useEffect(() => {
     const seededSearch = location.state?.searchTerm;
@@ -504,6 +509,7 @@ const Brand = () => {
     setAssignedProductsTypeFilter("all");
     setAssignedProductsStatusFilter("all");
     setAssignedProductsPage(1);
+    setSelectedAssignedProductIds([]);
   };
 
   const closeEditor = () => {
@@ -703,6 +709,7 @@ const Brand = () => {
     setAssignedProductsTypeFilter("all");
     setAssignedProductsStatusFilter("all");
     setAssignedProductsPage(1);
+    setSelectedAssignedProductIds([]);
     setFormData({
       name: brand.name || "",
       slug: brand.slug || slugifyValue(brand.name),
@@ -725,6 +732,28 @@ const Brand = () => {
     setError("");
     setSuccess("");
     window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleEditAssignedProduct = (product) => {
+    const editPath = getProductEditRoute(product?.productType, product?.id);
+    if (!editPath) return;
+
+    navigate(editPath, {
+      state: {
+        product: product?.raw || null,
+        fromBrandEditor: true,
+        brandId: editingId || null,
+      },
+    });
+  };
+
+  const toggleAssignedProductSelection = (productId) => {
+    if (!productId) return;
+    setSelectedAssignedProductIds((prev) =>
+      prev.includes(productId)
+        ? prev.filter((id) => id !== productId)
+        : [...prev, productId],
+    );
   };
 
   useEffect(() => {
@@ -905,6 +934,17 @@ const Brand = () => {
     assignedProductsStatusFilter,
     editingId,
   ]);
+
+  useEffect(() => {
+    const availableIds = new Set(
+      assignedProducts
+        .map((product) => Number(product?.id))
+        .filter((productId) => Number.isInteger(productId) && productId > 0),
+    );
+    setSelectedAssignedProductIds((prev) =>
+      prev.filter((id) => availableIds.has(Number(id))),
+    );
+  }, [assignedProducts]);
 
   const totalBrands = normalizedBrands.length;
   const activeBrands = normalizedBrands.filter(
@@ -1097,6 +1137,26 @@ const Brand = () => {
     assignedProductsStartIndex,
     assignedProductsStartIndex + BRAND_PRODUCT_PAGE_SIZE,
   );
+  const visibleAssignedProductIds = paginatedAssignedProducts
+    .map((product) => Number(product?.id))
+    .filter((productId) => Number.isInteger(productId) && productId > 0);
+  const allVisibleAssignedProductsSelected =
+    visibleAssignedProductIds.length > 0 &&
+    visibleAssignedProductIds.every((productId) =>
+      selectedAssignedProductIds.includes(productId),
+    );
+  const toggleSelectAllVisibleAssignedProducts = () => {
+    setSelectedAssignedProductIds((prev) => {
+      if (!visibleAssignedProductIds.length) return prev;
+      const allSelected = visibleAssignedProductIds.every((productId) =>
+        prev.includes(productId),
+      );
+      if (allSelected) {
+        return prev.filter((id) => !visibleAssignedProductIds.includes(id));
+      }
+      return Array.from(new Set([...prev, ...visibleAssignedProductIds]));
+    });
+  };
 
   const editorTitle = isEditing ? "Edit Brand" : "Add New Brand";
   const editorDescription = isEditing
@@ -1686,6 +1746,24 @@ const Brand = () => {
                   </button>
                 </div>
 
+                <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-slate-500">
+                  <span>
+                    Selected products:{" "}
+                    <span className="font-semibold text-slate-900">
+                      {selectedAssignedProductIds.length}
+                    </span>
+                  </span>
+                  {selectedAssignedProductIds.length ? (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedAssignedProductIds([])}
+                      className="inline-flex items-center rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
+                    >
+                      Clear Selection
+                    </button>
+                  ) : null}
+                </div>
+
                 {assignedProductsError ? (
                   <div className="mt-4 flex items-start gap-3 rounded-md border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
                     <FaExclamationCircle className="mt-0.5 shrink-0" />
@@ -1698,6 +1776,15 @@ const Brand = () => {
                     <table className="min-w-full text-sm text-slate-700">
                       <thead className="bg-slate-50 text-xs uppercase tracking-[0.08em] text-slate-500">
                         <tr>
+                          <th className="px-4 py-3 text-left font-semibold">
+                            <input
+                              type="checkbox"
+                              checked={allVisibleAssignedProductsSelected}
+                              onChange={toggleSelectAllVisibleAssignedProducts}
+                              className="h-4 w-4 rounded border-slate-300 text-[#4C35F2] focus:ring-[#4C35F2]"
+                              aria-label="Select all visible assigned products"
+                            />
+                          </th>
                           <th className="px-4 py-3 text-left font-semibold">
                             Product
                           </th>
@@ -1719,18 +1806,47 @@ const Brand = () => {
                           <th className="px-4 py-3 text-left font-semibold">
                             Added On
                           </th>
+                          <th className="px-4 py-3 text-left font-semibold">
+                            Actions
+                          </th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-200 bg-white">
                         {assignedProductsLoading ? (
                           <tr>
-                            <td colSpan="7" className="px-4 py-12 text-center">
+                            <td colSpan="9" className="px-4 py-12 text-center">
                               <FaSpinner className="mx-auto animate-spin text-2xl text-[#4C35F2]" />
                             </td>
                           </tr>
                         ) : paginatedAssignedProducts.length ? (
-                          paginatedAssignedProducts.map((product) => (
-                            <tr key={product.id} className="hover:bg-slate-50/70">
+                          paginatedAssignedProducts.map((product) => {
+                            const editPath = getProductEditRoute(
+                              product.productType,
+                              product.id,
+                            );
+                            const isSelected =
+                              selectedAssignedProductIds.includes(product.id);
+
+                            return (
+                            <tr
+                              key={product.id}
+                              className={
+                                isSelected
+                                  ? "bg-violet-50/50 hover:bg-violet-50/60"
+                                  : "hover:bg-slate-50/70"
+                              }
+                            >
+                              <td className="px-4 py-4">
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={() =>
+                                    toggleAssignedProductSelection(product.id)
+                                  }
+                                  className="h-4 w-4 rounded border-slate-300 text-[#4C35F2] focus:ring-[#4C35F2]"
+                                  aria-label={`Select ${product.name}`}
+                                />
+                              </td>
                               <td className="px-4 py-4">
                                 <div className="flex min-w-[240px] items-center gap-3">
                                   <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-md border border-slate-200 bg-white">
@@ -1791,11 +1907,31 @@ const Brand = () => {
                               <td className="px-4 py-4 text-slate-600">
                                 {formatDate(product.createdAt)}
                               </td>
+                              <td className="px-4 py-4">
+                                <button
+                                  type="button"
+                                  onClick={() => handleEditAssignedProduct(product)}
+                                  disabled={!editPath}
+                                  className={`${
+                                    editPath
+                                      ? TABLE_ICON_BUTTON_CLASS
+                                      : "flex h-9 w-9 cursor-not-allowed items-center justify-center rounded-md border border-slate-200 bg-slate-50 text-slate-300 shadow-none"
+                                  }`}
+                                  title={
+                                    editPath
+                                      ? "Edit product"
+                                      : "Edit route not available for this product type"
+                                  }
+                                >
+                                  <FaEdit />
+                                </button>
+                              </td>
                             </tr>
-                          ))
+                          );
+                          })
                         ) : (
                           <tr>
-                            <td colSpan="7" className="px-4 py-12 text-center">
+                            <td colSpan="9" className="px-4 py-12 text-center">
                               <div className="mx-auto max-w-md">
                                 <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-slate-200 bg-white">
                                   <FaStore className="text-xl text-slate-400" />
@@ -1822,12 +1958,31 @@ const Brand = () => {
                         <FaSpinner className="mx-auto animate-spin text-2xl text-[#4C35F2]" />
                       </div>
                     ) : paginatedAssignedProducts.length ? (
-                      paginatedAssignedProducts.map((product) => (
+                      paginatedAssignedProducts.map((product) => {
+                        const editPath = getProductEditRoute(
+                          product.productType,
+                          product.id,
+                        );
+                        const isSelected =
+                          selectedAssignedProductIds.includes(product.id);
+
+                        return (
                         <article
                           key={`mobile-product-${product.id}`}
-                          className="space-y-3 px-4 py-4"
+                          className={`space-y-3 px-4 py-4 ${
+                            isSelected ? "bg-violet-50/50" : ""
+                          }`}
                         >
                           <div className="flex items-start gap-3">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() =>
+                                toggleAssignedProductSelection(product.id)
+                              }
+                              className="mt-1 h-4 w-4 rounded border-slate-300 text-[#4C35F2] focus:ring-[#4C35F2]"
+                              aria-label={`Select ${product.name}`}
+                            />
                             <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-md border border-slate-200 bg-white">
                               {product.imageUrl ? (
                                 <img
@@ -1857,7 +2012,7 @@ const Brand = () => {
                             </div>
                           </div>
 
-                          <div className="flex flex-wrap gap-2">
+                          <div className="flex flex-wrap items-center gap-2">
                             <EditorStatusChip
                               label={product.productTypeLabel}
                               tone="info"
@@ -1868,6 +2023,19 @@ const Brand = () => {
                               tone={product.isPublished ? "success" : "warning"}
                               className="rounded-md"
                             />
+                            <button
+                              type="button"
+                              onClick={() => handleEditAssignedProduct(product)}
+                              disabled={!editPath}
+                              className={`inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-xs font-semibold transition ${
+                                editPath
+                                  ? "border-slate-200 bg-white text-slate-700 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+                                  : "cursor-not-allowed border-slate-200 bg-slate-50 text-slate-300"
+                              }`}
+                            >
+                              <FaEdit className="text-xs" />
+                              <span>Edit</span>
+                            </button>
                           </div>
 
                           <div className="grid grid-cols-2 gap-3 text-sm">
@@ -1905,7 +2073,8 @@ const Brand = () => {
                             </div>
                           </div>
                         </article>
-                      ))
+                      );
+                      })
                     ) : (
                       <div className="px-4 py-10 text-center">
                         <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-slate-200 bg-white">
