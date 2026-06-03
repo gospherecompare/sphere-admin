@@ -9,6 +9,7 @@ import {
   FaChevronDown,
   FaClipboardList,
   FaCog,
+  FaEnvelope,
   FaExchangeAlt,
   FaFileAlt,
   FaHeartbeat,
@@ -239,6 +240,12 @@ const DESKTOP_SECTIONS = [
         icon: FaHeartbeat,
         path: "/reports/career-applications",
         prefixes: ["/reports/career-applications"],
+      },
+      {
+        label: "Contact Inbox",
+        icon: FaEnvelope,
+        path: "/reports/contact-submissions",
+        prefixes: ["/reports/contact-submissions"],
       },
       {
         label: "Product Categories",

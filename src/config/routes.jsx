@@ -62,6 +62,9 @@ const SearchPopularityReport = lazy(
 const CareerApplications = lazy(
   () => import("../components/Reports/CareerApplications"),
 );
+const ContactSubmissions = lazy(
+  () => import("../components/Reports/ContactSubmissions"),
+);
 const BannerManager = lazy(() => import("../components/BannerManager"));
 const EditLaptop = lazy(() => import("../components/EditLaptop"));
 const EditHomeAppliance = lazy(() => import("../components/EditAppliance"));
@@ -326,6 +329,11 @@ export const ROUTE_CONFIG = {
     path: "/reports/career-applications",
     component: CareerApplications,
     label: "Career Applications Report",
+  },
+  contactSubmissionsReport: {
+    path: "/reports/contact-submissions",
+    component: ContactSubmissions,
+    label: "Contact Inbox Report",
   },
 
   // Utilities

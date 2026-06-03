@@ -45,6 +45,7 @@ import HookScoreReport from "./components/Reports/HookScoreReport";
 import FeatureClicksReport from "./components/Reports/FeatureClicksReport";
 import SearchPopularityReport from "./components/Reports/SearchPopularityReport";
 import CareerApplications from "./components/Reports/CareerApplications";
+import ContactSubmissions from "./components/Reports/ContactSubmissions";
 import BannerManager from "./components/BannerManager";
 import AffiliatePlacementManager from "./components/AffiliatePlacementManager";
 import EditLaptop from "./components/EditLaptop";
@@ -878,6 +879,18 @@ function App() {
                 message="You need report access to open this page."
               >
                 <CareerApplications />
+              </AccessGate>
+            }
+          />
+          <Route
+            path="reports/contact-submissions"
+            element={
+              <AccessGate
+                requiredAnyPermissions={["reports.view"]}
+                title="Reports access required"
+                message="You need report access to open this page."
+              >
+                <ContactSubmissions />
               </AccessGate>
             }
           />

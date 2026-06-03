@@ -338,6 +338,22 @@ const ROUTE_TRAILS = [
       { label: "Search Popularity Report" },
     ],
   },
+  {
+    path: "/reports/career-applications",
+    trail: [
+      DASHBOARD_CRUMB,
+      { label: "Reports", to: "/reports/useractivity" },
+      { label: "Career Applications" },
+    ],
+  },
+  {
+    path: "/reports/contact-submissions",
+    trail: [
+      DASHBOARD_CRUMB,
+      { label: "Reports", to: "/reports/useractivity" },
+      { label: "Contact Inbox" },
+    ],
+  },
 ];
 
 const toTitle = (segment) =>

@@ -1,10 +1,28 @@
 // Central API config — update this single value when backend URL changes.
 import Cookies from "js-cookie";
 
+const getLocalDevApiBase = () => {
+  if (typeof window === "undefined") return null;
+
+  const hostname = String(window.location.hostname || "").toLowerCase();
+  if (
+    hostname === "localhost" ||
+    hostname === "127.0.0.1" ||
+    hostname === "::1"
+  ) {
+    return "http://localhost:5000";
+  }
+
+  return null;
+};
+
 const resolvedApiBase = (() => {
   const envBase =
     import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_BASE;
   if (envBase) return String(envBase);
+
+  const localDevBase = getLocalDevApiBase();
+  if (localDevBase) return localDevBase;
 
   return "https://api.apisphere.in";
 })();

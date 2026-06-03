@@ -73,6 +73,7 @@ const ORIGIN_COUNTRY_OPTIONS = [
 ];
 
 const PAGE_SIZE = 10;
+const BRAND_PRODUCT_PAGE_SIZE = 10;
 
 const PAGE_CLASS =
   "mx-auto w-full max-w-[1720px] space-y-4 bg-[radial-gradient(circle_at_top,rgba(76,53,242,0.035),transparent_28%),linear-gradient(180deg,#ffffff_0%,#fcfdff_100%)] px-2 py-3 sm:px-3 md:px-4";
@@ -214,6 +215,25 @@ const formatDate = (value) => {
   });
 };
 
+const PRODUCT_TYPE_LABELS = {
+  smartphone: "Smartphones",
+  laptop: "Laptops",
+  tv: "TVs",
+  networking: "Networking",
+  accessories: "Accessories",
+};
+
+const formatProductTypeLabel = (value) => {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (!normalized) return "Unknown";
+  if (PRODUCT_TYPE_LABELS[normalized]) return PRODUCT_TYPE_LABELS[normalized];
+  return normalized
+    .split(/[_\s]+/)
+    .filter(Boolean)
+    .map((chunk) => chunk.charAt(0).toUpperCase() + chunk.slice(1))
+    .join(" ");
+};
+
 const resolveBrandLogo = (brand) =>
   normalizeAssetUrl(
     brand?.logo ||
@@ -312,6 +332,15 @@ const Brand = () => {
   const [sortBy, setSortBy] = useState("name");
   const [selectedBrandIds, setSelectedBrandIds] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
+  const [assignedProducts, setAssignedProducts] = useState([]);
+  const [assignedProductsLoading, setAssignedProductsLoading] = useState(false);
+  const [assignedProductsError, setAssignedProductsError] = useState("");
+  const [assignedProductsSearch, setAssignedProductsSearch] = useState("");
+  const [assignedProductsTypeFilter, setAssignedProductsTypeFilter] =
+    useState("all");
+  const [assignedProductsStatusFilter, setAssignedProductsStatusFilter] =
+    useState("all");
+  const [assignedProductsPage, setAssignedProductsPage] = useState(1);
 
   useEffect(() => {
     const seededSearch = location.state?.searchTerm;
@@ -391,10 +420,90 @@ const Brand = () => {
     fetchBrands();
   }, []);
 
+  const fetchAssignedProducts = async (brandId) => {
+    if (!brandId) {
+      setAssignedProducts([]);
+      setAssignedProductsError("");
+      return;
+    }
+
+    setAssignedProductsLoading(true);
+    setAssignedProductsError("");
+
+    try {
+      const token = Cookies.get("authToken");
+      const response = await fetch(buildUrl(`/api/brands/${brandId}/products`), {
+        headers: token
+          ? {
+              Authorization: `Bearer ${token}`,
+            }
+          : {},
+      });
+
+      const responseText = await response.text();
+      let data = {};
+
+      try {
+        data = responseText ? JSON.parse(responseText) : {};
+      } catch (parseError) {
+        console.error("Failed to parse brand products response:", parseError);
+      }
+
+      if (!response.ok) {
+        throw new Error(
+          data.message || data.error || `HTTP ${response.status}`,
+        );
+      }
+
+      const rows = Array.isArray(data?.products) ? data.products : [];
+      const normalizedRows = rows.map((product) => {
+        const releaseYear = Number(product?.release_year);
+        const normalizedType = String(product?.product_type || "")
+          .trim()
+          .toLowerCase();
+        return {
+          id: Number(product?.product_id ?? product?.id) || null,
+          name: String(product?.product_name || product?.name || "").trim() ||
+            "Untitled product",
+          productType: normalizedType,
+          productTypeLabel: formatProductTypeLabel(normalizedType),
+          category:
+            String(product?.category || "").trim() ||
+            formatProductTypeLabel(normalizedType),
+          model: String(product?.model || "").trim() || "Not set",
+          releaseYear: Number.isFinite(releaseYear)
+            ? String(Math.trunc(releaseYear))
+            : "",
+          isPublished: Boolean(product?.is_published),
+          createdAt: product?.product_created_at || null,
+          imageUrl: normalizeAssetUrl(product?.image_url || ""),
+          raw: product,
+        };
+      });
+
+      setAssignedProducts(normalizedRows);
+    } catch (fetchError) {
+      console.error("Fetch brand products error:", fetchError);
+      setAssignedProducts([]);
+      setAssignedProductsError(
+        `Failed to load assigned products: ${fetchError.message}`,
+      );
+    } finally {
+      setAssignedProductsLoading(false);
+    }
+  };
+
   const resetFormValues = () => {
     setFormData(DEFAULT_FORM_DATA);
     setIsEditing(false);
     setEditingId(null);
+    setAssignedProducts([]);
+    setAssignedProductsLoading(false);
+    setAssignedProductsError("");
+    setAssignedProductsSearch("");
+    setAssignedProductsTypeFilter("all");
+    setAssignedProductsStatusFilter("all");
+    setAssignedProductsPage(1);
   };
 
   const closeEditor = () => {
@@ -588,6 +697,12 @@ const Brand = () => {
   };
 
   const handleEdit = (brand) => {
+    setAssignedProducts([]);
+    setAssignedProductsError("");
+    setAssignedProductsSearch("");
+    setAssignedProductsTypeFilter("all");
+    setAssignedProductsStatusFilter("all");
+    setAssignedProductsPage(1);
     setFormData({
       name: brand.name || "",
       slug: brand.slug || slugifyValue(brand.name),
@@ -611,6 +726,11 @@ const Brand = () => {
     setSuccess("");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
+
+  useEffect(() => {
+    if (!showEditor || !isEditing || !editingId) return;
+    fetchAssignedProducts(editingId);
+  }, [editingId, isEditing, showEditor]);
 
   const handleDelete = async (brand) => {
     if (
@@ -777,6 +897,15 @@ const Brand = () => {
     setCurrentPage(1);
   }, [searchTerm, activeFilter, categoryFilter, sortBy]);
 
+  useEffect(() => {
+    setAssignedProductsPage(1);
+  }, [
+    assignedProductsSearch,
+    assignedProductsTypeFilter,
+    assignedProductsStatusFilter,
+    editingId,
+  ]);
+
   const totalBrands = normalizedBrands.length;
   const activeBrands = normalizedBrands.filter(
     (brand) => brand.status === "active",
@@ -907,6 +1036,67 @@ const Brand = () => {
       String(currentYear - index),
     );
   }, []);
+
+  const assignedProductsPublishedCount = useMemo(
+    () => assignedProducts.filter((product) => product.isPublished).length,
+    [assignedProducts],
+  );
+
+  const assignedProductsTypeOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          assignedProducts
+            .map((product) => product.productType)
+            .filter(Boolean),
+        ),
+      ).sort((left, right) => left.localeCompare(right)),
+    [assignedProducts],
+  );
+
+  const filteredAssignedProducts = useMemo(() => {
+    const query = assignedProductsSearch.trim().toLowerCase();
+    return assignedProducts.filter((product) => {
+      const matchesQuery =
+        !query ||
+        product.name.toLowerCase().includes(query) ||
+        product.category.toLowerCase().includes(query) ||
+        product.model.toLowerCase().includes(query) ||
+        product.productTypeLabel.toLowerCase().includes(query);
+
+      const matchesType =
+        assignedProductsTypeFilter === "all" ||
+        product.productType === assignedProductsTypeFilter;
+
+      const matchesStatus =
+        assignedProductsStatusFilter === "all" ||
+        (assignedProductsStatusFilter === "published"
+          ? product.isPublished
+          : !product.isPublished);
+
+      return matchesQuery && matchesType && matchesStatus;
+    });
+  }, [
+    assignedProducts,
+    assignedProductsSearch,
+    assignedProductsStatusFilter,
+    assignedProductsTypeFilter,
+  ]);
+
+  const assignedProductsTotalPages = Math.max(
+    1,
+    Math.ceil(filteredAssignedProducts.length / BRAND_PRODUCT_PAGE_SIZE),
+  );
+  const assignedProductsPageSafe = Math.min(
+    assignedProductsPage,
+    assignedProductsTotalPages,
+  );
+  const assignedProductsStartIndex =
+    (assignedProductsPageSafe - 1) * BRAND_PRODUCT_PAGE_SIZE;
+  const paginatedAssignedProducts = filteredAssignedProducts.slice(
+    assignedProductsStartIndex,
+    assignedProductsStartIndex + BRAND_PRODUCT_PAGE_SIZE,
+  );
 
   const editorTitle = isEditing ? "Edit Brand" : "Add New Brand";
   const editorDescription = isEditing
@@ -1395,6 +1585,405 @@ const Brand = () => {
                 </div>
               </div>
             </section>
+
+            {isEditing ? (
+              <section className="px-4 py-6 sm:px-5">
+                <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                  <div>
+                    <h2 className="text-lg font-semibold text-slate-950">
+                      Assigned Products
+                    </h2>
+                    <p className="mt-2 text-sm text-slate-500">
+                      Review the products already mapped to this brand while you
+                      edit its details.
+                    </p>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <div className="rounded-md border border-slate-200 bg-white px-4 py-3">
+                      <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">
+                        Total Mapped
+                      </p>
+                      <p className="mt-2 text-2xl font-semibold text-slate-950">
+                        {assignedProducts.length}
+                      </p>
+                    </div>
+                    <div className="rounded-md border border-emerald-200 bg-emerald-50/60 px-4 py-3">
+                      <p className="text-xs font-semibold uppercase tracking-[0.08em] text-emerald-600">
+                        Published
+                      </p>
+                      <p className="mt-2 text-2xl font-semibold text-emerald-700">
+                        {assignedProductsPublishedCount}
+                      </p>
+                    </div>
+                    <div className="rounded-md border border-amber-200 bg-amber-50/60 px-4 py-3">
+                      <p className="text-xs font-semibold uppercase tracking-[0.08em] text-amber-600">
+                        Draft
+                      </p>
+                      <p className="mt-2 text-2xl font-semibold text-amber-700">
+                        {Math.max(
+                          0,
+                          assignedProducts.length - assignedProductsPublishedCount,
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-5 grid gap-3 xl:grid-cols-[minmax(0,1fr)_180px_180px_auto]">
+                  <div className="relative min-w-0">
+                    <FaSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="text"
+                      value={assignedProductsSearch}
+                      onChange={(event) =>
+                        setAssignedProductsSearch(event.target.value)
+                      }
+                      placeholder="Search assigned products..."
+                      className={`${FIELD_CLASS} pl-10`}
+                    />
+                  </div>
+
+                  <select
+                    value={assignedProductsTypeFilter}
+                    onChange={(event) =>
+                      setAssignedProductsTypeFilter(event.target.value)
+                    }
+                    className={FIELD_CLASS}
+                  >
+                    <option value="all">All Types</option>
+                    {assignedProductsTypeOptions.map((type) => (
+                      <option key={type} value={type}>
+                        {formatProductTypeLabel(type)}
+                      </option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={assignedProductsStatusFilter}
+                    onChange={(event) =>
+                      setAssignedProductsStatusFilter(event.target.value)
+                    }
+                    className={FIELD_CLASS}
+                  >
+                    <option value="all">All Publish Status</option>
+                    <option value="published">Published</option>
+                    <option value="draft">Draft</option>
+                  </select>
+
+                  <button
+                    type="button"
+                    onClick={() => fetchAssignedProducts(editingId)}
+                    disabled={assignedProductsLoading || !editingId}
+                    className={GHOST_BUTTON_CLASS}
+                  >
+                    {assignedProductsLoading ? (
+                      <FaSpinner className="animate-spin text-sm" />
+                    ) : (
+                      <FaUpload className="text-sm" />
+                    )}
+                    <span>Refresh</span>
+                  </button>
+                </div>
+
+                {assignedProductsError ? (
+                  <div className="mt-4 flex items-start gap-3 rounded-md border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                    <FaExclamationCircle className="mt-0.5 shrink-0" />
+                    <span className="flex-1">{assignedProductsError}</span>
+                  </div>
+                ) : null}
+
+                <div className="mt-5 overflow-hidden rounded-md border border-slate-200">
+                  <div className="hidden overflow-x-auto lg:block">
+                    <table className="min-w-full text-sm text-slate-700">
+                      <thead className="bg-slate-50 text-xs uppercase tracking-[0.08em] text-slate-500">
+                        <tr>
+                          <th className="px-4 py-3 text-left font-semibold">
+                            Product
+                          </th>
+                          <th className="px-4 py-3 text-left font-semibold">
+                            Type
+                          </th>
+                          <th className="px-4 py-3 text-left font-semibold">
+                            Category
+                          </th>
+                          <th className="px-4 py-3 text-left font-semibold">
+                            Model / Series
+                          </th>
+                          <th className="px-4 py-3 text-left font-semibold">
+                            Release Year
+                          </th>
+                          <th className="px-4 py-3 text-left font-semibold">
+                            Publish
+                          </th>
+                          <th className="px-4 py-3 text-left font-semibold">
+                            Added On
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200 bg-white">
+                        {assignedProductsLoading ? (
+                          <tr>
+                            <td colSpan="7" className="px-4 py-12 text-center">
+                              <FaSpinner className="mx-auto animate-spin text-2xl text-[#4C35F2]" />
+                            </td>
+                          </tr>
+                        ) : paginatedAssignedProducts.length ? (
+                          paginatedAssignedProducts.map((product) => (
+                            <tr key={product.id} className="hover:bg-slate-50/70">
+                              <td className="px-4 py-4">
+                                <div className="flex min-w-[240px] items-center gap-3">
+                                  <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-md border border-slate-200 bg-white">
+                                    {product.imageUrl ? (
+                                      <img
+                                        src={product.imageUrl}
+                                        alt={product.name}
+                                        className="h-full w-full object-cover"
+                                        onError={(event) => {
+                                          event.target.onerror = null;
+                                          event.target.src =
+                                            "https://via.placeholder.com/72?text=Product";
+                                        }}
+                                      />
+                                    ) : (
+                                      <span className="text-xs font-semibold uppercase text-slate-500">
+                                        {product.name.slice(0, 2)}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <p className="truncate font-semibold text-slate-900">
+                                      {product.name}
+                                    </p>
+                                    <p className="mt-1 text-xs text-slate-500">
+                                      Product ID: {product.id || "Not set"}
+                                    </p>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-4 py-4">
+                                <EditorStatusChip
+                                  label={product.productTypeLabel}
+                                  tone="info"
+                                  className="rounded-md"
+                                />
+                              </td>
+                              <td className="px-4 py-4 text-slate-600">
+                                {product.category}
+                              </td>
+                              <td className="px-4 py-4 text-slate-600">
+                                {product.model}
+                              </td>
+                              <td className="px-4 py-4 text-slate-600">
+                                {product.releaseYear || "Not set"}
+                              </td>
+                              <td className="px-4 py-4">
+                                <EditorStatusChip
+                                  label={
+                                    product.isPublished ? "Published" : "Draft"
+                                  }
+                                  tone={
+                                    product.isPublished ? "success" : "warning"
+                                  }
+                                  className="rounded-md"
+                                />
+                              </td>
+                              <td className="px-4 py-4 text-slate-600">
+                                {formatDate(product.createdAt)}
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan="7" className="px-4 py-12 text-center">
+                              <div className="mx-auto max-w-md">
+                                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-slate-200 bg-white">
+                                  <FaStore className="text-xl text-slate-400" />
+                                </div>
+                                <p className="mt-4 text-base font-semibold text-slate-900">
+                                  No assigned products found
+                                </p>
+                                <p className="mt-2 text-sm text-slate-500">
+                                  {assignedProducts.length
+                                    ? "Try adjusting the search or filters."
+                                    : "Products mapped to this brand will appear here."}
+                                </p>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="divide-y divide-slate-200 lg:hidden">
+                    {assignedProductsLoading ? (
+                      <div className="px-4 py-10 text-center">
+                        <FaSpinner className="mx-auto animate-spin text-2xl text-[#4C35F2]" />
+                      </div>
+                    ) : paginatedAssignedProducts.length ? (
+                      paginatedAssignedProducts.map((product) => (
+                        <article
+                          key={`mobile-product-${product.id}`}
+                          className="space-y-3 px-4 py-4"
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-md border border-slate-200 bg-white">
+                              {product.imageUrl ? (
+                                <img
+                                  src={product.imageUrl}
+                                  alt={product.name}
+                                  className="h-full w-full object-cover"
+                                  onError={(event) => {
+                                    event.target.onerror = null;
+                                    event.target.src =
+                                      "https://via.placeholder.com/72?text=Product";
+                                  }}
+                                />
+                              ) : (
+                                <span className="text-xs font-semibold uppercase text-slate-500">
+                                  {product.name.slice(0, 2)}
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="min-w-0 flex-1">
+                              <h3 className="truncate text-base font-semibold text-slate-900">
+                                {product.name}
+                              </h3>
+                              <p className="mt-1 text-xs text-slate-500">
+                                Product ID: {product.id || "Not set"}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-wrap gap-2">
+                            <EditorStatusChip
+                              label={product.productTypeLabel}
+                              tone="info"
+                              className="rounded-md"
+                            />
+                            <EditorStatusChip
+                              label={product.isPublished ? "Published" : "Draft"}
+                              tone={product.isPublished ? "success" : "warning"}
+                              className="rounded-md"
+                            />
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-3 text-sm">
+                            <div>
+                              <p className="text-xs uppercase tracking-[0.08em] text-slate-400">
+                                Category
+                              </p>
+                              <p className="mt-1 text-slate-700">
+                                {product.category}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs uppercase tracking-[0.08em] text-slate-400">
+                                Release Year
+                              </p>
+                              <p className="mt-1 text-slate-700">
+                                {product.releaseYear || "Not set"}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs uppercase tracking-[0.08em] text-slate-400">
+                                Model / Series
+                              </p>
+                              <p className="mt-1 text-slate-700">
+                                {product.model}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs uppercase tracking-[0.08em] text-slate-400">
+                                Added On
+                              </p>
+                              <p className="mt-1 text-slate-700">
+                                {formatDate(product.createdAt)}
+                              </p>
+                            </div>
+                          </div>
+                        </article>
+                      ))
+                    ) : (
+                      <div className="px-4 py-10 text-center">
+                        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-slate-200 bg-white">
+                          <FaStore className="text-xl text-slate-400" />
+                        </div>
+                        <p className="mt-4 text-base font-semibold text-slate-900">
+                          No assigned products found
+                        </p>
+                        <p className="mt-2 text-sm text-slate-500">
+                          {assignedProducts.length
+                            ? "Try adjusting the search or filters."
+                            : "Products mapped to this brand will appear here."}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex flex-col gap-3 border-t border-slate-200 bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-sm text-slate-500">
+                      Showing{" "}
+                      <span className="font-semibold text-slate-900">
+                        {filteredAssignedProducts.length
+                          ? assignedProductsStartIndex + 1
+                          : 0}
+                      </span>{" "}
+                      to{" "}
+                      <span className="font-semibold text-slate-900">
+                        {Math.min(
+                          assignedProductsStartIndex + BRAND_PRODUCT_PAGE_SIZE,
+                          filteredAssignedProducts.length,
+                        )}
+                      </span>{" "}
+                      of{" "}
+                      <span className="font-semibold text-slate-900">
+                        {filteredAssignedProducts.length}
+                      </span>{" "}
+                      mapped products
+                    </p>
+
+                    <div className="flex items-center gap-2">
+                      <div className="hidden h-10 items-center rounded-md border border-slate-200 bg-white px-3 text-sm font-medium text-slate-600 sm:flex">
+                        {BRAND_PRODUCT_PAGE_SIZE} per page
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setAssignedProductsPage((prev) =>
+                            Math.max(prev - 1, 1),
+                          )
+                        }
+                        disabled={assignedProductsPageSafe === 1}
+                        className="flex h-10 w-10 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        <FaChevronLeft />
+                      </button>
+                      <div className="flex h-10 min-w-[96px] items-center justify-center rounded-md border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700">
+                        Page {assignedProductsPageSafe} /{" "}
+                        {assignedProductsTotalPages}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setAssignedProductsPage((prev) =>
+                            Math.min(prev + 1, assignedProductsTotalPages),
+                          )
+                        }
+                        disabled={
+                          assignedProductsPageSafe === assignedProductsTotalPages
+                        }
+                        className="flex h-10 w-10 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        <FaChevronRight />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </section>
+            ) : null}
 
             <div className="flex flex-col gap-3 px-4 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-5">
               <button

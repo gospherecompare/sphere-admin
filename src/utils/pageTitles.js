@@ -84,6 +84,7 @@ const TITLE_ROUTES = [
   routeMeta("/reports/feature-clicks", "Feature Clicks Analytics", "Analytics Operations Cloud"),
   routeMeta("/reports/search-popularity", "Search Popularity Analytics", "Analytics Operations Cloud"),
   routeMeta("/reports/career-applications", "Career Applications Console", "Analytics Operations Cloud"),
+  routeMeta("/reports/contact-submissions", "Contact Inbox Console", "Analytics Operations Cloud"),
 
   routeMeta("/api-tester", "API Testing Console", "Developer Operations Cloud"),
 ];
