@@ -85,12 +85,7 @@ export const getSmartphonePreviewLaunchStatus = (formData = {}) => {
     formData && typeof formData === "object" ? formData.smartphone || {} : {};
   return getSmartphoneLifecycle({
     launchDate: smartphone.launch_date || smartphone.launchDate || null,
-    launchStatus:
-      smartphone.launch_status_override ||
-      smartphone.launchStatusOverride ||
-      smartphone.launch_status ||
-      smartphone.launchStatus ||
-      "",
+    launchStatus: smartphone.launch_status || smartphone.launchStatus || "",
     variants: Array.isArray(formData?.variants) ? formData.variants : [],
   }).launchStage;
 };

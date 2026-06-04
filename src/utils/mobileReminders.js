@@ -117,8 +117,6 @@ const collectStatusText = (mobile) => {
   const raw = mobile?.raw || {};
 
   return [
-    raw.launch_status_override,
-    raw.launchStatusOverride,
     raw.launch_status,
     raw.launchStatus,
     raw.launch_status_text,
@@ -138,8 +136,6 @@ const collectStatusText = (mobile) => {
     raw.manualBadge,
     raw.trend_manual_badge,
     raw.trendManualBadge,
-    mobile?.launch_status_override,
-    mobile?.launchStatusOverride,
     mobile?.launch_status,
     mobile?.launchStatus,
     mobile?.launch_status_text,

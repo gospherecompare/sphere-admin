@@ -153,7 +153,6 @@ const EditMobile = () => {
     model: "",
     launch_date: "",
     official_preorder_url: "",
-    launch_status_override: "",
     created_at: "",
     images: [],
     colors: [],
@@ -185,22 +184,10 @@ const EditMobile = () => {
     launchDate: formData.launch_date,
     variants: formData.variants,
   });
-  const launchStatusOverrideRaw = String(
-    formData.launch_status_override || "",
-  ).trim();
-  const launchStatusOverride =
-    launchStatusOverrideRaw === "preorder"
-      ? "upcoming"
-      : launchStatusOverrideRaw;
-  const resolvedLifecycleState = getSmartphoneLifecycle({
-    launchDate: formData.launch_date,
-    launchStatus: launchStatusOverride,
-    variants: formData.variants,
-  });
   const launchStatusAuto = autoLifecycleState.launchStage;
-  const effectiveLaunchStatus = resolvedLifecycleState.launchStage;
-  const saleStage = resolvedLifecycleState.saleStage;
-  const storeStage = resolvedLifecycleState.storeStage;
+  const effectiveLaunchStatus = autoLifecycleState.launchStage;
+  const saleStage = autoLifecycleState.saleStage;
+  const storeStage = autoLifecycleState.storeStage;
   const isUpcomingDevice = isUpcomingLaunchStage(effectiveLaunchStatus);
   const specEditorHiddenKeys = [
     "score",
@@ -1169,7 +1156,6 @@ const EditMobile = () => {
 
         setFormData({
           ...transformedData,
-          launch_status_override: transformedData.launch_status_override || "",
         });
         // Avoid stale session draft overriding freshly loaded server values.
         clearDraft();
@@ -1265,14 +1251,6 @@ const EditMobile = () => {
     setFormData((prev) => ({
       ...prev,
       [name]: value,
-    }));
-  };
-
-  const handleLaunchStatusOverride = (value) => {
-    const nextValue = value === "auto" ? "" : value;
-    setFormData((prev) => ({
-      ...prev,
-      launch_status_override: nextValue,
     }));
   };
 
@@ -1641,7 +1619,6 @@ const EditMobile = () => {
       model: formData.model || "",
       launch_date: formData.launch_date || "",
       official_preorder_url: formData.official_preorder_url || "",
-      launch_status_override: launchStatusOverride || "",
       colors: Array.isArray(formData.colors) ? formData.colors : [],
       is_foldable: Boolean(formData.is_foldable),
       build_design: formData.build_design || {},
@@ -1726,7 +1703,6 @@ const EditMobile = () => {
         model: formData.model || "",
         launch_date: formData.launch_date || null,
         official_preorder_url: formData.official_preorder_url || null,
-        launch_status_override: launchStatusOverride || null,
         publish: publishEnabled,
         images: formData.images || [],
         images_json: formData.images || [],
@@ -3562,27 +3538,12 @@ const EditMobile = () => {
 
                 <div className="sm:col-span-2">
                   <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-                    Launch Status
+                    Launch Stage
                   </label>
-                  <select
-                    value={launchStatusOverride || "auto"}
-                    onChange={(e) => handleLaunchStatusOverride(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
-                  >
-                    <option value="auto">
-                      Auto (detected: {formatLaunchStageLabel(launchStatusAuto)})
-                    </option>
-                    <option value="rumored">Rumored</option>
-                    <option value="announced">Announced</option>
-                    <option value="upcoming">Upcoming</option>
-                    <option value="released">Released</option>
-                    <option value="available">Available (sale live)</option>
-                  </select>
+                  <div className="w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700">
+                    {formatLaunchStageLabel(launchStatusAuto) || "Released"}
+                  </div>
                   <div className="mt-1 space-y-1 text-xs text-gray-500">
-                    <p>
-                      Launch stage: {formatLaunchStageLabel(effectiveLaunchStatus)}{" "}
-                      {launchStatusOverride ? "(manual override)" : "(auto)"}
-                    </p>
                     <p>Sale stage: {formatSaleStageLabel(saleStage) || "Sale Date TBA"}</p>
                     <p>Store state: {formatStoreStageLabel(storeStage) || "No Store Listing"}</p>
                   </div>

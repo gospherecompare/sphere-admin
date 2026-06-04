@@ -880,12 +880,7 @@ export default function ApiTester() {
         launch_date: row.launch_date ?? undefined,
         official_preorder_url:
           row.official_preorder_url ?? row.officialPreorderUrl ?? undefined,
-        launch_status_override:
-          row.launch_status_override ??
-          row.launchStatusOverride ??
-          row.launch_status ??
-          row.launchStatus ??
-          undefined,
+        launch_status: row.launch_status ?? row.launchStatus ?? undefined,
         colors:
           Array.isArray(row.colors) && row.colors.length
             ? row.colors
