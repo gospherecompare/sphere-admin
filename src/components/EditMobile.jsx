@@ -36,6 +36,7 @@ import {
   normalizeScoreValue,
   summarizeVariants,
 } from "./MobileEditorUi";
+import ProductNewsAssignments from "./ProductNewsAssignments";
 import {
   FaMobile,
   FaSave,
@@ -4917,6 +4918,11 @@ const EditMobile = () => {
             </div>
           )}
         </div>
+
+        <ProductNewsAssignments
+          productId={id}
+          productLabel="mobile"
+        />
 
         {/* Form Actions */}
         <div className="flex flex-col gap-3 border-t border-slate-200 pt-4 sm:flex-row">

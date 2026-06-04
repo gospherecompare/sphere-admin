@@ -4,6 +4,8 @@ import Cookies from "js-cookie";
 import { buildUrl } from "../api";
 import { uploadToCloudinary } from "../config/cloudinary";
 import useFormDraft from "../hooks/useFormDraft";
+import { saveProductNewsLinks } from "../utils/productNewsLinks";
+import ProductNewsAssignments from "./ProductNewsAssignments";
 import {
   FaLaptop,
   FaSave,
@@ -83,6 +85,7 @@ const CreateLaptop = () => {
     storages: [],
   });
   const [publishEnabled, setPublishEnabled] = useState(false);
+  const [linkedArticleIds, setLinkedArticleIds] = useState([]);
   const [toasts, setToasts] = useState([]);
   const [expandedSections, setExpandedSections] = useState({
     basic: true,
@@ -855,24 +858,50 @@ const CreateLaptop = () => {
         body: JSON.stringify(submitData),
       });
 
+      const responseData = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || "Failed to create laptop");
+        throw new Error(responseData.message || "Failed to create laptop");
+      }
+
+      const createdProductId = Number(responseData?.product_id) || null;
+      let linkedNewsError = "";
+
+      if (createdProductId && linkedArticleIds.length) {
+        try {
+          await saveProductNewsLinks(createdProductId, linkedArticleIds);
+        } catch (linkError) {
+          console.error("Link laptop news error:", linkError);
+          linkedNewsError =
+            linkError?.message || "Failed to save linked news articles";
+        }
       }
 
       showToast(
         "Success",
         `Laptop "${formData.product.name}" created ${
           publishEnabled ? "and published" : "as draft"
-        } successfully!`,
+        } successfully${
+          linkedArticleIds.length && !linkedNewsError
+            ? ", and linked news was saved too."
+            : "!"
+        }`,
         "success",
       );
+
+      if (linkedNewsError) {
+        showToast(
+          "News Linking Pending",
+          `The laptop was created, but linked news could not be saved. Open the product edit screen to retry. (${linkedNewsError})`,
+          "info",
+        );
+      }
 
       // Reset form
       clearDraft();
       setFormData(createInitialLaptopFormData());
       setCustomJsonFields({});
       setPublishEnabled(false);
+      setLinkedArticleIds([]);
     } catch (error) {
       console.error("Create laptop error:", error);
       showToast(
@@ -2338,6 +2367,12 @@ const CreateLaptop = () => {
             </div>
           )}
         </div>
+
+        <ProductNewsAssignments
+          productLabel="laptop"
+          selectedArticleIds={linkedArticleIds}
+          onSelectedArticleIdsChange={setLinkedArticleIds}
+        />
 
         {/* Publish Toggle */}
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm">

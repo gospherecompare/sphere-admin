@@ -5,6 +5,7 @@ import Cookies from "js-cookie";
 import { buildUrl } from "../api";
 import { uploadToCloudinary } from "../config/cloudinary";
 import useFormDraft from "../hooks/useFormDraft";
+import ProductNewsAssignments from "./ProductNewsAssignments";
 import {
   FaSave,
   FaTimes,
@@ -2788,6 +2789,8 @@ const EditHomeAppliance = () => {
             </div>
           )}
         </div>
+
+        <ProductNewsAssignments productId={id} productLabel="television" />
 
         {/* Publish Toggle */}
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm">

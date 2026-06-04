@@ -849,12 +849,25 @@ export default function ApiTester() {
     }
 
     if (target.includes("/api/smartphones/req")) {
+      const raw = toObject(source);
+      if (Array.isArray(raw.smartphones)) {
+        if (raw.smartphones.length === 1) {
+          source = raw.smartphones[0];
+        } else {
+          return {
+            payload: raw,
+            error:
+              "The response has multiple smartphones. Open one item first, then use direct POST.",
+          };
+        }
+      }
+
       const row = toObject(source);
       const product = toObject(row.product);
       const basicInfo = toObject(row.basic_info_json);
+      const buildDesign = toObject(row.build_design ?? row.build_design_json);
       const normalized = {
-        ...row,
-        product_name:
+        name:
           row.product_name ||
           row.name ||
           product.name ||
@@ -862,7 +875,50 @@ export default function ApiTester() {
           null,
         brand_name:
           row.brand_name || row.brand || product.brand || row.brand_name || null,
-        model: row.model || basicInfo.model || null,
+        model: row.model || basicInfo.model || basicInfo.model_number || null,
+        category: row.category ?? undefined,
+        launch_date: row.launch_date ?? undefined,
+        official_preorder_url:
+          row.official_preorder_url ?? row.officialPreorderUrl ?? undefined,
+        launch_status_override:
+          row.launch_status_override ??
+          row.launchStatusOverride ??
+          row.launch_status ??
+          row.launchStatus ??
+          undefined,
+        colors:
+          Array.isArray(row.colors) && row.colors.length
+            ? row.colors
+            : Array.isArray(buildDesign.colors)
+              ? buildDesign.colors
+              : undefined,
+        build_design: row.build_design ?? row.build_design_json ?? undefined,
+        display: row.display ?? row.display_json ?? undefined,
+        performance: row.performance ?? row.performance_json ?? undefined,
+        camera: row.camera ?? row.camera_json ?? undefined,
+        battery: row.battery ?? row.battery_json ?? undefined,
+        connectivity: row.connectivity ?? row.connectivity_json ?? undefined,
+        network: row.network ?? row.network_json ?? undefined,
+        ports: row.ports ?? row.ports_json ?? row.port_json ?? undefined,
+        audio: row.audio ?? row.audio_json ?? undefined,
+        multimedia: row.multimedia ?? row.multimedia_json ?? undefined,
+        sensors: row.sensors ?? row.sensors_json ?? undefined,
+        images: Array.isArray(row.images)
+          ? row.images
+          : Array.isArray(row.images_json)
+            ? row.images_json
+            : [],
+        variants: Array.isArray(row.variants)
+          ? row.variants
+          : Array.isArray(row.variants_json)
+            ? row.variants_json
+            : [],
+        published:
+          typeof row.published === "boolean"
+            ? row.published
+            : typeof row.is_published === "boolean"
+              ? row.is_published
+              : undefined,
       };
       return { payload: normalized, error: null };
     }
@@ -1243,9 +1299,11 @@ export default function ApiTester() {
 
     if (targetLower.includes("/api/smartphones/req")) {
       const nextPayload = toObject(payload);
-      if (!nextPayload.product_name || !nextPayload.brand_name || !nextPayload.model) {
+      const productName = nextPayload.name || nextPayload.product_name;
+      const brandName = nextPayload.brand_name || nextPayload.brand;
+      if (!productName || !brandName || !nextPayload.model) {
         setError(
-          "Missing required fields for smartphone create: product_name, brand_name, model.",
+          "Missing required fields for smartphone create: name, brand_name, model.",
         );
         return;
       }

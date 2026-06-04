@@ -18,6 +18,8 @@ import {
   getSmartphoneLifecycle,
   isUpcomingLaunchStage,
 } from "../utils/smartphoneLifecycle";
+import { saveProductNewsLinks } from "../utils/productNewsLinks";
+import ProductNewsAssignments from "./ProductNewsAssignments";
 import {
   FaMobile,
   FaSave,
@@ -203,6 +205,7 @@ const CreateMobile = () => {
     storages: [],
   });
   const [publishEnabled, setPublishEnabled] = useState(false);
+  const [linkedArticleIds, setLinkedArticleIds] = useState([]);
   const [toasts, setToasts] = useState([]);
   const [activeCreateTab, setActiveCreateTab] = useState("basic");
   const [expandedSections, setExpandedSections] = useState({
@@ -1275,21 +1278,50 @@ const CreateMobile = () => {
         body: JSON.stringify(submitData),
       });
 
-      if (!res.ok) throw new Error("Failed to create mobile");
+      const responseData = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(responseData?.message || "Failed to create mobile");
+      }
+
+      const createdProductId = Number(responseData?.product_id) || null;
+      let linkedNewsError = "";
+
+      if (createdProductId && linkedArticleIds.length) {
+        try {
+          await saveProductNewsLinks(createdProductId, linkedArticleIds);
+        } catch (linkError) {
+          console.error("Link mobile news error:", linkError);
+          linkedNewsError =
+            linkError?.message || "Failed to save linked news articles";
+        }
+      }
 
       showToast(
         "Success",
         `Mobile "${formData.product.name}" created ${
           publishEnabled ? "and published" : "as draft"
-        } successfully!`,
+        } successfully${
+          linkedArticleIds.length && !linkedNewsError
+            ? ", and linked news was saved too."
+            : "!"
+        }`,
         "success",
       );
+
+      if (linkedNewsError) {
+        showToast(
+          "News Linking Pending",
+          `The mobile was created, but linked news could not be saved. Open the product edit screen to retry. (${linkedNewsError})`,
+          "info",
+        );
+      }
 
       // Reset form
       clearDraft();
       clearSmartphonePreviewSnapshot();
       setFormData(createInitialMobileFormData());
       setPublishEnabled(false);
+      setLinkedArticleIds([]);
     } catch (error) {
       console.error("Create mobile error:", error);
       showToast(
@@ -2749,6 +2781,12 @@ const CreateMobile = () => {
             </div>
           )}
         </div>
+
+        <ProductNewsAssignments
+          productLabel="mobile"
+          selectedArticleIds={linkedArticleIds}
+          onSelectedArticleIdsChange={setLinkedArticleIds}
+        />
 
         {/* Publish Toggle */}
         <div className="border border-slate-200 bg-white">

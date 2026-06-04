@@ -11,6 +11,7 @@ import Cookies from "js-cookie";
 import { buildUrl } from "../api";
 import { uploadToCloudinary } from "../config/cloudinary";
 import useFormDraft from "../hooks/useFormDraft";
+import ProductNewsAssignments from "./ProductNewsAssignments";
 import {
   FaLaptop,
   FaSave,
@@ -2782,6 +2783,8 @@ const EditLaptop = () => {
             </div>
           )}
         </div>
+
+        <ProductNewsAssignments productId={id} productLabel="laptop" />
 
         {/* Publish & Actions Section */}
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
