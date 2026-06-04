@@ -188,14 +188,12 @@ const hasLiveStoreSignal = (store) => {
 const getSmartphoneLifecycle = ({
   launchDate = null,
   saleStartDate = null,
-  officialPreorderUrl = "",
   launchStatus = "",
   statusText = "",
   variants = [],
   additionalStoreRows = [],
 } = {}) => {
   const today = getTodayDateOnly();
-  const launch = toDateOnly(launchDate);
   const earliestSaleStart = getEarliestSaleStartDate({
     saleStartDate,
     variants,
@@ -204,7 +202,6 @@ const getSmartphoneLifecycle = ({
   const normalizedStatus =
     normalizeLifecycleStatus(launchStatus) ||
     normalizeLifecycleStatus(statusText);
-  const preorderLink = Boolean(normalizeText(officialPreorderUrl));
   const storeRows = collectStoreRows({ variants, additionalStoreRows });
   const hasPrebookingStores = storeRows.some(isPrebookingStore);
   const hasLiveStores = storeRows.some(hasLiveStoreSignal);
@@ -215,46 +212,29 @@ const getSmartphoneLifecycle = ({
   if (normalizedStatus === "rumored" || normalizedStatus === "announced") {
     launchStage = normalizedStatus;
   } else if (normalizedStatus === "upcoming") {
-    if (launch) {
-      launchStage = launch > today ? "upcoming" : "released";
-    } else if (
-      preorderLink ||
-      hasPrebookingStores ||
-      (earliestSaleStart && earliestSaleStart > today)
-    ) {
-      launchStage = "upcoming";
-    } else {
-      launchStage = "released";
-    }
+    launchStage = "upcoming";
   } else if (
     normalizedStatus === "released" ||
     normalizedStatus === "available"
   ) {
-    launchStage = launch && launch > today ? "upcoming" : "released";
-  } else if (launch) {
-    launchStage = launch > today ? "upcoming" : "released";
-  } else if (
-    preorderLink ||
-    hasPrebookingStores ||
-    (earliestSaleStart && earliestSaleStart > today)
-  ) {
+    launchStage = normalizedStatus;
+  } else if (hasPrebookingStores) {
     launchStage = "upcoming";
-  } else if (earliestSaleStart && earliestSaleStart <= today) {
-    launchStage = "released";
+  } else if (hasLiveStores) {
+    launchStage = "available";
   }
 
   let saleStage = "sale_tbd";
 
   if (earliestSaleStart) {
     if (earliestSaleStart > today) {
-      saleStage =
-        preorderLink || hasPrebookingStores ? "preorder" : "sale_scheduled";
+      saleStage = hasPrebookingStores ? "preorder" : "sale_scheduled";
     } else {
       saleStage = hasLiveStores ? "on_sale" : "sale_started";
     }
   } else if (normalizedStatus === "available") {
     saleStage = "on_sale";
-  } else if (preorderLink || hasPrebookingStores) {
+  } else if (hasPrebookingStores) {
     saleStage = "preorder";
   } else if (hasLiveStores) {
     saleStage = "on_sale";
@@ -264,16 +244,15 @@ const getSmartphoneLifecycle = ({
 
   let storeStage = "none";
   if (hasLiveStores) storeStage = "live";
-  else if (preorderLink || hasPrebookingStores) storeStage = "prebooking";
+  else if (hasPrebookingStores) storeStage = "prebooking";
   else if (hasStoreSignals) storeStage = "listed";
 
   return {
     launchStage,
     saleStage,
     storeStage,
-    launchDate: launch,
+    launchDate: toDateOnly(launchDate),
     saleStartDate: earliestSaleStart,
-    preorderLink,
     hasPrebookingStores,
     hasLiveStores,
     hasStoreSignals,

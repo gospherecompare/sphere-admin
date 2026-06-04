@@ -99,8 +99,12 @@ const getMobileLifecycleState = (mobile) => {
     launchStatus: firstText(
       raw.launch_status_override,
       raw.launchStatusOverride,
+      raw.launch_status,
+      raw.launchStatus,
       mobile?.launch_status_override,
       mobile?.launchStatusOverride,
+      mobile?.launch_status,
+      mobile?.launchStatus,
     ),
     statusText: collectStatusText(mobile),
     variants: Array.isArray(mobile?.variants) ? mobile.variants : [],

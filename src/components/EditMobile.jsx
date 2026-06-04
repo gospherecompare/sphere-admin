@@ -183,7 +183,6 @@ const EditMobile = () => {
 
   const autoLifecycleState = getSmartphoneLifecycle({
     launchDate: formData.launch_date,
-    officialPreorderUrl: formData.official_preorder_url,
     variants: formData.variants,
   });
   const launchStatusOverrideRaw = String(
@@ -195,7 +194,6 @@ const EditMobile = () => {
       : launchStatusOverrideRaw;
   const resolvedLifecycleState = getSmartphoneLifecycle({
     launchDate: formData.launch_date,
-    officialPreorderUrl: formData.official_preorder_url,
     launchStatus: launchStatusOverride,
     variants: formData.variants,
   });

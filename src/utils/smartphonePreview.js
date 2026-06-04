@@ -85,7 +85,6 @@ export const getSmartphonePreviewLaunchStatus = (formData = {}) => {
     formData && typeof formData === "object" ? formData.smartphone || {} : {};
   return getSmartphoneLifecycle({
     launchDate: smartphone.launch_date || smartphone.launchDate || null,
-    officialPreorderUrl: smartphone.official_preorder_url || "",
     launchStatus:
       smartphone.launch_status_override ||
       smartphone.launchStatusOverride ||
