@@ -1946,7 +1946,7 @@ const LaunchTimingReport = () => {
                         </div>
                       </div>
 
-                      <div className="mt-4 grid grid-cols-2 gap-2">
+                      <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
                         <div className="rounded-lg bg-slate-50 p-2.5">
                           <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
                             Launch
@@ -1957,10 +1957,27 @@ const LaunchTimingReport = () => {
                         </div>
                         <div className="rounded-lg bg-slate-50 p-2.5">
                           <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
-                            Sale
+                            Available
                           </p>
                           <p className="mt-1 text-xs font-semibold text-slate-900">
-                            {formatShortDate(device.sale_start_date)}
+                            {formatShortDate(
+                              device.available_date ||
+                                device.predicted_available_date ||
+                                device.sale_start_date,
+                            )}
+                          </p>
+                          <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+                            {device.available_date_label || (device.predicted_available_date ? "Predicted" : "Confirmed")}
+                          </p>
+                        </div>
+                        <div className="rounded-lg bg-slate-50 p-2.5">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+                            Best Price
+                          </p>
+                          <p className="mt-1 text-xs font-semibold text-slate-900">
+                            {device.best_price != null
+                              ? `Rs ${Number(device.best_price).toLocaleString("en-IN")}`
+                              : "N/A"}
                           </p>
                         </div>
                       </div>

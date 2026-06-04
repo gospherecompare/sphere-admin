@@ -76,6 +76,32 @@ const getMobileLifecycleState = (mobile) => {
       mobile?.launch_date_label,
       mobile?.launchDateLabel,
     ),
+    launchStatus: firstText(
+      raw.launch_stage,
+      raw.launchStage,
+      raw.launch_status,
+      raw.launchStatus,
+      mobile?.launch_stage,
+      mobile?.launchStage,
+      mobile?.launch_status,
+      mobile?.launchStatus,
+    ),
+    saleStage: firstText(
+      raw.sale_stage,
+      raw.saleStage,
+      raw.sale_status,
+      raw.saleStatus,
+      mobile?.sale_stage,
+      mobile?.saleStage,
+      mobile?.sale_status,
+      mobile?.saleStatus,
+    ),
+    storeStage: firstText(
+      raw.store_stage,
+      raw.storeStage,
+      mobile?.store_stage,
+      mobile?.storeStage,
+    ),
     saleStartDate: firstText(
       raw.sale_start_date,
       raw.saleStartDate,
@@ -92,12 +118,6 @@ const getMobileLifecycleState = (mobile) => {
       mobile?.official_preorder_url,
       mobile?.officialPreorderUrl,
     ),
-    launchStatus: firstText(
-      raw.launch_status,
-      raw.launchStatus,
-      mobile?.launch_status,
-      mobile?.launchStatus,
-    ),
     statusText: collectStatusText(mobile),
     variants: Array.isArray(mobile?.variants) ? mobile.variants : [],
     additionalStoreRows: Array.isArray(raw?.store_prices)
@@ -108,8 +128,21 @@ const getMobileLifecycleState = (mobile) => {
   });
 };
 
-const isUpcomingOrPreorder = (mobile) =>
-  isUpcomingLaunchStage(getMobileLifecycleState(mobile).launchStage);
+const isUpcomingOrPreorder = (mobile) => {
+  const lifecycle = getMobileLifecycleState(mobile);
+  if (isUpcomingLaunchStage(lifecycle.launchStage)) return true;
+  if (["preorder", "sale_scheduled"].includes(lifecycle.saleStage)) {
+    return true;
+  }
+  if (
+    lifecycle.launchStage === "released" &&
+    ["sale_tbd", "store_pending"].includes(lifecycle.saleStage) &&
+    lifecycle.storeStage !== "live"
+  ) {
+    return true;
+  }
+  return false;
+};
 
 export {
   formatLaunchStageLabel,

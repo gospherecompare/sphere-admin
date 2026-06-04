@@ -131,6 +131,15 @@ const collectStorageTech = (mobile, variant = null) =>
 const getStatusValue = (mobile) => {
   if (["rumored", "announced", "upcoming"].includes(mobile.launchStage))
     return "upcoming";
+  if (["preorder", "sale_scheduled"].includes(mobile.saleStage))
+    return "upcoming";
+  if (
+    mobile.launchStage === "released" &&
+    ["sale_tbd", "store_pending"].includes(mobile.saleStage) &&
+    mobile.storeStage !== "live"
+  ) {
+    return "upcoming";
+  }
   return mobile.published ? "published" : "draft";
 };
 
@@ -239,6 +248,61 @@ const formatPriceRange = (mobile) => {
 
   if (min === max) return formatCurrency(min);
   return `${formatCurrency(min)} - ${formatCurrency(max)}`;
+};
+
+const resolveBrandLogoUrl = (mobile) =>
+  firstFilledValue(
+    mobile?.brandLogoUrl,
+    mobile?.brand_logo_url,
+    mobile?.brand_logo,
+    mobile?.brandLogo,
+    mobile?.raw?.brandLogoUrl,
+    mobile?.raw?.brand_logo_url,
+    mobile?.raw?.brand_logo,
+    mobile?.raw?.brandLogo,
+  );
+
+const resolveBestPrice = (mobile) => {
+  const directPrice = Number(
+    firstFilledValue(mobile?.bestPrice, mobile?.best_price, mobile?.price),
+  );
+  if (Number.isFinite(directPrice) && directPrice > 0) return directPrice;
+
+  const prices = getPriceValues(mobile);
+  if (prices.length === 0) return null;
+  return Math.min(...prices);
+};
+
+const formatBestPrice = (mobile) => {
+  const price = resolveBestPrice(mobile);
+  return price !== null ? formatCurrency(price) : "N/A";
+};
+
+const resolveAvailableDate = (mobile) =>
+  firstFilledValue(
+    mobile?.availableDate,
+    mobile?.available_date,
+    mobile?.predictedAvailableDate,
+    mobile?.predicted_available_date,
+    mobile?.raw?.availableDate,
+    mobile?.raw?.available_date,
+    mobile?.raw?.predictedAvailableDate,
+    mobile?.raw?.predicted_available_date,
+  );
+
+const formatAvailableDate = (mobile) => {
+  const dateValue = resolveAvailableDate(mobile);
+  if (!dateValue) return "N/A";
+
+  const label = firstFilledValue(
+    mobile?.availableDateLabel,
+    mobile?.available_date_label,
+    mobile?.raw?.availableDateLabel,
+    mobile?.raw?.available_date_label,
+  );
+  const formatted = formatDate(dateValue);
+  if (!label || label === "Available") return formatted;
+  return `${label} · ${formatted}`;
 };
 
 const resolveOperatingSystem = (mobile) => {
@@ -626,6 +690,33 @@ const ViewMobiles = ({
             name: firstFilledValue(mobile.name, mobile.product_name, "Unnamed"),
             brand: firstFilledValue(mobile.brand, mobile.brand_name, "Unknown"),
             model: firstFilledValue(mobile.model, mobile.model_name, "Unknown"),
+            brandLogoUrl: resolveBrandLogoUrl(mobile),
+            bestPrice: resolveBestPrice(mobile),
+            availableDate: firstFilledValue(
+              mobile.available_date,
+              mobile.availableDate,
+            ),
+            predictedAvailableDate: firstFilledValue(
+              mobile.predicted_available_date,
+              mobile.predictedAvailableDate,
+            ),
+            availableDateLabel: firstFilledValue(
+              mobile.available_date_label,
+              mobile.availableDateLabel,
+            ),
+            launchStage: firstFilledValue(
+              mobile.launchStage,
+              mobile.launch_status,
+              mobile.launch_status_text,
+            ),
+            saleStage: firstFilledValue(
+              mobile.saleStage,
+              mobile.sale_status,
+            ),
+            storeStage: firstFilledValue(
+              mobile.storeStage,
+              mobile.store_stage,
+            ),
             hook_score: toScore(mobile.hook_score ?? mobile.hookScore),
             buyer_intent: toScore(mobile.buyer_intent ?? mobile.buyerIntent),
             trend_velocity: toScore(mobile.trend_velocity ?? mobile.trendVelocity),
@@ -685,6 +776,14 @@ const ViewMobiles = ({
               name: row.name,
               brand: row.brand,
               model: row.model,
+              brandLogoUrl: row.brandLogoUrl || null,
+              bestPrice: row.bestPrice ?? null,
+              availableDate: row.availableDate || row.predictedAvailableDate || null,
+              predictedAvailableDate: row.predictedAvailableDate || null,
+              availableDateLabel: row.availableDateLabel || null,
+              launchStage: row.launchStage || null,
+              saleStage: row.saleStage || null,
+              storeStage: row.storeStage || null,
               published: row.published,
               launch_date: row.launch_date || row.raw?.launch_date || row.raw?.launchDate || null,
               images: Array.isArray(row.images) ? [...row.images] : [],
@@ -713,6 +812,14 @@ const ViewMobiles = ({
           const grouped = groupedMap.get(productKey);
           grouped.published = grouped.published || row.published;
           if (!grouped.launch_date && row.launch_date) grouped.launch_date = row.launch_date;
+          if (!grouped.brandLogoUrl && row.brandLogoUrl) grouped.brandLogoUrl = row.brandLogoUrl;
+          if (grouped.bestPrice === null && row.bestPrice !== null && row.bestPrice !== undefined) grouped.bestPrice = row.bestPrice;
+          if (!grouped.availableDate && row.availableDate) grouped.availableDate = row.availableDate;
+          if (!grouped.predictedAvailableDate && row.predictedAvailableDate) grouped.predictedAvailableDate = row.predictedAvailableDate;
+          if (!grouped.availableDateLabel && row.availableDateLabel) grouped.availableDateLabel = row.availableDateLabel;
+          if (!grouped.launchStage && row.launchStage) grouped.launchStage = row.launchStage;
+          if (!grouped.saleStage && row.saleStage) grouped.saleStage = row.saleStage;
+          if (!grouped.storeStage && row.storeStage) grouped.storeStage = row.storeStage;
           if (Array.isArray(row.images)) grouped.images.push(...row.images.filter(Boolean));
           if (row.variant) grouped.variants.push(row.variant);
           if (typeof row.price === "number") grouped.prices.push(row.price);
@@ -731,6 +838,14 @@ const ViewMobiles = ({
           name: grouped.name,
           brand: grouped.brand,
           model: grouped.model,
+          brandLogoUrl: grouped.brandLogoUrl || null,
+          bestPrice: grouped.bestPrice ?? null,
+          availableDate: grouped.availableDate || grouped.predictedAvailableDate || null,
+          predictedAvailableDate: grouped.predictedAvailableDate || null,
+          availableDateLabel: grouped.availableDateLabel || null,
+          launchStage: grouped.launchStage || null,
+          saleStage: grouped.saleStage || null,
+          storeStage: grouped.storeStage || null,
           published: grouped.published,
           launch_date: grouped.launch_date,
           images: Array.from(new Set(grouped.images || [])).filter(Boolean),
@@ -1498,7 +1613,7 @@ const ViewMobiles = ({
                 <th className="min-w-[320px] px-3 py-3 xl:px-4">Mobile</th>
                 <th className="px-3 py-3">Brand</th>
                 <th className="px-3 py-3">Launch Date</th>
-                <th className="px-3 py-3">Price Range</th>
+                <th className="px-3 py-3">Best Price</th>
                 <th className="px-3 py-3">Hook Score</th>
                 <th className="px-3 py-3">Spec Score</th>
                 <th className="px-3 py-3">Performance Score</th>
@@ -1575,7 +1690,20 @@ const ViewMobiles = ({
                       </td>
 
                       <td className="px-3 py-3">
-                        <div className="font-medium text-slate-900">{mobile.brand}</div>
+                        <div className="flex items-center gap-2 font-medium text-slate-900">
+                          {resolveBrandLogoUrl(mobile) ? (
+                            <img
+                              src={resolveBrandLogoUrl(mobile)}
+                              alt={`${mobile.brand || mobile.name} logo`}
+                              className="h-6 w-6 shrink-0 rounded-sm border border-slate-200 bg-white object-contain p-0.5"
+                              onError={(event) => {
+                                event.currentTarget.onerror = null;
+                                event.currentTarget.style.display = "none";
+                              }}
+                            />
+                          ) : null}
+                          <span className="min-w-0 truncate">{mobile.brand}</span>
+                        </div>
                       </td>
 
                       <td className="px-3 py-3 text-slate-700">
@@ -1590,7 +1718,10 @@ const ViewMobiles = ({
                         </div>
                       </td>
 
-                      <td className="px-3 py-3 font-medium text-slate-700">{formatPriceRange(mobile)}</td>
+                      <td className="px-3 py-3 font-medium text-slate-700">
+                        <div>{formatBestPrice(mobile)}</div>
+                        <div className="mt-1 text-xs text-slate-500">{formatAvailableDate(mobile)}</div>
+                      </td>
 
                       <td className="px-3 py-3">
                         <span className="inline-flex min-w-[2.5rem] items-center justify-center border border-emerald-200 bg-emerald-50 px-3 py-1 text-sm font-semibold text-emerald-700">
@@ -1756,6 +1887,22 @@ const ViewMobiles = ({
                                   {mobile.name}
                                 </p>
                                 <p className="mt-1 break-words text-xs text-slate-500">{specSummary}</p>
+                                <div className="mt-2 flex items-center gap-2">
+                                  {resolveBrandLogoUrl(mobile) ? (
+                                    <img
+                                      src={resolveBrandLogoUrl(mobile)}
+                                      alt={`${mobile.brand || mobile.name} logo`}
+                                      className="h-6 w-6 rounded-sm border border-slate-200 bg-white object-contain p-0.5"
+                                      onError={(event) => {
+                                        event.currentTarget.onerror = null;
+                                        event.currentTarget.style.display = "none";
+                                      }}
+                                    />
+                                  ) : null}
+                                  <span className="text-xs font-medium text-slate-600">
+                                    {mobile.brand || "Unknown"}
+                                  </span>
+                                </div>
                               </div>
 
                               <button
@@ -1785,7 +1932,11 @@ const ViewMobiles = ({
                               label="Store State"
                               value={formatStoreStageLabel(mobile.storeStage) || "No Store Listing"}
                             />
-                            <MobileInfoRow label="Price Range" value={formatPriceRange(mobile)} />
+                            <MobileInfoRow label="Best Price" value={formatBestPrice(mobile)} />
+                            <MobileInfoRow
+                              label="Available Date"
+                              value={formatAvailableDate(mobile)}
+                            />
                             <MobileInfoRow label="Search Volume" value={resolveSearchVolume(mobile, startIndex + index)} />
                             <MobileInfoRow
                               label="Trending"

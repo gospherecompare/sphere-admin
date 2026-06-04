@@ -189,10 +189,37 @@ const getSmartphoneLifecycle = ({
   launchDate = null,
   saleStartDate = null,
   launchStatus = "",
+  saleStage = "",
+  storeStage = "",
   statusText = "",
   variants = [],
   additionalStoreRows = [],
 } = {}) => {
+  const directLaunchStage = normalizeLifecycleStatus(launchStatus);
+  const directSaleStage = normalizeText(saleStage);
+  const directStoreStage = normalizeText(storeStage);
+
+  if (directLaunchStage || directSaleStage || directStoreStage) {
+    return {
+      launchStage: directLaunchStage || "released",
+      saleStage:
+        directSaleStage ||
+        (directLaunchStage === "available"
+          ? "on_sale"
+          : directLaunchStage === "upcoming"
+            ? "preorder"
+            : directLaunchStage === "announced"
+              ? "sale_scheduled"
+              : "sale_tbd"),
+      storeStage: directStoreStage || "none",
+      launchDate: toDateOnly(launchDate),
+      saleStartDate: toDateOnly(saleStartDate),
+      hasPrebookingStores: false,
+      hasLiveStores: false,
+      hasStoreSignals: false,
+    };
+  }
+
   const today = getTodayDateOnly();
   const earliestSaleStart = getEarliestSaleStartDate({
     saleStartDate,
@@ -224,33 +251,33 @@ const getSmartphoneLifecycle = ({
     launchStage = "available";
   }
 
-  let saleStage = "sale_tbd";
+  let resolvedSaleStage = "sale_tbd";
 
   if (earliestSaleStart) {
     if (earliestSaleStart > today) {
-      saleStage = hasPrebookingStores ? "preorder" : "sale_scheduled";
+      resolvedSaleStage = hasPrebookingStores ? "preorder" : "sale_scheduled";
     } else {
-      saleStage = hasLiveStores ? "on_sale" : "sale_started";
+      resolvedSaleStage = hasLiveStores ? "on_sale" : "sale_started";
     }
   } else if (normalizedStatus === "available") {
-    saleStage = "on_sale";
+    resolvedSaleStage = "on_sale";
   } else if (hasPrebookingStores) {
-    saleStage = "preorder";
+    resolvedSaleStage = "preorder";
   } else if (hasLiveStores) {
-    saleStage = "on_sale";
+    resolvedSaleStage = "on_sale";
   } else if (launchStage === "released" && hasStoreSignals) {
-    saleStage = "store_pending";
+    resolvedSaleStage = "store_pending";
   }
 
-  let storeStage = "none";
-  if (hasLiveStores) storeStage = "live";
-  else if (hasPrebookingStores) storeStage = "prebooking";
-  else if (hasStoreSignals) storeStage = "listed";
+  let resolvedStoreStage = "none";
+  if (hasLiveStores) resolvedStoreStage = "live";
+  else if (hasPrebookingStores) resolvedStoreStage = "prebooking";
+  else if (hasStoreSignals) resolvedStoreStage = "listed";
 
   return {
     launchStage,
-    saleStage,
-    storeStage,
+    saleStage: resolvedSaleStage,
+    storeStage: resolvedStoreStage,
     launchDate: toDateOnly(launchDate),
     saleStartDate: earliestSaleStart,
     hasPrebookingStores,
