@@ -1255,8 +1255,20 @@ const CreateMobile = () => {
         throw new Error(responseData?.message || "Failed to create mobile");
       }
 
-      const createdProductId = Number(responseData?.product_id) || null;
+      const createdProductId =
+        Number(
+          responseData?.product_id ??
+            responseData?.productId ??
+            responseData?.data?.product_id ??
+            responseData?.data?.productId ??
+            responseData?.product?.id,
+        ) || null;
       let linkedNewsError = "";
+
+      if (linkedArticleIds.length && !createdProductId) {
+        linkedNewsError =
+          "Created mobile response did not include the product id needed for news linking";
+      }
 
       if (createdProductId && linkedArticleIds.length) {
         try {

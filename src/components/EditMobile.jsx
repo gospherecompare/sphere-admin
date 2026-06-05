@@ -147,6 +147,8 @@ const EditMobile = () => {
 
   // Default form structure
   const defaultFormData = {
+    id: "",
+    product_id: "",
     name: "",
     segment: "Smart Phone",
     brand: "",
@@ -983,6 +985,8 @@ const EditMobile = () => {
 
         // Transform API data
         const transformedData = {
+          id: apiData?.id || "",
+          product_id: apiData?.product_id || apiData?.productId || "",
           name:
             apiData?.name ||
             apiData?.product_name ||
@@ -4879,7 +4883,7 @@ const EditMobile = () => {
         </div>
 
         <ProductNewsAssignments
-          productId={id}
+          productId={formData?.product_id || formData?.productId || id}
           productLabel="mobile"
         />
 
