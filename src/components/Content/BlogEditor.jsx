@@ -16,6 +16,7 @@ import {
   FaCopy,
   FaDownload,
   FaEllipsisV,
+  FaEraser,
   FaFilter,
   FaItalic,
   FaLink,
@@ -428,10 +429,8 @@ const escapeHtml = (value) =>
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
 
-const decodeHtmlEntities = (value) => {
+const decodeHtmlEntitiesOnce = (value) => {
   let text = String(value || "");
-  if (!text) return "";
-
   const replacements = [
     ["&lt;", "<"],
     ["&gt;", ">"],
@@ -441,11 +440,25 @@ const decodeHtmlEntities = (value) => {
     ["&amp;", "&"],
   ];
 
-  for (let pass = 0; pass < 2; pass += 1) {
-    let next = text;
-    replacements.forEach(([encoded, decoded]) => {
-      next = next.split(encoded).join(decoded);
-    });
+  replacements.forEach(([encoded, decoded]) => {
+    text = text.split(encoded).join(decoded);
+  });
+
+  return text;
+};
+
+const containsArticleMarkup = (value) =>
+  /<\s*\/?(?:p|br|h[1-6]|ul|ol|li|table|thead|tbody|tr|th|td|blockquote|pre|code|figure|figcaption|img)\b/i.test(
+    String(value || ""),
+  );
+
+const normalizeArticleContent = (value) => {
+  let text = String(value || "").replace(/\r\n?/g, "\n").trim();
+
+  // Older stories can contain encoded HTML. Decode only until the structural
+  // tags appear so text such as "3 &lt; 5" remains text instead of becoming a tag.
+  for (let pass = 0; pass < 3 && text && !containsArticleMarkup(text); pass += 1) {
+    const next = decodeHtmlEntitiesOnce(text);
     if (next === text) break;
     text = next;
   }
@@ -453,24 +466,28 @@ const decodeHtmlEntities = (value) => {
   return text;
 };
 
-const normalizeArticleContent = (value) =>
-  decodeHtmlEntities(String(value || "").replace(/\r\n?/g, "\n")).trim();
-
 const applyInlineBoldMarkers = (value) =>
   String(value || "")
-    .split(/(<[^>]+>)/g)
+    .split(/(<(?:pre|code)\b[^>]*>[\s\S]*?<\/(?:pre|code)>)/gi)
     .map((segment) => {
-      if (!segment || segment.startsWith("<")) return segment;
+      if (/^<(?:pre|code)\b/i.test(segment)) return segment;
 
       return segment
-        .replace(/\*\*([\s\S]*?)\*\*/g, (full, inner) => {
-          const text = String(inner || "").trim();
-          return text ? `<strong>${text}</strong>` : full;
+        .split(/(<[^>]+>)/g)
+        .map((part) => {
+          if (!part || part.startsWith("<")) return part;
+
+          return part
+            .replace(/\*\*([\s\S]*?)\*\*/g, (full, inner) => {
+              const text = String(inner || "").trim();
+              return text ? `<strong>${text}</strong>` : full;
+            })
+            .replace(/__([\s\S]*?)__/g, (full, inner) => {
+              const text = String(inner || "").trim();
+              return text ? `<strong>${text}</strong>` : full;
+            });
         })
-        .replace(/__([\s\S]*?)__/g, (full, inner) => {
-          const text = String(inner || "").trim();
-          return text ? `<strong>${text}</strong>` : full;
-        });
+        .join("");
     })
     .join("");
 
@@ -483,12 +500,12 @@ const renderBlogTemplatePreview = (content, tokenMap = {}) =>
         .toLowerCase()
         .replace(/[^a-z0-9_]+/g, "_");
       const value = toPlainObject(tokenMap)[normalizedKey];
-      return value == null || value === "" ? full : String(value);
+      return value == null || value === "" ? full : escapeHtml(String(value));
     },
   );
 
 const hasStructuredArticleMarkup = (value) =>
-  /<\s*(?:p|br|h[1-6]|ul|ol|li|table|thead|tbody|tr|th|td|blockquote|a|strong|em|b|i|u|figure|figcaption|img)\b/i.test(
+  /<\s*(?:p|br|h[1-6]|ul|ol|li|table|thead|tbody|tr|th|td|blockquote|pre|code|a|strong|em|b|i|u|s|del|figure|figcaption|img)\b/i.test(
     normalizeArticleContent(value),
   );
 
@@ -517,7 +534,7 @@ const sanitizeArticleMarkup = (value) => {
 
   return applyInlineBoldMarkers(normalized)
     .replace(
-      /<(?!\/?(?:p|br|strong|em|b|i|u|a|ul|ol|li|h2|h3|h4|h5|h6|blockquote|table|thead|tbody|tr|th|td|figure|figcaption|img)\b)[^>]+>/gi,
+      /<(?!\/?(?:p|br|strong|em|b|i|u|s|del|code|pre|a|ul|ol|li|h2|h3|h4|h5|h6|blockquote|table|thead|tbody|tr|th|td|figure|figcaption|img)\b)[^>]+>/gi,
       "",
     )
     .trim();
@@ -602,6 +619,23 @@ const hasMeaningfulArticleContent = (value) =>
       .replace(/\s+/g, "")
       .trim(),
   );
+
+const collectArticleTemplateTokens = (value) => {
+  const source = String(value || "");
+  const tokens = new Set();
+  const matcher = /\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g;
+  let match = matcher.exec(source);
+
+  while (match) {
+    const token = String(match[1] || "")
+      .trim()
+      .toLowerCase();
+    if (token) tokens.add(token);
+    match = matcher.exec(source);
+  }
+
+  return Array.from(tokens);
+};
 
 const resolveStoredArticleContent = (record, fallback = "") => {
   const candidateFields = [
@@ -1910,6 +1944,10 @@ const BlogEditor = () => {
       blogMode === "product" ? normalizeSelectedProductIds(selectedProductIds) : [];
     const productIdForSave = productIdsForSave[0] || null;
     const nextStatus = statusOverride || status;
+    const contentForSave = buildEditorSurfaceHtml(contentTemplate);
+    const unresolvedTokens = collectArticleTemplateTokens(
+      renderBlogTemplatePreview(contentForSave, tokenMap),
+    );
     const productImageChoices =
       blogMode === "product"
         ? collectImageCandidates(
@@ -1935,8 +1973,16 @@ const BlogEditor = () => {
       setError("Title is required");
       return;
     }
-    if (!hasMeaningfulArticleContent(contentTemplate)) {
+    if (!hasMeaningfulArticleContent(contentForSave)) {
       setError("Content is required");
+      return;
+    }
+    if (nextStatus === "published" && unresolvedTokens.length) {
+      setError(
+        `Resolve these content placeholders before publishing: ${unresolvedTokens
+          .map((token) => `{{${token}}}`)
+          .join(", ")}`,
+      );
       return;
     }
 
@@ -1971,7 +2017,7 @@ const BlogEditor = () => {
           pinned,
           status: nextStatus,
           published_at: publishedAt || null,
-          content_template: contentTemplate,
+          content_template: contentForSave,
           token_map: tokenMap,
         }),
       });
@@ -3262,6 +3308,22 @@ const BlogEditor = () => {
                               <option value="numbers">Numbered List</option>
                             </select>
 
+                            {editorUiState.isBulletList ||
+                            editorUiState.isOrderedList ? (
+                              <button
+                                type="button"
+                                onPointerDown={(event) =>
+                                  handleToolbarAction(event, () =>
+                                    applyEditorBlockMode("paragraph"),
+                                  )
+                                }
+                                className="inline-flex h-9 items-center justify-center border border-[#7C3AED]/20 bg-[#F3EEFF] px-3 text-xs font-semibold text-[#5B34E6] transition hover:border-[#7C3AED]/35 hover:bg-[#EDE7FF]"
+                                title="Exit the current list and continue with a paragraph"
+                              >
+                                End list
+                              </button>
+                            ) : null}
+
                             <div className="mx-1 hidden h-6 w-px bg-slate-200 sm:block" />
 
                             <button
@@ -3324,6 +3386,18 @@ const BlogEditor = () => {
                               title="Strikethrough"
                             >
                               <FaStrikethrough />
+                            </button>
+                            <button
+                              type="button"
+                              onPointerDown={(event) =>
+                                handleToolbarAction(event, () =>
+                                  storyEditorRef.current?.clearFormatting?.(),
+                                )
+                              }
+                              className={getComposerIconButtonClassName(false)}
+                              title="Clear formatting and continue with normal text"
+                            >
+                              <FaEraser />
                             </button>
                             <button
                               type="button"

@@ -48,41 +48,17 @@ const plainTextToEditorHtml = (text) =>
     )
     .join("");
 
-const escapeHtml = (value) =>
-  String(value || "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
+const resetToNormalParagraph = (activeEditor, { clearMarks = false } = {}) => {
+  let chain = activeEditor.chain().clearNodes().setParagraph();
 
-const getSelectionPlainText = (editor, selection) => {
-  if (!editor || !selection || selection.empty) return "";
+  if (clearMarks || activeEditor.state.selection.empty) {
+    chain = chain.unsetAllMarks().command(({ tr }) => {
+      tr.setStoredMarks([]);
+      return true;
+    });
+  }
 
-  return String(
-    editor.state.doc.textBetween(
-      selection.from,
-      selection.to,
-      "\n",
-      "\n",
-    ) || "",
-  );
-};
-
-const buildListHtmlFromText = (text, type = "bullet") => {
-  const normalizedLines = String(text || "")
-    .replace(/\r\n?/g, "\n")
-    .split(/\n+/)
-    .map((line) => String(line || "").trim())
-    .filter(Boolean);
-
-  if (normalizedLines.length < 2) return "";
-
-  const tag = type === "ordered" ? "ol" : "ul";
-
-  return `<${tag}>${normalizedLines
-    .map((line) => `<li>${escapeHtml(line)}</li>`)
-    .join("")}</${tag}>`;
+  return chain.run();
 };
 
 const TiptapStoryEditor = forwardRef(function TiptapStoryEditor(
@@ -210,23 +186,11 @@ const TiptapStoryEditor = forwardRef(function TiptapStoryEditor(
 
   const toggleListWithSelectionSupport = useCallback(
     (type = "bullet") =>
-      runWithSavedSelection((activeEditor) => {
-        const selection = activeEditor.state.selection;
-        const selectedText = getSelectionPlainText(activeEditor, selection);
-        const listHtml = buildListHtmlFromText(selectedText, type);
-
-        if (listHtml) {
-          return activeEditor
-            .chain()
-            .deleteSelection()
-            .insertContent(listHtml)
-            .run();
-        }
-
-        return type === "ordered"
+      runWithSavedSelection((activeEditor) =>
+        type === "ordered"
           ? activeEditor.chain().toggleOrderedList().run()
-          : activeEditor.chain().toggleBulletList().run();
-      }),
+          : activeEditor.chain().toggleBulletList().run(),
+      ),
     [runWithSavedSelection],
   );
 
@@ -336,6 +300,10 @@ const TiptapStoryEditor = forwardRef(function TiptapStoryEditor(
     ref,
     () => ({
       clearSavedSelection,
+      clearFormatting: () =>
+        runWithSavedSelection((activeEditor) =>
+          resetToNormalParagraph(activeEditor, { clearMarks: true }),
+        ),
       focusEnd: () => {
         const instance = editorInstanceRef.current;
         if (!instance) return false;
@@ -400,7 +368,7 @@ const TiptapStoryEditor = forwardRef(function TiptapStoryEditor(
         ),
       setParagraph: () =>
         runWithSavedSelection((activeEditor) =>
-          activeEditor.chain().setParagraph().run(),
+          resetToNormalParagraph(activeEditor),
         ),
       toggleBlockquote: () =>
         runWithSavedSelection((activeEditor) =>
