@@ -9,7 +9,6 @@ import {
   FaChevronRight,
   FaDownload,
   FaEdit,
-  FaEllipsisH,
   FaExclamationCircle,
   FaEye,
   FaEyeSlash,
@@ -20,6 +19,7 @@ import {
   FaSearch,
   FaSpinner,
   FaTimes,
+  FaTrash,
   FaUpload,
 } from "react-icons/fa";
 import Cookies from "js-cookie";
@@ -1804,9 +1804,10 @@ const ViewMobiles = ({
                             type="button"
                             onClick={() => handleDelete(mobile)}
                             className={`${rowActionButtonClassName} hover:border-rose-200 hover:text-rose-600`}
-                            title="More"
+                            title="Delete"
+                            aria-label={`Delete ${mobile.name}`}
                           >
-                            <FaEllipsisH className="text-sm" />
+                            <FaTrash className="text-sm" />
                           </button>
                         </div>
                       </td>
@@ -1998,10 +1999,11 @@ const ViewMobiles = ({
                               type="button"
                               onClick={() => handleDelete(mobile)}
                               className={`${mobileActionButtonClassName} text-rose-600 hover:bg-rose-50`}
-                              title="More"
+                              title="Delete"
+                              aria-label={`Delete ${mobile.name}`}
                             >
-                              <FaEllipsisH className="text-sm" />
-                              More
+                              <FaTrash className="text-sm" />
+                              Delete
                             </button>
                           </div>
                         </div>

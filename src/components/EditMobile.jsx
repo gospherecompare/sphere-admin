@@ -4887,6 +4887,46 @@ const EditMobile = () => {
           productLabel="mobile"
         />
 
+        <div className="border border-slate-200 bg-white p-3 xl:hidden">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0 space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold text-slate-900">
+                  Publish Status
+                </span>
+                <EditorStatusChip
+                  label={publishEnabled ? "Published" : "Draft"}
+                  tone={publishEnabled ? "success" : "warning"}
+                />
+              </div>
+              <div className="grid grid-cols-1 gap-2 text-sm text-slate-600 sm:grid-cols-3">
+                <span>
+                  Launch: {formatLaunchStageLabel(effectiveLaunchStatus) || "Not set"}
+                </span>
+                <span>
+                  Sale: {formatSaleStageLabel(saleStage) || "Sale Date TBA"}
+                </span>
+                <span>
+                  Store: {formatStoreStageLabel(storeStage) || "No Store Listing"}
+                </span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setPublishEnabled((prev) => !prev)}
+              disabled={isSaving}
+              className={`w-full justify-center sm:w-auto sm:min-w-[180px] ${
+                publishEnabled
+                  ? editorDangerButtonClassName
+                  : editorPrimaryButtonClassName
+              }`}
+            >
+              <span>{publishEnabled ? "Move to Draft" : "Enable Publish"}</span>
+              <FaStar className="text-sm" />
+            </button>
+          </div>
+        </div>
+
         {/* Form Actions */}
         <div className="flex flex-col gap-3 border-t border-slate-200 pt-4 sm:flex-row">
           <button

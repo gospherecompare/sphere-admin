@@ -2760,10 +2760,10 @@ const CreateMobile = () => {
         {/* Publish Toggle */}
         <div className="border border-slate-200 bg-white">
           <div className="px-2 py-3 sm:px-3 sm:py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex min-w-0 items-center space-x-3">
                 <div
-                  className={`flex h-8 w-8 items-center justify-center border ${
+                  className={`flex h-8 w-8 flex-shrink-0 items-center justify-center border ${
                     publishEnabled
                       ? "border-green-200 bg-green-50"
                       : "border-slate-200 bg-slate-50"
@@ -2775,7 +2775,7 @@ const CreateMobile = () => {
                     }
                   />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <div className="font-semibold text-gray-800">
                     Publish Status
                   </div>
@@ -2788,8 +2788,9 @@ const CreateMobile = () => {
               </div>
 
               <button
+                type="button"
                 onClick={() => setPublishEnabled(!publishEnabled)}
-                className={`px-3 py-2 border font-medium ${
+                className={`w-full border px-3 py-2 font-medium sm:w-auto sm:min-w-[120px] ${
                   publishEnabled
                     ? "border-green-600 bg-green-600 text-white hover:bg-green-700"
                     : "border-slate-200 bg-slate-100 text-gray-800 hover:bg-slate-200"
