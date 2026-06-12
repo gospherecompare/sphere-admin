@@ -16,6 +16,7 @@ import {
 import Cookies from "js-cookie";
 import { buildUrl } from "../api";
 import { uploadToCloudinary } from "../config/cloudinary";
+import { requestDeleteApproval } from "../utils/deleteApproval";
 
 const PLACEMENTS = [
   { value: "top_leaderboard", label: "Top Leaderboard / Masthead" },
@@ -193,14 +194,29 @@ const BannerManager = () => {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Delete this banner?")) return;
+    const deleteApproval = requestDeleteApproval({
+      itemName: `banner ${id}`,
+      itemLabel: "banner",
+    });
+    if (!deleteApproval) return;
+    if (deleteApproval.error) {
+      showToast("Delete Blocked", deleteApproval.error, "error");
+      return;
+    }
     try {
       const token = Cookies.get("authToken");
       const res = await fetch(buildUrl(`/api/admin/banners/${id}`), {
         method: "DELETE",
-        headers: { Authorization: token ? `Bearer ${token}` : "" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: token ? `Bearer ${token}` : "",
+        },
+        body: JSON.stringify(deleteApproval),
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) {
+        const errorBody = await res.json().catch(() => ({}));
+        throw new Error(errorBody.message || errorBody.error || `HTTP ${res.status}`);
+      }
       showToast("Success", "Banner deleted", "success");
       fetchBanners();
     } catch (err) {

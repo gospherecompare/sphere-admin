@@ -22,6 +22,7 @@ import {
 import Cookies from "js-cookie";
 import { buildUrl } from "../api";
 import { uploadToCloudinary } from "../config/cloudinary";
+import { requestDeleteApproval } from "../utils/deleteApproval";
 import {
   EditorStatusChip,
   editorFieldClassName,
@@ -1087,7 +1088,13 @@ const OnlineStoreManagement = () => {
   };
 
   const handleDelete = async (store) => {
-    if (!window.confirm(`Are you sure you want to delete "${store.name}"?`)) {
+    const deleteApproval = requestDeleteApproval({
+      itemName: store.name,
+      itemLabel: "store",
+    });
+    if (!deleteApproval) return;
+    if (deleteApproval.error) {
+      showToast("Delete Blocked", deleteApproval.error, "error");
       return;
     }
 
@@ -1097,12 +1104,15 @@ const OnlineStoreManagement = () => {
       const response = await fetch(buildUrl(`/api/online-stores/${store.id}`), {
         method: "DELETE",
         headers: {
+          "Content-Type": "application/json",
           Authorization: token ? `Bearer ${token}` : "",
         },
+        body: JSON.stringify(deleteApproval),
       });
 
       if (!response.ok) {
-        throw new Error("Delete failed");
+        const errorBody = await response.json().catch(() => ({}));
+        throw new Error(errorBody.message || errorBody.error || "Delete failed");
       }
 
       setStores((prev) => prev.filter((item) => item.id !== store.id));

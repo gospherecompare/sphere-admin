@@ -28,6 +28,7 @@ import {
 } from "react-icons/fa";
 import Cookies from "js-cookie";
 import { buildUrl } from "../api";
+import { requestDeleteApproval } from "../utils/deleteApproval";
 
 const normalizeFilterValue = (value) => String(value || "").trim().toLowerCase();
 
@@ -336,15 +337,25 @@ const ViewLaptops = () => {
 
   // Handle delete
   const handleDelete = async (id, name) => {
-    if (!window.confirm(`Are you sure you want to delete "${name}"?`)) return;
+    const deleteApproval = requestDeleteApproval({
+      itemName: name,
+      itemLabel: "laptop",
+    });
+    if (!deleteApproval) return;
+    if (deleteApproval.error) {
+      showToast("Delete Blocked", deleteApproval.error, "error");
+      return;
+    }
 
     try {
       const token = Cookies.get("authToken");
       const res = await fetch(buildUrl(`/api/laptop/${id}`), {
         method: "DELETE",
         headers: {
+          "Content-Type": "application/json",
           Authorization: token ? `Bearer ${token}` : "",
         },
+        body: JSON.stringify(deleteApproval),
       });
 
       if (!res.ok) {

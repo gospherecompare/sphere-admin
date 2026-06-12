@@ -15,6 +15,7 @@ import {
 } from "react-icons/fa";
 import Cookies from "js-cookie";
 import { buildUrl } from "../api";
+import { requestDeleteApproval } from "../utils/deleteApproval";
 
 const SpecificationsManager = () => {
   // State management
@@ -136,6 +137,15 @@ const SpecificationsManager = () => {
 
   const deleteSpec = async () => {
     if (!deleteId) return;
+    const deleteApproval = requestDeleteApproval({
+      itemName: `specification ${deleteId}`,
+      itemLabel: "specification",
+    });
+    if (!deleteApproval) return;
+    if (deleteApproval.error) {
+      showToast("Delete Blocked", deleteApproval.error, "error");
+      return;
+    }
 
     try {
       const response = await fetch(buildUrl(`/api/specs/${deleteId}`), {
@@ -144,10 +154,17 @@ const SpecificationsManager = () => {
           Authorization: `Bearer ${Cookies.get("authToken") || "demo-token"}`,
           "Content-Type": "application/json",
         },
+        body: JSON.stringify(deleteApproval),
       });
 
-      if (!response.ok)
-        throw new Error(`HTTP error! status: ${response.status}`);
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => ({}));
+        throw new Error(
+          errorBody.message ||
+            errorBody.error ||
+            `HTTP error! status: ${response.status}`,
+        );
+      }
 
       showToast("Success", "Specification deleted successfully", "success");
       setShowDeleteModal(false);

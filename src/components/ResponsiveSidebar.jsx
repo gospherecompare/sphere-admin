@@ -22,6 +22,7 @@ import {
   hasAnyPermissions,
   hasAllPermissions,
 } from "../utils/access";
+import { getRouteAccessConfig } from "../utils/routePermissions";
 
 const MENU_ITEMS = [
   {
@@ -47,6 +48,7 @@ const MENU_ITEMS = [
     icon: <FaUsers />,
     requiredAnyPermissions: [
       "users.view",
+      "customers.view",
       "roles.view",
       "permissions.view",
       "activity.view",
@@ -61,7 +63,7 @@ const MENU_ITEMS = [
     id: "settings",
     label: "Settings",
     icon: <FaCog />,
-    requiredAnyPermissions: ["settings.view"],
+    requiredAnyPermissions: ["settings.view", "specifications.view", "products.view"],
     submenu: [
       { label: "Specifications", path: "/specifications-manager" },
       { label: "Brands", path: "/specifications/brands" },
@@ -124,9 +126,15 @@ const ResponsiveSidebar = ({
   const canSeeMenuItem = useCallback(
     (item) => {
       if (!item) return false;
+      const routeConfig = getRouteAccessConfig(item.path || "");
+      const requiredPermissions =
+        item.requiredPermissions || routeConfig?.requiredPermissions || [];
+      const requiredAnyPermissions =
+        item.requiredAnyPermissions || routeConfig?.requiredAnyPermissions || [];
 
       if (Array.isArray(item.requiredRoles) && item.requiredRoles.length) {
         const normalizedRole = String(role || "").trim().toLowerCase();
+        if (normalizedRole === "admin" || normalizedRole === "ceo") return true;
         const allowedRoles = item.requiredRoles.map((value) =>
           String(value || "").trim().toLowerCase(),
         );
@@ -134,17 +142,17 @@ const ResponsiveSidebar = ({
       }
 
       if (
-        Array.isArray(item.requiredPermissions) &&
-        item.requiredPermissions.length &&
-        !hasAllPermissions(item.requiredPermissions, permissions)
+        Array.isArray(requiredPermissions) &&
+        requiredPermissions.length &&
+        !hasAllPermissions(requiredPermissions, permissions)
       ) {
         return false;
       }
 
       if (
-        Array.isArray(item.requiredAnyPermissions) &&
-        item.requiredAnyPermissions.length &&
-        !hasAnyPermissions(item.requiredAnyPermissions, permissions)
+        Array.isArray(requiredAnyPermissions) &&
+        requiredAnyPermissions.length &&
+        !hasAnyPermissions(requiredAnyPermissions, permissions)
       ) {
         return false;
       }

@@ -24,6 +24,7 @@ import {
 } from "react-icons/fa";
 import Cookies from "js-cookie";
 import { buildUrl } from "../api";
+import { requestDeleteApproval } from "../utils/deleteApproval";
 import {
   formatLaunchStageLabel,
   formatSaleStageLabel,
@@ -1141,7 +1142,15 @@ const ViewMobiles = ({
   };
 
   const handleDelete = async (mobile) => {
-    if (!window.confirm(`Are you sure you want to delete "${mobile.name}"?`)) return;
+    const deleteApproval = requestDeleteApproval({
+      itemName: mobile.name,
+      itemLabel: "mobile",
+    });
+    if (!deleteApproval) return;
+    if (deleteApproval.error) {
+      showToast("Delete Blocked", deleteApproval.error, "error");
+      return;
+    }
 
     try {
       const token = Cookies.get("authToken");
@@ -1154,8 +1163,10 @@ const ViewMobiles = ({
       const response = await fetch(buildUrl(`/api/smartphone/${encodeURIComponent(resolvedId)}`), {
         method: "DELETE",
         headers: {
+          "Content-Type": "application/json",
           Authorization: token ? `Bearer ${token}` : "",
         },
+        body: JSON.stringify(deleteApproval),
       });
 
       if (!response.ok) {

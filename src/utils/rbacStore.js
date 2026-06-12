@@ -20,6 +20,8 @@ const DEFAULT_ROLE_NAMES = [
   "analyst",
   "seo",
   "moderator",
+  "marketing_manager",
+  "support_agent",
   "viewer",
 ];
 const DEMO_USER_IDS = new Set([

@@ -23,6 +23,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import Cookies from "js-cookie";
 import CountUp from "react-countup";
 import { buildUrl } from "../api";
+import { requestDeleteApproval } from "../utils/deleteApproval";
 
 const EMPTY_FORM = {
   name: "",
@@ -670,11 +671,13 @@ const CategoryManagement = ({ mode = "list" }) => {
 
   const handleDelete = useCallback(
     async (targetCategoryId, categoryName) => {
-      if (
-        !window.confirm(
-          `Are you sure you want to delete "${categoryName}"? This action cannot be undone.`,
-        )
-      ) {
+      const deleteApproval = requestDeleteApproval({
+        itemName: categoryName,
+        itemLabel: "category",
+      });
+      if (!deleteApproval) return;
+      if (deleteApproval.error) {
+        showToast("Delete Blocked", deleteApproval.error, "error");
         return;
       }
 
@@ -685,11 +688,16 @@ const CategoryManagement = ({ mode = "list" }) => {
         const res = await fetch(buildUrl(`/api/categories/${targetCategoryId}`), {
           method: "DELETE",
           headers: {
+            "Content-Type": "application/json",
             Authorization: token ? `Bearer ${token}` : "",
           },
+          body: JSON.stringify(deleteApproval),
         });
 
-        if (!res.ok) throw new Error("Delete failed");
+        if (!res.ok) {
+          const errorBody = await res.json().catch(() => ({}));
+          throw new Error(errorBody.message || errorBody.error || "Delete failed");
+        }
 
         setCategories((prev) =>
           prev.filter((category) => getCategoryId(category) !== targetCategoryId),

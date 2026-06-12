@@ -17,6 +17,7 @@ import {
 } from "react-icons/fa";
 import Cookies from "js-cookie";
 import { buildUrl } from "../api";
+import { requestDeleteApproval } from "../utils/deleteApproval";
 import {
   EditorStatusChip,
   editorFieldClassName,
@@ -670,16 +671,19 @@ const RamStorageConfig = () => {
     }
   };
 
-  const deleteConfigRequest = async (id, token) => {
+  const deleteConfigRequest = async (id, token, deleteApproval) => {
     const response = await fetch(buildUrl(`/api/ram-storage-config/${id}`), {
       method: "DELETE",
       headers: {
+        "Content-Type": "application/json",
         Authorization: token ? `Bearer ${token}` : "",
       },
+      body: JSON.stringify(deleteApproval),
     });
 
     if (!response.ok) {
-      throw new Error("Delete failed");
+      const errorBody = await response.json().catch(() => ({}));
+      throw new Error(errorBody.message || errorBody.error || "Delete failed");
     }
   };
 
@@ -693,18 +697,24 @@ const RamStorageConfig = () => {
       return;
     }
 
-    const confirmed = window.confirm(
-      ids.length > 1
-        ? `Delete ${ids.length} configurations linked to ${option.label}?`
-        : `Delete ${option.label}?`,
-    );
-    if (!confirmed) return;
+    const deleteApproval = requestDeleteApproval({
+      itemName:
+        ids.length > 1
+          ? `${option.label} (${ids.length} configurations)`
+          : option.label,
+      itemLabel: "RAM/storage configuration",
+    });
+    if (!deleteApproval) return;
+    if (deleteApproval.error) {
+      showToast("Delete Blocked", deleteApproval.error, "error");
+      return;
+    }
 
     setSaving(true);
     try {
       const token = Cookies.get("authToken");
       for (const id of ids) {
-        await deleteConfigRequest(id, token);
+        await deleteConfigRequest(id, token, deleteApproval);
       }
 
       await fetchConfigs(true);

@@ -14,6 +14,11 @@ import {
 
 const normalizeRoleValue = (value = "") => normalizeRole(value);
 
+const FULL_ACCESS_ROLES = new Set(["admin", "ceo"]);
+
+export const isFullAccessRole = (role = getCurrentRole()) =>
+  FULL_ACCESS_ROLES.has(normalizeRoleValue(role));
+
 export const getCurrentRole = () => {
   const sessionUser = getCurrentSessionUser();
   const sessionRole = normalizeRoleValue(sessionUser?.role);
@@ -42,23 +47,33 @@ export const getCurrentPermissions = () => {
 export const hasPermission = (
   permission,
   permissions = getCurrentPermissions(),
-) => hasPermissionSet(permissions, permission);
+) =>
+  isFullAccessRole() || hasPermissionSet(permissions, "*") || hasPermissionSet(permissions, permission);
 
 export const hasAnyPermissions = (
   requestedPermissions = [],
   permissions = getCurrentPermissions(),
-) => hasAnyPermissionSet(permissions, requestedPermissions);
+) =>
+  isFullAccessRole() ||
+  hasPermissionSet(permissions, "*") ||
+  hasAnyPermissionSet(permissions, requestedPermissions);
 
 export const hasAllPermissions = (
   requestedPermissions = [],
   permissions = getCurrentPermissions(),
-) => hasAllPermissionsSet(permissions, requestedPermissions);
+) =>
+  isFullAccessRole() ||
+  hasPermissionSet(permissions, "*") ||
+  hasAllPermissionsSet(permissions, requestedPermissions);
 
 export const canAccessModule = (
   moduleKey,
   action = "view",
   permissions = getCurrentPermissions(),
 ) => {
+  if (isFullAccessRole() || hasPermissionSet(permissions, "*")) {
+    return true;
+  }
   const code = `${normalizePermissionToken(moduleKey)}.${normalizePermissionToken(action)}`;
   return hasPermission(code, permissions);
 };
@@ -67,6 +82,10 @@ export const hasBlogAccess = (
   role = getCurrentRole(),
   permissions = getCurrentPermissions(),
 ) => {
+  if (isFullAccessRole(role) || hasPermissionSet(permissions, "*")) {
+    return true;
+  }
+
   const canViewNews = hasAnyPermissions(
     ["content.news.view", "content.news.*"],
     permissions,
@@ -93,20 +112,17 @@ export const hasBlogAccess = (
     return true;
   }
 
-  const session = getCurrentUserSnapshot();
-  const hasEffectivePermissions =
-    Array.isArray(session?.effective_permissions) &&
-    session.effective_permissions.length > 0;
-  if (hasEffectivePermissions) return false;
-
-  const normalizedRole = normalizeRoleValue(role);
-  return normalizedRole === "admin" || normalizedRole === "ceo";
+  return false;
 };
 
 export const hasAdminAccess = (
   role = getCurrentRole(),
   permissions = getCurrentPermissions(),
 ) => {
+  if (isFullAccessRole(role) || hasPermissionSet(permissions, "*")) {
+    return true;
+  }
+
   if (
     hasAnyPermissions(
       ["roles.manage", "permissions.manage", "users.manage"],
@@ -116,14 +132,7 @@ export const hasAdminAccess = (
     return true;
   }
 
-  const session = getCurrentUserSnapshot();
-  const hasEffectivePermissions =
-    Array.isArray(session?.effective_permissions) &&
-    session.effective_permissions.length > 0;
-  if (hasEffectivePermissions) return false;
-
-  const normalizedRole = normalizeRoleValue(role);
-  return normalizedRole === "admin" || normalizedRole === "ceo";
+  return false;
 };
 
 export const canAccessRoute = ({
@@ -139,6 +148,10 @@ export const canAccessRoute = ({
   const normalizedAllowedRoles = Array.isArray(allowedRoles)
     ? allowedRoles.map((value) => normalizeRoleValue(value))
     : [];
+
+  if (isFullAccessRole(normalizedRole) || hasPermissionSet(permissions, "*")) {
+    return true;
+  }
 
   if (normalizedAllowedRoles.length && !normalizedAllowedRoles.includes(normalizedRole)) {
     return false;
@@ -175,4 +188,5 @@ export default {
   hasAdminAccess,
   canAccessRoute,
   getCurrentUserSnapshot,
+  isFullAccessRole,
 };

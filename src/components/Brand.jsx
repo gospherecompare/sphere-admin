@@ -24,6 +24,7 @@ import {
 } from "react-icons/fa";
 import { buildUrl } from "../api";
 import { uploadToCloudinary } from "../config/cloudinary";
+import { requestDeleteApproval } from "../utils/deleteApproval";
 import { getProductEditRoute } from "../utils/searchNavigation";
 import {
   EditorStatusChip,
@@ -762,9 +763,13 @@ const Brand = () => {
   }, [editingId, isEditing, showEditor]);
 
   const handleDelete = async (brand) => {
-    if (
-      !window.confirm(`Delete ${brand.name}? This action cannot be undone.`)
-    ) {
+    const deleteApproval = requestDeleteApproval({
+      itemName: brand.name,
+      itemLabel: "brand",
+    });
+    if (!deleteApproval) return;
+    if (deleteApproval.error) {
+      setError(deleteApproval.error);
       return;
     }
 
@@ -776,6 +781,7 @@ const Brand = () => {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
+        body: JSON.stringify(deleteApproval),
       });
 
       if (!response.ok) {

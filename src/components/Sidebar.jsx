@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Drawer from "@mui/material/Drawer";
 import { Link, useLocation } from "react-router-dom";
 import {
@@ -30,6 +30,12 @@ import {
   FaUserShield,
   FaUsers,
 } from "react-icons/fa";
+import {
+  canAccessRoute,
+  getCurrentPermissions,
+  getCurrentRole,
+} from "../utils/access";
+import { getRouteAccessConfig } from "../utils/routePermissions";
 
 const HOOK_LOGO_URL = "/hook-logo.png";
 
@@ -309,6 +315,61 @@ const buildTo = (item) => {
   return item.path;
 };
 
+const getItemAccessConfig = (item) => {
+  const routeConfig = getRouteAccessConfig(item?.path || "");
+  return {
+    ...(routeConfig || {}),
+    requiredPermissions:
+      item?.requiredPermissions || routeConfig?.requiredPermissions || [],
+    requiredAnyPermissions:
+      item?.requiredAnyPermissions || routeConfig?.requiredAnyPermissions || [],
+    allowedRoles: item?.allowedRoles || routeConfig?.allowedRoles || [],
+    moduleKey: item?.moduleKey || routeConfig?.moduleKey || "",
+    action: item?.action || routeConfig?.action || "view",
+  };
+};
+
+const canSeeNavItem = (item, role, permissions) => {
+  const config = getItemAccessConfig(item);
+  const hasRule =
+    config.moduleKey ||
+    config.allowedRoles.length ||
+    config.requiredPermissions.length ||
+    config.requiredAnyPermissions.length;
+
+  if (!hasRule) return true;
+  return canAccessRoute({
+    ...config,
+    role,
+    permissions,
+  });
+};
+
+const filterNavItems = (items, role, permissions) =>
+  items
+    .map((item) => {
+      const children = Array.isArray(item.children)
+        ? filterNavItems(item.children, role, permissions)
+        : [];
+      const selfAllowed = canSeeNavItem(item, role, permissions);
+
+      if (!selfAllowed && !children.length) return null;
+      return {
+        ...item,
+        path: selfAllowed ? item.path : children[0]?.path || item.path,
+        children,
+      };
+    })
+    .filter(Boolean);
+
+const filterSectionsByAccess = (sections, role, permissions) =>
+  sections
+    .map((section) => ({
+      ...section,
+      items: filterNavItems(section.items || [], role, permissions),
+    }))
+    .filter((section) => section.items.length > 0);
+
 const matchesItem = (location, item) => {
   const pathname = location.pathname || "/dashboard";
   const pathMatch = matchesPath(pathname, item);
@@ -325,10 +386,10 @@ const matchesItem = (location, item) => {
   return currentValue === item.searchParam.value;
 };
 
-const getMobileExpandedState = (location) => {
+const getMobileExpandedState = (location, sections = DESKTOP_SECTIONS) => {
   const nextState = {};
 
-  DESKTOP_SECTIONS.forEach((section) => {
+  sections.forEach((section) => {
     section.items.forEach((item) => {
       if (Array.isArray(item.children) && item.children.length > 0) {
         nextState[item.label] =
@@ -406,7 +467,7 @@ const DesktopNavItem = ({ item, location, collapsed }) => {
   );
 };
 
-const DesktopSidebar = ({ collapsed, location }) => (
+const DesktopSidebar = ({ collapsed, location, sections }) => (
   <aside
     className={`sticky top-0 hidden h-screen min-h-screen shrink-0 overflow-hidden border-r border-white/10 bg-[radial-gradient(circle_at_top,_rgba(90,73,255,0.22),_transparent_22%),linear-gradient(180deg,_#0F1833_0%,_#0A1228_50%,_#081024_100%)] text-white lg:flex lg:flex-col ${
       collapsed ? "w-20" : "w-[214px]"
@@ -437,7 +498,7 @@ const DesktopSidebar = ({ collapsed, location }) => (
     </div>
 
     <div className="flex-1 overflow-y-auto px-3 pb-4 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:w-0">
-      {DESKTOP_SECTIONS.map((section) => (
+      {sections.map((section) => (
         <div key={section.title} className="mb-5">
           {!collapsed ? (
             <p className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
@@ -558,17 +619,23 @@ const MobileNavItem = ({
   );
 };
 
-const MobileDrawer = ({ mobileOpen, setMobileOpen, location, onLogout }) => {
+const MobileDrawer = ({
+  mobileOpen,
+  setMobileOpen,
+  location,
+  onLogout,
+  sections,
+}) => {
   const [expandedItems, setExpandedItems] = useState(() =>
-    getMobileExpandedState(location),
+    getMobileExpandedState(location, sections),
   );
 
   useEffect(() => {
     setExpandedItems((previous) => ({
       ...previous,
-      ...getMobileExpandedState(location),
+      ...getMobileExpandedState(location, sections),
     }));
-  }, [location]);
+  }, [location, sections]);
 
   useEffect(() => {
     if (!mobileOpen) return undefined;
@@ -651,7 +718,7 @@ const MobileDrawer = ({ mobileOpen, setMobileOpen, location, onLogout }) => {
         </div>
 
         <div className="mt-6 flex-1 overflow-y-auto pr-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:w-0">
-          {DESKTOP_SECTIONS.map((section) => (
+          {sections.map((section) => (
             <div key={section.title} className="mb-6">
               <p className="px-1 pb-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
                 {section.title}
@@ -693,6 +760,37 @@ const Sidebar = ({
   onLogout,
 }) => {
   const location = useLocation();
+  const [authSnapshot, setAuthSnapshot] = useState(() => ({
+    role: getCurrentRole(),
+    permissions: getCurrentPermissions(),
+  }));
+
+  useEffect(() => {
+    const syncAuthSnapshot = () => {
+      setAuthSnapshot({
+        role: getCurrentRole(),
+        permissions: getCurrentPermissions(),
+      });
+    };
+
+    syncAuthSnapshot();
+    window.addEventListener("storage", syncAuthSnapshot);
+    window.addEventListener("hooks-rbac-updated", syncAuthSnapshot);
+    return () => {
+      window.removeEventListener("storage", syncAuthSnapshot);
+      window.removeEventListener("hooks-rbac-updated", syncAuthSnapshot);
+    };
+  }, []);
+
+  const visibleSections = useMemo(
+    () =>
+      filterSectionsByAccess(
+        DESKTOP_SECTIONS,
+        authSnapshot.role,
+        authSnapshot.permissions,
+      ),
+    [authSnapshot.permissions, authSnapshot.role],
+  );
 
   if (isMobile) {
     return (
@@ -701,11 +799,18 @@ const Sidebar = ({
         setMobileOpen={setMobileOpen}
         location={location}
         onLogout={onLogout}
+        sections={visibleSections}
       />
     );
   }
 
-  return <DesktopSidebar collapsed={collapsed} location={location} />;
+  return (
+    <DesktopSidebar
+      collapsed={collapsed}
+      location={location}
+      sections={visibleSections}
+    />
+  );
 };
 
 export default Sidebar;

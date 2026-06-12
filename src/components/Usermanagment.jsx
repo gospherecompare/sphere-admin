@@ -10,6 +10,7 @@ import {
 } from "../utils/access";
 import {
   RBAC_ACTIONS,
+  expandPermissionSet,
   getPermissionMatrix,
   normalizePermissionToken,
 } from "../utils/rbacCatalog";
@@ -27,6 +28,13 @@ import {
   upsertUser as upsertStoredUser,
 } from "../utils/rbacStore";
 import {
+  FaChevronLeft,
+  FaChevronRight,
+  FaEllipsisV,
+  FaFilter,
+  FaSearch,
+  FaSyncAlt,
+  FaUpload,
   FaEdit,
   FaTrash,
   FaPlus,
@@ -67,6 +75,9 @@ const dedupePermissions = (values = []) =>
 
 const getPermissionSignature = (values = []) =>
   dedupePermissions(values).sort().join("|");
+
+const expandPermissions = (values = []) =>
+  expandPermissionSet(dedupePermissions(values));
 
 const getErrorMessage = (error, fallback) =>
   error?.response?.data?.message || error?.response?.data?.error || fallback;
@@ -157,21 +168,84 @@ const buildPermissionMatrixConfig = (permissionRecords = []) => {
   return { modules, actions };
 };
 
+const mergeRoleCatalog = (remoteRoles = [], localRoles = []) => {
+  const roleMap = new Map();
+  [...localRoles, ...remoteRoles].forEach((role) => {
+    const normalizedName = normalizeLookupKey(role?.name || role?.id || "");
+    if (!normalizedName) return;
+    const previous = roleMap.get(normalizedName) || {};
+    roleMap.set(normalizedName, {
+      ...previous,
+      ...role,
+      id: role.id ?? previous.id ?? normalizedName,
+      name: normalizedName,
+      title: String(role.title || previous.title || normalizedName).trim(),
+      description: String(role.description || previous.description || "").trim(),
+      permissions: dedupePermissions(role.permissions || previous.permissions),
+      effective_permissions: dedupePermissions(
+        role.effective_permissions || previous.effective_permissions || role.permissions,
+      ),
+      built_in: Boolean(role.built_in || previous.built_in),
+      source: role.source || previous.source || "local",
+    });
+  });
+
+  return Array.from(roleMap.values()).sort((a, b) => {
+    if (Boolean(a?.built_in) !== Boolean(b?.built_in)) {
+      return Boolean(a?.built_in) ? -1 : 1;
+    }
+    return String(a?.title || a?.name || "").localeCompare(
+      String(b?.title || b?.name || ""),
+    );
+  });
+};
+
+const mergePermissionCatalog = (remotePermissions = [], localPermissions = []) => {
+  const permissionMap = new Map();
+  [...localPermissions, ...remotePermissions].forEach((permission) => {
+    const key = normalizeLookupKey(permission?.name || permission?.id || "");
+    if (!key) return;
+    const previous = permissionMap.get(key) || {};
+    permissionMap.set(key, {
+      ...previous,
+      ...permission,
+      id: permission.id ?? previous.id ?? key,
+      name: key,
+      description: String(permission.description || previous.description || "").trim(),
+      module: String(permission.module || previous.module || "").trim(),
+      module_label: String(permission.module_label || previous.module_label || "").trim(),
+      action: String(permission.action || previous.action || "").trim(),
+      built_in: Boolean(permission.built_in || previous.built_in),
+      source: permission.source || previous.source || "local",
+    });
+  });
+
+  return Array.from(permissionMap.values()).sort((a, b) =>
+    String(a.name || a.id || "").localeCompare(String(b.name || b.id || "")),
+  );
+};
+
 const joinClasses = (...classes) => classes.filter(Boolean).join(" ");
 
+const PAGE_CLASS =
+  "mx-auto w-full max-w-[1720px] space-y-4 bg-[radial-gradient(circle_at_top,rgba(76,53,242,0.035),transparent_28%),linear-gradient(180deg,#ffffff_0%,#fcfdff_100%)] px-2 py-3 sm:px-3 md:px-4";
 const PANEL_CLASS =
-  "overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm";
+  "overflow-hidden rounded-md border border-slate-200 bg-white shadow-none";
 const CARD_CLASS =
-  "rounded-[24px] border border-slate-200 bg-white/95 p-5 shadow-sm";
+  "rounded-md border border-slate-200 bg-white p-4 shadow-none";
 const FIELD_CLASS =
-  "w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400";
+  "h-11 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-[#345CFF] focus:bg-white focus:ring-0 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400";
 const TEXTAREA_CLASS = joinClasses(FIELD_CLASS, "min-h-[112px] resize-y");
 const PRIMARY_BUTTON_CLASS =
-  "inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 hover:text-white disabled:cursor-not-allowed disabled:bg-slate-300";
+  "inline-flex h-11 items-center justify-center gap-2 rounded-md border border-[#4C35F2] bg-[#4C35F2] px-4 text-sm font-semibold text-white shadow-none transition hover:bg-[#3f2fcb] hover:text-white disabled:cursor-not-allowed disabled:border-slate-300 disabled:bg-slate-300";
 const SECONDARY_BUTTON_CLASS =
-  "inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-400";
+  "inline-flex h-11 items-center justify-center gap-2 rounded-md border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-none transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 disabled:cursor-not-allowed disabled:text-slate-400";
 const TAB_BUTTON_CLASS =
-  "inline-flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-semibold transition";
+  "inline-flex items-center gap-2 rounded-md px-4 py-2.5 text-sm font-semibold shadow-none transition";
+const TABLE_ICON_BUTTON_CLASS =
+  "inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-600 shadow-none transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700";
+const TABLE_DANGER_BUTTON_CLASS =
+  "inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-600 shadow-none transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700";
 
 const MANAGEMENT_TABS = [
   { id: 0, label: "Users", icon: FaUser },
@@ -180,6 +254,7 @@ const MANAGEMENT_TABS = [
 ];
 
 const USER_DETAILS_TABS = ["Profile", "Permissions", "Activity"];
+const USER_PAGE_SIZE_OPTIONS = [5, 10, 20];
 
 const getDisplayName = (user) =>
   user?.display_name ||
@@ -209,6 +284,17 @@ const formatDateTimeLabel = (value) => {
   return date.toLocaleString();
 };
 
+const getCreatedAtValue = (item = {}) =>
+  item?.created_at || item?.createdAt || item?.created || null;
+
+const countRecentEntries = (items = [], days = 30) => {
+  const threshold = Date.now() - days * 24 * 60 * 60 * 1000;
+  return (Array.isArray(items) ? items : []).filter((item) => {
+    const date = new Date(getCreatedAtValue(item));
+    return !Number.isNaN(date.getTime()) && date.getTime() >= threshold;
+  }).length;
+};
+
 const getRoleBadgeClass = (tone) => {
   switch (tone) {
     case "error":
@@ -218,13 +304,26 @@ const getRoleBadgeClass = (tone) => {
     case "primary":
       return "border-blue-200 bg-blue-50 text-blue-700";
     default:
-      return "border-slate-200 bg-slate-100 text-slate-600";
+      return "border-slate-200 bg-slate-50 text-slate-600";
+  }
+};
+
+const getRoleIconClass = (tone) => {
+  switch (tone) {
+    case "error":
+      return "bg-rose-50 text-rose-600";
+    case "warning":
+      return "bg-amber-50 text-amber-600";
+    case "primary":
+      return "bg-blue-50 text-blue-600";
+    default:
+      return "bg-slate-100 text-slate-600";
   }
 };
 
 const getStatusBadgeClass = (status) =>
   String(status || "").toLowerCase() === "inactive"
-    ? "border-slate-200 bg-slate-100 text-slate-600"
+    ? "border-slate-200 bg-slate-50 text-slate-600"
     : "border-emerald-200 bg-emerald-50 text-emerald-700";
 
 const ModalShell = ({ open, onClose, maxWidth = "max-w-4xl", children }) => {
@@ -241,7 +340,7 @@ const ModalShell = ({ open, onClose, maxWidth = "max-w-4xl", children }) => {
     >
       <div className={joinClasses("mx-auto my-6 w-full", maxWidth)}>
         <div
-          className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-xl"
+          className="overflow-hidden rounded-md border border-slate-200 bg-white shadow-none"
           onClick={(event) => event.stopPropagation()}
           role="dialog"
           aria-modal="true"
@@ -269,6 +368,11 @@ const UserManagement = () => {
   const [userDetailsTab, setUserDetailsTab] = useState(0);
   const [userPermissionDraft, setUserPermissionDraft] = useState([]);
   const [savingUserPermissions, setSavingUserPermissions] = useState(false);
+  const [userSearch, setUserSearch] = useState("");
+  const [userRoleFilter, setUserRoleFilter] = useState("all");
+  const [userStatusFilter, setUserStatusFilter] = useState("all");
+  const [userPage, setUserPage] = useState(1);
+  const [userPageSize, setUserPageSize] = useState(10);
   const [authSnapshot, setAuthSnapshot] = useState(() => ({
     permissions: getCurrentPermissions(),
   }));
@@ -367,8 +471,8 @@ const UserManagement = () => {
       const resolvedActivities = Array.isArray(nextActivities) ? nextActivities : [];
 
       setUsers(resolvedUsers);
-      setRoles(resolvedRoles);
-      setPermissions(resolvedPermissions);
+      setRoles(mergeRoleCatalog(resolvedRoles, listStoredRoles()));
+      setPermissions(mergePermissionCatalog(resolvedPermissions, listStoredPermissions()));
       setSelectedUser((current) => {
         if (!current) return current;
         return (
@@ -378,8 +482,11 @@ const UserManagement = () => {
       });
       syncRbacState({
         users: resolvedUsers,
-        roles: resolvedRoles,
-        permissions: resolvedPermissions,
+        roles: mergeRoleCatalog(resolvedRoles, listStoredRoles()),
+        permissions: mergePermissionCatalog(
+          resolvedPermissions,
+          listStoredPermissions(),
+        ),
         activities: resolvedActivities,
       });
       setError("");
@@ -638,15 +745,23 @@ const UserManagement = () => {
       setError("You do not have permission to assign roles.");
       return;
     }
+    if (!selectedUser?.id) {
+      setError("Select a user before assigning a role.");
+      return;
+    }
 
     try {
-      let nextUser = null;
+      const selectedRole =
+        roles.find((role) => String(role.id) === String(roleId)) || null;
+      const roleName = selectedRole?.name || roleId;
+      let assignedUser = null;
+
       try {
         const response = await axios.post(buildUrl(`/api/rbac/users/${selectedUser.id}/roles`), {
           role_id: roleId,
         });
         if (response?.data?.user) {
-          nextUser = upsertStoredUser(response.data.user, {
+          assignedUser = upsertStoredUser(response.data.user, {
             actor: getCurrentSessionUser()?.display_name || "System",
             actorRole: getCurrentSessionUser()?.role || "admin",
           });
@@ -654,22 +769,27 @@ const UserManagement = () => {
       } catch {
         // fall back to local RBAC store
       }
-      const nextUserFallback =
-        selectedUser &&
-        setStoredUserRole(
+
+      if (!assignedUser) {
+        assignedUser = setStoredUserRole(
           selectedUser.id,
-          roles.find((role) => String(role.id) === String(roleId))?.name ||
-            roleId,
+          roleName,
           {
             actor: getCurrentSessionUser()?.display_name || "System",
             actorRole: getCurrentSessionUser()?.role || "admin",
           },
         );
-      if (nextUser) {
-        setSelectedUser(nextUser);
-      } else if (nextUserFallback) {
-        setSelectedUser(nextUserFallback);
       }
+
+      if (assignedUser) {
+        setSelectedUser(assignedUser);
+        setUsers((prev) =>
+          prev.map((user) =>
+            String(user.id) === String(assignedUser.id) ? assignedUser : user,
+          ),
+        );
+      }
+
       setSuccess("Role assigned successfully!");
       setRoleAssignmentDialog(false);
       fetchData();
@@ -722,7 +842,7 @@ const UserManagement = () => {
   );
 
   const selectedUserRolePermissions = useMemo(
-    () => dedupePermissions(selectedUserRoleSummary?.permissions),
+    () => expandPermissions(selectedUserRoleSummary?.permissions),
     [selectedUserRoleSummary],
   );
 
@@ -738,9 +858,9 @@ const UserManagement = () => {
       const serverPermissions = dedupePermissions(
         selectedUser.effective_permissions || selectedUser.permissions,
       );
-      if (serverPermissions.length) return serverPermissions;
+      if (serverPermissions.length) return expandPermissions(serverPermissions);
 
-      return dedupePermissions([
+      return expandPermissions([
         ...selectedUserRolePermissions,
         ...selectedUserOverridePermissions,
         ...getUserPermissionSummary(selectedUser),
@@ -757,12 +877,12 @@ const UserManagement = () => {
     () => {
       if (!selectedUser) return [];
       if (selectedUserRolePermissions.length) {
-        return dedupePermissions([
+        return expandPermissions([
           ...selectedUserRolePermissions,
           ...userPermissionDraft,
         ]);
       }
-      return dedupePermissions([
+      return expandPermissions([
         ...selectedUserEffectivePermissions,
         ...userPermissionDraft,
       ]);
@@ -796,9 +916,10 @@ const UserManagement = () => {
 
   const handleToggleUserPermissionOverride = (permissionCode, checked) => {
     setUserPermissionDraft((prev) => {
-      const current = dedupePermissions(prev);
-      if (checked) return dedupePermissions([...current, permissionCode]);
-      return current.filter((permission) => permission !== permissionCode);
+      const normalizedCode = normalizePermissionToken(permissionCode);
+      const current = expandPermissions(prev);
+      if (checked) return dedupePermissions([...current, normalizedCode]);
+      return current.filter((permission) => permission !== normalizedCode);
     });
   };
 
@@ -899,35 +1020,126 @@ const UserManagement = () => {
         label: "Directory",
         value: users.length,
         hint: "Accounts available in the admin workspace",
+        icon: FaUsers,
+        iconClass: "bg-blue-50 text-blue-700",
+        recent: countRecentEntries(users),
       },
       {
         label: "Active Users",
         value: users.filter((user) => user.status !== "inactive").length,
         hint: "Currently enabled identities",
+        icon: FaUser,
+        iconClass: "bg-emerald-50 text-emerald-700",
+        recent: countRecentEntries(
+          users.filter((user) => user.status !== "inactive"),
+        ),
       },
       {
         label: "Role Sets",
         value: roles.length,
         hint: "Access profiles available for assignment",
+        icon: FaShieldAlt,
+        iconClass: "bg-violet-50 text-violet-700",
+        recent: countRecentEntries(roles),
       },
       {
         label: "Permission Catalog",
         value: permissions.length,
         hint: "Server-backed action rules in this workspace",
+        icon: FaLock,
+        iconClass: "bg-orange-50 text-orange-700",
+        recent: countRecentEntries(permissions),
       },
     ],
     [permissions.length, roles.length, users],
   );
+
+  const filteredUsers = useMemo(() => {
+    const query = String(userSearch || "").trim().toLowerCase();
+
+    return users.filter((user) => {
+      const roleName = normalizeLookupKey(user.role || "");
+      const statusValue = normalizeLookupKey(user.status || "active");
+      const haystack = [
+        getDisplayName(user),
+        getUserHandle(user),
+        user.email,
+        user.phone,
+        user.role,
+        user.role_title,
+        user.department,
+        user.status,
+      ]
+        .map((value) => String(value || "").trim().toLowerCase())
+        .join(" ");
+
+      if (query && !haystack.includes(query)) return false;
+      if (userRoleFilter !== "all" && roleName !== userRoleFilter) return false;
+      if (userStatusFilter !== "all" && statusValue !== userStatusFilter)
+        return false;
+      return true;
+    });
+  }, [userRoleFilter, userSearch, userStatusFilter, users]);
+
+  const userPageCount = Math.max(
+    1,
+    Math.ceil(filteredUsers.length / userPageSize),
+  );
+
+  useEffect(() => {
+    setUserPage((page) => Math.min(Math.max(1, page), userPageCount));
+  }, [userPageCount]);
+
+  useEffect(() => {
+    setUserPage(1);
+  }, [userRoleFilter, userSearch, userStatusFilter, userPageSize]);
+
+  const visibleUsers = useMemo(() => {
+    const start = (userPage - 1) * userPageSize;
+    return filteredUsers.slice(start, start + userPageSize);
+  }, [filteredUsers, userPage, userPageSize]);
+
+  const userStart = filteredUsers.length
+    ? (userPage - 1) * userPageSize + 1
+    : 0;
+  const userEnd = filteredUsers.length
+    ? Math.min(userPage * userPageSize, filteredUsers.length)
+    : 0;
+
+  const userPaginationItems = useMemo(() => {
+    if (userPageCount <= 5) {
+      return Array.from({ length: userPageCount }, (_, index) => index + 1);
+    }
+
+    const items = [1];
+    const left = Math.max(2, userPage - 1);
+    const right = Math.min(userPageCount - 1, userPage + 1);
+
+    if (left > 2) items.push("ellipsis-left");
+    for (let page = left; page <= right; page += 1) {
+      if (!items.includes(page)) items.push(page);
+    }
+    if (right < userPageCount - 1) items.push("ellipsis-right");
+    items.push(userPageCount);
+    return items;
+  }, [userPage, userPageCount]);
+
+  const clearUserFilters = useCallback(() => {
+    setUserSearch("");
+    setUserRoleFilter("all");
+    setUserStatusFilter("all");
+    setUserPage(1);
+  }, []);
 
   // Render user row
   const renderUserRow = (user) => {
     const roleTone = getRoleChipColor(user.role);
 
     return (
-      <tr key={user.id} className="border-t border-slate-200 text-sm transition hover:bg-slate-50/80">
+      <tr key={user.id} className="border-t border-slate-200 text-sm transition hover:bg-slate-50/70">
         <td className="px-4 py-4">
           <div className="flex min-w-[220px] items-center gap-3">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-blue-100 bg-blue-50 text-sm font-semibold text-blue-700">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-blue-100 bg-blue-50 text-sm font-semibold text-blue-700">
               {getUserInitial(user)}
             </div>
             <div className="min-w-0">
@@ -974,7 +1186,7 @@ const UserManagement = () => {
               type="button"
               title="View details"
               onClick={() => handleOpenUserDetails(user)}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-blue-700 transition hover:border-blue-200 hover:bg-blue-50"
+              className={TABLE_ICON_BUTTON_CLASS}
             >
               <FaEye className="text-sm" />
             </button>
@@ -983,7 +1195,7 @@ const UserManagement = () => {
                 type="button"
                 title="Edit user"
                 onClick={() => handleOpenUserDialog(user)}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-blue-700 transition hover:border-blue-200 hover:bg-blue-50"
+                className={TABLE_ICON_BUTTON_CLASS}
               >
                 <FaEdit className="text-sm" />
               </button>
@@ -993,7 +1205,7 @@ const UserManagement = () => {
                 type="button"
                 title="Assign roles"
                 onClick={() => handleOpenRoleAssignment(user)}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-violet-700 transition hover:border-violet-200 hover:bg-violet-50"
+                className={TABLE_ICON_BUTTON_CLASS}
               >
                 <FaUserShield className="text-sm" />
               </button>
@@ -1003,7 +1215,7 @@ const UserManagement = () => {
                 type="button"
                 title="Delete user"
                 onClick={() => handleDeleteUser(user.id)}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-rose-700 transition hover:border-rose-200 hover:bg-rose-50"
+                className={TABLE_DANGER_BUTTON_CLASS}
               >
                 <FaTrash className="text-sm" />
               </button>
@@ -1015,22 +1227,63 @@ const UserManagement = () => {
   };
 
   return (
-    <div className="mx-auto w-full max-w-[1720px] flex flex-col gap-6 py-2 sm:py-3">
-      <div className="fixed right-4 top-4 z-40 space-y-3">
+    <div className={PAGE_CLASS}>
+      <div className="border-b border-slate-200 pb-4">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+          <div>
+            <div className="flex items-center gap-3">
+              <h1 className="text-3xl font-semibold text-slate-950">
+                User & Access Management
+              </h1>
+              <div className="flex h-10 w-10 items-center justify-center rounded-md border border-violet-200 bg-violet-50 text-violet-600 shadow-none">
+                <FaUserShield className="text-base" />
+              </div>
+            </div>
+
+            <p className="mt-2 text-sm text-slate-500">
+              Manage people, role coverage, and permission overrides across the
+              platform.
+            </p>
+          </div>
+
+          {canCreateUsers ? (
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+              <button
+                type="button"
+                className={SECONDARY_BUTTON_CLASS}
+                title="Import users"
+              >
+                <FaUpload className="text-sm" />
+                <span>Import Users</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleOpenUserDialog()}
+                className={PRIMARY_BUTTON_CLASS}
+              >
+                <FaPlus className="text-sm" />
+                <span>Create User</span>
+              </button>
+            </div>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="space-y-3">
         {error ? (
-          <div className="w-full max-w-sm rounded-2xl border border-rose-200 bg-white px-4 py-3 text-sm shadow-lg">
+          <div className="flex items-start gap-3 rounded-md border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 shadow-none">
             <div className="flex items-start gap-3">
-              <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-rose-50 text-rose-600">
+              <div className="mt-0.5 text-rose-600">
                 <FaShieldAlt className="text-sm" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="font-semibold text-rose-700">Action failed</p>
-                <p className="mt-1 text-rose-600">{error}</p>
+                <p className="font-semibold">Action failed</p>
+                <p className="mt-1">{error}</p>
               </div>
               <button
                 type="button"
                 onClick={() => setError("")}
-                className="rounded-lg p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+                className="ml-auto text-xs font-semibold text-rose-600 transition hover:text-rose-800"
                 aria-label="Close error message"
               >
                 Close
@@ -1039,19 +1292,19 @@ const UserManagement = () => {
           </div>
         ) : null}
         {success ? (
-          <div className="w-full max-w-sm rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-sm shadow-lg">
+          <div className="flex items-start gap-3 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 shadow-none">
             <div className="flex items-start gap-3">
-              <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+              <div className="mt-0.5 text-emerald-600">
                 <FaUserShield className="text-sm" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="font-semibold text-emerald-700">Saved</p>
-                <p className="mt-1 text-emerald-600">{success}</p>
+                <p className="font-semibold">Saved</p>
+                <p className="mt-1">{success}</p>
               </div>
               <button
                 type="button"
                 onClick={() => setSuccess("")}
-                className="rounded-lg p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+                className="ml-auto text-xs font-semibold text-emerald-600 transition hover:text-emerald-800"
                 aria-label="Close success message"
               >
                 Close
@@ -1061,49 +1314,50 @@ const UserManagement = () => {
         ) : null}
       </div>
 
-      <section
-        className={joinClasses(
-          PANEL_CLASS,
-          "bg-slate-50",
-        )}
-      >
-        <div className="p-5 sm:p-6">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-            <div className="max-w-3xl">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-700/80">Administration</p>
-              <h1 className="font-semibold tracking-[-0.03em] text-slate-950 mt-2">User & Access Management</h1>
-              <p className="text-[15px] leading-6 text-slate-600 mt-3 max-w-2xl">
-                Manage people, role coverage, and permission overrides from one
-                Tailwind-styled workspace built for quick access reviews.
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <span className="inline-flex items-center rounded-full border border-blue-200 bg-white/90 px-3 py-1 text-xs font-semibold text-blue-700">
-                Server-backed permissions
-              </span>
-              <span className="inline-flex items-center rounded-full border border-slate-200 bg-white/90 px-3 py-1 text-xs font-semibold text-slate-600">
-                Tailwind admin UI
-              </span>
-            </div>
-          </div>
+      <section>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {managementSummary.map((item) => {
+            const Icon = item.icon;
 
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {managementSummary.map((item) => (
-              <div key={item.label} className={CARD_CLASS}>
-                <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">
-                  {item.label}
-                </p>
-                <p className="mt-3 text-3xl font-bold tracking-[-0.04em] text-slate-900">
-                  {item.value}
-                </p>
-                <p className="mt-2 text-sm leading-6 text-slate-600">{item.hint}</p>
+            return (
+              <div
+                key={item.label}
+                className={joinClasses(
+                  CARD_CLASS,
+                  "flex min-h-[112px] items-start gap-4",
+                )}
+              >
+                <div
+                  className={joinClasses(
+                    "flex h-11 w-11 shrink-0 items-center justify-center rounded-md",
+                    item.iconClass,
+                  )}
+                >
+                  <Icon className="text-lg" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[11px] font-bold uppercase text-slate-500">
+                    {item.label}
+                  </p>
+                  <p className="mt-2 text-3xl font-bold text-slate-950">
+                    {item.value}
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">
+                    {item.hint}
+                  </p>
+                  <p className="mt-3 text-xs font-semibold text-emerald-600">
+                    {item.recent
+                      ? `+ ${item.recent} this month`
+                      : "No recent additions"}
+                  </p>
+                </div>
               </div>
-            ))}
-          </div>
+            );
+          })}
         </div>
       </section>
 
-      <section className={joinClasses(PANEL_CLASS, "p-2")}>
+      <section className={joinClasses(PANEL_CLASS, "p-2 shadow-none")}>
         <div className="flex flex-wrap gap-2">
           {MANAGEMENT_TABS.map((tab) => {
             const Icon = tab.icon;
@@ -1117,7 +1371,7 @@ const UserManagement = () => {
                 className={joinClasses(
                   TAB_BUTTON_CLASS,
                   active
-                    ? "bg-blue-600 text-white hover:text-white"
+                    ? "bg-[#4C35F2] text-white hover:text-white"
                     : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
                 )}
               >
@@ -1131,7 +1385,7 @@ const UserManagement = () => {
 
       {selectedTab === 0 ? (
         <section className={PANEL_CLASS}>
-          <div className="flex flex-col gap-4 border-b border-slate-200 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <div className="flex flex-col gap-4 border-b border-slate-200 px-5 py-5 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900">
                 <FaUser className="text-slate-500" />
@@ -1142,22 +1396,89 @@ const UserManagement = () => {
                 current workspace.
               </p>
             </div>
-            {canCreateUsers ? (
+            <div className="flex flex-wrap gap-2 text-xs text-slate-500">
+              <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 font-semibold">
+                {filteredUsers.length} visible
+              </span>
+              <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 font-semibold">
+                {roles.length} roles
+              </span>
+              <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 font-semibold">
+                {permissions.length} permissions
+              </span>
+            </div>
+          </div>
+
+          <div className="border-b border-slate-200 px-5 py-4 sm:px-6">
+            <div className="grid gap-3 xl:grid-cols-[minmax(0,1.65fr)_minmax(180px,0.7fr)_minmax(180px,0.7fr)_auto_auto]">
+              <label className="relative block">
+                <FaSearch className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm text-slate-400" />
+                <input
+                  type="search"
+                  value={userSearch}
+                  onChange={(event) => setUserSearch(event.target.value)}
+                  className={joinClasses(FIELD_CLASS, "pl-11")}
+                  placeholder="Search users..."
+                />
+              </label>
+
+              <label className="block">
+                <span className="sr-only">Role filter</span>
+                <select
+                  value={userRoleFilter}
+                  onChange={(event) => setUserRoleFilter(event.target.value)}
+                  className={FIELD_CLASS}
+                >
+                  <option value="all">Role: All</option>
+                  {roles.map((role) => (
+                    <option
+                      key={role.id || role.name}
+                      value={normalizeLookupKey(role.name || role.id || "")}
+                    >
+                      {role.title || role.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="block">
+                <span className="sr-only">Status filter</span>
+                <select
+                  value={userStatusFilter}
+                  onChange={(event) => setUserStatusFilter(event.target.value)}
+                  className={FIELD_CLASS}
+                >
+                  <option value="all">Status: All</option>
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+              </label>
+
               <button
                 type="button"
-                onClick={() => handleOpenUserDialog()}
-                className={PRIMARY_BUTTON_CLASS}
+                onClick={clearUserFilters}
+                className={SECONDARY_BUTTON_CLASS}
+                title="Reset filters"
               >
-                <FaPlus className="text-xs" />
-                Add User
+                <FaFilter className="text-xs" />
+                Filters
               </button>
-            ) : null}
+
+              <button
+                type="button"
+                onClick={() => fetchData()}
+                className={SECONDARY_BUTTON_CLASS}
+                title="Refresh users"
+              >
+                <FaSyncAlt className={loading ? "animate-spin text-xs" : "text-xs"} />
+              </button>
+            </div>
           </div>
 
           <div className="overflow-x-auto">
             <table className="min-w-full text-left">
               <thead className="bg-slate-50">
-                <tr className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                <tr className="text-xs font-semibold uppercase text-slate-500">
                   <th className="px-4 py-3 sm:px-6">User</th>
                   <th className="px-4 py-3">Phone</th>
                   <th className="px-4 py-3">Role</th>
@@ -1172,23 +1493,100 @@ const UserManagement = () => {
                       colSpan={5}
                       className="px-6 py-10 text-center text-sm text-slate-500"
                     >
-                      Loading users...
+                    Loading users...
                     </td>
                   </tr>
-                ) : users.length === 0 ? (
+                ) : filteredUsers.length === 0 ? (
                   <tr>
                     <td
                       colSpan={5}
                       className="px-6 py-10 text-center text-sm text-slate-500"
                     >
-                      No users found.
+                      {users.length === 0
+                        ? "No users found."
+                        : "No users match the current search or filters."}
                     </td>
                   </tr>
                 ) : (
-                  users.map(renderUserRow)
+                  visibleUsers.map(renderUserRow)
                 )}
               </tbody>
             </table>
+          </div>
+
+          <div className="flex flex-col gap-4 border-t border-slate-200 px-5 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
+            <p className="text-sm text-slate-500">
+              Showing {userStart} to {userEnd} of {filteredUsers.length} user
+              {filteredUsers.length === 1 ? "" : "s"}
+            </p>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white p-1">
+                <button
+                  type="button"
+                  onClick={() => setUserPage((page) => Math.max(1, page - 1))}
+                  disabled={userPage <= 1 || filteredUsers.length === 0}
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-md text-slate-500 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+                  aria-label="Previous page"
+                >
+                  <FaChevronLeft className="text-xs" />
+                </button>
+
+                {userPaginationItems.map((item) =>
+                  typeof item === "number" ? (
+                    <button
+                      key={item}
+                      type="button"
+                      onClick={() => setUserPage(item)}
+                      className={joinClasses(
+                        "inline-flex h-9 min-w-9 items-center justify-center rounded-md px-3 text-sm font-semibold transition",
+                        userPage === item
+                          ? "bg-[#4C35F2] text-white shadow-none"
+                          : "text-slate-600 hover:bg-slate-100",
+                      )}
+                    >
+                      {item}
+                    </button>
+                  ) : (
+                    <span
+                      key={item}
+                      className="inline-flex h-9 min-w-9 items-center justify-center rounded-md px-3 text-sm font-semibold text-slate-400"
+                    >
+                      ...
+                    </span>
+                  ),
+                )}
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setUserPage((page) => Math.min(userPageCount, page + 1))
+                  }
+                  disabled={userPage >= userPageCount || filteredUsers.length === 0}
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-md text-slate-500 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+                  aria-label="Next page"
+                >
+                  <FaChevronRight className="text-xs" />
+                </button>
+              </div>
+
+              <label className="inline-flex items-center gap-2 text-sm font-medium text-slate-600">
+                <span>Per page</span>
+                <select
+                  value={userPageSize}
+                  onChange={(event) =>
+                    setUserPageSize(Number(event.target.value) || 10)
+                  }
+                  className={joinClasses(FIELD_CLASS, "min-w-[110px] w-auto py-2.5")}
+                >
+                  {USER_PAGE_SIZE_OPTIONS.map((size) => (
+                    <option key={size} value={size}>
+                      {size} / page
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
           </div>
         </section>
       ) : null}
@@ -1209,47 +1607,70 @@ const UserManagement = () => {
           <div className="grid gap-4 p-5 sm:grid-cols-2 xl:grid-cols-3 sm:p-6">
             {roles.map((role) => {
               const roleTone = getRoleChipColor(role.name);
-              const rolePermissionCount = Array.isArray(role.permissions)
-                ? role.permissions.length
-                : 0;
+              const rolePermissionCount = expandPermissions(role.permissions).length;
 
               return (
-                <article key={role.id || role.name} className={CARD_CLASS}>
+                <article
+                  key={role.id || role.name}
+                  className={joinClasses(CARD_CLASS, "relative")}
+                >
                   <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <h3 className="text-lg font-bold text-slate-900">
-                        {role.title || role.name}
-                      </h3>
-                      <p className="mt-1 text-sm text-slate-500">
-                        {role.description || "No description configured for this role."}
-                      </p>
+                    <div className="flex min-w-0 items-start gap-3">
+                      <div
+                        className={joinClasses(
+                          "flex h-10 w-10 shrink-0 items-center justify-center rounded-md",
+                          getRoleIconClass(roleTone),
+                        )}
+                      >
+                        {roleTone === "error" ? (
+                          <FaUserShield className="text-base" />
+                        ) : (
+                          <FaUserTag className="text-base" />
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="text-lg font-bold text-slate-900">
+                          {role.title || role.name}
+                        </h3>
+                        <p className="mt-1 text-sm text-slate-500">
+                          {role.description ||
+                            "No description configured for this role."}
+                        </p>
+                      </div>
                     </div>
-                    <span
-                      className={joinClasses(
-                        "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold",
-                        getRoleBadgeClass(roleTone),
-                      )}
-                    >
-                      {roleTone === "error" ? (
-                        <FaUserShield className="text-[11px]" />
-                      ) : (
-                        <FaUserTag className="text-[11px]" />
-                      )}
-                      {role.name}
-                    </span>
+                    <div className="flex flex-col items-end gap-2">
+                      <div className="flex flex-wrap items-center justify-end gap-2">
+                        <span
+                          className={joinClasses(
+                            "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold",
+                            getRoleBadgeClass(roleTone),
+                          )}
+                        >
+                          {role.name}
+                        </span>
+                        {role.built_in ? (
+                          <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-semibold uppercase text-emerald-700">
+                            Built-in
+                          </span>
+                        ) : null}
+                      </div>
+                      <span className="text-slate-400">
+                        <FaEllipsisV className="text-xs" />
+                      </span>
+                    </div>
                   </div>
 
                   <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                    <div className="rounded-md border border-slate-200 bg-slate-50 px-4 py-3">
+                      <p className="text-xs font-semibold uppercase text-slate-500">
                         Permission Count
                       </p>
                       <p className="mt-2 text-2xl font-bold text-slate-900">
                         {rolePermissionCount}
                       </p>
                     </div>
-                    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                    <div className="rounded-md border border-slate-200 bg-slate-50 px-4 py-3">
+                      <p className="text-xs font-semibold uppercase text-slate-500">
                         Created
                       </p>
                       <p className="mt-2 text-sm font-semibold text-slate-900">
@@ -1263,11 +1684,6 @@ const UserManagement = () => {
                       <FaKey className="text-[10px]" />
                       ID: {role.id || role.name}
                     </span>
-                    {role.built_in ? (
-                      <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-3 py-1 font-semibold text-amber-700">
-                        Built-in
-                      </span>
-                    ) : null}
                   </div>
                 </article>
               );
@@ -1290,7 +1706,7 @@ const UserManagement = () => {
             </p>
           </div>
 
-          <div className="grid gap-4 p-5 sm:grid-cols-2 xl:grid-cols-3 sm:p-6">
+          <div className="grid gap-4 p-5 sm:grid-cols-2 xl:grid-cols-4 sm:p-6">
             {permissions.map((permission) => {
               const permissionCode = permission.name || permission.id || "permission";
               const permissionParts = String(permissionCode).split(".");
@@ -1304,13 +1720,13 @@ const UserManagement = () => {
               return (
                 <article
                   key={permission.id || permission.name}
-                  className={CARD_CLASS}
+                  className={joinClasses(CARD_CLASS, "relative")}
                 >
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-700">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-blue-50 text-blue-700">
                       <FaShieldAlt className="text-base" />
                     </div>
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <h3 className="break-words text-base font-bold text-slate-900">
                         {permissionCode}
                       </h3>
@@ -1318,13 +1734,16 @@ const UserManagement = () => {
                         {permission.description || "No description available."}
                       </p>
                     </div>
+                    <span className="text-slate-400">
+                      <FaEllipsisV className="text-xs" />
+                    </span>
                   </div>
 
                   <div className="mt-5 flex flex-wrap gap-2">
                     <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
                       Module: {permissionModule}
                     </span>
-                    <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                    <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">
                       Action: {permissionAction}
                     </span>
                   </div>
@@ -1353,7 +1772,7 @@ const UserManagement = () => {
             handleSaveUser();
           }}
         >
-          <div className="border-b border-slate-200 bg-slate-50 px-6 py-5 text-slate-900">
+          <div className="border-b border-slate-200 bg-white px-6 py-5 text-slate-900">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h2 className="flex items-center gap-2 text-xl font-bold">
@@ -1601,11 +2020,12 @@ const UserManagement = () => {
         <div className="space-y-3 p-6">
           {roles.map((role) => {
             const roleTone = getRoleChipColor(role.name);
+            const rolePermissionCount = expandPermissions(role.permissions).length;
 
             return (
               <div
                 key={role.id || role.name}
-                className="flex flex-col gap-4 rounded-[24px] border border-slate-200 bg-slate-50/70 p-4 sm:flex-row sm:items-center sm:justify-between"
+                className="flex flex-col gap-4 rounded-md border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-3">
@@ -1623,6 +2043,9 @@ const UserManagement = () => {
                   </div>
                   <p className="mt-2 text-sm leading-6 text-slate-500">
                     {role.description || "No description configured for this role."}
+                  </p>
+                  <p className="mt-3 text-xs font-semibold uppercase text-slate-400">
+                    {rolePermissionCount} permissions
                   </p>
                 </div>
 
@@ -1645,14 +2068,14 @@ const UserManagement = () => {
         onClose={() => setUserDetailsDialogOpen(false)}
         maxWidth="max-w-6xl"
       >
-        <div className="border-b border-slate-200 bg-slate-50 px-6 py-6 text-slate-900">
+        <div className="border-b border-slate-200 bg-white px-6 py-6 text-slate-900">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-center gap-4">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-100 text-xl font-bold text-blue-700">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 text-lg font-bold text-blue-700">
                 {getUserInitial(selectedUser)}
               </div>
               <div>
-                <h2 className="text-2xl font-bold tracking-[-0.03em]">
+                <h2 className="text-2xl font-bold">
                   {getDisplayName(selectedUser)}
                 </h2>
                 <p className="mt-1 text-sm text-slate-500">
@@ -1660,19 +2083,32 @@ const UserManagement = () => {
                 </p>
               </div>
             </div>
-            <span
-              className={joinClasses(
-                "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold",
-                getRoleBadgeClass(getRoleChipColor(selectedUser?.role)),
-              )}
-            >
-              {getRoleChipColor(selectedUser?.role) === "error" ? (
-                <FaUserShield className="text-[11px]" />
-              ) : (
-                <FaUserTag className="text-[11px]" />
-              )}
-              {selectedUser?.role || "No role"}
-            </span>
+            <div className="flex flex-col items-start gap-3 lg:items-end">
+              <span
+                className={joinClasses(
+                  "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold",
+                  getRoleBadgeClass(getRoleChipColor(selectedUser?.role)),
+                )}
+              >
+                {getRoleChipColor(selectedUser?.role) === "error" ? (
+                  <FaUserShield className="text-[11px]" />
+                ) : (
+                  <FaUserTag className="text-[11px]" />
+                )}
+                {selectedUser?.role || "No role"}
+              </span>
+              <div className="flex flex-wrap gap-2">
+                <span className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                  Status: {selectedUser?.status || "active"}
+                </span>
+                <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600">
+                  Joined: {formatDateLabel(selectedUser?.created_at)}
+                </span>
+                <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600">
+                  Last login: {formatDateTimeLabel(selectedUser?.last_login)}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -1686,7 +2122,7 @@ const UserManagement = () => {
                 className={joinClasses(
                   TAB_BUTTON_CLASS,
                   userDetailsTab === index
-                    ? "bg-blue-600 text-white hover:text-white"
+                    ? "bg-[#4C35F2] text-white hover:text-white"
                     : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
                 )}
               >
@@ -1700,7 +2136,7 @@ const UserManagement = () => {
           {userDetailsTab === 0 ? (
             <div className="grid gap-4 lg:grid-cols-2">
               <section className={CARD_CLASS}>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                <p className="text-xs font-semibold uppercase text-slate-500">
                   Identity
                 </p>
                 <h3 className="mt-3 text-xl font-bold text-slate-900">
@@ -1714,16 +2150,16 @@ const UserManagement = () => {
                 </p>
 
                 <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                  <div className="rounded-md border border-slate-200 bg-slate-50 px-4 py-3">
+                    <p className="text-xs font-semibold uppercase text-slate-500">
                       Phone
                     </p>
                     <p className="mt-2 text-sm font-semibold text-slate-900">
                       {selectedUser?.phone || "Not provided"}
                     </p>
                   </div>
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                  <div className="rounded-md border border-slate-200 bg-slate-50 px-4 py-3">
+                    <p className="text-xs font-semibold uppercase text-slate-500">
                       Department
                     </p>
                     <p className="mt-2 text-sm font-semibold text-slate-900">
@@ -1734,7 +2170,7 @@ const UserManagement = () => {
               </section>
 
               <section className={CARD_CLASS}>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                <p className="text-xs font-semibold uppercase text-slate-500">
                   Access Summary
                 </p>
                 <div className="mt-4 flex flex-wrap gap-2">
@@ -1751,7 +2187,7 @@ const UserManagement = () => {
                   >
                     {selectedUser?.status || "active"}
                   </span>
-                  <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                  <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">
                     {selectedUser?.department || "General"}
                   </span>
                 </div>
@@ -1761,16 +2197,16 @@ const UserManagement = () => {
                 </p>
 
                 <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                  <div className="rounded-md border border-slate-200 bg-slate-50 px-4 py-3">
+                    <p className="text-xs font-semibold uppercase text-slate-500">
                       Created
                     </p>
                     <p className="mt-2 text-sm font-semibold text-slate-900">
                       {formatDateTimeLabel(selectedUser?.created_at)}
                     </p>
                   </div>
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                  <div className="rounded-md border border-slate-200 bg-slate-50 px-4 py-3">
+                    <p className="text-xs font-semibold uppercase text-slate-500">
                       Last Login
                     </p>
                     <p className="mt-2 text-sm font-semibold text-slate-900">
@@ -1794,7 +2230,7 @@ const UserManagement = () => {
                   Role defaults: {selectedUserRolePermissions.length}
                 </span>
                 <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600">
-                  User overrides: {userPermissionDraft.length}
+                  User overrides: {expandPermissions(userPermissionDraft).length}
                 </span>
                 <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
                   Effective access: {displayedEffectivePermissions.length}
@@ -1914,7 +2350,7 @@ const UserManagement = () => {
                   selectedUserActivity.map((entry) => (
                     <article
                       key={entry.id}
-                      className="rounded-[24px] border border-slate-200 bg-slate-50/70 p-4"
+                      className="rounded-md border border-slate-200 bg-slate-50 p-4"
                     >
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div className="min-w-0">
@@ -1925,14 +2361,14 @@ const UserManagement = () => {
                             {entry.note || entry.target || "No details"}
                           </p>
                         </div>
-                        <span className="shrink-0 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                        <span className="shrink-0 text-xs font-semibold uppercase text-slate-500">
                           {formatDateTimeLabel(entry.at)}
                         </span>
                       </div>
                     </article>
                   ))
                 ) : (
-                  <div className="rounded-[24px] border border-dashed border-slate-200 bg-slate-50 px-5 py-8 text-center text-sm text-slate-500">
+                  <div className="rounded-md border border-dashed border-slate-200 bg-slate-50 px-5 py-8 text-center text-sm text-slate-500">
                     No activity logged for this user yet.
                   </div>
                 )}

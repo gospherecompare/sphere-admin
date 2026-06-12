@@ -31,6 +31,7 @@ import {
 } from "react-icons/fa";
 import Cookies from "js-cookie";
 import { buildUrl } from "../api";
+import { requestDeleteApproval } from "../utils/deleteApproval";
 
 const ViewTVs = () => {
   const [appliances, setAppliances] = useState([]);
@@ -490,18 +491,31 @@ const ViewTVs = () => {
 
   // Handle delete
   const handleDelete = async (id, name) => {
-    if (!window.confirm(`Are you sure you want to delete "${name}"?`)) return;
+    const deleteApproval = requestDeleteApproval({
+      itemName: name,
+      itemLabel: "TV",
+    });
+    if (!deleteApproval) return;
+    if (deleteApproval.error) {
+      showToast("Delete Blocked", deleteApproval.error, "error");
+      return;
+    }
 
     try {
       const token = Cookies.get("authToken");
       const res = await fetch(buildUrl(`/api/tvs/${id}`), {
         method: "DELETE",
         headers: {
+          "Content-Type": "application/json",
           Authorization: token ? `Bearer ${token}` : "",
         },
+        body: JSON.stringify(deleteApproval),
       });
 
-      if (!res.ok) throw new Error("Delete failed");
+      if (!res.ok) {
+        const errorBody = await res.json().catch(() => ({}));
+        throw new Error(errorBody.message || errorBody.error || "Delete failed");
+      }
 
       setAppliances(appliances.filter((appliance) => appliance.id !== id));
       showToast("Success", `"${name}" deleted successfully`, "success");
