@@ -66,6 +66,7 @@ const AUTH_NOTICE_STORAGE_KEY = "hooksAdminAuthNotice";
 const POST_LOGIN_REDIRECT_KEY = "hooksAdminPostLoginRedirect";
 const SESSION_TIMEOUT_NOTICE = "Session timed out. Please log in again.";
 const POST_LOGIN_UPDATES_POSTER_KEY = "hooksAdminShowLoginUpdatesPoster";
+const SESSION_USER_STORAGE_KEY = "hooksAdminSessionUser";
 
 const extractSmartphoneRows = (payload) => {
   if (Array.isArray(payload)) return payload;
@@ -414,6 +415,12 @@ function App() {
     Cookies.remove("username");
     Cookies.remove("role");
     Cookies.remove("loginAt");
+    try {
+      localStorage.removeItem("authToken");
+      localStorage.removeItem(SESSION_USER_STORAGE_KEY);
+    } catch {
+      // Ignore storage cleanup failures.
+    }
     setIsAuthenticated(false);
   }, []);
 

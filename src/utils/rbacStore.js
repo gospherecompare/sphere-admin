@@ -8,6 +8,7 @@ import {
 } from "./rbacCatalog";
 
 const STORAGE_KEY = "hooksAdminRbacState";
+const SESSION_USER_STORAGE_KEY = "hooksAdminSessionUser";
 const ACTIVITY_LIMIT = 250;
 const RBAC_STATE_VERSION = 2;
 const DEFAULT_ROLE_NAMES = [
@@ -152,7 +153,21 @@ const normalizeUserRecord = (value = {}) => {
 
 const currentSessionUser = () => {
   const raw = Cookies.get("user");
-  const parsed = safeParse(raw, {}) || {};
+  let storedSessionUser = {};
+  try {
+    storedSessionUser = safeParse(
+      typeof window !== "undefined"
+        ? window.localStorage.getItem(SESSION_USER_STORAGE_KEY)
+        : "",
+      {},
+    ) || {};
+  } catch {
+    storedSessionUser = {};
+  }
+  const parsed = {
+    ...storedSessionUser,
+    ...(safeParse(raw, {}) || {}),
+  };
   const role = normalizeRole(parsed.role || Cookies.get("role"));
   const { firstName, lastName, fullName, userName, displayName } = deriveUserNames({
     first_name: parsed.first_name,

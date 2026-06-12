@@ -19,6 +19,7 @@ const AUTH_NOTICE_STORAGE_KEY = "hooksAdminAuthNotice";
 const POST_LOGIN_REDIRECT_KEY = "hooksAdminPostLoginRedirect";
 const POST_LOGIN_REDIRECT_MAX_AGE_MS = 1000 * 60 * 30;
 const POST_LOGIN_UPDATES_POSTER_KEY = "hooksAdminShowLoginUpdatesPoster";
+const SESSION_USER_STORAGE_KEY = "hooksAdminSessionUser";
 
 const STEPS = {
   credentials: "credentials",
@@ -792,6 +793,15 @@ const Login = ({ onLogin }) => {
 
   const finish = (data) => {
     const user = data?.user || {};
+    const cookieUser = {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      username: user.username || user.user_name,
+      first_name: user.first_name || "",
+      last_name: user.last_name || "",
+      display_name: user.display_name || user.username || user.email || "",
+    };
 
     if (data?.token) {
       Cookies.set("authToken", data.token, {
@@ -828,7 +838,7 @@ const Login = ({ onLogin }) => {
     });
 
     if (data?.user) {
-      Cookies.set("user", JSON.stringify(data.user), {
+      Cookies.set("user", JSON.stringify(cookieUser), {
         expires: rememberMe ? 7 : 1,
         secure: false,
         sameSite: "strict",
@@ -842,6 +852,10 @@ const Login = ({ onLogin }) => {
 
     try {
       sessionStorage.setItem(POST_LOGIN_UPDATES_POSTER_KEY, "1");
+      localStorage.setItem(SESSION_USER_STORAGE_KEY, JSON.stringify(data.user));
+      if (data?.token) {
+        localStorage.setItem("authToken", data.token);
+      }
 
       if (rememberMe) {
         localStorage.setItem("savedEmail", String(form.email || "").trim());
@@ -966,6 +980,12 @@ const Login = ({ onLogin }) => {
   const submit = async (event) => {
     event.preventDefault();
     setError("");
+    setNotice("");
+    try {
+      sessionStorage.removeItem(AUTH_NOTICE_STORAGE_KEY);
+    } catch {
+      // Ignore storage failures.
+    }
 
     setLoading(true);
     try {

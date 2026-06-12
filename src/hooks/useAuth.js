@@ -5,6 +5,7 @@ import { parseTokenPayload, getTokenExpiryMs } from "../utils/tokenUtils";
 const AUTH_NOTICE_STORAGE_KEY = "hooksAdminAuthNotice";
 const POST_LOGIN_REDIRECT_KEY = "hooksAdminPostLoginRedirect";
 const SESSION_TIMEOUT_NOTICE = "Session timed out. Please log in again.";
+const SESSION_USER_STORAGE_KEY = "hooksAdminSessionUser";
 
 /**
  * Custom hook for managing authentication state and session management
@@ -64,6 +65,12 @@ export const useAuth = () => {
       ["authToken", "user", "username", "role", "loginAt"].forEach((key) =>
         Cookies.remove(key),
       );
+      try {
+        localStorage.removeItem("authToken");
+        localStorage.removeItem(SESSION_USER_STORAGE_KEY);
+      } catch {
+        // Ignore storage cleanup failures.
+      }
 
       setIsAuthenticated(false);
     },

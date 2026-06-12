@@ -35,16 +35,16 @@ const buildUrl = (path = "") => {
   return `${API_BASE}${path.startsWith("/") ? "" : "/"}${path}`;
 };
 
-// Read auth token from localStorage first, fall back to cookie if present.
+// Prefer the active session cookie, then fall back to localStorage.
 const getAuthToken = () => {
   try {
-    const t = localStorage.getItem("authToken");
-    if (t) return t;
+    const cookieToken = Cookies.get("authToken");
+    if (cookieToken) return cookieToken;
   } catch (e) {
-    // ignore localStorage errors
+    // ignore cookie errors
   }
   try {
-    return Cookies.get("authToken");
+    return localStorage.getItem("authToken");
   } catch (e) {
     return null;
   }
@@ -55,4 +55,4 @@ export default { API_BASE, buildUrl, getAuthToken };
 
 // Usage guidance:
 // - Use `buildUrl('/api/endpoint')` to construct full URLs.
-// - Use `getAuthToken()` to read the current auth token (reads localStorage first).
+// - Use `getAuthToken()` to read the current auth token (reads cookie first).
