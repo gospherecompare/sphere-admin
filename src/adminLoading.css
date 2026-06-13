@@ -1,0 +1,174 @@
+@keyframes hooksAdminRouteProgress {
+  0% {
+    transform: translateX(-62%) scaleX(0.35);
+  }
+  45% {
+    transform: translateX(8%) scaleX(0.72);
+  }
+  100% {
+    transform: translateX(118%) scaleX(0.35);
+  }
+}
+
+@keyframes hooksAdminLoaderPanelIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes hooksAdminBotFloat {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-1deg);
+  }
+  50% {
+    transform: translateY(-4px) rotate(1deg);
+  }
+}
+
+@keyframes hooksAdminBotBlink {
+  0%,
+  88%,
+  100% {
+    transform: scaleY(1);
+  }
+  92% {
+    transform: scaleY(0.12);
+  }
+}
+
+@keyframes hooksAdminLoaderPill {
+  0%,
+  100% {
+    background-color: rgb(219, 234, 254);
+    transform: scaleX(0.62);
+  }
+  50% {
+    background-color: rgb(76, 53, 242);
+    transform: scaleX(1);
+  }
+}
+
+.hooks-admin-route-progress {
+  width: 46%;
+  animation: hooksAdminRouteProgress 1.05s ease-in-out infinite;
+  will-change: transform;
+}
+
+.hooks-admin-loader-panel {
+  animation: hooksAdminLoaderPanelIn 0.22s ease-out both;
+}
+
+.hooks-admin-loader-bot {
+  animation: hooksAdminBotFloat 1.8s ease-in-out infinite;
+  filter: drop-shadow(0 12px 18px rgba(76, 53, 242, 0.22));
+}
+
+.hooks-admin-loader-bot-antenna {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  height: 9px;
+  width: 2px;
+  border-radius: 999px;
+  background: #4c35f2;
+  transform: translateX(-50%);
+}
+
+.hooks-admin-loader-bot-antenna::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -4px;
+  height: 7px;
+  width: 7px;
+  border-radius: 999px;
+  background: #22d3ee;
+  box-shadow: 0 0 0 4px rgba(34, 211, 238, 0.18);
+  transform: translateX(-50%);
+}
+
+.hooks-admin-loader-bot-face {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  display: flex;
+  height: 39px;
+  width: 45px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(196, 181, 253, 0.92);
+  border-radius: 18px 18px 16px 16px;
+  background:
+    radial-gradient(circle at 22% 20%, rgba(255, 255, 255, 0.94), transparent 24%),
+    linear-gradient(135deg, #f5f3ff 0%, #ede9fe 42%, #ddd6fe 100%);
+  transform: translateX(-50%);
+}
+
+.hooks-admin-loader-bot-face::before,
+.hooks-admin-loader-bot-face::after {
+  content: "";
+  position: absolute;
+  top: 16px;
+  height: 10px;
+  width: 5px;
+  border-radius: 999px;
+  background: #8b5cf6;
+}
+
+.hooks-admin-loader-bot-face::before {
+  left: -4px;
+}
+
+.hooks-admin-loader-bot-face::after {
+  right: -4px;
+}
+
+.hooks-admin-loader-bot-eyes {
+  position: absolute;
+  top: 13px;
+  left: 50%;
+  display: flex;
+  gap: 8px;
+  transform: translateX(-50%);
+}
+
+.hooks-admin-loader-bot-eyes span {
+  height: 6px;
+  width: 6px;
+  border-radius: 999px;
+  background: #4c35f2;
+  animation: hooksAdminBotBlink 2.4s ease-in-out infinite;
+  transform-origin: center;
+}
+
+.hooks-admin-loader-bot-mouth {
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  height: 4px;
+  width: 14px;
+  border-bottom: 2px solid #4c35f2;
+  border-radius: 0 0 999px 999px;
+  transform: translateX(-50%);
+}
+
+.hooks-admin-loader-pill {
+  animation: hooksAdminLoaderPill 0.9s ease-in-out infinite;
+  transform-origin: left center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hooks-admin-route-progress,
+  .hooks-admin-loader-panel,
+  .hooks-admin-loader-bot,
+  .hooks-admin-loader-bot-eyes span,
+  .hooks-admin-loader-pill {
+    animation: none;
+  }
+}

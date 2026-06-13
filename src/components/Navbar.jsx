@@ -17,7 +17,6 @@ import {
   FaChevronDown,
   FaCog,
   FaDatabase,
-  FaEnvelope,
   FaExclamationTriangle,
   FaFileAlt,
   FaHeadset,
@@ -862,17 +861,6 @@ const Navbar = ({ isMobile, sidebarOpen, onToggleSidebar, onLogout }) => {
               />
             ) : null}
           </div>
-
-          <button type="button" className={actionButtonBase}>
-            <FaEnvelope className="text-sm" />
-            <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-orange-500 px-1 text-[9px] font-bold text-white">
-              5
-            </span>
-          </button>
-
-          <button type="button" className={actionButtonBase}>
-            <FaHeadset className="text-sm" />
-          </button>
 
           <div className="h-8 w-px bg-slate-200" />
 

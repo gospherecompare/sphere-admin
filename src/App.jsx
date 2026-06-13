@@ -143,6 +143,99 @@ const RouteDocumentTitle = () => {
   return null;
 };
 
+const GlobalLoadingExperience = () => {
+  const location = useLocation();
+  const [routePulse, setRoutePulse] = useState(false);
+  const [activeRequests, setActiveRequests] = useState(() =>
+    typeof window !== "undefined"
+      ? window.__HOOKS_ADMIN_NETWORK_IN_FLIGHT__ || 0
+      : 0,
+  );
+  const [showPanel, setShowPanel] = useState(false);
+
+  useEffect(() => {
+    setRoutePulse(true);
+    const timeout = window.setTimeout(() => setRoutePulse(false), 520);
+    return () => window.clearTimeout(timeout);
+  }, [location.pathname, location.search]);
+
+  useEffect(() => {
+    const onActivity = (event) => {
+      const nextCount = Number(event?.detail?.count ?? 0);
+      setActiveRequests(
+        Number.isFinite(nextCount) ? Math.max(0, nextCount) : 0,
+      );
+    };
+
+    window.addEventListener("hooks-admin:network-activity", onActivity);
+    return () =>
+      window.removeEventListener("hooks-admin:network-activity", onActivity);
+  }, []);
+
+  const hasNetworkWork = activeRequests > 0;
+
+  useEffect(() => {
+    if (hasNetworkWork) {
+      const timeout = window.setTimeout(() => setShowPanel(true), 260);
+      return () => window.clearTimeout(timeout);
+    }
+
+    const timeout = window.setTimeout(() => setShowPanel(false), 180);
+    return () => window.clearTimeout(timeout);
+  }, [hasNetworkWork]);
+
+  if (!routePulse && !hasNetworkWork && !showPanel) return null;
+
+  return (
+    <>
+      <div className="pointer-events-none fixed inset-x-0 top-0 z-[9998] h-1 overflow-hidden bg-indigo-50/70">
+        <div className="hooks-admin-route-progress h-full rounded-r-full bg-gradient-to-r from-[#4C35F2] via-sky-400 to-emerald-400" />
+      </div>
+
+      {showPanel ? (
+        <div
+          role="status"
+          aria-live="polite"
+          className="hooks-admin-loader-panel pointer-events-none fixed bottom-5 left-4 right-4 z-[9997] mx-auto max-w-sm rounded-2xl border border-indigo-100/80 bg-white/95 p-4 shadow-[0_18px_55px_rgba(15,23,42,0.16)] backdrop-blur-md sm:left-auto sm:right-6 sm:mx-0"
+        >
+          <div className="flex items-center gap-3">
+            <div
+              className="hooks-admin-loader-bot relative h-12 w-12 shrink-0"
+              aria-hidden="true"
+            >
+              <span className="hooks-admin-loader-bot-antenna" />
+              <span className="hooks-admin-loader-bot-face">
+                <span className="hooks-admin-loader-bot-eyes">
+                  <span />
+                  <span />
+                </span>
+                <span className="hooks-admin-loader-bot-mouth" />
+              </span>
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-slate-950">
+                Syncing workspace data
+              </p>
+              <p className="mt-0.5 text-xs leading-5 text-slate-500">
+                Fetching the latest products, reports, and publishing signals.
+              </p>
+            </div>
+          </div>
+          <div className="mt-3 grid grid-cols-4 gap-1.5">
+            {[0, 1, 2, 3].map((index) => (
+              <span
+                key={index}
+                className="hooks-admin-loader-pill h-1.5 rounded-full bg-indigo-100"
+                style={{ animationDelay: `${index * 120}ms` }}
+              />
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </>
+  );
+};
+
 const ProtectedRoute = ({ children, isAuthenticated, authReason }) => {
   const location = useLocation();
 
@@ -463,6 +556,7 @@ function App() {
   return (
     <Router>
       <RouteDocumentTitle />
+      <GlobalLoadingExperience />
       <Routes>
         <Route
           path="/login"
