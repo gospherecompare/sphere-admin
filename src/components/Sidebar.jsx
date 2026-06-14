@@ -49,49 +49,87 @@ const DESKTOP_SECTIONS = [
         path: "/dashboard",
         prefixes: ["/dashboard"],
       },
+    ],
+  },
+  {
+    title: "CATALOG",
+    items: [
       {
-        label: "Smartphones",
+        label: "Smartphone Catalog",
         icon: FaMobileAlt,
         path: "/products/smartphones/inventory",
         prefixes: ["/products/smartphones"],
         chevron: true,
         children: [
           {
-            label: "View Mobiles",
+            label: "Inventory",
             path: "/products/smartphones/inventory",
             prefixes: ["/products/smartphones/inventory"],
           },
           {
-            label: "Add New Mobile",
+            label: "Create Smartphone",
             path: "/products/smartphones/create",
             prefixes: ["/products/smartphones/create"],
           },
           {
-            label: "Upcoming Mobiles",
+            label: "Launch Pipeline",
             path: "/products/smartphones/upcoming",
             prefixes: ["/products/smartphones/upcoming"],
           },
         ],
       },
       {
-        label: "Laptops",
+        label: "Laptop Catalog",
         icon: FaLaptopCode,
         path: "/products/laptops/inventory",
         prefixes: ["/products/laptops"],
         chevron: true,
+        children: [
+          {
+            label: "Inventory",
+            path: "/products/laptops/inventory",
+            prefixes: ["/products/laptops/inventory"],
+          },
+          {
+            label: "Create Laptop",
+            path: "/products/laptops/create",
+            prefixes: ["/products/laptops/create"],
+          },
+        ],
       },
       {
-        label: "Television",
+        label: "TV Catalog",
         icon: FaTv,
         path: "/products/tvs/inventory",
         prefixes: ["/products/tvs", "/products/homeappliances"],
         chevron: true,
+        children: [
+          {
+            label: "Inventory",
+            path: "/products/tvs/inventory",
+            prefixes: [
+              "/products/tvs/inventory",
+              "/products/homeappliances/inventory",
+            ],
+          },
+          {
+            label: "Create TV",
+            path: "/products/tvs/create",
+            prefixes: ["/products/tvs/create", "/products/appliances/create"],
+          },
+        ],
       },
+    ],
+  },
+  {
+    title: "INTELLIGENCE",
+    items: [
       {
-        label: "Compare Engine",
+        label: "Compare Intelligence",
         icon: FaExchangeAlt,
-        path: "/settings/compare-pages",
+        path: "/reports/compare-analytics",
         prefixes: [
+          "/reports/compare-analytics",
           "/settings/compare-pages",
           "/settings/compare-scoring",
           "/settings/spec-score-algorithms",
@@ -99,12 +137,17 @@ const DESKTOP_SECTIONS = [
         chevron: true,
         children: [
           {
+            label: "User Compare Manager",
+            path: "/reports/compare-analytics",
+            prefixes: ["/reports/compare-analytics"],
+          },
+          {
             label: "Compare Pages",
             path: "/settings/compare-pages",
             prefixes: ["/settings/compare-pages"],
           },
           {
-            label: "Compare Scoring",
+            label: "Scoring Rules",
             path: "/settings/compare-scoring",
             prefixes: ["/settings/compare-scoring"],
           },
@@ -116,7 +159,7 @@ const DESKTOP_SECTIONS = [
         ],
       },
       {
-        label: "Trending",
+        label: "Trend Intelligence",
         icon: FaSignal,
         path: "/reports/trending",
         prefixes: ["/reports/trending"],
@@ -127,12 +170,6 @@ const DESKTOP_SECTIONS = [
             path: "/reports/trending",
             prefixes: ["/reports/trending"],
             searchParam: { key: "section", value: "manager", allowEmpty: true },
-          },
-          {
-            label: "Trending Rules",
-            path: "/reports/trending",
-            prefixes: ["/reports/trending"],
-            searchParam: { key: "section", value: "rules" },
           },
         ],
       },
@@ -168,7 +205,7 @@ const DESKTOP_SECTIONS = [
     ],
   },
   {
-    title: "CONTENT",
+    title: "CONTENT OPS",
     items: [
       {
         label: "Newsroom CMS",
@@ -177,7 +214,7 @@ const DESKTOP_SECTIONS = [
         prefixes: ["/content/news-articles"],
       },
       {
-        label: "Banner Manager",
+        label: "Banner Campaigns",
         icon: FaFileAlt,
         path: "/marketing/banners",
         prefixes: ["/marketing/banners"],
@@ -191,10 +228,10 @@ const DESKTOP_SECTIONS = [
     ],
   },
   {
-    title: "REPORTS",
+    title: "ANALYTICS",
     items: [
       {
-        label: "Published by User",
+        label: "Publishing by User",
         icon: FaUserCog,
         path: "/reports/useractivity",
         prefixes: ["/reports/useractivity", "/analytics"],
@@ -212,7 +249,7 @@ const DESKTOP_SECTIONS = [
         prefixes: ["/reports/launch-timing"],
       },
       {
-        label: "Recent Publish Activity",
+        label: "Recent Activity",
         icon: FaUsers,
         path: "/reports/recentactivity",
         prefixes: ["/reports/recentactivity"],
@@ -256,16 +293,16 @@ const DESKTOP_SECTIONS = [
     ],
   },
   {
-    title: "MANAGEMENT",
+    title: "ADMIN",
     items: [
       {
-        label: "Users & Permissions",
+        label: "Users",
         icon: FaUserCog,
         path: "/user-management",
         prefixes: ["/user-management"],
       },
       {
-        label: "Roles",
+        label: "Roles & Permissions",
         icon: FaUserShield,
         path: "/permission-management",
         prefixes: ["/permission-management"],

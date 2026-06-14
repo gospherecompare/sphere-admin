@@ -347,6 +347,14 @@ const ROUTE_TRAILS = [
     ],
   },
   {
+    path: "/reports/compare-analytics",
+    trail: [
+      DASHBOARD_CRUMB,
+      { label: "Reports", to: "/reports/useractivity" },
+      { label: "User Compare Manager" },
+    ],
+  },
+  {
     path: "/reports/career-applications",
     trail: [
       DASHBOARD_CRUMB,

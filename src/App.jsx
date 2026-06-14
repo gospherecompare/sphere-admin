@@ -44,6 +44,7 @@ import TrendingManager from "./components/Reports/TrendingManager";
 import HookScoreReport from "./components/Reports/HookScoreReport";
 import FeatureClicksReport from "./components/Reports/FeatureClicksReport";
 import SearchPopularityReport from "./components/Reports/SearchPopularityReport";
+import CompareAnalytics from "./components/Reports/CompareAnalytics";
 import CareerApplications from "./components/Reports/CareerApplications";
 import ContactSubmissions from "./components/Reports/ContactSubmissions";
 import BannerManager from "./components/BannerManager";
@@ -1085,6 +1086,18 @@ function App() {
                 message="You need report access to open this page."
               >
                 <SearchPopularityReport />
+              </RouteAccessGate>
+            }
+          />
+          <Route
+            path="reports/compare-analytics"
+            element={
+              <RouteAccessGate
+                path="/reports/compare-analytics"
+                title="Reports access required"
+                message="You need report access to open the user compare manager."
+              >
+                <CompareAnalytics />
               </RouteAccessGate>
             }
           />

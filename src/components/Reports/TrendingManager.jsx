@@ -6,7 +6,6 @@ import {
   FaChartLine,
   FaCheck,
   FaChevronDown,
-  FaCog,
   FaEdit,
   FaEllipsisH,
   FaEye,
@@ -17,7 +16,6 @@ import {
   FaRedo,
   FaRocket,
   FaSearch,
-  FaSlidersH,
   FaSpinner,
   FaTimes,
 } from "react-icons/fa";
@@ -38,11 +36,8 @@ const HEADER_COPY = {
 
 const QUICK_ACTIONS = [
   { label: "Create Boost", icon: FaRocket },
-  { label: "Trending Rules", icon: FaSlidersH },
-  { label: "Settings", icon: FaCog },
 ];
 
-const CHART_LABELS = ["May 12", "May 13", "May 14", "May 15", "May 16", "May 17", "May 18"];
 const SURFACE_CLASS = "border border-slate-200 bg-white";
 const FIELD_CLASS =
   "h-11 w-full border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-[#345CFF] focus:ring-0";
@@ -158,34 +153,6 @@ const normalizeTrendingRow = (row, index) => {
   };
 };
 
-const chartPoints = (values, width, height, padding) => {
-  const maxValue = Math.max(...values, 1);
-  const minValue = Math.min(...values, 0);
-  const usableWidth = width - padding * 2;
-  const usableHeight = height - padding * 2;
-
-  return values.map((value, index) => {
-    const x =
-      padding + (values.length === 1 ? usableWidth / 2 : (usableWidth / (values.length - 1)) * index);
-    const normalized = (value - minValue) / (maxValue - minValue || 1);
-    const y = height - padding - normalized * usableHeight;
-    return { x, y };
-  });
-};
-
-const linePath = (points) =>
-  points
-    .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x.toFixed(2)} ${point.y.toFixed(2)}`)
-    .join(" ");
-
-const areaPath = (points, height, padding) => {
-  if (!points.length) return "";
-
-  const lastPoint = points[points.length - 1];
-  const firstPoint = points[0];
-  return `${linePath(points)} L ${lastPoint.x.toFixed(2)} ${(height - padding).toFixed(2)} L ${firstPoint.x.toFixed(2)} ${(height - padding).toFixed(2)} Z`;
-};
-
 const SelectField = ({ value, onChange, children, className = "" }) => (
   <select
     value={value}
@@ -218,7 +185,7 @@ const SummaryCard = ({ icon: Icon, iconClassName, label, value, delta }) => (
 
 const BadgeDropdown = ({ value, onSelect, open, onToggle, onClose }) => {
   const options = [
-    { value: "", label: "Auto badge from hook score", meta: "Server decides" },
+    { value: "", label: "Auto badge", meta: "Ranking based" },
     ...MANUAL_BADGE_OPTIONS.map((badge) => ({
       value: badge,
       label: badge,
@@ -243,10 +210,10 @@ const BadgeDropdown = ({ value, onSelect, open, onToggle, onClose }) => {
             onClose();
           }
         }}
-        className={`flex h-12 w-full items-center justify-between rounded-xl border bg-white px-4 text-left text-sm transition ${
+        className={`flex h-12 w-full items-center justify-between border bg-white px-4 text-left text-sm transition ${
           open
-            ? "border-[#5A49FF] ring-4 ring-[#5A49FF]/10"
-            : "border-slate-200 hover:border-[#B8C3FF]"
+            ? "border-[#2563EB] bg-gradient-to-r from-white via-[#F3F7FF] to-[#EEF6FF] ring-4 ring-[#2563EB]/10"
+            : "border-slate-200 hover:border-[#93C5FD] hover:bg-gradient-to-r hover:from-white hover:to-[#F8FBFF]"
         }`}
       >
         <span>
@@ -265,37 +232,37 @@ const BadgeDropdown = ({ value, onSelect, open, onToggle, onClose }) => {
       {open ? (
         <div
           tabIndex={-1}
-          className="absolute left-0 right-0 top-[calc(100%+8px)] z-50 rounded-2xl border border-slate-200 bg-white p-1 shadow-[0_22px_55px_rgba(15,23,42,0.18)]"
+          className="absolute left-0 right-0 top-[calc(100%+8px)] z-50 border border-slate-200 bg-white p-1 shadow-[0_22px_55px_rgba(15,23,42,0.18)]"
         >
           <div className="max-h-72 overflow-y-auto overscroll-contain pr-1 [scrollbar-width:thin] [scrollbar-color:#CBD5E1_transparent]">
-          {options.map((option) => {
-            const active = option.value === value;
-            return (
-              <button
-                key={option.value || "auto"}
-                type="button"
-                onMouseDown={(event) => event.preventDefault()}
-                onClick={() => onSelect(option.value)}
-                className={`flex w-full items-center justify-between rounded-xl px-3.5 py-3 text-left text-sm transition ${
-                  active
-                    ? "bg-[#EEF1FF] text-[#345CFF]"
-                    : "text-slate-700 hover:bg-slate-50"
-                }`}
-              >
-                <span>
-                  <span className="block font-semibold">{option.label}</span>
-                  <span
-                    className={`block text-[11px] font-medium uppercase tracking-[0.14em] ${
-                      active ? "text-[#345CFF]/70" : "text-slate-400"
-                    }`}
-                  >
-                    {option.meta}
+            {options.map((option) => {
+              const active = option.value === value;
+              return (
+                <button
+                  key={option.value || "auto"}
+                  type="button"
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => onSelect(option.value)}
+                  className={`flex w-full items-center justify-between px-3.5 py-3 text-left text-sm transition ${
+                    active
+                      ? "bg-gradient-to-r from-[#EAF2FF] via-[#EEF4FF] to-[#F4FAFF] text-[#0B66F6]"
+                      : "text-slate-700 hover:bg-gradient-to-r hover:from-white hover:via-[#F8FBFF] hover:to-[#EEF6FF]"
+                  }`}
+                >
+                  <span>
+                    <span className="block font-semibold">{option.label}</span>
+                    <span
+                      className={`block text-[11px] font-medium uppercase tracking-[0.14em] ${
+                        active ? "text-[#0B66F6]/70" : "text-slate-400"
+                      }`}
+                    >
+                      {option.meta}
+                    </span>
                   </span>
-                </span>
-                {active ? <FaCheck className="text-xs" /> : null}
-              </button>
-            );
-          })}
+                  {active ? <FaCheck className="text-xs" /> : null}
+                </button>
+              );
+            })}
           </div>
         </div>
       ) : null}
@@ -574,23 +541,6 @@ const TrendingManager = () => {
 
   const visibleRows = useMemo(() => filteredRows.slice(0, rowsPerPage), [filteredRows, rowsPerPage]);
 
-  const chartValues = useMemo(() => {
-    const values = normalizedRows
-      .slice(0, 7)
-      .map((row) => toFiniteNumber(row.raw?.trending_score, 0));
-    return values.length ? values : [0, 0, 0, 0, 0, 0, 0];
-  }, [normalizedRows]);
-
-  const chartLabels = useMemo(
-    () => {
-      const labels = normalizedRows.slice(0, 7).map((row) => `#${row.rank}`);
-      return labels.length ? labels : CHART_LABELS;
-    },
-    [normalizedRows],
-  );
-
-  const overviewPoints = useMemo(() => chartPoints(chartValues, 420, 190, 18), [chartValues]);
-
   const categoryBreakdown = useMemo(() => {
     const totals = normalizedRows.reduce((acc, row) => {
       acc[row.category] = (acc[row.category] || 0) + row.views7d;
@@ -668,41 +618,6 @@ const TrendingManager = () => {
           {summaryCards.map((card) => (
             <SummaryCard key={card.label} {...card} />
           ))}
-        </section>
-
-        <section className={`${SURFACE_CLASS} px-4 py-4 lg:px-5`}>
-          <h2 className="text-base font-semibold text-slate-900">Trending Overview</h2>
-          <p className="mt-1 text-sm text-slate-500">
-            Top live scores from the server ranking response
-          </p>
-
-          <div className="mt-6">
-            <svg viewBox="0 0 420 190" className="h-[190px] w-full">
-              {[32, 68, 104, 140].map((y) => (
-                <line key={y} x1="18" y1={y} x2="402" y2={y} stroke="#E7ECF5" strokeWidth="1" />
-              ))}
-
-              <path d={areaPath(overviewPoints, 190, 18)} fill="url(#trendingAreaGradient)" opacity="0.24" />
-              <path d={linePath(overviewPoints)} fill="none" stroke="#6D35FF" strokeWidth="3.5" strokeLinecap="round" />
-
-              {overviewPoints.map((point, index) => (
-                <circle key={chartLabels[index] || index} cx={point.x} cy={point.y} r="4.5" fill="#6D35FF" />
-              ))}
-
-              <defs>
-                <linearGradient id="trendingAreaGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#7C3AED" />
-                  <stop offset="100%" stopColor="#7C3AED" stopOpacity="0" />
-                </linearGradient>
-              </defs>
-            </svg>
-
-            <div className="mt-2 flex items-center justify-between text-[11px] font-medium text-slate-400">
-              {chartLabels.map((label) => (
-                <span key={label}>{label}</span>
-              ))}
-            </div>
-          </div>
         </section>
 
         {error ? (
@@ -1139,8 +1054,6 @@ const TrendingManager = () => {
                 const Icon = action.icon;
                 const handleQuickAction = () => {
                   if (action.label === "Create Boost") openBoostEditor();
-                  if (action.label === "Trending Rules") setActiveTab("auto");
-                  if (action.label === "Settings") recomputeTrendingRows();
                 };
                 return (
                   <button
@@ -1162,7 +1075,7 @@ const TrendingManager = () => {
 
       {boostDraft ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4 py-6">
-          <div className="w-full max-w-xl rounded-2xl border border-slate-200 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.22)]">
+          <div className="w-full max-w-xl border border-slate-200 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.22)]">
             <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4">
               <div>
                 <h2 className="text-xl font-bold text-slate-950">
@@ -1179,7 +1092,7 @@ const TrendingManager = () => {
                   setBadgeDropdownOpen(false);
                   setBoostDraft(null);
                 }}
-                className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
+                className="flex h-9 w-9 items-center justify-center border border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
               >
                 <FaTimes className="text-sm" />
               </button>
@@ -1187,7 +1100,7 @@ const TrendingManager = () => {
 
             <div className="space-y-4 px-5 py-5">
               {boostDraft.productName ? (
-                <div className="rounded-xl bg-[#EEF1FF] px-4 py-3">
+                <div className="bg-[#EEF1FF] px-4 py-3">
                   <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#345CFF]">
                     Selected product
                   </p>
@@ -1197,7 +1110,7 @@ const TrendingManager = () => {
                 </div>
               ) : null}
 
-              <label className="flex items-center gap-3 rounded-xl border border-slate-200 px-4 py-3">
+              <label className="flex items-center gap-3 border border-slate-200 px-4 py-3">
                 <input
                   type="checkbox"
                   checked={Boolean(boostDraft.manualBoost)}
@@ -1207,7 +1120,7 @@ const TrendingManager = () => {
                       manualBoost: event.target.checked,
                     }))
                   }
-                  className="h-4 w-4 rounded border-slate-300 text-[#345CFF] focus:ring-[#345CFF]"
+                  className="h-4 w-4 border-slate-300 text-[#345CFF] focus:ring-[#345CFF]"
                 />
                 <span className="text-sm font-semibold text-slate-700">
                   Enable manual boost
@@ -1229,7 +1142,7 @@ const TrendingManager = () => {
                         manualPriority: event.target.value,
                       }))
                     }
-                    className="mt-1 h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-700 outline-none transition focus:border-[#5A49FF] focus:ring-4 focus:ring-[#5A49FF]/10"
+                    className="mt-1 h-11 w-full border border-slate-200 bg-white px-4 text-sm text-slate-700 outline-none transition focus:border-[#5A49FF] focus:ring-4 focus:ring-[#5A49FF]/10"
                   />
                 </label>
 
@@ -1270,7 +1183,7 @@ const TrendingManager = () => {
                           manualBadge: event.target.value,
                         }))
                       }
-                      className="mt-3 h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-700 outline-none transition focus:border-[#5A49FF] focus:ring-4 focus:ring-[#5A49FF]/10"
+                      className="mt-3 h-11 w-full border border-slate-200 bg-white px-4 text-sm text-slate-700 outline-none transition focus:border-[#5A49FF] focus:ring-4 focus:ring-[#5A49FF]/10"
                       placeholder="Example: Partner Pick"
                     />
                   ) : null}
@@ -1285,7 +1198,7 @@ const TrendingManager = () => {
                   setBadgeDropdownOpen(false);
                   setBoostDraft(null);
                 }}
-                className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                className="inline-flex h-11 items-center justify-center border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50"
               >
                 Cancel
               </button>
@@ -1293,7 +1206,7 @@ const TrendingManager = () => {
                 type="button"
                 onClick={saveBoostDraft}
                 disabled={savingBoost}
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#345CFF] to-[#5C35FF] px-5 text-sm font-semibold text-white shadow-[0_18px_35px_rgba(92,76,255,0.22)] disabled:opacity-60"
+                className="inline-flex h-11 items-center justify-center gap-2 bg-gradient-to-r from-[#345CFF] to-[#5C35FF] px-5 text-sm font-semibold text-white shadow-[0_18px_35px_rgba(92,76,255,0.22)] disabled:opacity-60"
               >
                 {savingBoost ? <FaSpinner className="animate-spin" /> : <FaRocket />}
                 Save Boost

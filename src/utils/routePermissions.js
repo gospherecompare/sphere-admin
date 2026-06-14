@@ -226,6 +226,11 @@ export const ROUTE_ACCESS_RULES = [
     title: "Search popularity report access required",
   },
   {
+    pattern: "/reports/compare-analytics",
+    requiredAnyPermissions: ["reports.compare_analytics.view", "reports.view"],
+    title: "User compare manager access required",
+  },
+  {
     pattern: "/reports/career-applications",
     requiredAnyPermissions: ["reports.career_applications.view", "reports.view"],
     title: "Career applications access required",
