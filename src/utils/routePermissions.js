@@ -246,9 +246,9 @@ export const ROUTE_ACCESS_RULES = [
     title: "Compare scoring access required",
   },
   {
-    pattern: "/settings/device-field-profiles",
-    requiredAnyPermissions: ["settings.device_field_profiles.view", "settings.view"],
-    title: "Device field profile access required",
+    pattern: "/settings/spec-score-algorithms",
+    requiredAnyPermissions: ["settings.spec_score_algorithms.view", "settings.view"],
+    title: "Spec score algorithm access required",
   },
   {
     pattern: "/api-tester",

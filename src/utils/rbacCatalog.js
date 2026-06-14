@@ -183,7 +183,7 @@ export const RBAC_MODULES = [
   },
   { key: "settings.compare_pages", label: "Compare Pages", actions: ["view", "create", "edit", "delete", "manage"] },
   { key: "settings.compare_scoring", label: "Compare Scoring", actions: ["view", "edit", "manage"] },
-  { key: "settings.device_field_profiles", label: "Device Field Profiles", actions: ["view", "edit", "manage"] },
+  { key: "settings.spec_score_algorithms", label: "Spec Score Algorithms", actions: ["view"] },
   { key: "settings.api_tester", label: "API Tester", actions: ["view", "manage"] },
   {
     key: "media",

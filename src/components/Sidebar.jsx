@@ -94,7 +94,7 @@ const DESKTOP_SECTIONS = [
         prefixes: [
           "/settings/compare-pages",
           "/settings/compare-scoring",
-          "/settings/device-field-profiles",
+          "/settings/spec-score-algorithms",
         ],
         chevron: true,
         children: [
@@ -109,9 +109,9 @@ const DESKTOP_SECTIONS = [
             prefixes: ["/settings/compare-scoring"],
           },
           {
-            label: "Device Profiles",
-            path: "/settings/device-field-profiles",
-            prefixes: ["/settings/device-field-profiles"],
+            label: "Spec Score Algorithms",
+            path: "/settings/spec-score-algorithms",
+            prefixes: ["/settings/spec-score-algorithms"],
           },
         ],
       },
@@ -133,12 +133,6 @@ const DESKTOP_SECTIONS = [
             path: "/reports/trending",
             prefixes: ["/reports/trending"],
             searchParam: { key: "section", value: "rules" },
-          },
-          {
-            label: "Boost History",
-            path: "/reports/trending",
-            prefixes: ["/reports/trending"],
-            searchParam: { key: "section", value: "history" },
           },
         ],
       },

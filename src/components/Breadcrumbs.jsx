@@ -234,6 +234,14 @@ const ROUTE_TRAILS = [
     ],
   },
   {
+    path: "/settings/spec-score-algorithms",
+    trail: [
+      DASHBOARD_CRUMB,
+      { label: "Settings", to: "/settings/compare-pages" },
+      { label: "Spec Score Algorithms" },
+    ],
+  },
+  {
     path: "/api-tester",
     trail: [
       DASHBOARD_CRUMB,
@@ -392,9 +400,7 @@ const Breadcrumbs = () => {
       const sectionLabel =
         section === "rules"
           ? "Trending Rules"
-          : section === "history"
-            ? "Boost History"
-            : "Trending Manager";
+          : "Trending Manager";
 
       return [
         DASHBOARD_CRUMB,

@@ -51,8 +51,8 @@ import AffiliatePlacementManager from "./components/AffiliatePlacementManager";
 import EditLaptop from "./components/EditLaptop";
 import EditHomeAppliance from "./components/EditAppliance";
 import CompareScoring from "./components/Settings/CompareScoring";
+import SpecScoreAlgorithms from "./components/Settings/SpecScoreAlgorithms";
 import ComparePages from "./components/Settings/ComparePages";
-import DeviceFieldProfiles from "./components/Settings/DeviceFieldProfiles";
 import BlogEditor from "./components/Content/BlogEditor";
 import RouteAccessGate from "./components/RouteAccessGate";
 import Cookies from "js-cookie";
@@ -913,14 +913,14 @@ function App() {
             }
           />
           <Route
-            path="settings/device-field-profiles"
+            path="settings/spec-score-algorithms"
             element={
               <RouteAccessGate
-                path="/settings/device-field-profiles"
+                path="/settings/spec-score-algorithms"
                 title="Settings access required"
                 message="You need settings access to open this page."
               >
-                <DeviceFieldProfiles />
+                <SpecScoreAlgorithms />
               </RouteAccessGate>
             }
           />

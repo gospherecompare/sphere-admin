@@ -71,10 +71,10 @@ const EditHomeAppliance = lazy(() => import("../components/EditAppliance"));
 const CompareScoring = lazy(
   () => import("../components/Settings/CompareScoring"),
 );
-const ComparePages = lazy(() => import("../components/Settings/ComparePages"));
-const DeviceFieldProfiles = lazy(
-  () => import("../components/Settings/DeviceFieldProfiles"),
+const SpecScoreAlgorithms = lazy(
+  () => import("../components/Settings/SpecScoreAlgorithms"),
 );
+const ComparePages = lazy(() => import("../components/Settings/ComparePages"));
 const BlogEditor = lazy(() => import("../components/Content/BlogEditor"));
 const GlobalSearchResults = lazy(
   () => import("../components/GlobalSearchResults"),
@@ -249,15 +249,15 @@ export const ROUTE_CONFIG = {
     component: CompareScoring,
     label: "Compare Scoring",
   },
+  specScoreAlgorithms: {
+    path: "/settings/spec-score-algorithms",
+    component: SpecScoreAlgorithms,
+    label: "Spec Score Algorithms",
+  },
   comparePages: {
     path: "/settings/compare-pages",
     component: ComparePages,
     label: "Compare Pages",
-  },
-  deviceFieldProfiles: {
-    path: "/settings/device-field-profiles",
-    component: DeviceFieldProfiles,
-    label: "Device Field Profiles",
   },
 
   // Content

@@ -58,7 +58,7 @@ const TITLE_ROUTES = [
   routeMeta("/settings", "Compare Pages Studio", "Compare Intelligence Engine"),
   routeMeta("/settings/compare-pages", "Compare Pages Studio", "Compare Intelligence Engine"),
   routeMeta("/settings/compare-scoring", "Compare Scoring Studio", "Compare Intelligence Engine"),
-  routeMeta("/settings/device-field-profiles", "Device Field Profiles", "Compare Intelligence Engine"),
+  routeMeta("/settings/spec-score-algorithms", "Spec Score Algorithms", "Compare Intelligence Engine"),
 
   routeMeta("/content", "Newsroom Publishing Studio", "Content Operations Cloud"),
   routeMeta("/content/news-articles", "Newsroom Publishing Studio", "Content Operations Cloud"),
@@ -149,13 +149,6 @@ const resolveTrendingMeta = (search = "") => {
   if (section === "rules") {
     return {
       page: "Trending Rules Workspace",
-      workspace: "Trend Intelligence Cloud",
-    };
-  }
-
-  if (section === "history") {
-    return {
-      page: "Boost History Workspace",
       workspace: "Trend Intelligence Cloud",
     };
   }

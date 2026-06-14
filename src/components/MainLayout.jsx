@@ -280,8 +280,8 @@ const MainLayout = ({
                   element={<ROUTE_CONFIG.compareScoring.component />}
                 />
                 <Route
-                  path="/settings/device-field-profiles"
-                  element={<ROUTE_CONFIG.deviceFieldProfiles.component />}
+                  path="/settings/spec-score-algorithms"
+                  element={<ROUTE_CONFIG.specScoreAlgorithms.component />}
                 />
 
                 {/* Content */}

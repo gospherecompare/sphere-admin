@@ -20,6 +20,7 @@ import {
   FaExclamationTriangle,
   FaFileAlt,
   FaHeadset,
+  FaRobot,
   FaSearch,
   FaSignOutAlt,
   FaSpinner,
@@ -68,6 +69,17 @@ const getUserInitials = (value) =>
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase() || "")
     .join("");
+
+const ProfileBotAvatar = ({
+  className = "h-10 w-10",
+  iconClassName = "text-lg",
+}) => (
+  <span
+    className={`flex shrink-0 items-center justify-center rounded-full bg-[#0B66F6] text-white shadow-[0_10px_25px_rgba(11,102,246,0.25)] ring-1 ring-white/70 ${className}`}
+  >
+    <FaRobot className={iconClassName} aria-hidden="true" />
+  </span>
+);
 
 const SearchSuggestions = ({
   suggestions,
@@ -334,9 +346,7 @@ const UserMenu = ({ userName, role, onNavigate, onLogout }) => (
   <div className="absolute right-0 top-[calc(100%+12px)] z-50 w-[min(20rem,calc(100vw-1.5rem))] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_25px_55px_rgba(15,23,42,0.14)]">
     <div className="border-b border-slate-100 px-4 py-4">
       <div className="flex items-center gap-3">
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-[#345CFF] to-[#7A2CFF] text-sm font-bold text-white">
-          {getUserInitials(userName)}
-        </div>
+        <ProfileBotAvatar className="h-12 w-12" iconClassName="text-xl" />
         <div>
           <p className="text-sm font-semibold text-slate-950">{userName}</p>
           <p className="text-xs text-slate-500">{role}</p>
@@ -794,9 +804,9 @@ const Navbar = ({ isMobile, sidebarOpen, onToggleSidebar, onLogout }) => {
                 <button
                   type="button"
                   onClick={toggleUserMenu}
-                  className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-[#345CFF] to-[#7A2CFF] text-[11px] font-bold text-white shadow-[0_10px_25px_rgba(92,76,255,0.22)]"
+                  className="flex h-9 w-9 items-center justify-center rounded-full"
                 >
-                  {getUserInitials(userName)}
+                  <ProfileBotAvatar className="h-9 w-9" iconClassName="text-base" />
                 </button>
                 {showUserMenu ? (
                   <UserMenu
@@ -870,9 +880,7 @@ const Navbar = ({ isMobile, sidebarOpen, onToggleSidebar, onLogout }) => {
               onClick={toggleUserMenu}
               className="flex items-center gap-3 rounded-xl bg-white px-3 py-1.5 text-slate-900 shadow-[0_10px_25px_rgba(15,23,42,0.05)] transition hover:bg-slate-50"
             >
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-slate-100 to-slate-200 text-sm font-bold text-slate-900">
-                {getUserInitials(userName)}
-              </div>
+              <ProfileBotAvatar />
               <div className="hidden text-left leading-tight xl:block">
                 <p className="text-sm font-semibold text-slate-900">{userName}</p>
                 <p className="text-xs text-slate-500">{role}</p>
