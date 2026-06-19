@@ -29,10 +29,21 @@ import {
 } from "react-icons/fa";
 
 const PIN_PATTERN = /^\d{7}$/;
+const DELETE_PIN_PATTERN = /^\d{4}$/;
+const ADMIN_ROLE_TOKENS = new Set(["admin", "ceo"]);
 const INPUT_CLASS =
   "h-11 w-full rounded-lg border border-slate-200 bg-white px-4 text-base text-slate-700 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-700 sm:text-sm";
 const ERROR_INPUT_CLASS =
   "h-11 w-full rounded-lg border border-red-300 bg-white px-4 text-base text-slate-700 outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-100 sm:text-sm";
+
+const normalizeRoleToken = (role) =>
+  String(role || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, "_");
+
+const isAdminUser = (user) =>
+  ADMIN_ROLE_TOKENS.has(normalizeRoleToken(user?.role));
 
 const getInputClass = (hasError = false, extraClass = "") =>
   `${hasError ? ERROR_INPUT_CLASS : INPUT_CLASS} ${extraClass}`;
@@ -58,6 +69,8 @@ const AccountManagement = () => {
   const [profileSaving, setProfileSaving] = useState(false);
   const [passwordSaving, setPasswordSaving] = useState(false);
   const [pinSaving, setPinSaving] = useState(false);
+  const [deletePinSaving, setDeletePinSaving] = useState(false);
+  const [deletePinDeleting, setDeletePinDeleting] = useState(false);
   const [userData, setUserData] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [message, setMessage] = useState({ type: "", text: "" });
@@ -104,9 +117,34 @@ const AccountManagement = () => {
     new: false,
     confirm: false,
   });
+  const [deletePinStatus, setDeletePinStatus] = useState({
+    isConfigured: false,
+    updated_at: null,
+    updated_by: null,
+  });
+  const [deletePinForm, setDeletePinForm] = useState({
+    currentPin: "",
+    newPin: "",
+    confirmPin: "",
+  });
+  const [deletePinErrors, setDeletePinErrors] = useState({});
+  const [deletePinTouched, setDeletePinTouched] = useState({});
+  const [showDeletePins, setShowDeletePins] = useState({
+    current: false,
+    new: false,
+    confirm: false,
+  });
+  const [deletePinPasswordModal, setDeletePinPasswordModal] = useState({
+    open: false,
+    mode: "save",
+    adminPassword: "",
+    showPassword: false,
+    error: "",
+  });
 
   const getToken = () => Cookies.get("authToken");
   const getAuthHeaders = (token) => ({ Authorization: `Bearer ${token}` });
+  const isAdminRole = isAdminUser(userData);
 
   const populateProfileForm = (user) => {
     setProfileForm({
@@ -138,8 +176,34 @@ const AccountManagement = () => {
       ]);
 
       if (profileResponse.data.success) {
-        setUserData(profileResponse.data.user);
-        populateProfileForm(profileResponse.data.user);
+        const loadedUser = profileResponse.data.user;
+        setUserData(loadedUser);
+        populateProfileForm(loadedUser);
+
+        if (isAdminUser(loadedUser)) {
+          const deletePinStatusResponse = await axios.get(
+            buildUrl("/api/auth/data-delete-pin/status"),
+            {
+              headers: getAuthHeaders(token),
+            },
+          );
+
+          if (deletePinStatusResponse.data.success) {
+            setDeletePinStatus({
+              isConfigured: Boolean(
+                deletePinStatusResponse.data.isConfigured,
+              ),
+              updated_at: deletePinStatusResponse.data.updated_at || null,
+              updated_by: deletePinStatusResponse.data.updated_by || null,
+            });
+          }
+        } else {
+          setDeletePinStatus({
+            isConfigured: false,
+            updated_at: null,
+            updated_by: null,
+          });
+        }
       }
 
       if (pinStatusResponse.data.success) {
@@ -167,6 +231,12 @@ const AccountManagement = () => {
     loadAccountData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (activeTab === "delete-pin" && userData && !isAdminRole) {
+      setActiveTab("profile");
+    }
+  }, [activeTab, isAdminRole, userData]);
 
   const validateProfileField = (name, value) => {
     if (name === "email") {
@@ -225,6 +295,35 @@ const AccountManagement = () => {
     if (name === "confirmPin") {
       if (!value) return "Please confirm the organization PIN";
       if (value !== nextForm.newPin) return "PINs do not match";
+    }
+    return "";
+  };
+
+  const validateDeletePinField = (
+    name,
+    value,
+    nextForm = deletePinForm,
+  ) => {
+    if (name === "currentPin") {
+      if (deletePinStatus.isConfigured && !value) {
+        return "Current delete PIN is required";
+      }
+      if (value && !DELETE_PIN_PATTERN.test(value)) {
+        return "Delete PIN must be exactly 4 digits";
+      }
+    }
+    if (name === "newPin") {
+      if (!value) return "New delete PIN is required";
+      if (!DELETE_PIN_PATTERN.test(value)) {
+        return "Delete PIN must be exactly 4 digits";
+      }
+      if (deletePinStatus.isConfigured && value === nextForm.currentPin) {
+        return "New delete PIN must be different from current PIN";
+      }
+    }
+    if (name === "confirmPin") {
+      if (!value) return "Please confirm the delete PIN";
+      if (value !== nextForm.newPin) return "Delete PINs do not match";
     }
     return "";
   };
@@ -329,6 +428,57 @@ const AccountManagement = () => {
     }));
   };
 
+  const handleDeletePinChange = (event) => {
+    const { name, value } = event.target;
+    const isPinInput = ["currentPin", "newPin", "confirmPin"].includes(name);
+    const normalizedValue = isPinInput
+      ? value.replace(/\D/g, "").slice(0, 4)
+      : value;
+    const nextForm = { ...deletePinForm, [name]: normalizedValue };
+    setDeletePinForm(nextForm);
+
+    if (deletePinTouched[name]) {
+      setDeletePinErrors((previous) => ({
+        ...previous,
+        [name]: validateDeletePinField(name, normalizedValue, nextForm),
+      }));
+    }
+    if (name === "newPin" && deletePinTouched.confirmPin) {
+      setDeletePinErrors((previous) => ({
+        ...previous,
+        confirmPin: validateDeletePinField(
+          "confirmPin",
+          nextForm.confirmPin,
+          nextForm,
+        ),
+      }));
+    }
+    if (name === "currentPin" && deletePinTouched.newPin) {
+      setDeletePinErrors((previous) => ({
+        ...previous,
+        newPin: validateDeletePinField(
+          "newPin",
+          nextForm.newPin,
+          nextForm,
+        ),
+      }));
+    }
+  };
+
+  const handleDeletePinBlur = (event) => {
+    const { name, value } = event.target;
+    const isPinInput = ["currentPin", "newPin", "confirmPin"].includes(name);
+    const normalizedValue = isPinInput
+      ? value.replace(/\D/g, "").slice(0, 4)
+      : value;
+    const nextForm = { ...deletePinForm, [name]: normalizedValue };
+    setDeletePinTouched((previous) => ({ ...previous, [name]: true }));
+    setDeletePinErrors((previous) => ({
+      ...previous,
+      [name]: validateDeletePinField(name, normalizedValue, nextForm),
+    }));
+  };
+
   const validateProfileForm = () => {
     const errors = {};
     ["email"].forEach((field) => {
@@ -355,6 +505,34 @@ const AccountManagement = () => {
       if (error) errors[field] = error;
     });
     return errors;
+  };
+
+  const validateDeletePinForm = () => {
+    const errors = {};
+    Object.keys(deletePinForm).forEach((field) => {
+      if (!deletePinStatus.isConfigured && field === "currentPin") return;
+      const error = validateDeletePinField(field, deletePinForm[field]);
+      if (error) errors[field] = error;
+    });
+    return errors;
+  };
+
+  const markDeletePinFormTouched = () => {
+    setDeletePinTouched({
+      currentPin: deletePinStatus.isConfigured,
+      newPin: true,
+      confirmPin: true,
+    });
+  };
+
+  const resetDeletePinForm = () => {
+    setDeletePinForm({
+      currentPin: "",
+      newPin: "",
+      confirmPin: "",
+    });
+    setDeletePinErrors({});
+    setDeletePinTouched({});
   };
 
   const handleUpdateProfile = async (event) => {
@@ -486,6 +664,172 @@ const AccountManagement = () => {
     }
   };
 
+  const resetDeletePinPasswordModal = () => {
+    setDeletePinPasswordModal({
+      open: false,
+      mode: "save",
+      adminPassword: "",
+      showPassword: false,
+      error: "",
+    });
+  };
+
+  const openDeletePinPasswordModal = (mode) => {
+    setDeletePinPasswordModal({
+      open: true,
+      mode,
+      adminPassword: "",
+      showPassword: false,
+      error: "",
+    });
+  };
+
+  const closeDeletePinPasswordModal = () => {
+    if (deletePinSaving || deletePinDeleting) return;
+    resetDeletePinPasswordModal();
+  };
+
+  const handleDeletePinPasswordChange = (event) => {
+    const { value } = event.target;
+    setDeletePinPasswordModal((previous) => ({
+      ...previous,
+      adminPassword: value,
+      error: previous.error && value.trim() ? "" : previous.error,
+    }));
+  };
+
+  const submitDeletePinUpdate = async (adminPassword) => {
+    try {
+      setDeletePinSaving(true);
+      const response = await axios.put(
+        buildUrl("/api/auth/data-delete-pin"),
+        {
+          currentPassword: adminPassword,
+          currentPin: deletePinStatus.isConfigured
+            ? deletePinForm.currentPin
+            : "",
+          newPin: deletePinForm.newPin,
+        },
+        { headers: getAuthHeaders(getToken()) },
+      );
+
+      if (response.data.success) {
+        resetDeletePinForm();
+        resetDeletePinPasswordModal();
+        setDeletePinStatus({
+          isConfigured: Boolean(response.data.isConfigured),
+          updated_at: response.data.updated_at || null,
+          updated_by: response.data.updated_by || null,
+        });
+        setMessage({
+          type: "success",
+          text: response.data.message || "Delete PIN updated successfully",
+        });
+        setTimeout(() => setMessage({ type: "", text: "" }), 3000);
+      }
+    } catch (error) {
+      console.error("Error updating delete PIN:", error);
+      setDeletePinPasswordModal((previous) => ({
+        ...previous,
+        error: error.response?.data?.message || "Failed to update delete PIN",
+      }));
+    } finally {
+      setDeletePinSaving(false);
+    }
+  };
+
+  const submitDeletePinRemoval = async (adminPassword) => {
+    try {
+      setDeletePinDeleting(true);
+      const response = await axios.delete(
+        buildUrl("/api/auth/data-delete-pin"),
+        {
+          headers: getAuthHeaders(getToken()),
+          data: {
+            currentPassword: adminPassword,
+          },
+        },
+      );
+
+      if (response.data.success) {
+        resetDeletePinForm();
+        resetDeletePinPasswordModal();
+        setDeletePinStatus({
+          isConfigured: false,
+          updated_at: null,
+          updated_by: null,
+        });
+        setMessage({
+          type: "success",
+          text: response.data.message || "Delete PIN removed",
+        });
+        setTimeout(() => setMessage({ type: "", text: "" }), 3000);
+      }
+    } catch (error) {
+      console.error("Error removing delete PIN:", error);
+      setDeletePinPasswordModal((previous) => ({
+        ...previous,
+        error: error.response?.data?.message || "Failed to remove delete PIN",
+      }));
+    } finally {
+      setDeletePinDeleting(false);
+    }
+  };
+
+  const handleUpdateDeletePin = (event) => {
+    event.preventDefault();
+    if (!isAdminRole) {
+      setMessage({
+        type: "error",
+        text: "Only admin users can manage the delete audit PIN",
+      });
+      return;
+    }
+
+    const errors = validateDeletePinForm();
+    if (Object.keys(errors).length) {
+      markDeletePinFormTouched();
+      setDeletePinErrors(errors);
+      setMessage({ type: "error", text: "Please fix all errors" });
+      return;
+    }
+
+    setMessage({ type: "", text: "" });
+    openDeletePinPasswordModal("save");
+  };
+
+  const handleRemoveDeletePin = () => {
+    if (!isAdminRole) {
+      setMessage({
+        type: "error",
+        text: "Only admin users can manage the delete audit PIN",
+      });
+      return;
+    }
+
+    setMessage({ type: "", text: "" });
+    openDeletePinPasswordModal("remove");
+  };
+
+  const handleSubmitDeletePinPassword = async (event) => {
+    event.preventDefault();
+    const adminPassword = deletePinPasswordModal.adminPassword;
+    if (!adminPassword.trim()) {
+      setDeletePinPasswordModal((previous) => ({
+        ...previous,
+        error: "Admin password is required",
+      }));
+      return;
+    }
+
+    if (deletePinPasswordModal.mode === "remove") {
+      await submitDeletePinRemoval(adminPassword);
+      return;
+    }
+
+    await submitDeletePinUpdate(adminPassword);
+  };
+
   const formatPinUpdatedAt = (value) => {
     if (!value) return "Not updated yet";
     try {
@@ -516,6 +860,24 @@ const AccountManagement = () => {
     ? userData?.email || `Admin user #${pinStatus.updated_by}`
     : "Not updated yet";
 
+  const deletePinUpdatedByLabel = deletePinStatus.updated_by
+    ? userData?.email || `Admin user #${deletePinStatus.updated_by}`
+    : "Not updated yet";
+  const isDeletePinPasswordRemoval =
+    deletePinPasswordModal.mode === "remove";
+  const isDeletePinPasswordBusy = isDeletePinPasswordRemoval
+    ? deletePinDeleting
+    : deletePinSaving;
+
+  const accountTabs = [
+    { id: "profile", label: "Profile", icon: FaUser },
+    { id: "password", label: "Security", icon: FaLock },
+    { id: "pin", label: "Organization PIN", icon: FaRegCreditCard },
+    ...(isAdminRole
+      ? [{ id: "delete-pin", label: "Delete PIN", icon: FaShieldAlt }]
+      : []),
+  ];
+
   const quickActions = [
     {
       title: "Change Password",
@@ -531,6 +893,19 @@ const AccountManagement = () => {
       iconClass: "bg-[#8457dc]",
       onClick: () => setActiveTab("pin"),
     },
+    ...(isAdminRole
+      ? [
+          {
+            title: "Delete Audit PIN",
+            description: deletePinStatus.isConfigured
+              ? "Rotate or remove delete approval"
+              : "Create delete approval PIN",
+            icon: FaShieldAlt,
+            iconClass: "bg-[#d93d53]",
+            onClick: () => setActiveTab("delete-pin"),
+          },
+        ]
+      : []),
     {
       title: "Profile Details",
       description: "Review your account information",
@@ -613,11 +988,7 @@ const AccountManagement = () => {
         aria-label="Account settings sections"
         className="flex max-w-full overflow-x-auto rounded-xl border border-slate-200 bg-white px-1 shadow-[0_10px_35px_rgba(15,23,42,0.04)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:px-3"
       >
-        {[
-          { id: "profile", label: "Profile", icon: FaUser },
-          { id: "password", label: "Security", icon: FaLock },
-          { id: "pin", label: "Organization PIN", icon: FaRegCreditCard },
-        ].map(({ id, label, icon: Icon }) => (
+        {accountTabs.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
             type="button"
@@ -810,7 +1181,8 @@ const AccountManagement = () => {
               </div>
             </article>
 
-            <article className="min-w-0 rounded-xl border border-slate-200 bg-white p-4 shadow-[0_12px_36px_rgba(15,23,42,0.045)] sm:p-6">
+            <div className="space-y-4">
+              <article className="min-w-0 rounded-xl border border-slate-200 bg-white p-4 shadow-[0_12px_36px_rgba(15,23,42,0.045)] sm:p-6">
               <div className="flex items-start gap-3">
                 <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-green-50 text-green-600">
                   <FaShieldAlt />
@@ -907,7 +1279,102 @@ const AccountManagement = () => {
                   </p>
                 </div>
               </div>
-            </article>
+              </article>
+
+              {isAdminRole && (
+                <article className="min-w-0 rounded-xl border border-rose-100 bg-white p-4 shadow-[0_12px_36px_rgba(15,23,42,0.045)] sm:p-6">
+                  <div className="flex items-start gap-3">
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-rose-50 text-rose-600">
+                      <FaShieldAlt />
+                    </span>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h2 className="text-lg font-bold text-slate-950">
+                          Delete Audit PIN
+                        </h2>
+                        <span
+                          className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${
+                            deletePinStatus.isConfigured
+                              ? "bg-green-50 text-green-700"
+                              : "bg-amber-50 text-amber-700"
+                          }`}
+                        >
+                          {deletePinStatus.isConfigured
+                            ? "Configured"
+                            : "Not Set"}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-sm leading-6 text-slate-500">
+                        Required before audited delete actions. Admin password
+                        is needed to create, update, or remove it.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div
+                    className={`mt-6 flex gap-3 rounded-lg border px-4 py-4 ${
+                      deletePinStatus.isConfigured
+                        ? "border-green-100 bg-green-50/70"
+                        : "border-amber-100 bg-amber-50/70"
+                    }`}
+                  >
+                    <FaLock
+                      className={`mt-0.5 ${
+                        deletePinStatus.isConfigured
+                          ? "text-green-600"
+                          : "text-amber-600"
+                      }`}
+                    />
+                    <div>
+                      <p className="text-sm font-semibold text-slate-800">
+                        Delete Approval Status
+                      </p>
+                      <p className="mt-1 text-xs leading-5 text-slate-600">
+                        {deletePinStatus.isConfigured
+                          ? "Delete approval is active for audited destructive actions."
+                          : "Create the delete PIN before admins can complete audited deletes."}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 border-b border-slate-100 py-6 sm:grid-cols-2">
+                    <div className="flex gap-3">
+                      <FaCalendarAlt className="mt-0.5 text-rose-600" />
+                      <div>
+                        <p className="text-xs font-semibold text-rose-600">
+                          Last Updated
+                        </p>
+                        <p className="mt-1 text-sm font-medium text-slate-700">
+                          {formatPinUpdatedAt(deletePinStatus.updated_at)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex gap-3">
+                      <FaUser className="mt-0.5 text-rose-600" />
+                      <div>
+                        <p className="text-xs font-semibold text-rose-600">
+                          Updated By
+                        </p>
+                        <p className="mt-1 break-all text-sm font-medium text-slate-700">
+                          {deletePinUpdatedByLabel}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("delete-pin")}
+                    className="mt-4 inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-rose-200 text-sm font-semibold text-rose-600 transition hover:bg-rose-50"
+                  >
+                    <FaKey />
+                    {deletePinStatus.isConfigured
+                      ? "Manage Delete PIN"
+                      : "Create Delete PIN"}
+                  </button>
+                </article>
+              )}
+            </div>
           </section>
 
           <section className="min-w-0 rounded-xl border border-slate-200 bg-white p-4 shadow-[0_12px_36px_rgba(15,23,42,0.045)] sm:p-5">
@@ -919,7 +1386,7 @@ const AccountManagement = () => {
                 Common account and security actions
               </p>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
               {quickActions.map(
                 ({ title, description, icon: Icon, iconClass, onClick }) => (
                   <button
@@ -1259,6 +1726,364 @@ const AccountManagement = () => {
             </div>
           </aside>
         </section>
+      )}
+
+      {activeTab === "delete-pin" && isAdminRole && (
+        <section className="grid gap-4 lg:grid-cols-[1.08fr_0.92fr]">
+          <article className="min-w-0 rounded-xl border border-slate-200 bg-white p-4 shadow-[0_12px_36px_rgba(15,23,42,0.045)] sm:p-6">
+            <div className="mb-6 flex items-start gap-3">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-rose-50 text-rose-600">
+                <FaShieldAlt />
+              </span>
+              <div>
+                <span className="mb-2 inline-flex rounded-full bg-rose-50 px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-rose-600">
+                  Step 1 of 2
+                </span>
+                <h2 className="text-lg font-bold text-slate-950">
+                  {deletePinStatus.isConfigured
+                    ? "Manage Delete Audit PIN"
+                    : "Create Delete Audit PIN"}
+                </h2>
+                <p className="mt-1 text-sm leading-6 text-slate-500">
+                  This four-digit PIN is required with a delete reason before
+                  audited delete actions can complete.
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleUpdateDeletePin} className="space-y-4">
+              {deletePinStatus.isConfigured && (
+                <div>
+                  <label className="mb-2 block text-xs font-semibold text-slate-600">
+                    Current Delete PIN
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showDeletePins.current ? "text" : "password"}
+                      name="currentPin"
+                      value={deletePinForm.currentPin}
+                      onChange={handleDeletePinChange}
+                      onBlur={handleDeletePinBlur}
+                      inputMode="numeric"
+                      maxLength={4}
+                      className={getInputClass(
+                        deletePinErrors.currentPin &&
+                          deletePinTouched.currentPin,
+                        "pr-11 tracking-[0.35em]",
+                      )}
+                    />
+                    <VisibilityButton
+                      visible={showDeletePins.current}
+                      label="Toggle current delete PIN visibility"
+                      onClick={() =>
+                        setShowDeletePins((previous) => ({
+                          ...previous,
+                          current: !previous.current,
+                        }))
+                      }
+                    />
+                  </div>
+                  <FieldError
+                    visible={
+                      deletePinErrors.currentPin &&
+                      deletePinTouched.currentPin
+                    }
+                  >
+                    {deletePinErrors.currentPin}
+                  </FieldError>
+                </div>
+              )}
+
+              {[
+                {
+                  name: "newPin",
+                  label: deletePinStatus.isConfigured
+                    ? "New Delete PIN"
+                    : "Delete PIN",
+                  visibility: "new",
+                },
+                {
+                  name: "confirmPin",
+                  label: "Confirm Delete PIN",
+                  visibility: "confirm",
+                },
+              ].map(({ name, label, visibility }) => (
+                <div key={name}>
+                  <label className="mb-2 block text-xs font-semibold text-slate-600">
+                    {label}
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showDeletePins[visibility] ? "text" : "password"}
+                      name={name}
+                      value={deletePinForm[name]}
+                      onChange={handleDeletePinChange}
+                      onBlur={handleDeletePinBlur}
+                      inputMode="numeric"
+                      maxLength={4}
+                      className={getInputClass(
+                        deletePinErrors[name] && deletePinTouched[name],
+                        "pr-11 tracking-[0.35em]",
+                      )}
+                    />
+                    <VisibilityButton
+                      visible={showDeletePins[visibility]}
+                      label={`Toggle ${label.toLowerCase()} visibility`}
+                      onClick={() =>
+                        setShowDeletePins((previous) => ({
+                          ...previous,
+                          [visibility]: !previous[visibility],
+                        }))
+                      }
+                    />
+                  </div>
+                  <FieldError
+                    visible={deletePinErrors[name] && deletePinTouched[name]}
+                  >
+                    {deletePinErrors[name]}
+                  </FieldError>
+                </div>
+              ))}
+
+              <div className="rounded-lg border border-rose-100 bg-rose-50/70 px-4 py-3 text-xs leading-5 text-slate-600">
+                First enter and confirm the exact four-digit delete PIN. The
+                next screen asks for your admin password before anything is
+                saved.
+              </div>
+
+              <div
+                className={`grid gap-3 ${
+                  deletePinStatus.isConfigured ? "sm:grid-cols-2" : ""
+                }`}
+              >
+                <button
+                  type="submit"
+                  disabled={deletePinSaving || deletePinDeleting}
+                  className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-rose-600 px-4 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {deletePinSaving ? (
+                    <FaSpinner className="animate-spin" />
+                  ) : (
+                    <FaShieldAlt />
+                  )}
+                  Continue to Admin Password
+                </button>
+
+                {deletePinStatus.isConfigured && (
+                  <button
+                    type="button"
+                    onClick={handleRemoveDeletePin}
+                    disabled={deletePinSaving || deletePinDeleting}
+                    className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-red-200 px-4 text-sm font-semibold text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {deletePinDeleting ? (
+                      <FaSpinner className="animate-spin" />
+                    ) : (
+                      <FaTimes />
+                    )}
+                    Verify Password to Remove
+                  </button>
+                )}
+              </div>
+            </form>
+          </article>
+
+          <aside className="space-y-4">
+            <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-[0_12px_36px_rgba(15,23,42,0.045)]">
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-rose-50 text-rose-600">
+                <FaShieldAlt />
+              </span>
+              <h3 className="mt-4 text-base font-bold text-slate-900">
+                Delete audit status
+              </h3>
+              <p className="mt-2 text-sm leading-6 text-slate-600">
+                {deletePinStatus.isConfigured
+                  ? "Delete approval is configured. Admins must provide the delete PIN and a reason before audited deletes run."
+                  : "No delete PIN exists yet. Create one here before admins can complete audited delete actions."}
+              </p>
+              <div className="mt-5 space-y-3 border-t border-slate-100 pt-4">
+                <div className="flex items-center gap-3 text-xs text-slate-600">
+                  <FaCalendarAlt className="text-rose-600" />
+                  {formatPinUpdatedAt(deletePinStatus.updated_at)}
+                </div>
+                <div className="flex items-center gap-3 text-xs text-slate-600">
+                  <FaUser className="text-rose-600" />
+                  {deletePinUpdatedByLabel}
+                </div>
+                <div className="flex items-center gap-3 text-xs text-slate-600">
+                  <FaDesktop className="text-rose-600" />
+                  Admin role only
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3 rounded-xl border border-amber-100 bg-amber-50/70 p-4">
+              <FaExclamationCircle className="mt-0.5 text-amber-500" />
+              <div>
+                <p className="text-xs font-bold text-slate-800">
+                  Admin password required
+                </p>
+                <p className="mt-1 text-xs leading-5 text-slate-600">
+                  Creating, rotating, or removing this delete PIN requires the
+                  signed-in admin account password.
+                </p>
+              </div>
+            </div>
+          </aside>
+        </section>
+      )}
+
+      {deletePinPasswordModal.open && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/55 px-4 py-6 backdrop-blur-sm">
+          <button
+            type="button"
+            aria-label="Close admin password confirmation"
+            className="absolute inset-0 cursor-default"
+            onClick={closeDeletePinPasswordModal}
+          />
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-pin-password-title"
+            className="relative w-full max-w-md rounded-2xl border border-white/70 bg-white p-5 shadow-[0_24px_80px_rgba(15,23,42,0.28)] sm:p-6"
+          >
+            <div className="flex items-start gap-3">
+              <span
+                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${
+                  isDeletePinPasswordRemoval
+                    ? "bg-red-50 text-red-600"
+                    : "bg-rose-50 text-rose-600"
+                }`}
+              >
+                {isDeletePinPasswordRemoval ? <FaTimes /> : <FaShieldAlt />}
+              </span>
+              <div className="min-w-0 flex-1">
+                <h2
+                  id="delete-pin-password-title"
+                  className="text-lg font-bold text-slate-950"
+                >
+                  {isDeletePinPasswordRemoval
+                    ? "Verify Admin Password"
+                    : "Step 2: Admin Password"}
+                </h2>
+                <p className="mt-1 text-sm leading-6 text-slate-500">
+                  {isDeletePinPasswordRemoval
+                    ? "Enter your admin password to remove the delete audit PIN."
+                    : "Your 4-digit delete PIN entries match. Enter your admin password to save this change."}
+                </p>
+              </div>
+              <button
+                type="button"
+                aria-label="Close admin password modal"
+                onClick={closeDeletePinPasswordModal}
+                disabled={isDeletePinPasswordBusy}
+                className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <FaTimes />
+              </button>
+            </div>
+
+            <form
+              onSubmit={handleSubmitDeletePinPassword}
+              className="mt-5 space-y-4"
+            >
+              {!isDeletePinPasswordRemoval && (
+                <div className="flex items-start gap-3 rounded-xl border border-green-100 bg-green-50/70 px-4 py-3">
+                  <FaCheck className="mt-0.5 text-green-600" />
+                  <div>
+                    <p className="text-xs font-bold text-green-700">
+                      PIN confirmed
+                    </p>
+                    <p className="mt-1 text-xs leading-5 text-slate-600">
+                      The admin password is the final approval step before the
+                      delete audit PIN is saved.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {isDeletePinPasswordRemoval && (
+                <div className="flex items-start gap-3 rounded-xl border border-red-100 bg-red-50/70 px-4 py-3">
+                  <FaExclamationCircle className="mt-0.5 text-red-600" />
+                  <div>
+                    <p className="text-xs font-bold text-red-700">
+                      Removing this PIN blocks audited deletes
+                    </p>
+                    <p className="mt-1 text-xs leading-5 text-slate-600">
+                      Delete actions cannot complete again until an admin
+                      creates a new delete PIN.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <label className="mb-2 block text-xs font-semibold text-slate-600">
+                  Admin Password
+                </label>
+                <div className="relative">
+                  <input
+                    type={
+                      deletePinPasswordModal.showPassword ? "text" : "password"
+                    }
+                    value={deletePinPasswordModal.adminPassword}
+                    onChange={handleDeletePinPasswordChange}
+                    autoComplete="current-password"
+                    autoFocus
+                    className={getInputClass(
+                      Boolean(deletePinPasswordModal.error),
+                      "pr-11",
+                    )}
+                  />
+                  <VisibilityButton
+                    visible={deletePinPasswordModal.showPassword}
+                    label="Toggle admin password visibility"
+                    onClick={() =>
+                      setDeletePinPasswordModal((previous) => ({
+                        ...previous,
+                        showPassword: !previous.showPassword,
+                      }))
+                    }
+                  />
+                </div>
+                <FieldError visible={Boolean(deletePinPasswordModal.error)}>
+                  {deletePinPasswordModal.error}
+                </FieldError>
+              </div>
+
+              <div className="flex flex-col-reverse gap-3 pt-1 sm:flex-row">
+                <button
+                  type="button"
+                  onClick={closeDeletePinPasswordModal}
+                  disabled={isDeletePinPasswordBusy}
+                  className="inline-flex h-11 flex-1 items-center justify-center rounded-lg border border-slate-200 px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isDeletePinPasswordBusy}
+                  className={`inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                    isDeletePinPasswordRemoval
+                      ? "bg-red-600 hover:bg-red-700"
+                      : "bg-rose-600 hover:bg-rose-700"
+                  }`}
+                >
+                  {isDeletePinPasswordBusy ? (
+                    <FaSpinner className="animate-spin" />
+                  ) : (
+                    <FaShieldAlt />
+                  )}
+                  {isDeletePinPasswordRemoval
+                    ? "Remove Delete PIN"
+                    : deletePinStatus.isConfigured
+                      ? "Save Updated PIN"
+                      : "Save Delete PIN"}
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
       )}
     </div>
   );

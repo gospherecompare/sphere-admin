@@ -125,8 +125,14 @@ const presetEndpoints = [
     name: "Create Mobile",
     method: "POST",
     url: "/api/smartphones/req",
+    body: buildSmartphoneRequestBody(),
   },
-  { name: "Update Mobile", method: "PUT", url: "/api/smartphone/:id" },
+  {
+    name: "Update Mobile",
+    method: "PUT",
+    url: "/api/smartphone/:id",
+    body: buildSmartphoneRequestBody(),
+  },
   { name: "Delete Mobile", method: "DELETE", url: "/api/smartphone/:id" },
   { name: "Get Categories", method: "GET", url: "/api/categories" },
   { name: "Get Brands", method: "GET", url: "/api/brands" },
@@ -354,6 +360,125 @@ const buildInitialBody = () =>
     2,
   );
 
+function buildSmartphoneRequestBody() {
+  return {
+    name: "Samsung Galaxy S24",
+    product_name: "Samsung Galaxy S24",
+    product_type: "smartphone",
+    brand: "Samsung",
+    brand_name: "Samsung",
+    category: "smartphone",
+    segment: "flagship",
+    model: "SM-S921B",
+    launch_date: "2026-01-15",
+    official_preorder_url: "https://example.com/samsung-galaxy-s24",
+    publish: false,
+    published: false,
+    images: ["https://example.com/s24-front.jpg"],
+    images_json: ["https://example.com/s24-front.jpg"],
+    colors: [{ name: "Onyx Black", code: "#1A1A1A" }],
+    build_design: {
+      material: "Glass and aluminum",
+      frame: "Armor aluminum",
+    },
+    build_design_json: {
+      material: "Glass and aluminum",
+      frame: "Armor aluminum",
+    },
+    display: {
+      size: "6.2 inch",
+      refresh_rate: "120Hz",
+    },
+    display_json: {
+      size: "6.2 inch",
+      refresh_rate: "120Hz",
+    },
+    performance: {
+      chipset: "Snapdragon 8 Gen 3",
+      ram: "12GB",
+    },
+    performance_json: {
+      chipset: "Snapdragon 8 Gen 3",
+      ram: "12GB",
+    },
+    camera: {
+      main: "50 MP",
+      ultrawide: "12 MP",
+    },
+    camera_json: {
+      main: "50 MP",
+      ultrawide: "12 MP",
+    },
+    battery: {
+      capacity: "4000mAh",
+      charging: "45W",
+    },
+    battery_json: {
+      capacity: "4000mAh",
+      charging: "45W",
+    },
+    connectivity: {
+      wifi: "Wi-Fi 7",
+      bluetooth: "5.3",
+    },
+    connectivity_json: {
+      wifi: "Wi-Fi 7",
+      bluetooth: "5.3",
+    },
+    network: {
+      sim: "Dual SIM",
+    },
+    network_json: {
+      sim: "Dual SIM",
+    },
+    ports: {
+      usb: "USB-C",
+    },
+    ports_json: {
+      usb: "USB-C",
+    },
+    audio: {
+      speakers: "Stereo",
+    },
+    audio_json: {
+      speakers: "Stereo",
+    },
+    multimedia: {
+      video: "4K",
+    },
+    multimedia_json: {
+      video: "4K",
+    },
+    sensors: ["Fingerprint", "Accelerometer", "Gyroscope"],
+    variants: [
+      {
+        ram: "12GB",
+        storage: "256GB",
+        base_price: 79999,
+        stores: [
+          {
+            store_name: "Amazon",
+            price: 79999,
+            url: "https://example.com/s24-amazon",
+            offer_text: "Launch discount",
+            sale_start_date: "2026-01-15",
+          },
+        ],
+      },
+    ],
+    variant_store_prices: [
+      {
+        variant_index: 0,
+        store_name: "Amazon",
+        price: 79999,
+        url: "https://example.com/s24-amazon",
+        offer_text: "Launch discount",
+        sale_start_date: "2026-01-15",
+      },
+    ],
+  };
+}
+
 export default function ApiTester() {
   const [method, setMethod] = useState("POST");
   const [url, setUrl] = useState("/api/smartphones/req");
@@ -378,7 +503,7 @@ export default function ApiTester() {
   );
   const [importText, setImportText] = useState("");
   const [showImportPanel, setShowImportPanel] = useState(false);
-  const [responseTime, setResponseTime] = useState(0);
+  const [, setResponseTime] = useState(0);
   const [copied, setCopied] = useState(false);
   const [postResponsePath, setPostResponsePath] = useState("/api/smartphones/req");
   const [postResponseLoading, setPostResponseLoading] = useState(false);
@@ -658,6 +783,12 @@ export default function ApiTester() {
       if (!nextBody.product_name) {
         nextBody.product_name = option.name;
       }
+      if (option.brand && !nextBody.brand) {
+        nextBody.brand = option.brand;
+      }
+      if (option.brand && !nextBody.brand_name) {
+        nextBody.brand_name = option.brand;
+      }
       if (option.model && !nextBody.model) {
         nextBody.model = option.model;
       }
@@ -668,6 +799,8 @@ export default function ApiTester() {
           {
             name: option.name,
             product_name: option.name,
+            brand: option.brand || "",
+            brand_name: option.brand || "",
             model: option.model || "",
           },
           null,
@@ -875,6 +1008,18 @@ export default function ApiTester() {
           null,
         brand_name:
           row.brand_name || row.brand || product.brand || row.brand_name || null,
+        product_name:
+          row.product_name ||
+          row.name ||
+          product.name ||
+          basicInfo.model_name ||
+          null,
+        brand:
+          row.brand ||
+          row.brand_name ||
+          product.brand ||
+          row.brand_name ||
+          undefined,
         model: row.model || basicInfo.model || basicInfo.model_number || null,
         category: row.category ?? undefined,
         launch_date: row.launch_date ?? undefined,

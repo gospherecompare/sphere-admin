@@ -34,7 +34,8 @@ import {
 } from "../utils/mobileStatus";
 
 const DEFAULT_TITLE = "View Mobiles";
-const DEFAULT_SUBTITLE = "Manage and view all smartphone listings on your platform.";
+const DEFAULT_SUBTITLE =
+  "Manage and view all smartphone listings on your platform.";
 const DEFAULT_TOTAL_LABEL = "Total Mobiles";
 const ROWS_PER_PAGE_OPTIONS = [10, 25, 50];
 
@@ -153,8 +154,10 @@ const getStatusLabel = (mobile) => {
 
 const getStatusClasses = (mobile) => {
   const status = getStatusValue(mobile);
-  if (status === "published") return "border border-emerald-200 bg-emerald-50 text-emerald-700";
-  if (status === "upcoming") return "border border-indigo-200 bg-indigo-50 text-indigo-700";
+  if (status === "published")
+    return "border border-emerald-200 bg-emerald-50 text-emerald-700";
+  if (status === "upcoming")
+    return "border border-indigo-200 bg-indigo-50 text-indigo-700";
   return "border border-orange-200 bg-orange-50 text-orange-700";
 };
 
@@ -344,7 +347,11 @@ const resolveHas5G = (mobile) => {
   const searchableText = [
     mobile.name,
     mobile.model,
-    getFirstPathValue(raw, ["network.technology", "network.cellular", "connectivity.network"]),
+    getFirstPathValue(raw, [
+      "network.technology",
+      "network.cellular",
+      "connectivity.network",
+    ]),
   ]
     .filter(Boolean)
     .join(" ")
@@ -403,9 +410,16 @@ const resolvePerformanceScore = (mobile) => {
   const raw = mobile.raw || mobile;
   return clampScore(
     firstFilledValue(
-      getFirstPathValue(raw, ["performance_score", "performanceScore", "scores.performance", "performance.score"]),
+      getFirstPathValue(raw, [
+        "performance_score",
+        "performanceScore",
+        "scores.performance",
+        "performance.score",
+      ]),
       mobile.trend_velocity,
-      mobile.hook_score !== null && mobile.hook_score !== undefined ? Number(mobile.hook_score) + 1 : null,
+      mobile.hook_score !== null && mobile.hook_score !== undefined
+        ? Number(mobile.hook_score) + 1
+        : null,
     ),
   );
 };
@@ -433,7 +447,11 @@ const resolveSearchVolume = (mobile, index) => {
 
 const resolveTrendingRank = (mobile, index) => {
   const raw = mobile.raw || mobile;
-  const rank = getFirstPathValue(raw, ["trending_rank", "trendingRank", "rank"]);
+  const rank = getFirstPathValue(raw, [
+    "trending_rank",
+    "trendingRank",
+    "rank",
+  ]);
   const numericRank = Number(rank);
   if (Number.isFinite(numericRank) && numericRank > 0) return `#${numericRank}`;
   return `#${index + 2}`;
@@ -443,7 +461,12 @@ const resolveTrendDirection = (mobile) => {
   const raw = mobile.raw || mobile;
   const value = toScore(
     firstFilledValue(
-      getFirstPathValue(raw, ["trend_direction", "trendDirection", "trend_velocity", "trendVelocity"]),
+      getFirstPathValue(raw, [
+        "trend_direction",
+        "trendDirection",
+        "trend_velocity",
+        "trendVelocity",
+      ]),
       mobile.trend_velocity,
     ),
   );
@@ -467,20 +490,34 @@ const rowActionButtonClassName =
 const mobileActionButtonClassName =
   "inline-flex h-10 items-center justify-center gap-2 bg-white px-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50";
 
-const StatCard = ({ icon, iconClassName, label, value, delta, deltaTone = "up" }) => {
+const StatCard = ({
+  icon,
+  iconClassName,
+  label,
+  value,
+  delta,
+  deltaTone = "up",
+}) => {
   const Icon = icon;
-  const deltaClassName = deltaTone === "down" ? "text-rose-600" : "text-emerald-600";
+  const deltaClassName =
+    deltaTone === "down" ? "text-rose-600" : "text-emerald-600";
 
   return (
     <div className="bg-white px-4 py-4 sm:px-5">
       <div className="flex items-start gap-4">
-        <div className={`flex h-12 w-12 items-center justify-center border border-current/10 ${iconClassName}`}>
+        <div
+          className={`flex h-12 w-12 items-center justify-center border border-current/10 ${iconClassName}`}
+        >
           <Icon className="text-lg" />
         </div>
         <div className="min-w-0">
           <p className="text-sm font-medium text-slate-500">{label}</p>
           <div className="mt-2 text-[1.9rem] font-bold tracking-tight text-slate-950">
-            {typeof value === "number" ? <CountUp end={value} duration={1} /> : value}
+            {typeof value === "number" ? (
+              <CountUp end={value} duration={1} />
+            ) : (
+              value
+            )}
           </div>
           <p className="mt-1 text-xs text-slate-500">
             <span className={`font-semibold ${deltaClassName}`}>
@@ -540,15 +577,25 @@ const Toasts = ({ toasts, onDismiss }) => (
 
 const MobileInfoRow = ({ label, value, valueClassName = "" }) => (
   <div className="flex items-start justify-between gap-3 border-b border-slate-200 py-2 last:border-b-0">
-    <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{label}</p>
-    <div className={`text-right text-sm font-medium text-slate-700 ${valueClassName}`}>{value}</div>
+    <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">
+      {label}
+    </p>
+    <div
+      className={`text-right text-sm font-medium text-slate-700 ${valueClassName}`}
+    >
+      {value}
+    </div>
   </div>
 );
 
 const MobileInlineScore = ({ label, value, className }) => (
   <div className="min-w-[calc(50%-0.25rem)] flex-1 border border-slate-200 bg-white px-2 py-2">
-    <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{label}</p>
-    <span className={`mt-2 inline-flex min-w-[2.5rem] items-center justify-center border px-2 py-1 text-sm font-semibold ${className}`}>
+    <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">
+      {label}
+    </p>
+    <span
+      className={`mt-2 inline-flex min-w-[2.5rem] items-center justify-center border px-2 py-1 text-sm font-semibold ${className}`}
+    >
       {value}
     </span>
   </div>
@@ -599,7 +646,10 @@ const ViewMobiles = ({
 
   const showToast = (toastTitle, message, type = "success") => {
     const id = Date.now() + Math.random();
-    setToasts((previous) => [...previous, { id, title: toastTitle, message, type }]);
+    setToasts((previous) => [
+      ...previous,
+      { id, title: toastTitle, message, type },
+    ]);
     window.setTimeout(() => {
       setToasts((previous) => previous.filter((toast) => toast.id !== id));
     }, 5000);
@@ -624,8 +674,16 @@ const ViewMobiles = ({
 
     return storePrices.some((entry) => {
       const price = Number(entry?.price) || 0;
-      const hasStore = Boolean(entry?.store || entry?.store_id || entry?.merchant || entry?.shop);
-      const hasLink = Boolean(entry?.affiliate_link || entry?.affiliate || entry?.affiliateUrl || entry?.url || entry?.link);
+      const hasStore = Boolean(
+        entry?.store || entry?.store_id || entry?.merchant || entry?.shop,
+      );
+      const hasLink = Boolean(
+        entry?.affiliate_link ||
+        entry?.affiliate ||
+        entry?.affiliateUrl ||
+        entry?.url ||
+        entry?.link,
+      );
       return price > 0 && (hasStore || hasLink);
     });
   };
@@ -640,7 +698,15 @@ const ViewMobiles = ({
     if (Array.isArray(storePrices) && storePrices.length > 0) {
       return storePrices.some((entry) => {
         const price = Number(entry?.price) || 0;
-        return price > 0 && Boolean(entry?.store || entry?.store_id || entry?.affiliate_link || entry?.url);
+        return (
+          price > 0 &&
+          Boolean(
+            entry?.store ||
+            entry?.store_id ||
+            entry?.affiliate_link ||
+            entry?.url,
+          )
+        );
       });
     }
 
@@ -670,7 +736,8 @@ const ViewMobiles = ({
         let rows = [];
 
         if (Array.isArray(payload)) rows = payload;
-        else if (Array.isArray(payload?.smartphones)) rows = payload.smartphones;
+        else if (Array.isArray(payload?.smartphones))
+          rows = payload.smartphones;
         else if (Array.isArray(payload?.data)) rows = payload.data;
 
         const processedRows = [];
@@ -710,17 +777,13 @@ const ViewMobiles = ({
               mobile.launch_status,
               mobile.launch_status_text,
             ),
-            saleStage: firstFilledValue(
-              mobile.saleStage,
-              mobile.sale_status,
-            ),
-            storeStage: firstFilledValue(
-              mobile.storeStage,
-              mobile.store_stage,
-            ),
+            saleStage: firstFilledValue(mobile.saleStage, mobile.sale_status),
+            storeStage: firstFilledValue(mobile.storeStage, mobile.store_stage),
             hook_score: toScore(mobile.hook_score ?? mobile.hookScore),
             buyer_intent: toScore(mobile.buyer_intent ?? mobile.buyerIntent),
-            trend_velocity: toScore(mobile.trend_velocity ?? mobile.trendVelocity),
+            trend_velocity: toScore(
+              mobile.trend_velocity ?? mobile.trendVelocity,
+            ),
             freshness: toScore(mobile.freshness),
             published,
             launch_date: firstFilledValue(
@@ -737,7 +800,9 @@ const ViewMobiles = ({
 
           if (Array.isArray(mobile.variants) && mobile.variants.length > 0) {
             mobile.variants.forEach((variant, variantIndex) => {
-              const storePrices = Array.isArray(variant?.store_prices) ? variant.store_prices : [];
+              const storePrices = Array.isArray(variant?.store_prices)
+                ? variant.store_prices
+                : [];
               const positivePrices = storePrices
                 .map((entry) => Number(entry?.price) || 0)
                 .filter((price) => price > 0);
@@ -745,10 +810,26 @@ const ViewMobiles = ({
               processedRows.push({
                 ...baseRow,
                 rowKey: `${productId || mobile.name || "mobile"}-${variant.id || variant.variant_id || variantIndex}`,
-                price: positivePrices.length > 0 ? Math.min(...positivePrices) : Number(mobile.price) || 0,
-                storage: firstFilledValue(variant.storage, variant.attributes?.storage, mobile.storage, ""),
-                storageTech: collectStorageTech(mobile, variant) || baseRow.storageTech || "",
-                ram: firstFilledValue(variant.ram, variant.attributes?.ram, mobile.ram, ""),
+                price:
+                  positivePrices.length > 0
+                    ? Math.min(...positivePrices)
+                    : Number(mobile.price) || 0,
+                storage: firstFilledValue(
+                  variant.storage,
+                  variant.attributes?.storage,
+                  mobile.storage,
+                  "",
+                ),
+                storageTech:
+                  collectStorageTech(mobile, variant) ||
+                  baseRow.storageTech ||
+                  "",
+                ram: firstFilledValue(
+                  variant.ram,
+                  variant.attributes?.ram,
+                  mobile.ram,
+                  "",
+                ),
                 variant,
               });
             });
@@ -768,7 +849,8 @@ const ViewMobiles = ({
         const groupedMap = new Map();
 
         processedRows.forEach((row) => {
-          const productKey = row.id || row.raw?.id || row.raw?._id || row.rowKey || row.name;
+          const productKey =
+            row.id || row.raw?.id || row.raw?._id || row.rowKey || row.name;
 
           if (!groupedMap.has(productKey)) {
             groupedMap.set(productKey, {
@@ -779,20 +861,37 @@ const ViewMobiles = ({
               model: row.model,
               brandLogoUrl: row.brandLogoUrl || null,
               bestPrice: row.bestPrice ?? null,
-              availableDate: row.availableDate || row.predictedAvailableDate || null,
+              availableDate:
+                row.availableDate || row.predictedAvailableDate || null,
               predictedAvailableDate: row.predictedAvailableDate || null,
               availableDateLabel: row.availableDateLabel || null,
               launchStage: row.launchStage || null,
               saleStage: row.saleStage || null,
               storeStage: row.storeStage || null,
               published: row.published,
-              launch_date: row.launch_date || row.raw?.launch_date || row.raw?.launchDate || null,
+              launch_date:
+                row.launch_date ||
+                row.raw?.launch_date ||
+                row.raw?.launchDate ||
+                null,
               images: Array.isArray(row.images) ? [...row.images] : [],
-              variants: row.variant ? [row.variant] : Array.isArray(row.variants) ? [...row.variants] : [],
+              variants: row.variant
+                ? [row.variant]
+                : Array.isArray(row.variants)
+                  ? [...row.variants]
+                  : [],
               prices: typeof row.price === "number" ? [row.price] : [],
-              storages: new Set(normalizeText(row.storage) ? [normalizeText(row.storage)] : []),
-              storageTechs: new Set(normalizeText(row.storageTech) ? [normalizeText(row.storageTech)] : []),
-              rams: new Set(normalizeText(row.ram) ? [normalizeText(row.ram)] : []),
+              storages: new Set(
+                normalizeText(row.storage) ? [normalizeText(row.storage)] : [],
+              ),
+              storageTechs: new Set(
+                normalizeText(row.storageTech)
+                  ? [normalizeText(row.storageTech)]
+                  : [],
+              ),
+              rams: new Set(
+                normalizeText(row.ram) ? [normalizeText(row.ram)] : [],
+              ),
               hook_score: row.hook_score,
               buyer_intent: row.buyer_intent,
               trend_velocity: row.trend_velocity,
@@ -812,25 +911,45 @@ const ViewMobiles = ({
 
           const grouped = groupedMap.get(productKey);
           grouped.published = grouped.published || row.published;
-          if (!grouped.launch_date && row.launch_date) grouped.launch_date = row.launch_date;
-          if (!grouped.brandLogoUrl && row.brandLogoUrl) grouped.brandLogoUrl = row.brandLogoUrl;
-          if (grouped.bestPrice === null && row.bestPrice !== null && row.bestPrice !== undefined) grouped.bestPrice = row.bestPrice;
-          if (!grouped.availableDate && row.availableDate) grouped.availableDate = row.availableDate;
-          if (!grouped.predictedAvailableDate && row.predictedAvailableDate) grouped.predictedAvailableDate = row.predictedAvailableDate;
-          if (!grouped.availableDateLabel && row.availableDateLabel) grouped.availableDateLabel = row.availableDateLabel;
-          if (!grouped.launchStage && row.launchStage) grouped.launchStage = row.launchStage;
-          if (!grouped.saleStage && row.saleStage) grouped.saleStage = row.saleStage;
-          if (!grouped.storeStage && row.storeStage) grouped.storeStage = row.storeStage;
-          if (Array.isArray(row.images)) grouped.images.push(...row.images.filter(Boolean));
+          if (!grouped.launch_date && row.launch_date)
+            grouped.launch_date = row.launch_date;
+          if (!grouped.brandLogoUrl && row.brandLogoUrl)
+            grouped.brandLogoUrl = row.brandLogoUrl;
+          if (
+            grouped.bestPrice === null &&
+            row.bestPrice !== null &&
+            row.bestPrice !== undefined
+          )
+            grouped.bestPrice = row.bestPrice;
+          if (!grouped.availableDate && row.availableDate)
+            grouped.availableDate = row.availableDate;
+          if (!grouped.predictedAvailableDate && row.predictedAvailableDate)
+            grouped.predictedAvailableDate = row.predictedAvailableDate;
+          if (!grouped.availableDateLabel && row.availableDateLabel)
+            grouped.availableDateLabel = row.availableDateLabel;
+          if (!grouped.launchStage && row.launchStage)
+            grouped.launchStage = row.launchStage;
+          if (!grouped.saleStage && row.saleStage)
+            grouped.saleStage = row.saleStage;
+          if (!grouped.storeStage && row.storeStage)
+            grouped.storeStage = row.storeStage;
+          if (Array.isArray(row.images))
+            grouped.images.push(...row.images.filter(Boolean));
           if (row.variant) grouped.variants.push(row.variant);
           if (typeof row.price === "number") grouped.prices.push(row.price);
-          if (normalizeText(row.storage)) grouped.storages.add(normalizeText(row.storage));
-          if (normalizeText(row.storageTech)) grouped.storageTechs.add(normalizeText(row.storageTech));
+          if (normalizeText(row.storage))
+            grouped.storages.add(normalizeText(row.storage));
+          if (normalizeText(row.storageTech))
+            grouped.storageTechs.add(normalizeText(row.storageTech));
           if (normalizeText(row.ram)) grouped.rams.add(normalizeText(row.ram));
-          if (grouped.hook_score === null && row.hook_score !== null) grouped.hook_score = row.hook_score;
-          if (grouped.buyer_intent === null && row.buyer_intent !== null) grouped.buyer_intent = row.buyer_intent;
-          if (grouped.trend_velocity === null && row.trend_velocity !== null) grouped.trend_velocity = row.trend_velocity;
-          if (grouped.freshness === null && row.freshness !== null) grouped.freshness = row.freshness;
+          if (grouped.hook_score === null && row.hook_score !== null)
+            grouped.hook_score = row.hook_score;
+          if (grouped.buyer_intent === null && row.buyer_intent !== null)
+            grouped.buyer_intent = row.buyer_intent;
+          if (grouped.trend_velocity === null && row.trend_velocity !== null)
+            grouped.trend_velocity = row.trend_velocity;
+          if (grouped.freshness === null && row.freshness !== null)
+            grouped.freshness = row.freshness;
         });
 
         let nextMobiles = Array.from(groupedMap.values()).map((grouped) => ({
@@ -841,7 +960,8 @@ const ViewMobiles = ({
           model: grouped.model,
           brandLogoUrl: grouped.brandLogoUrl || null,
           bestPrice: grouped.bestPrice ?? null,
-          availableDate: grouped.availableDate || grouped.predictedAvailableDate || null,
+          availableDate:
+            grouped.availableDate || grouped.predictedAvailableDate || null,
           predictedAvailableDate: grouped.predictedAvailableDate || null,
           availableDateLabel: grouped.availableDateLabel || null,
           launchStage: grouped.launchStage || null,
@@ -851,10 +971,19 @@ const ViewMobiles = ({
           launch_date: grouped.launch_date,
           images: Array.from(new Set(grouped.images || [])).filter(Boolean),
           variants: grouped.variants || [],
-          price: grouped.prices.length > 0 ? Math.min(...grouped.prices.filter((price) => price > 0)) : 0,
-          storage: Array.from(grouped.storages || []).filter(Boolean).join(" / "),
-          storageTech: Array.from(grouped.storageTechs || []).filter(Boolean).join(" / "),
-          ram: Array.from(grouped.rams || []).filter(Boolean).join(" / "),
+          price:
+            grouped.prices.length > 0
+              ? Math.min(...grouped.prices.filter((price) => price > 0))
+              : 0,
+          storage: Array.from(grouped.storages || [])
+            .filter(Boolean)
+            .join(" / "),
+          storageTech: Array.from(grouped.storageTechs || [])
+            .filter(Boolean)
+            .join(" / "),
+          ram: Array.from(grouped.rams || [])
+            .filter(Boolean)
+            .join(" / "),
           hook_score: grouped.hook_score,
           buyer_intent: grouped.buyer_intent,
           trend_velocity: grouped.trend_velocity,
@@ -864,18 +993,44 @@ const ViewMobiles = ({
         }));
 
         if (excludeUpcoming) {
-          nextMobiles = nextMobiles.filter((mobile) => !isUpcomingOrPreorder(mobile));
+          nextMobiles = nextMobiles.filter(
+            (mobile) => !isUpcomingOrPreorder(mobile),
+          );
         }
 
         if (typeof filterFn === "function") {
           nextMobiles = nextMobiles.filter(filterFn);
         }
 
-        setMobiles(nextMobiles);
+        // Avoid unnecessary state updates that can cause render loops.
+        setMobiles((previous) => {
+          try {
+            if (
+              Array.isArray(previous) &&
+              previous.length === nextMobiles.length
+            ) {
+              let identical = true;
+              for (let i = 0; i < previous.length; i++) {
+                if (previous[i]?.rowKey !== nextMobiles[i]?.rowKey) {
+                  identical = false;
+                  break;
+                }
+              }
+              if (identical) return previous;
+            }
+          } catch (e) {
+            // If comparison fails for any reason, fall back to updating state.
+          }
+          return nextMobiles;
+        });
       } catch (fetchError) {
         console.error("Failed to fetch mobiles:", fetchError);
         setError(fetchError.message || "Failed to load mobiles");
-        showToast("Load Failed", fetchError.message || "Failed to load mobiles", "error");
+        showToast(
+          "Load Failed",
+          fetchError.message || "Failed to load mobiles",
+          "error",
+        );
       } finally {
         setLoading(false);
       }
@@ -909,9 +1064,13 @@ const ViewMobiles = ({
 
   const brandOptions = useMemo(
     () =>
-      Array.from(new Set(enhancedMobiles.map((mobile) => normalizeText(mobile.brand)).filter(Boolean))).sort((a, b) =>
-        a.localeCompare(b),
-      ),
+      Array.from(
+        new Set(
+          enhancedMobiles
+            .map((mobile) => normalizeText(mobile.brand))
+            .filter(Boolean),
+        ),
+      ).sort((a, b) => a.localeCompare(b)),
     [enhancedMobiles],
   );
 
@@ -924,7 +1083,9 @@ const ViewMobiles = ({
               const match = String(mobile.launch_date || "").match(/^(\d{4})/);
               if (match) return match[1];
               const parsed = new Date(mobile.launch_date || "");
-              return Number.isNaN(parsed.getTime()) ? "" : `${parsed.getFullYear()}`;
+              return Number.isNaN(parsed.getTime())
+                ? ""
+                : `${parsed.getFullYear()}`;
             })
             .filter(Boolean),
         ),
@@ -934,33 +1095,49 @@ const ViewMobiles = ({
 
   const osOptions = useMemo(
     () =>
-      Array.from(new Set(enhancedMobiles.map((mobile) => normalizeText(mobile.os)).filter(Boolean))).sort((a, b) =>
-        a.localeCompare(b),
-      ),
+      Array.from(
+        new Set(
+          enhancedMobiles
+            .map((mobile) => normalizeText(mobile.os))
+            .filter(Boolean),
+        ),
+      ).sort((a, b) => a.localeCompare(b)),
     [enhancedMobiles],
   );
 
   const storageOptions = useMemo(
     () =>
-      Array.from(new Set(enhancedMobiles.map((mobile) => normalizeText(mobile.storage)).filter(Boolean))).sort((a, b) =>
-        a.localeCompare(b, undefined, { numeric: true }),
-      ),
+      Array.from(
+        new Set(
+          enhancedMobiles
+            .map((mobile) => normalizeText(mobile.storage))
+            .filter(Boolean),
+        ),
+      ).sort((a, b) => a.localeCompare(b, undefined, { numeric: true })),
     [enhancedMobiles],
   );
 
   const storageTechOptions = useMemo(
     () =>
-      Array.from(new Set(enhancedMobiles.map((mobile) => normalizeText(mobile.storageTech)).filter(Boolean))).sort((a, b) =>
-        a.localeCompare(b),
-      ),
+      Array.from(
+        new Set(
+          enhancedMobiles
+            .map((mobile) => normalizeText(mobile.storageTech))
+            .filter(Boolean),
+        ),
+      ).sort((a, b) => a.localeCompare(b)),
     [enhancedMobiles],
   );
 
   const ramOptions = useMemo(
     () =>
-      Array.from(new Set(enhancedMobiles.map((mobile) => normalizeText(mobile.ram)).filter(Boolean))).sort((a, b) =>
-        a.localeCompare(b, undefined, { numeric: true }),
-      ),
+      Array.from(
+        new Set(
+          enhancedMobiles
+            .map((mobile) => normalizeText(mobile.ram))
+            .filter(Boolean),
+        ),
+      ).sort((a, b) => a.localeCompare(b, undefined, { numeric: true })),
     [enhancedMobiles],
   );
 
@@ -986,7 +1163,11 @@ const ViewMobiles = ({
           if (!haystack.includes(query)) return false;
         }
 
-        if (brandFilter !== "all" && normalizeText(mobile.brand).toLowerCase() !== brandFilter.toLowerCase()) {
+        if (
+          brandFilter !== "all" &&
+          normalizeText(mobile.brand).toLowerCase() !==
+            brandFilter.toLowerCase()
+        ) {
           return false;
         }
 
@@ -1000,7 +1181,9 @@ const ViewMobiles = ({
             match?.[1] ||
             (() => {
               const parsed = new Date(mobile.launch_date || "");
-              return Number.isNaN(parsed.getTime()) ? "" : `${parsed.getFullYear()}`;
+              return Number.isNaN(parsed.getTime())
+                ? ""
+                : `${parsed.getFullYear()}`;
             })();
 
           if (launchYear !== launchYearFilter) return false;
@@ -1009,38 +1192,66 @@ const ViewMobiles = ({
         if (fiveGFilter === "5g" && !mobile.has5g) return false;
         if (fiveGFilter === "non-5g" && mobile.has5g) return false;
 
-        if (osFilter !== "all" && normalizeText(mobile.os).toLowerCase() !== osFilter.toLowerCase()) {
+        if (
+          osFilter !== "all" &&
+          normalizeText(mobile.os).toLowerCase() !== osFilter.toLowerCase()
+        ) {
           return false;
         }
 
-        if (storageFilter !== "all" && !normalizeText(mobile.storage).toLowerCase().includes(storageFilter.toLowerCase())) {
+        if (
+          storageFilter !== "all" &&
+          !normalizeText(mobile.storage)
+            .toLowerCase()
+            .includes(storageFilter.toLowerCase())
+        ) {
           return false;
         }
 
         if (
           storageTechFilter !== "all" &&
-          !normalizeText(mobile.storageTech).toLowerCase().includes(storageTechFilter.toLowerCase())
+          !normalizeText(mobile.storageTech)
+            .toLowerCase()
+            .includes(storageTechFilter.toLowerCase())
         ) {
           return false;
         }
 
-        if (ramFilter !== "all" && !normalizeText(mobile.ram).toLowerCase().includes(ramFilter.toLowerCase())) {
+        if (
+          ramFilter !== "all" &&
+          !normalizeText(mobile.ram)
+            .toLowerCase()
+            .includes(ramFilter.toLowerCase())
+        ) {
           return false;
         }
 
-        if (variantFilter === "with" && (!Array.isArray(mobile.variants) || mobile.variants.length === 0)) {
+        if (
+          variantFilter === "with" &&
+          (!Array.isArray(mobile.variants) || mobile.variants.length === 0)
+        ) {
           return false;
         }
 
-        if (variantFilter === "without" && Array.isArray(mobile.variants) && mobile.variants.length > 0) {
+        if (
+          variantFilter === "without" &&
+          Array.isArray(mobile.variants) &&
+          mobile.variants.length > 0
+        ) {
           return false;
         }
 
-        if (variantStoreFilter === "complete" && !productAllVariantsComplete(mobile)) {
+        if (
+          variantStoreFilter === "complete" &&
+          !productAllVariantsComplete(mobile)
+        ) {
           return false;
         }
 
-        if (variantStoreFilter === "incomplete" && productAllVariantsComplete(mobile)) {
+        if (
+          variantStoreFilter === "incomplete" &&
+          productAllVariantsComplete(mobile)
+        ) {
           return false;
         }
 
@@ -1049,11 +1260,30 @@ const ViewMobiles = ({
       .sort((left, right) => {
         if (sortBy === "name-asc") return left.name.localeCompare(right.name);
         if (sortBy === "name-desc") return right.name.localeCompare(left.name);
-        if (sortBy === "hook-high") return (clampScore(right.hook_score) ?? -1) - (clampScore(left.hook_score) ?? -1);
-        if (sortBy === "price-high") return (Math.max(...getPriceValues(right), 0) || 0) - (Math.max(...getPriceValues(left), 0) || 0);
-        if (sortBy === "price-low") return (Math.min(...getPriceValues(left), Infinity) || 0) - (Math.min(...getPriceValues(right), Infinity) || 0);
-        if (sortBy === "launch-oldest") return new Date(left.launch_date || 0).getTime() - new Date(right.launch_date || 0).getTime();
-        return new Date(right.launch_date || right.created_at || 0).getTime() - new Date(left.launch_date || left.created_at || 0).getTime();
+        if (sortBy === "hook-high")
+          return (
+            (clampScore(right.hook_score) ?? -1) -
+            (clampScore(left.hook_score) ?? -1)
+          );
+        if (sortBy === "price-high")
+          return (
+            (Math.max(...getPriceValues(right), 0) || 0) -
+            (Math.max(...getPriceValues(left), 0) || 0)
+          );
+        if (sortBy === "price-low")
+          return (
+            (Math.min(...getPriceValues(left), Infinity) || 0) -
+            (Math.min(...getPriceValues(right), Infinity) || 0)
+          );
+        if (sortBy === "launch-oldest")
+          return (
+            new Date(left.launch_date || 0).getTime() -
+            new Date(right.launch_date || 0).getTime()
+          );
+        return (
+          new Date(right.launch_date || right.created_at || 0).getTime() -
+          new Date(left.launch_date || left.created_at || 0).getTime()
+        );
       });
   }, [
     brandFilter,
@@ -1089,27 +1319,59 @@ const ViewMobiles = ({
     rowsPerPage,
   ]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredMobiles.length / rowsPerPage));
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredMobiles.length / rowsPerPage),
+  );
   const startIndex = (currentPage - 1) * rowsPerPage;
   const endIndex = startIndex + rowsPerPage;
   const paginatedMobiles = filteredMobiles.slice(startIndex, endIndex);
 
   useEffect(() => {
-    setSelectedRowKeys((previous) => previous.filter((rowKey) => paginatedMobiles.some((mobile) => mobile.rowKey === rowKey)));
+    setSelectedRowKeys((previous) => {
+      const next = previous.filter((rowKey) =>
+        paginatedMobiles.some((mobile) => mobile.rowKey === rowKey),
+      );
+      if (next.length === previous.length) {
+        let same = true;
+        for (let i = 0; i < next.length; i++) {
+          if (next[i] !== previous[i]) {
+            same = false;
+            break;
+          }
+        }
+        if (same) return previous;
+      }
+      return next;
+    });
   }, [paginatedMobiles]);
 
   const totalMobiles = enhancedMobiles.length;
-  const publishedMobiles = enhancedMobiles.filter((mobile) => getStatusValue(mobile) === "published").length;
-  const draftMobiles = enhancedMobiles.filter((mobile) => getStatusValue(mobile) === "draft").length;
-  const upcomingMobiles = enhancedMobiles.filter((mobile) => getStatusValue(mobile) === "upcoming").length;
-  const specScoreReadyCount = enhancedMobiles.filter((mobile) => mobile.hasSpecScore).length;
+  const publishedMobiles = enhancedMobiles.filter(
+    (mobile) => getStatusValue(mobile) === "published",
+  ).length;
+  const draftMobiles = enhancedMobiles.filter(
+    (mobile) => getStatusValue(mobile) === "draft",
+  ).length;
+  const upcomingMobiles = enhancedMobiles.filter(
+    (mobile) => getStatusValue(mobile) === "upcoming",
+  ).length;
+  const specScoreReadyCount = enhancedMobiles.filter(
+    (mobile) => mobile.hasSpecScore,
+  ).length;
   const averageHookScore = (() => {
-    const scores = enhancedMobiles.map((mobile) => clampScore(mobile.hook_score)).filter((value) => value !== null);
+    const scores = enhancedMobiles
+      .map((mobile) => clampScore(mobile.hook_score))
+      .filter((value) => value !== null);
     if (scores.length === 0) return "N/A";
-    return (scores.reduce((sum, value) => sum + value, 0) / scores.length).toFixed(1);
+    return (
+      scores.reduce((sum, value) => sum + value, 0) / scores.length
+    ).toFixed(1);
   })();
 
-  const allVisibleSelected = paginatedMobiles.length > 0 && paginatedMobiles.every((mobile) => selectedRowKeys.includes(mobile.rowKey));
+  const allVisibleSelected =
+    paginatedMobiles.length > 0 &&
+    paginatedMobiles.every((mobile) => selectedRowKeys.includes(mobile.rowKey));
 
   const clearFilters = () => {
     setSearchTerm("");
@@ -1128,16 +1390,30 @@ const ViewMobiles = ({
 
   const toggleSelectAllVisible = () => {
     if (allVisibleSelected) {
-      setSelectedRowKeys((previous) => previous.filter((rowKey) => !paginatedMobiles.some((mobile) => mobile.rowKey === rowKey)));
+      setSelectedRowKeys((previous) =>
+        previous.filter(
+          (rowKey) =>
+            !paginatedMobiles.some((mobile) => mobile.rowKey === rowKey),
+        ),
+      );
       return;
     }
 
-    setSelectedRowKeys((previous) => Array.from(new Set([...previous, ...paginatedMobiles.map((mobile) => mobile.rowKey)])));
+    setSelectedRowKeys((previous) =>
+      Array.from(
+        new Set([
+          ...previous,
+          ...paginatedMobiles.map((mobile) => mobile.rowKey),
+        ]),
+      ),
+    );
   };
 
   const toggleSelectedRow = (rowKey) => {
     setSelectedRowKeys((previous) =>
-      previous.includes(rowKey) ? previous.filter((value) => value !== rowKey) : [...previous, rowKey],
+      previous.includes(rowKey)
+        ? previous.filter((value) => value !== rowKey)
+        : [...previous, rowKey],
     );
   };
 
@@ -1160,18 +1436,23 @@ const ViewMobiles = ({
         throw new Error("Missing product id for delete request");
       }
 
-      const response = await fetch(buildUrl(`/api/smartphone/${encodeURIComponent(resolvedId)}`), {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: token ? `Bearer ${token}` : "",
+      const response = await fetch(
+        buildUrl(`/api/smartphone/${encodeURIComponent(resolvedId)}`),
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: token ? `Bearer ${token}` : "",
+          },
+          body: JSON.stringify(deleteApproval),
         },
-        body: JSON.stringify(deleteApproval),
-      });
+      );
 
       if (!response.ok) {
         const details = await response.text().catch(() => "");
-        throw new Error(`HTTP ${response.status}${details ? ` ${details}` : ""}`);
+        throw new Error(
+          `HTTP ${response.status}${details ? ` ${details}` : ""}`,
+        );
       }
 
       setMobiles((previous) =>
@@ -1184,7 +1465,11 @@ const ViewMobiles = ({
       showToast("Deleted", `"${mobile.name}" removed successfully`, "success");
     } catch (deleteError) {
       console.error("Delete failed:", deleteError);
-      showToast("Delete Failed", deleteError.message || "Unable to delete mobile", "error");
+      showToast(
+        "Delete Failed",
+        deleteError.message || "Unable to delete mobile",
+        "error",
+      );
     }
   };
 
@@ -1195,7 +1480,11 @@ const ViewMobiles = ({
       const nextPublished = !mobile.published;
 
       if (!resolvedId) {
-        showToast("Update Failed", "Missing mobile id for status update", "error");
+        showToast(
+          "Update Failed",
+          "Missing mobile id for status update",
+          "error",
+        );
         return;
       }
 
@@ -1208,7 +1497,10 @@ const ViewMobiles = ({
             decodeURIComponent(
               atob(padded)
                 .split("")
-                .map((character) => `%${`00${character.charCodeAt(0).toString(16)}`.slice(-2)}`)
+                .map(
+                  (character) =>
+                    `%${`00${character.charCodeAt(0).toString(16)}`.slice(-2)}`,
+                )
                 .join(""),
             ),
           );
@@ -1218,20 +1510,28 @@ const ViewMobiles = ({
       };
 
       const payload = token ? parseJwt(token) : null;
-      const userId = payload?.id || payload?._id || payload?.userId || payload?.user_id || null;
+      const userId =
+        payload?.id ||
+        payload?._id ||
+        payload?.userId ||
+        payload?.user_id ||
+        null;
 
-      const response = await fetch(buildUrl(`/api/products/${resolvedId}/publish`), {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: token ? `Bearer ${token}` : "",
+      const response = await fetch(
+        buildUrl(`/api/products/${resolvedId}/publish`),
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: token ? `Bearer ${token}` : "",
+          },
+          body: JSON.stringify({
+            id: resolvedId,
+            is_published: nextPublished,
+            published_by: userId,
+          }),
         },
-        body: JSON.stringify({
-          id: resolvedId,
-          is_published: nextPublished,
-          published_by: userId,
-        }),
-      });
+      );
 
       if (!response.ok) {
         const details = await response.text().catch(() => "");
@@ -1254,10 +1554,18 @@ const ViewMobiles = ({
         ),
       );
 
-      showToast("Status Updated", `"${mobile.name}" is now ${updatedPublished ? "published" : "draft"}`, "success");
+      showToast(
+        "Status Updated",
+        `"${mobile.name}" is now ${updatedPublished ? "published" : "draft"}`,
+        "success",
+      );
     } catch (publishError) {
       console.error("Publish toggle failed:", publishError);
-      showToast("Update Failed", publishError.message || "Unable to update status", "error");
+      showToast(
+        "Update Failed",
+        publishError.message || "Unable to update status",
+        "error",
+      );
     }
   };
 
@@ -1276,7 +1584,9 @@ const ViewMobiles = ({
       }
 
       const payload = await response.json();
-      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      const blob = new Blob([JSON.stringify(payload, null, 2)], {
+        type: "application/json",
+      });
       const url = window.URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = url;
@@ -1289,7 +1599,11 @@ const ViewMobiles = ({
       showToast("Export Complete", "Mobiles exported successfully", "success");
     } catch (exportError) {
       console.error("Export failed:", exportError);
-      showToast("Export Failed", exportError.message || "Unable to export mobiles", "error");
+      showToast(
+        "Export Failed",
+        exportError.message || "Unable to export mobiles",
+        "error",
+      );
     }
   };
 
@@ -1323,13 +1637,21 @@ const ViewMobiles = ({
           "success",
         );
       } else {
-        showToast("Import Completed", "Mobiles imported successfully", "success");
+        showToast(
+          "Import Completed",
+          "Mobiles imported successfully",
+          "success",
+        );
       }
 
       setReloadKey((previous) => previous + 1);
     } catch (importError) {
       console.error("Import failed:", importError);
-      showToast("Import Failed", importError.message || "Unable to import mobiles", "error");
+      showToast(
+        "Import Failed",
+        importError.message || "Unable to import mobiles",
+        "error",
+      );
     } finally {
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
@@ -1394,7 +1716,8 @@ const ViewMobiles = ({
         <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <div>
             <h1 className="text-[2.35rem] font-bold tracking-tight text-slate-950">
-              {title} <span className="ml-1 align-middle text-[1.4rem]">{`\u{1F4F1}`}</span>
+              {title}{" "}
+              <span className="ml-1 align-middle text-[1.4rem]">{`\u{1F4F1}`}</span>
             </h1>
             <p className="mt-2 text-base text-slate-500">{subtitle}</p>
           </div>
@@ -1494,7 +1817,10 @@ const ViewMobiles = ({
               />
             </div>
 
-            <SelectField value={brandFilter} onChange={(event) => setBrandFilter(event.target.value)}>
+            <SelectField
+              value={brandFilter}
+              onChange={(event) => setBrandFilter(event.target.value)}
+            >
               <option value="all">All Brands</option>
               {brandOptions.map((brand) => (
                 <option key={brand} value={brand}>
@@ -1503,14 +1829,20 @@ const ViewMobiles = ({
               ))}
             </SelectField>
 
-            <SelectField value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+            <SelectField
+              value={statusFilter}
+              onChange={(event) => setStatusFilter(event.target.value)}
+            >
               <option value="all">All Status</option>
               <option value="published">Published</option>
               <option value="draft">Draft</option>
               <option value="upcoming">Upcoming</option>
             </SelectField>
 
-            <SelectField value={launchYearFilter} onChange={(event) => setLaunchYearFilter(event.target.value)}>
+            <SelectField
+              value={launchYearFilter}
+              onChange={(event) => setLaunchYearFilter(event.target.value)}
+            >
               <option value="all">All Launch Year</option>
               {launchYearOptions.map((year) => (
                 <option key={year} value={year}>
@@ -1519,13 +1851,19 @@ const ViewMobiles = ({
               ))}
             </SelectField>
 
-            <SelectField value={fiveGFilter} onChange={(event) => setFiveGFilter(event.target.value)}>
+            <SelectField
+              value={fiveGFilter}
+              onChange={(event) => setFiveGFilter(event.target.value)}
+            >
               <option value="all">All 5G Status</option>
               <option value="5g">5G</option>
               <option value="non-5g">Non-5G</option>
             </SelectField>
 
-            <SelectField value={osFilter} onChange={(event) => setOsFilter(event.target.value)}>
+            <SelectField
+              value={osFilter}
+              onChange={(event) => setOsFilter(event.target.value)}
+            >
               <option value="all">All OS</option>
               {osOptions.map((osValue) => (
                 <option key={osValue} value={osValue}>
@@ -1538,7 +1876,9 @@ const ViewMobiles = ({
               type="button"
               onClick={() => setShowAdvancedFilters((previous) => !previous)}
               className={`${secondaryButtonClassName} ${
-                showAdvancedFilters ? "border-[#345CFF] bg-[#F4F7FF] text-[#345CFF]" : ""
+                showAdvancedFilters
+                  ? "border-[#345CFF] bg-[#F4F7FF] text-[#345CFF]"
+                  : ""
               }`}
             >
               <FaFilter className="text-sm" />
@@ -1557,7 +1897,10 @@ const ViewMobiles = ({
 
           {showAdvancedFilters ? (
             <div className="mt-3 grid gap-2 border-t border-slate-200 pt-3 md:grid-cols-2 xl:grid-cols-6">
-              <SelectField value={storageFilter} onChange={(event) => setStorageFilter(event.target.value)}>
+              <SelectField
+                value={storageFilter}
+                onChange={(event) => setStorageFilter(event.target.value)}
+              >
                 <option value="all">All Storage</option>
                 {storageOptions.map((storage) => (
                   <option key={storage} value={storage}>
@@ -1566,7 +1909,10 @@ const ViewMobiles = ({
                 ))}
               </SelectField>
 
-              <SelectField value={storageTechFilter} onChange={(event) => setStorageTechFilter(event.target.value)}>
+              <SelectField
+                value={storageTechFilter}
+                onChange={(event) => setStorageTechFilter(event.target.value)}
+              >
                 <option value="all">All Storage Tech</option>
                 {storageTechOptions.map((tech) => (
                   <option key={tech} value={tech}>
@@ -1575,7 +1921,10 @@ const ViewMobiles = ({
                 ))}
               </SelectField>
 
-              <SelectField value={ramFilter} onChange={(event) => setRamFilter(event.target.value)}>
+              <SelectField
+                value={ramFilter}
+                onChange={(event) => setRamFilter(event.target.value)}
+              >
                 <option value="all">All RAM</option>
                 {ramOptions.map((ram) => (
                   <option key={ram} value={ram}>
@@ -1584,19 +1933,28 @@ const ViewMobiles = ({
                 ))}
               </SelectField>
 
-              <SelectField value={variantFilter} onChange={(event) => setVariantFilter(event.target.value)}>
+              <SelectField
+                value={variantFilter}
+                onChange={(event) => setVariantFilter(event.target.value)}
+              >
                 <option value="all">All Variants</option>
                 <option value="with">With Variants</option>
                 <option value="without">Without Variants</option>
               </SelectField>
 
-              <SelectField value={variantStoreFilter} onChange={(event) => setVariantStoreFilter(event.target.value)}>
+              <SelectField
+                value={variantStoreFilter}
+                onChange={(event) => setVariantStoreFilter(event.target.value)}
+              >
                 <option value="all">All Store Data</option>
                 <option value="complete">Complete Store Data</option>
                 <option value="incomplete">Missing Store Data</option>
               </SelectField>
 
-              <SelectField value={sortBy} onChange={(event) => setSortBy(event.target.value)}>
+              <SelectField
+                value={sortBy}
+                onChange={(event) => setSortBy(event.target.value)}
+              >
                 <option value="launch-latest">Newest First</option>
                 <option value="launch-oldest">Oldest First</option>
                 <option value="name-asc">Name A-Z</option>
@@ -1650,10 +2008,14 @@ const ViewMobiles = ({
                     <div className="flex flex-col items-center gap-3 text-slate-500">
                       <FaMobile className="text-4xl text-slate-300" />
                       <p className="text-base font-semibold text-slate-700">
-                        {searchTerm ? "No mobiles found" : "No mobiles available"}
+                        {searchTerm
+                          ? "No mobiles found"
+                          : "No mobiles available"}
                       </p>
                       <p className="text-sm text-slate-500">
-                        {searchTerm ? "Try adjusting your search or filters." : "Import inventory or add a new mobile to get started."}
+                        {searchTerm
+                          ? "Try adjusting your search or filters."
+                          : "Import inventory or add a new mobile to get started."}
                       </p>
                     </div>
                   </td>
@@ -1664,7 +2026,10 @@ const ViewMobiles = ({
                   const selected = selectedRowKeys.includes(mobile.rowKey);
 
                   return (
-                    <tr key={mobile.rowKey} className="border-b border-slate-200 transition hover:bg-slate-50">
+                    <tr
+                      key={mobile.rowKey}
+                      className="border-b border-slate-200 transition hover:bg-slate-50"
+                    >
                       <td className="px-3 py-3 xl:px-4">
                         <input
                           type="checkbox"
@@ -1683,7 +2048,8 @@ const ViewMobiles = ({
                               className="h-12 w-12 border border-slate-200 bg-white object-contain p-1"
                               onError={(event) => {
                                 event.currentTarget.onerror = null;
-                                event.currentTarget.src = "https://via.placeholder.com/40?text=M";
+                                event.currentTarget.src =
+                                  "https://via.placeholder.com/40?text=M";
                               }}
                             />
                           ) : (
@@ -1692,9 +2058,14 @@ const ViewMobiles = ({
                             </div>
                           )}
                           <div className="min-w-0 max-w-[280px] xl:max-w-[360px]">
-                            <p className="line-clamp-2 w-full break-words font-semibold text-slate-950">{mobile.name}</p>
+                            <p className="line-clamp-2 w-full break-words font-semibold text-slate-950">
+                              {mobile.name}
+                            </p>
                             <p className="mt-1 line-clamp-2 text-xs text-slate-500">
-                              {normalizeText(mobile.ram) || "N/A"} {normalizeText(mobile.storage) ? `, ${mobile.storage}` : ""}
+                              {normalizeText(mobile.ram) || "N/A"}{" "}
+                              {normalizeText(mobile.storage)
+                                ? `, ${mobile.storage}`
+                                : ""}
                             </p>
                           </div>
                         </div>
@@ -1713,7 +2084,9 @@ const ViewMobiles = ({
                               }}
                             />
                           ) : null}
-                          <span className="min-w-0 truncate">{mobile.brand}</span>
+                          <span className="min-w-0 truncate">
+                            {mobile.brand}
+                          </span>
                         </div>
                       </td>
 
@@ -1721,17 +2094,21 @@ const ViewMobiles = ({
                         <div>
                           <div>{formatDate(mobile.launch_date)}</div>
                           <div className="mt-1 text-xs text-slate-500">
-                            {formatLaunchStageLabel(mobile.launchStage) || "Released"}
+                            {formatLaunchStageLabel(mobile.launchStage) ||
+                              "Released"}
                           </div>
                           <div className="text-xs text-slate-400">
-                            {formatSaleStageLabel(mobile.saleStage) || "Sale Date TBA"}
+                            {formatSaleStageLabel(mobile.saleStage) ||
+                              "Sale Date TBA"}
                           </div>
                         </div>
                       </td>
 
                       <td className="px-3 py-3 font-medium text-slate-700">
                         <div>{formatBestPrice(mobile)}</div>
-                        <div className="mt-1 text-xs text-slate-500">{formatAvailableDate(mobile)}</div>
+                        <div className="mt-1 text-xs text-slate-500">
+                          {formatAvailableDate(mobile)}
+                        </div>
                       </td>
 
                       <td className="px-3 py-3">
@@ -1752,7 +2129,9 @@ const ViewMobiles = ({
                         </span>
                       </td>
 
-                      <td className="px-3 py-3 font-medium text-slate-700">{resolveSearchVolume(mobile, startIndex + index)}</td>
+                      <td className="px-3 py-3 font-medium text-slate-700">
+                        {resolveSearchVolume(mobile, startIndex + index)}
+                      </td>
 
                       <td className="px-3 py-3">
                         <div className="flex flex-col items-start gap-1">
@@ -1767,15 +2146,24 @@ const ViewMobiles = ({
                             {getStatusLabel(mobile)}
                           </button>
                           <span className="text-xs text-slate-500">
-                            {formatStoreStageLabel(mobile.storeStage) || "No Store Listing"}
+                            {formatStoreStageLabel(mobile.storeStage) ||
+                              "No Store Listing"}
                           </span>
                         </div>
                       </td>
 
                       <td className="px-3 py-3">
                         <div className="flex items-center gap-2 font-medium text-slate-700">
-                          <span>{resolveTrendingRank(mobile, startIndex + index)}</span>
-                          <span className={resolveTrendDirection(mobile) === "down" ? "text-rose-500" : "text-emerald-500"}>
+                          <span>
+                            {resolveTrendingRank(mobile, startIndex + index)}
+                          </span>
+                          <span
+                            className={
+                              resolveTrendDirection(mobile) === "down"
+                                ? "text-rose-500"
+                                : "text-emerald-500"
+                            }
+                          >
                             {resolveTrendDirection(mobile) === "down" ? (
                               <span className="inline-block rotate-180">{`\u2191`}</span>
                             ) : (
@@ -1799,7 +2187,11 @@ const ViewMobiles = ({
                             type="button"
                             onClick={() => {
                               if (!resolvedId) {
-                                showToast("Edit Failed", "Missing product id for edit", "error");
+                                showToast(
+                                  "Edit Failed",
+                                  "Missing product id for edit",
+                                  "error",
+                                );
                                 return;
                               }
                               navigate(`/edit-mobile/${resolvedId}`, {
@@ -1846,7 +2238,9 @@ const ViewMobiles = ({
                   {searchTerm ? "No mobiles found" : "No mobiles available"}
                 </p>
                 <p className="text-sm text-slate-500">
-                  {searchTerm ? "Try adjusting your search or filters." : "Import inventory or add a new mobile to get started."}
+                  {searchTerm
+                    ? "Try adjusting your search or filters."
+                    : "Import inventory or add a new mobile to get started."}
                 </p>
               </div>
             </div>
@@ -1855,13 +2249,23 @@ const ViewMobiles = ({
               const resolvedId = resolveProductId(mobile);
               const selected = selectedRowKeys.includes(mobile.rowKey);
               const trendDirection = resolveTrendDirection(mobile);
-              const trendValue = resolveTrendingRank(mobile, startIndex + index);
-              const specSummary = [mobile.brand || "N/A", normalizeText(mobile.ram) || "N/A", normalizeText(mobile.storage) || "N/A"]
+              const trendValue = resolveTrendingRank(
+                mobile,
+                startIndex + index,
+              );
+              const specSummary = [
+                mobile.brand || "N/A",
+                normalizeText(mobile.ram) || "N/A",
+                normalizeText(mobile.storage) || "N/A",
+              ]
                 .filter(Boolean)
                 .join(" / ");
 
               return (
-                <article key={mobile.rowKey} className="border-b border-slate-200 last:border-b-0">
+                <article
+                  key={mobile.rowKey}
+                  className="border-b border-slate-200 last:border-b-0"
+                >
                   <div className="flex items-start gap-3">
                     <div className="w-full px-2 py-3 sm:px-3">
                       <div className="flex items-start gap-3">
@@ -1879,7 +2283,8 @@ const ViewMobiles = ({
                             className="h-14 w-14 border border-slate-200 bg-white object-contain p-1"
                             onError={(event) => {
                               event.currentTarget.onerror = null;
-                              event.currentTarget.src = "https://via.placeholder.com/40?text=M";
+                              event.currentTarget.src =
+                                "https://via.placeholder.com/40?text=M";
                             }}
                           />
                         ) : (
@@ -1898,7 +2303,9 @@ const ViewMobiles = ({
                                 <p className="mt-1 break-words text-sm font-semibold leading-5 text-slate-950">
                                   {mobile.name}
                                 </p>
-                                <p className="mt-1 break-words text-xs text-slate-500">{specSummary}</p>
+                                <p className="mt-1 break-words text-xs text-slate-500">
+                                  {specSummary}
+                                </p>
                                 <div className="mt-2 flex items-center gap-2">
                                   {resolveBrandLogoUrl(mobile) ? (
                                     <img
@@ -1907,7 +2314,8 @@ const ViewMobiles = ({
                                       className="h-6 w-6 rounded-sm border border-slate-200 bg-white object-contain p-0.5"
                                       onError={(event) => {
                                         event.currentTarget.onerror = null;
-                                        event.currentTarget.style.display = "none";
+                                        event.currentTarget.style.display =
+                                          "none";
                                       }}
                                     />
                                   ) : null}
@@ -1920,7 +2328,8 @@ const ViewMobiles = ({
                               <button
                                 type="button"
                                 onClick={() => {
-                                  if (getStatusValue(mobile) === "upcoming") return;
+                                  if (getStatusValue(mobile) === "upcoming")
+                                    return;
                                   togglePublish(mobile);
                                 }}
                                 className={`inline-flex shrink-0 px-2 py-1 text-xs font-semibold ${getStatusClasses(mobile)}`}
@@ -1931,31 +2340,60 @@ const ViewMobiles = ({
                           </div>
 
                           <div className="pt-1">
-                            <MobileInfoRow label="Launch Date" value={formatDate(mobile.launch_date)} />
+                            <MobileInfoRow
+                              label="Launch Date"
+                              value={formatDate(mobile.launch_date)}
+                            />
                             <MobileInfoRow
                               label="Launch Stage"
-                              value={formatLaunchStageLabel(mobile.launchStage) || "Released"}
+                              value={
+                                formatLaunchStageLabel(mobile.launchStage) ||
+                                "Released"
+                              }
                             />
                             <MobileInfoRow
                               label="Sale Stage"
-                              value={formatSaleStageLabel(mobile.saleStage) || "Sale Date TBA"}
+                              value={
+                                formatSaleStageLabel(mobile.saleStage) ||
+                                "Sale Date TBA"
+                              }
                             />
                             <MobileInfoRow
                               label="Store State"
-                              value={formatStoreStageLabel(mobile.storeStage) || "No Store Listing"}
+                              value={
+                                formatStoreStageLabel(mobile.storeStage) ||
+                                "No Store Listing"
+                              }
                             />
-                            <MobileInfoRow label="Best Price" value={formatBestPrice(mobile)} />
+                            <MobileInfoRow
+                              label="Best Price"
+                              value={formatBestPrice(mobile)}
+                            />
                             <MobileInfoRow
                               label="Available Date"
                               value={formatAvailableDate(mobile)}
                             />
-                            <MobileInfoRow label="Search Volume" value={resolveSearchVolume(mobile, startIndex + index)} />
+                            <MobileInfoRow
+                              label="Search Volume"
+                              value={resolveSearchVolume(
+                                mobile,
+                                startIndex + index,
+                              )}
+                            />
                             <MobileInfoRow
                               label="Trending"
                               value={
-                                <span className={`inline-flex items-center gap-1 ${trendDirection === "down" ? "text-rose-600" : "text-emerald-600"}`}>
-                                  <span className="text-slate-700">{trendValue}</span>
-                                  <span>{trendDirection === "down" ? "\u2193" : "\u2191"}</span>
+                                <span
+                                  className={`inline-flex items-center gap-1 ${trendDirection === "down" ? "text-rose-600" : "text-emerald-600"}`}
+                                >
+                                  <span className="text-slate-700">
+                                    {trendValue}
+                                  </span>
+                                  <span>
+                                    {trendDirection === "down"
+                                      ? "\u2193"
+                                      : "\u2191"}
+                                  </span>
                                 </span>
                               }
                             />
@@ -1993,7 +2431,11 @@ const ViewMobiles = ({
                               type="button"
                               onClick={() => {
                                 if (!resolvedId) {
-                                  showToast("Edit Failed", "Missing product id for edit", "error");
+                                  showToast(
+                                    "Edit Failed",
+                                    "Missing product id for edit",
+                                    "error",
+                                  );
                                   return;
                                 }
                                 navigate(`/edit-mobile/${resolvedId}`, {
@@ -2030,7 +2472,9 @@ const ViewMobiles = ({
         <div className="border-t border-slate-200 px-2 py-3 sm:px-3 lg:px-4">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <p className="text-sm text-slate-600">
-              Showing {filteredMobiles.length === 0 ? 0 : startIndex + 1} to {Math.min(endIndex, filteredMobiles.length)} of {filteredMobiles.length} results
+              Showing {filteredMobiles.length === 0 ? 0 : startIndex + 1} to{" "}
+              {Math.min(endIndex, filteredMobiles.length)} of{" "}
+              {filteredMobiles.length} results
             </p>
 
             <div className="flex flex-wrap items-center gap-3 lg:justify-end">
@@ -2049,7 +2493,9 @@ const ViewMobiles = ({
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => setCurrentPage((previous) => Math.max(previous - 1, 1))}
+                  onClick={() =>
+                    setCurrentPage((previous) => Math.max(previous - 1, 1))
+                  }
                   disabled={currentPage === 1}
                   className="flex h-10 w-10 items-center justify-center border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                 >
@@ -2058,7 +2504,10 @@ const ViewMobiles = ({
 
                 {visiblePageItems.map((item, index) =>
                   item === "..." ? (
-                    <span key={`ellipsis-${index}`} className="px-2 text-sm text-slate-400">
+                    <span
+                      key={`ellipsis-${index}`}
+                      className="px-2 text-sm text-slate-400"
+                    >
                       ...
                     </span>
                   ) : (
@@ -2079,7 +2528,11 @@ const ViewMobiles = ({
 
                 <button
                   type="button"
-                  onClick={() => setCurrentPage((previous) => Math.min(previous + 1, totalPages))}
+                  onClick={() =>
+                    setCurrentPage((previous) =>
+                      Math.min(previous + 1, totalPages),
+                    )
+                  }
                   disabled={currentPage === totalPages}
                   className="flex h-10 w-10 items-center justify-center border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                 >

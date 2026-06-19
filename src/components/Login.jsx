@@ -105,8 +105,7 @@ const HeroBrand = ({ dark = true, compact = false }) => (
   <div className="flex items-center gap-3">
     <div>
       <div
-        className={`${compact ? "text-[2rem]" : "text-[2.35rem]"} font-semibold leading-none tracking-[-0.01em] ${
-          dark ? "text-[#101633]" : "text-white"
+        className={`${compact ? "text-[2rem]" : "text-[2.35rem]"} font-semibold leading-none tracking-[-0.01em] "
         } uppercase`}
       >
         HOOKS
@@ -116,7 +115,7 @@ const HeroBrand = ({ dark = true, compact = false }) => (
           dark ? "text-[#6f7897]" : "text-white/75"
         }`}
       >
-        Gadget Intelligence Platform
+        Gadget Intelligence
       </div>
     </div>
   </div>
