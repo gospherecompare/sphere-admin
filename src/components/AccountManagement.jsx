@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Cookies from "js-cookie";
 import axios from "axios";
 import { buildUrl } from "../api";
+import { useToast } from "./Ui/ToastProvider";
 import {
   FaCalendarAlt,
   FaCheck,
@@ -64,6 +65,7 @@ const VisibilityButton = ({ visible, onClick, label }) => (
 
 const AccountManagement = () => {
   const navigate = useNavigate();
+  const toast = useToast();
   const [activeTab, setActiveTab] = useState("profile");
   const [initialLoading, setInitialLoading] = useState(false);
   const [profileSaving, setProfileSaving] = useState(false);
@@ -73,7 +75,6 @@ const AccountManagement = () => {
   const [deletePinDeleting, setDeletePinDeleting] = useState(false);
   const [userData, setUserData] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [message, setMessage] = useState({ type: "", text: "" });
 
   const [profileForm, setProfileForm] = useState({
     username: "",
@@ -251,14 +252,13 @@ const AccountManagement = () => {
         });
       }
 
-      setMessage({ type: "", text: "" });
     } catch (error) {
       console.error("Error loading account management data:", error);
       if ([401, 403].includes(error.response?.status)) {
         navigate("/login");
         return;
       }
-      setMessage({ type: "error", text: "Failed to load account details" });
+      toast.error("Failed to load account details", "Action failed");
     } finally {
       setInitialLoading(false);
     }
@@ -577,7 +577,7 @@ const AccountManagement = () => {
     const errors = validateProfileForm();
     if (Object.keys(errors).length) {
       setProfileErrors(errors);
-      setMessage({ type: "error", text: "Please fix all errors" });
+      toast.warning("Please fix all errors.", "Check the form");
       return;
     }
 
@@ -598,15 +598,14 @@ const AccountManagement = () => {
         setUserData(response.data.user);
         populateProfileForm(response.data.user);
         setIsEditing(false);
-        setMessage({ type: "success", text: "Profile updated successfully" });
-        setTimeout(() => setMessage({ type: "", text: "" }), 3000);
+        toast.success("Profile updated successfully", "Saved");
       }
     } catch (error) {
       console.error("Error updating profile:", error);
-      setMessage({
-        type: "error",
-        text: error.response?.data?.message || "Failed to update profile",
-      });
+      toast.error(
+        error.response?.data?.message || "Failed to update profile",
+        "Action failed",
+      );
     } finally {
       setProfileSaving(false);
     }
@@ -617,7 +616,7 @@ const AccountManagement = () => {
     const errors = validatePasswordForm();
     if (Object.keys(errors).length) {
       setPasswordErrors(errors);
-      setMessage({ type: "error", text: "Please fix all errors" });
+      toast.warning("Please fix all errors.", "Check the form");
       return;
     }
 
@@ -640,15 +639,14 @@ const AccountManagement = () => {
         setPasswordErrors({});
         setPasswordTouched({});
         setPasswordStrength(0);
-        setMessage({ type: "success", text: "Password changed successfully" });
-        setTimeout(() => setMessage({ type: "", text: "" }), 3000);
+        toast.success("Password changed successfully", "Saved");
       }
     } catch (error) {
       console.error("Error changing password:", error);
-      setMessage({
-        type: "error",
-        text: error.response?.data?.message || "Failed to change password",
-      });
+      toast.error(
+        error.response?.data?.message || "Failed to change password",
+        "Action failed",
+      );
     } finally {
       setPasswordSaving(false);
     }
@@ -659,7 +657,7 @@ const AccountManagement = () => {
     const errors = validatePinForm();
     if (Object.keys(errors).length) {
       setPinErrors(errors);
-      setMessage({ type: "error", text: "Please fix all errors" });
+      toast.warning("Please fix all errors.", "Check the form");
       return;
     }
 
@@ -682,20 +680,17 @@ const AccountManagement = () => {
           updated_at: response.data.updated_at || null,
           updated_by: response.data.updated_by || null,
         });
-        setMessage({
-          type: "success",
-          text:
-            response.data.message || "Organization PIN updated successfully",
-        });
-        setTimeout(() => setMessage({ type: "", text: "" }), 3000);
+        toast.success(
+          response.data.message || "Organization PIN updated successfully",
+          "Saved",
+        );
       }
     } catch (error) {
       console.error("Error updating organization PIN:", error);
-      setMessage({
-        type: "error",
-        text:
-          error.response?.data?.message || "Failed to update organization PIN",
-      });
+      toast.error(
+        error.response?.data?.message || "Failed to update organization PIN",
+        "Action failed",
+      );
     } finally {
       setPinSaving(false);
     }
@@ -758,11 +753,10 @@ const AccountManagement = () => {
           updated_at: response.data.updated_at || null,
           updated_by: response.data.updated_by || null,
         });
-        setMessage({
-          type: "success",
-          text: response.data.message || "Delete PIN updated successfully",
-        });
-        setTimeout(() => setMessage({ type: "", text: "" }), 3000);
+        toast.success(
+          response.data.message || "Delete PIN updated successfully",
+          "Saved",
+        );
       }
     } catch (error) {
       console.error("Error updating delete PIN:", error);
@@ -796,11 +790,7 @@ const AccountManagement = () => {
           updated_at: null,
           updated_by: null,
         });
-        setMessage({
-          type: "success",
-          text: response.data.message || "Delete PIN removed",
-        });
-        setTimeout(() => setMessage({ type: "", text: "" }), 3000);
+        toast.success(response.data.message || "Delete PIN removed", "Saved");
       }
     } catch (error) {
       console.error("Error removing delete PIN:", error);
@@ -816,10 +806,10 @@ const AccountManagement = () => {
   const handleUpdateDeletePin = (event) => {
     event.preventDefault();
     if (!isAdminRole) {
-      setMessage({
-        type: "error",
-        text: "Only admin users can manage the delete audit PIN",
-      });
+      toast.warning(
+        "Only admin users can manage the delete audit PIN",
+        "Permission required",
+      );
       return;
     }
 
@@ -827,24 +817,22 @@ const AccountManagement = () => {
     if (Object.keys(errors).length) {
       markDeletePinFormTouched();
       setDeletePinErrors(errors);
-      setMessage({ type: "error", text: "Please fix all errors" });
+      toast.warning("Please fix all errors.", "Check the form");
       return;
     }
 
-    setMessage({ type: "", text: "" });
     openDeletePinPasswordModal("save");
   };
 
   const handleRemoveDeletePin = () => {
     if (!isAdminRole) {
-      setMessage({
-        type: "error",
-        text: "Only admin users can manage the delete audit PIN",
-      });
+      toast.warning(
+        "Only admin users can manage the delete audit PIN",
+        "Permission required",
+      );
       return;
     }
 
-    setMessage({ type: "", text: "" });
     openDeletePinPasswordModal("remove");
   };
 
@@ -1080,27 +1068,6 @@ const AccountManagement = () => {
           </div>
         </div>
       </section>
-
-      {message.text && (
-        <div
-          className={`flex items-center gap-3 rounded-xl border px-4 py-3 text-sm shadow-sm ${
-            message.type === "success"
-              ? "border-green-200 bg-green-50 text-green-800"
-              : "border-red-200 bg-red-50 text-red-800"
-          }`}
-        >
-          {message.type === "success" ? <FaCheck /> : <FaExclamationCircle />}
-          <span>{message.text}</span>
-          <button
-            type="button"
-            aria-label="Dismiss notification"
-            onClick={() => setMessage({ type: "", text: "" })}
-            className="ml-auto rounded p-1 transition hover:bg-black/5"
-          >
-            <FaTimes />
-          </button>
-        </div>
-      )}
 
       <nav
         aria-label="Account settings sections"

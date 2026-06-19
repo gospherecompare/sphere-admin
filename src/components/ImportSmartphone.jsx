@@ -3,6 +3,7 @@ import React, { useRef, useState } from "react";
 import Cookies from "js-cookie";
 import { buildUrl } from "../api";
 import { FaUpload, FaSpinner } from "react-icons/fa";
+import { useToast } from "./Ui/ToastProvider";
 
 const ImportSmartphones = ({
   uploadUrl = buildUrl("/api/smartphones/import"),
@@ -10,6 +11,7 @@ const ImportSmartphones = ({
   buttonLabel = "Import Smartphones",
 }) => {
   const fileRef = useRef(null);
+  const toast = useToast();
   const [isUploading, setIsUploading] = useState(false);
 
   const handleClick = () => fileRef.current?.click();
@@ -20,7 +22,10 @@ const ImportSmartphones = ({
 
     const allowed = [".xlsx", ".xls", ".csv"];
     if (!allowed.some((ext) => file.name.toLowerCase().endsWith(ext))) {
-      alert("Please upload a valid Excel or CSV file!");
+      toast.warning(
+        "Please upload a valid Excel or CSV file.",
+        "Unsupported file",
+      );
       return;
     }
 
@@ -42,12 +47,15 @@ const ImportSmartphones = ({
 
       if (!resp.ok) throw new Error(body.message || "Import failed");
 
-      alert(body.message || "Smartphones imported successfully!");
+      toast.success(
+        body.message || "Smartphones imported successfully!",
+        "Imported",
+      );
 
       onImported?.();
     } catch (err) {
       console.error("Import error:", err);
-      alert(err.message || "Failed to import file");
+      toast.error(err.message || "Failed to import file", "Import failed");
     } finally {
       setIsUploading(false);
       if (fileRef.current) fileRef.current.value = "";

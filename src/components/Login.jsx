@@ -14,6 +14,7 @@ import {
   HiOutlineShieldCheck,
 } from "react-icons/hi2";
 import { buildUrl } from "../api";
+import { useToast } from "./Ui/ToastProvider";
 
 const AUTH_NOTICE_STORAGE_KEY = "hooksAdminAuthNotice";
 const POST_LOGIN_REDIRECT_KEY = "hooksAdminPostLoginRedirect";
@@ -83,23 +84,6 @@ const pinPadLayout = [
   ["7", "8", "9"],
   ["empty", "0", "backspace"],
 ];
-
-const StatusMessage = ({ tone = "info", children }) => {
-  const tones = {
-    info: "border-blue-200 bg-blue-50 text-blue-700",
-    success: "border-emerald-200 bg-emerald-50 text-emerald-700",
-    warning: "border-amber-200 bg-amber-50 text-amber-800",
-    error: "border-rose-200 bg-rose-50 text-rose-700",
-  };
-
-  return (
-    <div
-      className={`rounded-2xl border px-4 py-3 text-sm leading-6 ${tones[tone]}`}
-    >
-      {children}
-    </div>
-  );
-};
 
 const HeroBrand = ({ dark = true, compact = false }) => (
   <div className="flex items-center gap-3">
@@ -624,6 +608,7 @@ const PinBoxesField = ({
 };
 
 const Login = ({ onLogin }) => {
+  const toast = useToast();
   const [form, setForm] = useState({
     email: "",
     password: "",
@@ -640,6 +625,8 @@ const Login = ({ onLogin }) => {
   const [notice, setNotice] = useState("");
   const [showPinValue, setShowPinValue] = useState(false);
   const [activePinField, setActivePinField] = useState("pin");
+  const lastErrorToastRef = useRef("");
+  const lastNoticeToastRef = useRef("");
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -666,6 +653,26 @@ const Login = ({ onLogin }) => {
       // Continue with the login form when storage access is unavailable.
     }
   }, [location.state]);
+
+  useEffect(() => {
+    if (!error) {
+      lastErrorToastRef.current = "";
+      return;
+    }
+    if (lastErrorToastRef.current === error) return;
+    lastErrorToastRef.current = error;
+    toast.error(error, "Sign-in failed");
+  }, [error, toast]);
+
+  useEffect(() => {
+    if (!notice) {
+      lastNoticeToastRef.current = "";
+      return;
+    }
+    if (lastNoticeToastRef.current === notice) return;
+    lastNoticeToastRef.current = notice;
+    toast.info(notice, "Sign-in notice");
+  }, [notice, toast]);
 
   useEffect(() => {
     if (step === STEPS.pin) {
@@ -1031,10 +1038,6 @@ const Login = ({ onLogin }) => {
         {pinStepSubtitle}
       </p>
 
-      <div className="mt-4 space-y-3">
-        {error ? <StatusMessage tone="error">{error}</StatusMessage> : null}
-      </div>
-
       <form onSubmit={submit} className="mt-5 space-y-4">
         {step === STEPS.pin ? (
           <PinBoxesField
@@ -1133,11 +1136,6 @@ const Login = ({ onLogin }) => {
       <p className="mt-2 text-[14px] leading-6 text-white/66 sm:text-[15px] sm:leading-7">
         Enter your credentials to access your dashboard.
       </p>
-
-      <div className="mt-4 space-y-3">
-        {notice ? <StatusMessage tone="warning">{notice}</StatusMessage> : null}
-        {error ? <StatusMessage tone="error">{error}</StatusMessage> : null}
-      </div>
 
       <form onSubmit={submit} className="mt-5 space-y-4">
         <div>
@@ -1348,27 +1346,6 @@ const Login = ({ onLogin }) => {
                       Welcome back! <span className="align-middle">👋</span>
                     </p>
 
-                    <div className="mt-4 space-y-3">
-                      {!isPinOverlayOpen && notice ? (
-                        <StatusMessage tone="warning">{notice}</StatusMessage>
-                      ) : null}
-
-                      {!isPinOverlayOpen && error ? (
-                        <StatusMessage tone="error">{error}</StatusMessage>
-                      ) : null}
-
-                      {isPinOverlayOpen ? (
-                        <StatusMessage tone="success">
-                          Password verified for{" "}
-                          <span className="font-semibold text-emerald-900">
-                            {form.email || "your account"}
-                          </span>
-                          . Complete the organization PIN step in the security
-                          window.
-                        </StatusMessage>
-                      ) : null}
-                    </div>
-
                     <form onSubmit={submit} className="mt-5 space-y-4">
                       <div>
                         <label className="mb-2 block text-[14px] font-semibold text-slate-100">
@@ -1570,15 +1547,6 @@ const Login = ({ onLogin }) => {
                     <p className="mt-3 text-center text-[14px] leading-6 text-white/66 sm:text-[15px] sm:leading-7">
                       {pinStepSubtitle}
                     </p>
-
-                    <div className="mt-5 space-y-3">
-                      {notice ? (
-                        <StatusMessage tone="info">{notice}</StatusMessage>
-                      ) : null}
-                      {error ? (
-                        <StatusMessage tone="error">{error}</StatusMessage>
-                      ) : null}
-                    </div>
 
                     <div className="mt-6 space-y-4 sm:space-y-5">
                       {step === STEPS.pin ? (

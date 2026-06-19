@@ -2,8 +2,10 @@
 import React, { useState, useEffect } from "react";
 import Cookies from "js-cookie";
 import axios from "axios";
+import { useToast } from "./Ui/ToastProvider";
 
 const ChangePasswordModal = ({ isOpen, onClose }) => {
+  const toast = useToast();
   const [formData, setFormData] = useState({
     currentPassword: "",
     newPassword: "",
@@ -18,7 +20,6 @@ const ChangePasswordModal = ({ isOpen, onClose }) => {
 
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
-  const [success, setSuccess] = useState("");
   const [passwordStrength, setPasswordStrength] = useState(0);
 
   // Reset form when modal opens/closes
@@ -40,7 +41,6 @@ const ChangePasswordModal = ({ isOpen, onClose }) => {
       confirm: false,
     });
     setErrors({});
-    setSuccess("");
     setPasswordStrength(0);
   };
 
@@ -108,9 +108,9 @@ const ChangePasswordModal = ({ isOpen, onClose }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrors({});
-    setSuccess("");
 
     if (!validateForm()) {
+      toast.warning("Please fix the highlighted password fields.", "Check the form");
       return;
     }
 
@@ -135,7 +135,7 @@ const ChangePasswordModal = ({ isOpen, onClose }) => {
       );
 
       if (response.data.success) {
-        setSuccess("Password changed successfully!");
+        toast.success("Password changed successfully!", "Saved");
 
         // Update token if returned
         if (response.data.token) {
@@ -161,12 +161,16 @@ const ChangePasswordModal = ({ isOpen, onClose }) => {
             });
             break;
           default:
-            setErrors({
-              general: "Failed to change password. Please try again.",
-            });
+            toast.error(
+              "Failed to change password. Please try again.",
+              "Action failed",
+            );
         }
       } else {
-        setErrors({ general: "Network error. Please check your connection." });
+        toast.error(
+          "Network error. Please check your connection.",
+          "Action failed",
+        );
       }
     } finally {
       setLoading(false);
@@ -274,38 +278,6 @@ const ChangePasswordModal = ({ isOpen, onClose }) => {
 
           {/* Form */}
           <div className="p-6">
-            {/* Success Message */}
-            {success && (
-              <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center space-x-3">
-                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                  <svg
-                    className="w-4 h-4 text-green-600"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                </div>
-                <div>
-                  <p className="text-green-800 font-medium">{success}</p>
-                  <p className="text-green-600 text-sm">Redirecting...</p>
-                </div>
-              </div>
-            )}
-
-            {/* Error Message */}
-            {errors.general && (
-              <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-red-800 font-medium">{errors.general}</p>
-              </div>
-            )}
-
             <form onSubmit={handleSubmit} className="space-y-5">
               {/* Current Password */}
               <div>

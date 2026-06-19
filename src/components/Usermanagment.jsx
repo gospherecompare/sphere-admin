@@ -8,6 +8,7 @@ import {
   getCurrentPermissions,
   hasAnyPermissions,
 } from "../utils/access";
+import { useToast } from "./Ui/ToastProvider";
 import {
   RBAC_ACTIONS,
   expandPermissionSet,
@@ -354,12 +355,11 @@ const ModalShell = ({ open, onClose, maxWidth = "max-w-4xl", children }) => {
 
 const UserManagement = () => {
   const hasFetchedRef = useRef(false);
+  const toast = useToast();
   const [users, setUsers] = useState([]);
   const [roles, setRoles] = useState([]);
   const [permissions, setPermissions] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
   const [selectedTab, setSelectedTab] = useState(0);
   const [selectedUser, setSelectedUser] = useState(null);
   const [userDialogOpen, setUserDialogOpen] = useState(false);
@@ -489,7 +489,6 @@ const UserManagement = () => {
         ),
         activities: resolvedActivities,
       });
-      setError("");
     } catch (err) {
       console.error("Error fetching data:", err);
       const fallbackUsers = listStoredUsers({ includeInactive: true });
@@ -503,7 +502,6 @@ const UserManagement = () => {
           current
         );
       });
-      setError("");
     } finally {
       setLoading(false);
     }
@@ -524,18 +522,6 @@ const UserManagement = () => {
       window.removeEventListener("hooks-rbac-updated", hydrateFromStore);
     };
   }, [hydrateFromStore]);
-
-  useEffect(() => {
-    if (!error) return undefined;
-    const timer = window.setTimeout(() => setError(""), 5000);
-    return () => window.clearTimeout(timer);
-  }, [error]);
-
-  useEffect(() => {
-    if (!success) return undefined;
-    const timer = window.setTimeout(() => setSuccess(""), 4000);
-    return () => window.clearTimeout(timer);
-  }, [success]);
 
   const canCreateUsers = hasAnyPermissions(
     ["users.create", "users.manage"],
@@ -615,7 +601,10 @@ const UserManagement = () => {
   const handleSaveUser = async () => {
     const canSave = userForm.id ? canEditUsers : canCreateUsers;
     if (!canSave) {
-      setError("You do not have permission to perform this action.");
+      toast.warning(
+        "You do not have permission to perform this action.",
+        "Permission required",
+      );
       return;
     }
 
@@ -648,7 +637,7 @@ const UserManagement = () => {
             actorRole: getCurrentSessionUser()?.role || "admin",
           },
         );
-        setSuccess("User updated successfully!");
+        toast.success("User updated successfully!", "Saved");
       } else {
         try {
           const response = await axios.post(
@@ -669,7 +658,7 @@ const UserManagement = () => {
             actorRole: getCurrentSessionUser()?.role || "admin",
           },
         );
-        setSuccess("User created successfully!");
+        toast.success("User created successfully!", "Saved");
       }
 
       setUserDialogOpen(false);
@@ -681,14 +670,17 @@ const UserManagement = () => {
       }
     } catch (err) {
       console.error("Error saving user:", err);
-      setError(getErrorMessage(err, "Failed to save user"));
+      toast.error(getErrorMessage(err, "Failed to save user"), "Action failed");
     }
   };
 
   // Handle user delete
   const handleDeleteUser = async (id) => {
     if (!canDeleteUsers) {
-      setError("You do not have permission to delete users.");
+      toast.warning(
+        "You do not have permission to delete users.",
+        "Permission required",
+      );
       return;
     }
 
@@ -707,17 +699,23 @@ const UserManagement = () => {
         actorRole: getCurrentSessionUser()?.role || "admin",
       });
       setUsers((prev) => prev.filter((user) => user.id !== id));
-      setSuccess("User deleted successfully!");
+      toast.success("User deleted successfully!", "Deleted");
     } catch (err) {
       console.error("Error deleting user:", err);
-      setError(getErrorMessage(err, "Failed to delete user"));
+      toast.error(
+        getErrorMessage(err, "Failed to delete user"),
+        "Action failed",
+      );
     }
   };
 
   // Open role assignment dialog
   const handleOpenRoleAssignment = (user) => {
     if (!canAssignRoles) {
-      setError("You do not have permission to assign roles.");
+      toast.warning(
+        "You do not have permission to assign roles.",
+        "Permission required",
+      );
       return;
     }
 
@@ -742,11 +740,14 @@ const UserManagement = () => {
   // Handle role assignment
   const handleAssignRole = async (roleId) => {
     if (!canAssignRoles) {
-      setError("You do not have permission to assign roles.");
+      toast.warning(
+        "You do not have permission to assign roles.",
+        "Permission required",
+      );
       return;
     }
     if (!selectedUser?.id) {
-      setError("Select a user before assigning a role.");
+      toast.warning("Select a user before assigning a role.", "Selection needed");
       return;
     }
 
@@ -790,12 +791,15 @@ const UserManagement = () => {
         );
       }
 
-      setSuccess("Role assigned successfully!");
+      toast.success("Role assigned successfully!", "Saved");
       setRoleAssignmentDialog(false);
       fetchData();
     } catch (err) {
       console.error("Error assigning role:", err);
-      setError(getErrorMessage(err, "Failed to assign role"));
+      toast.error(
+        getErrorMessage(err, "Failed to assign role"),
+        "Action failed",
+      );
     }
   };
 
@@ -925,7 +929,10 @@ const UserManagement = () => {
 
   const handleSaveUserPermissions = async () => {
     if (!canEditUserOverrides) {
-      setError("You do not have permission to update user permissions.");
+      toast.warning(
+        "You do not have permission to update user permissions.",
+        "Permission required",
+      );
       return;
     }
 
@@ -963,11 +970,14 @@ const UserManagement = () => {
         setSelectedUser(storedUser);
       }
 
-      setSuccess("User permissions updated successfully!");
+      toast.success("User permissions updated successfully!", "Saved");
       fetchData();
     } catch (err) {
       console.error("Error saving user permissions:", err);
-      setError(getErrorMessage(err, "Failed to save user permissions"));
+      toast.error(
+        getErrorMessage(err, "Failed to save user permissions"),
+        "Action failed",
+      );
     } finally {
       setSavingUserPermissions(false);
     }
@@ -1267,51 +1277,6 @@ const UserManagement = () => {
             </div>
           ) : null}
         </div>
-      </div>
-
-      <div className="space-y-3">
-        {error ? (
-          <div className="flex items-start gap-3 rounded-md border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 shadow-none">
-            <div className="flex items-start gap-3">
-              <div className="mt-0.5 text-rose-600">
-                <FaShieldAlt className="text-sm" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="font-semibold">Action failed</p>
-                <p className="mt-1">{error}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setError("")}
-                className="ml-auto text-xs font-semibold text-rose-600 transition hover:text-rose-800"
-                aria-label="Close error message"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        ) : null}
-        {success ? (
-          <div className="flex items-start gap-3 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 shadow-none">
-            <div className="flex items-start gap-3">
-              <div className="mt-0.5 text-emerald-600">
-                <FaUserShield className="text-sm" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="font-semibold">Saved</p>
-                <p className="mt-1">{success}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSuccess("")}
-                className="ml-auto text-xs font-semibold text-emerald-600 transition hover:text-emerald-800"
-                aria-label="Close success message"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        ) : null}
       </div>
 
       <section>

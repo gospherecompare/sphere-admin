@@ -2,12 +2,14 @@ import React, { useState, useRef, useEffect } from "react";
 import { FaEllipsisV, FaToggleOn, FaToggleOff } from "react-icons/fa";
 import Cookies from "js-cookie";
 import { buildUrl } from "../api";
+import { useToast } from "./Ui/ToastProvider";
 
 export default function PublishAction({
   id,
   published: initialPublished,
   onChange,
 }) {
+  const toast = useToast();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [published, setPublished] = useState(!!initialPublished);
@@ -91,7 +93,10 @@ export default function PublishAction({
       setOpen(false);
     } catch (err) {
       console.error("Publish toggle error:", err);
-      alert("Failed to update publish status. See console for details.");
+      toast.error(
+        err?.message || "Failed to update publish status.",
+        "Action failed",
+      );
     } finally {
       setLoading(false);
     }

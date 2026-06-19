@@ -18,7 +18,6 @@ import {
   FaSearch,
   FaSpinner,
   FaStore,
-  FaTimes,
   FaTrash,
   FaUpload,
 } from "react-icons/fa";
@@ -31,6 +30,7 @@ import {
   editorGhostButtonClassName,
   editorPrimaryButtonClassName,
 } from "./MobileEditorUi";
+import { useToast } from "./Ui/ToastProvider";
 
 const DEFAULT_FORM_DATA = {
   name: "",
@@ -319,6 +319,7 @@ function BrandOverviewRing({ activeCount, inactiveCount, total }) {
 const Brand = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const toast = useToast();
   const [formData, setFormData] = useState(DEFAULT_FORM_DATA);
   const [brands, setBrands] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -327,8 +328,6 @@ const Brand = () => {
   const [editingId, setEditingId] = useState(null);
   const [showEditor, setShowEditor] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
   const [statusUpdatingId, setStatusUpdatingId] = useState(null);
   const [activeFilter, setActiveFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
@@ -357,7 +356,6 @@ const Brand = () => {
 
   const fetchBrands = async () => {
     setIsLoading(true);
-    setError("");
 
     try {
       const token = Cookies.get("authToken");
@@ -416,7 +414,10 @@ const Brand = () => {
       setBrands(normalizedBrands);
     } catch (fetchError) {
       console.error("Fetch brands error:", fetchError);
-      setError(`Failed to load brands: ${fetchError.message}`);
+      toast.error(
+        `Failed to load brands: ${fetchError.message}`,
+        "Action failed",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -516,7 +517,6 @@ const Brand = () => {
   const closeEditor = () => {
     resetFormValues();
     setShowEditor(false);
-    setError("");
   };
 
   const handleChange = (event) => {
@@ -558,16 +558,12 @@ const Brand = () => {
 
       return next;
     });
-    if (error) setError("");
-    if (success) setSuccess("");
   };
 
   const handleLogoUpload = async (file) => {
     if (!file) return;
 
     setIsUploading(true);
-    setError("");
-    setSuccess("");
 
     try {
       const data = await uploadToCloudinary(file, "brands");
@@ -579,10 +575,13 @@ const Brand = () => {
         ...prev,
         logo: data.secure_url,
       }));
-      setSuccess("Logo uploaded successfully.");
+      toast.success("Logo uploaded successfully.", "Uploaded");
     } catch (uploadError) {
       console.error("Logo upload error:", uploadError);
-      setError(`Error uploading logo: ${uploadError.message}`);
+      toast.error(
+        `Error uploading logo: ${uploadError.message}`,
+        "Upload failed",
+      );
     } finally {
       setIsUploading(false);
     }
@@ -592,8 +591,6 @@ const Brand = () => {
     if (!file) return;
 
     setIsUploading(true);
-    setError("");
-    setSuccess("");
 
     try {
       const data = await uploadToCloudinary(file, "banners");
@@ -605,10 +602,13 @@ const Brand = () => {
         ...prev,
         banner: data.secure_url,
       }));
-      setSuccess("Brand banner uploaded successfully.");
+      toast.success("Brand banner uploaded successfully.", "Uploaded");
     } catch (uploadError) {
       console.error("Banner upload error:", uploadError);
-      setError(`Error uploading banner: ${uploadError.message}`);
+      toast.error(
+        `Error uploading banner: ${uploadError.message}`,
+        "Upload failed",
+      );
     } finally {
       setIsUploading(false);
     }
@@ -617,17 +617,15 @@ const Brand = () => {
   const handleSubmit = async (event) => {
     event.preventDefault();
     setIsLoading(true);
-    setError("");
-    setSuccess("");
 
     if (!formData.name.trim()) {
-      setError("Brand name is required.");
+      toast.warning("Brand name is required.", "Missing information");
       setIsLoading(false);
       return;
     }
 
     if (!formData.logo) {
-      setError("Brand logo is required.");
+      toast.warning("Brand logo is required.", "Missing information");
       setIsLoading(false);
       return;
     }
@@ -678,17 +676,19 @@ const Brand = () => {
       await fetchBrands();
       resetFormValues();
       setShowEditor(false);
-      setSuccess(
+      toast.success(
         `Brand ${formData.name.trim()} ${
           isEditing ? "updated" : "created"
         } successfully.`,
+        "Saved",
       );
     } catch (submitError) {
       console.error("Brand operation error:", submitError);
-      setError(
+      toast.error(
         `Error ${isEditing ? "updating" : "creating"} brand: ${
           submitError.message
         }`,
+        "Action failed",
       );
     } finally {
       setIsLoading(false);
@@ -698,8 +698,6 @@ const Brand = () => {
   const handleCreateNew = () => {
     resetFormValues();
     setShowEditor(true);
-    setError("");
-    setSuccess("");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -730,8 +728,6 @@ const Brand = () => {
     setIsEditing(true);
     setEditingId(brand.id);
     setShowEditor(true);
-    setError("");
-    setSuccess("");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -769,7 +765,7 @@ const Brand = () => {
     });
     if (!deleteApproval) return;
     if (deleteApproval.error) {
-      setError(deleteApproval.error);
+      toast.warning(deleteApproval.error, "Check delete approval");
       return;
     }
 
@@ -791,11 +787,14 @@ const Brand = () => {
 
       await fetchBrands();
       removeStoredBrandExtras(brand.id);
-      setSuccess("Brand deleted successfully.");
+      toast.success("Brand deleted successfully.", "Deleted");
       setSelectedBrandIds((prev) => prev.filter((id) => id !== brand.id));
     } catch (deleteError) {
       console.error("Delete brand error:", deleteError);
-      setError(`Error deleting brand: ${deleteError.message}`);
+      toast.error(
+        `Error deleting brand: ${deleteError.message}`,
+        "Action failed",
+      );
     }
   };
 
@@ -833,12 +832,16 @@ const Brand = () => {
           item.id === brand.id ? { ...item, status: newStatus } : item,
         ),
       );
-      setSuccess(
+      toast.success(
         `Brand ${newStatus === "active" ? "activated" : "deactivated"} successfully.`,
+        "Saved",
       );
     } catch (statusError) {
       console.error("Status toggle error:", statusError);
-      setError(`Failed to update status: ${statusError.message}`);
+      toast.error(
+        `Failed to update status: ${statusError.message}`,
+        "Action failed",
+      );
     } finally {
       setStatusUpdatingId(null);
     }
@@ -1189,34 +1192,6 @@ const Brand = () => {
           <span className="font-medium text-slate-700">{editorTitle}</span>
         </div>
 
-        {error ? (
-          <div className="flex items-start gap-3 rounded-md border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-            <FaExclamationCircle className="mt-0.5 shrink-0" />
-            <span className="flex-1">{error}</span>
-            <button
-              type="button"
-              onClick={() => setError("")}
-              className="text-rose-400 transition hover:text-rose-600"
-            >
-              <FaTimes />
-            </button>
-          </div>
-        ) : null}
-
-        {success ? (
-          <div className="flex items-start gap-3 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-            <FaCheckCircle className="mt-0.5 shrink-0" />
-            <span className="flex-1">{success}</span>
-            <button
-              type="button"
-              onClick={() => setSuccess("")}
-              className="text-emerald-400 transition hover:text-emerald-600"
-            >
-              <FaTimes />
-            </button>
-          </div>
-        ) : null}
-
         <section className={CARD_CLASS}>
           <div className={SECTION_HEADER_CLASS}>
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -1331,8 +1306,9 @@ const Brand = () => {
                             const file = event.target.files?.[0];
                             if (!file) return;
                             if (file.size > 2 * 1024 * 1024) {
-                              setError(
+                              toast.warning(
                                 "File size too large. Maximum 2MB allowed.",
+                                "Upload limit",
                               );
                               return;
                             }
@@ -1402,8 +1378,9 @@ const Brand = () => {
                             const file = event.target.files?.[0];
                             if (!file) return;
                             if (file.size > 5 * 1024 * 1024) {
-                              setError(
+                              toast.warning(
                                 "Banner size too large. Maximum 5MB allowed.",
+                                "Upload limit",
                               );
                               return;
                             }
@@ -2238,34 +2215,6 @@ const Brand = () => {
           </div>
         </div>
       </div>
-
-      {error ? (
-        <div className="flex items-start gap-3 rounded-md border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 shadow-none">
-          <FaExclamationCircle className="mt-0.5 shrink-0" />
-          <span className="flex-1">{error}</span>
-          <button
-            type="button"
-            onClick={() => setError("")}
-            className="text-rose-400 transition hover:text-rose-600"
-          >
-            <FaTimes />
-          </button>
-        </div>
-      ) : null}
-
-      {success ? (
-        <div className="flex items-start gap-3 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 shadow-none">
-          <FaCheckCircle className="mt-0.5 shrink-0" />
-          <span className="flex-1">{success}</span>
-          <button
-            type="button"
-            onClick={() => setSuccess("")}
-            className="text-emerald-400 transition hover:text-emerald-600"
-          >
-            <FaTimes />
-          </button>
-        </div>
-      ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         {statCards.map((card) => (

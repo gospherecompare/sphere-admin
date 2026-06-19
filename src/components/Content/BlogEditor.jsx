@@ -43,7 +43,9 @@ import {
 } from "react-icons/fa";
 import { buildUrl, getAuthToken } from "../../api";
 import { uploadToCloudinary } from "../../config/cloudinary";
+import { requestDeleteApproval } from "../../utils/deleteApproval";
 import { getAuthorOptions, syncRbacState } from "../../utils/rbacStore";
+import { useToast } from "../Ui/ToastProvider";
 import TiptapStoryEditor from "./TiptapStoryEditor";
 
 const DEFAULT_PRODUCT_TEMPLATE = [
@@ -658,6 +660,7 @@ const resolveStoredArticleContent = (record, fallback = "") => {
 };
 
 const BlogEditor = () => {
+  const toast = useToast();
   const { id: routeArticleId } = useParams();
   // Auto-load article if route param is present and not already loaded
   useEffect(() => {
@@ -707,6 +710,8 @@ const BlogEditor = () => {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const lastMessageToastRef = useRef("");
+  const lastErrorToastRef = useRef("");
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const [linkDialogUrl, setLinkDialogUrl] = useState("");
   const [linkDialogText, setLinkDialogText] = useState("");
@@ -2115,10 +2120,15 @@ const BlogEditor = () => {
     if (!Number.isInteger(targetId) || targetId <= 0) return;
 
     const targetLabel = row?.title || "this entry";
-    if (
-      typeof window !== "undefined" &&
-      !window.confirm(`Delete "${targetLabel}"? This action cannot be undone.`)
-    ) {
+    const deleteApproval = requestDeleteApproval({
+      itemName: targetLabel,
+      itemLabel: "news article",
+    });
+    if (!deleteApproval) {
+      return;
+    }
+    if (deleteApproval.error) {
+      setError(deleteApproval.error);
       return;
     }
 
@@ -2130,6 +2140,7 @@ const BlogEditor = () => {
       const response = await fetch(buildUrl(`/api/admin/blogs/${targetId}`), {
         method: "DELETE",
         headers: authHeaders,
+        body: JSON.stringify(deleteApproval),
       });
       const data = await response.json().catch(() => ({}));
 
@@ -2433,6 +2444,31 @@ const BlogEditor = () => {
   const focusKeywordWordCountLabel = formatWordCountLabel(focusKeywordValue);
   const authorNameWordCountLabel = formatWordCountLabel(authorName);
   const isLoadingStoryMessage = message === "Loading selected story...";
+
+  useEffect(() => {
+    if (!message) {
+      lastMessageToastRef.current = "";
+      return;
+    }
+    if (lastMessageToastRef.current === message) return;
+    lastMessageToastRef.current = message;
+    if (isLoadingStoryMessage) {
+      toast.info(message, "Opening story");
+      return;
+    }
+    toast.success(message, "Workspace updated");
+  }, [isLoadingStoryMessage, message, toast]);
+
+  useEffect(() => {
+    if (!error) {
+      lastErrorToastRef.current = "";
+      return;
+    }
+    if (lastErrorToastRef.current === error) return;
+    lastErrorToastRef.current = error;
+    toast.error(error, "Something went wrong");
+  }, [error, toast]);
+
   const focusSlugField = () => {
     setComposerSidebarTab("block");
     setTimeout(() => {
@@ -2614,52 +2650,6 @@ const BlogEditor = () => {
           </div>
         </div>
       )}
-
-      {error ? (
-        <div className="border border-red-200 bg-red-50 px-2 py-3 text-red-700 md:px-4">
-          <div className="flex items-start gap-3">
-            <div className="mt-0.5 flex h-8 w-8 items-center justify-center border border-red-200 bg-white/70 text-red-600">
-              <span className="text-sm font-semibold">!</span>
-            </div>
-            <div>
-              <div className="text-sm font-semibold">Something went wrong</div>
-              <div className="mt-1 text-sm">{error}</div>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      {message ? (
-        <div
-          className={`border px-2 py-3 md:px-4 ${
-            isLoadingStoryMessage
-              ? "border-sky-200 bg-[linear-gradient(90deg,#f8fbff_0%,#eef6ff_100%)] text-sky-700"
-              : "border-emerald-200 bg-[linear-gradient(90deg,#f7fdf9_0%,#eefbf3_100%)] text-emerald-700"
-          }`}
-        >
-          <div className="flex items-start gap-3">
-            <div
-              className={`mt-0.5 flex h-8 w-8 items-center justify-center border bg-white/75 ${
-                isLoadingStoryMessage
-                  ? "border-sky-200 text-sky-600"
-                  : "border-emerald-200 text-emerald-600"
-              }`}
-            >
-              {isLoadingStoryMessage ? (
-                <FaSyncAlt className="animate-spin text-xs" />
-              ) : (
-                <FaCheckCircle className="text-xs" />
-              )}
-            </div>
-            <div>
-              <div className="text-sm font-semibold">
-                {isLoadingStoryMessage ? "Opening story" : "Workspace updated"}
-              </div>
-              <div className="mt-1 text-sm">{message}</div>
-            </div>
-          </div>
-        </div>
-      ) : null}
 
       <div className="mb-5">
         {workspaceView === "listing" ? (

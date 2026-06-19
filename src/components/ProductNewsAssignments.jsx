@@ -1,7 +1,5 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-  FaCheckCircle,
-  FaExclamationCircle,
   FaLink,
   FaNewspaper,
   FaSave,
@@ -21,6 +19,7 @@ import {
   editorGhostButtonClassName,
   editorPrimaryButtonClassName,
 } from "./MobileEditorUi";
+import { useToast } from "./Ui/ToastProvider";
 
 const FIELD_CLASS =
   "h-11 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-[#345CFF] focus:bg-white focus:ring-0";
@@ -52,6 +51,7 @@ const ProductNewsAssignments = ({
   selectedArticleIds: controlledSelectedArticleIds,
   onSelectedArticleIdsChange,
 }) => {
+  const toast = useToast();
   const normalizedProductId = normalizePositiveInteger(productId);
   const isEditMode = Boolean(normalizedProductId);
   const hasControlledSelection = Array.isArray(controlledSelectedArticleIds);
@@ -71,6 +71,28 @@ const ProductNewsAssignments = ({
   const [isDirty, setIsDirty] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const lastMessageToastRef = useRef("");
+  const lastErrorToastRef = useRef("");
+
+  useEffect(() => {
+    if (!message) {
+      lastMessageToastRef.current = "";
+      return;
+    }
+    if (lastMessageToastRef.current === message) return;
+    lastMessageToastRef.current = message;
+    toast.success(message, "Articles updated");
+  }, [message, toast]);
+
+  useEffect(() => {
+    if (!error) {
+      lastErrorToastRef.current = "";
+      return;
+    }
+    if (lastErrorToastRef.current === error) return;
+    lastErrorToastRef.current = error;
+    toast.error(error, "Action failed");
+  }, [error, toast]);
 
   const selectedArticleIds = hasControlledSelection
     ? normalizedControlledSelection
@@ -322,20 +344,6 @@ const ProductNewsAssignments = ({
           <div className="rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">
             The selected articles will be linked automatically once this{" "}
             {productLabel.toLowerCase()} is created.
-          </div>
-        ) : null}
-
-        {message ? (
-          <div className="flex items-start gap-3 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-            <FaCheckCircle className="mt-0.5 shrink-0" />
-            <span className="flex-1">{message}</span>
-          </div>
-        ) : null}
-
-        {error ? (
-          <div className="flex items-start gap-3 rounded-md border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-            <FaExclamationCircle className="mt-0.5 shrink-0" />
-            <span className="flex-1">{error}</span>
           </div>
         ) : null}
 

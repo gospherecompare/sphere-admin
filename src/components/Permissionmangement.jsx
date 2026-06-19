@@ -18,10 +18,10 @@ import {
   expandPermissionSet,
   normalizePermissionToken,
 } from "../utils/rbacCatalog";
+import { useToast } from "./Ui/ToastProvider";
 import {
   FaBell,
   FaCheck,
-  FaCheckCircle,
   FaChevronLeft,
   FaChevronRight,
   FaEdit,
@@ -33,7 +33,6 @@ import {
   FaLock,
   FaKey,
   FaShieldAlt,
-  FaTimesCircle,
   FaUsers,
   FaUserShield,
 } from "react-icons/fa";
@@ -222,11 +221,10 @@ const ModalShell = ({
 
 const PermissionManagement = () => {
   const hasFetchedRef = useRef(false);
+  const toast = useToast();
   const [permissions, setPermissions] = useState([]);
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
   const [openDialog, setOpenDialog] = useState(false);
   const [roleDialogOpen, setRoleDialogOpen] = useState(false);
   const [currentPermission, setCurrentPermission] = useState({
@@ -283,12 +281,10 @@ const PermissionManagement = () => {
         permissions: resolvedPermissions,
         roles: resolvedRoles,
       });
-      setError("");
     } catch (err) {
       console.error("Error fetching permissions:", err);
       setPermissions(listStoredPermissions());
       setRoles(listStoredRoles());
-      setError("");
     } finally {
       setLoading(false);
     }
@@ -309,18 +305,6 @@ const PermissionManagement = () => {
       window.removeEventListener("hooks-rbac-updated", hydrateFromStore);
     };
   }, [hydrateFromStore]);
-
-  useEffect(() => {
-    if (!error) return undefined;
-    const timer = window.setTimeout(() => setError(""), 5000);
-    return () => window.clearTimeout(timer);
-  }, [error]);
-
-  useEffect(() => {
-    if (!success) return undefined;
-    const timer = window.setTimeout(() => setSuccess(""), 4000);
-    return () => window.clearTimeout(timer);
-  }, [success]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -375,14 +359,17 @@ const PermissionManagement = () => {
         }
 
         setPermissions(listStoredPermissions());
-        setSuccess("Permission created successfully!");
+        toast.success("Permission created successfully!", "Saved");
         setOpenDialog(false);
         if (created) {
           fetchPermissions();
         }
       } else {
         if (currentPermission.built_in) {
-          setError("Built-in permissions are managed by the system.");
+          toast.warning(
+            "Built-in permissions are managed by the system.",
+            "System managed",
+          );
           return;
         }
         try {
@@ -404,13 +391,16 @@ const PermissionManagement = () => {
           );
           setPermissions(listStoredPermissions());
         }
-        setSuccess("Permission updated successfully!");
+        toast.success("Permission updated successfully!", "Saved");
         setOpenDialog(false);
         fetchPermissions();
       }
     } catch (err) {
       console.error("Error saving permission:", err);
-      setError(err.response?.data?.error || "Failed to save permission");
+      toast.error(
+        err.response?.data?.error || "Failed to save permission",
+        "Action failed",
+      );
     }
   };
 
@@ -419,7 +409,10 @@ const PermissionManagement = () => {
       (item) => String(item.id) === String(id) || String(item.name) === String(id),
     );
     if (permission?.built_in) {
-      setError("Built-in permissions cannot be deleted.");
+      toast.warning(
+        "Built-in permissions cannot be deleted.",
+        "System managed",
+      );
       return;
     }
 
@@ -439,10 +432,13 @@ const PermissionManagement = () => {
         actorRole: Cookies.get("role") || "admin",
       });
       setPermissions(listStoredPermissions());
-      setSuccess("Permission deleted successfully!");
+      toast.success("Permission deleted successfully!", "Deleted");
     } catch (err) {
       console.error("Error deleting permission:", err);
-      setError(err.response?.data?.error || "Failed to delete permission");
+      toast.error(
+        err.response?.data?.error || "Failed to delete permission",
+        "Action failed",
+      );
     }
   };
 
@@ -484,7 +480,10 @@ const PermissionManagement = () => {
   const handleSaveRole = async () => {
     try {
       if (roleDialogMode === "edit" && currentRole.built_in) {
-        setError("Built-in roles are managed by the system and cannot be edited.");
+        toast.warning(
+          "Built-in roles are managed by the system and cannot be edited.",
+          "System managed",
+        );
         return;
       }
 
@@ -497,7 +496,7 @@ const PermissionManagement = () => {
       };
 
       if (roleDialogMode === "create" && !payload.name.trim()) {
-        setError("Role name is required");
+        toast.warning("Role name is required.", "Missing information");
         return;
       }
 
@@ -510,7 +509,7 @@ const PermissionManagement = () => {
             actorRole: Cookies.get("role") || "admin",
           });
         }
-        setSuccess("Role created successfully!");
+        toast.success("Role created successfully!", "Saved");
       } else {
         try {
           await axios.put(buildUrl(`/api/rbac/roles/${currentRole.id}`), payload);
@@ -526,14 +525,17 @@ const PermissionManagement = () => {
             },
           );
         }
-        setSuccess("Role updated successfully!");
+        toast.success("Role updated successfully!", "Saved");
       }
 
       setRoleDialogOpen(false);
       fetchPermissions();
     } catch (err) {
       console.error("Error saving role:", err);
-      setError(err.response?.data?.message || "Failed to save role");
+      toast.error(
+        err.response?.data?.message || "Failed to save role",
+        "Action failed",
+      );
     }
   };
 
@@ -580,7 +582,7 @@ const PermissionManagement = () => {
     4,
     Math.min(24, activeUsers.length + Math.min(recentActivities.length, 6)),
   );
-  const systemHealthy = !loading && !error;
+  const systemHealthy = !loading;
 
   const workspaceStats = [
     {
@@ -707,50 +709,6 @@ const PermissionManagement = () => {
 
   return (
     <div className={PAGE_CLASS}>
-      {error ? (
-        <div className="fixed bottom-4 right-4 z-40 w-full max-w-sm border border-rose-200 bg-white px-4 py-3 text-sm">
-          <div className="flex items-start gap-3">
-            <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center border border-rose-200 bg-rose-50 text-rose-600">
-              <FaTimesCircle className="text-sm" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="font-semibold text-rose-700">Action failed</p>
-              <p className="mt-1 text-rose-600">{error}</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setError("")}
-              className="border border-slate-200 p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
-              aria-label="Close error message"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      ) : null}
-
-      {success ? (
-        <div className="fixed bottom-4 left-4 z-40 w-full max-w-sm border border-emerald-200 bg-white px-4 py-3 text-sm">
-          <div className="flex items-start gap-3">
-            <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center border border-emerald-200 bg-emerald-50 text-emerald-600">
-              <FaCheckCircle className="text-sm" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="font-semibold text-emerald-700">Saved</p>
-              <p className="mt-1 text-emerald-600">{success}</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setSuccess("")}
-              className="border border-slate-200 p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
-              aria-label="Close success message"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      ) : null}
-
       <div className="border-b border-slate-200 pb-4">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <div>

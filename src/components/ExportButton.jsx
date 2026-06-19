@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { FaDownload } from "react-icons/fa";
 import { buildUrl } from "../api";
 import Cookies from "js-cookie";
+import { useToast } from "./Ui/ToastProvider";
 
 /**
  * ExportButton
@@ -22,6 +23,7 @@ const ExportButton = ({
   onStart,
   onFinish,
 }) => {
+  const toast = useToast();
   const [busy, setBusy] = useState(false);
 
   const handleClick = async () => {
@@ -69,8 +71,10 @@ const ExportButton = ({
     } catch (err) {
       console.error("ExportButton error:", err);
       onError && onError(err);
-      // fallback user-visible message
-      alert("Export failed: " + (err && err.message ? err.message : err));
+      toast.error(
+        "Export failed: " + (err && err.message ? err.message : err),
+        "Export failed",
+      );
     } finally {
       setBusy(false);
     }
