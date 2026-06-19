@@ -141,6 +141,10 @@ const AccountManagement = () => {
     showPassword: false,
     error: "",
   });
+  const [deleteAuditLogs, setDeleteAuditLogs] = useState([]);
+  const [deleteAuditTotal, setDeleteAuditTotal] = useState(0);
+  const [deleteAuditLoading, setDeleteAuditLoading] = useState(false);
+  const [deleteAuditError, setDeleteAuditError] = useState("");
 
   const getToken = () => Cookies.get("authToken");
   const getAuthHeaders = (token) => ({ Authorization: `Bearer ${token}` });
@@ -155,6 +159,35 @@ const AccountManagement = () => {
       last_name: user.last_name || "",
       gender: user.gender || "",
     });
+  };
+
+  const loadDeleteAuditLogs = async (token = getToken()) => {
+    if (!token) return;
+
+    try {
+      setDeleteAuditLoading(true);
+      setDeleteAuditError("");
+      const response = await axios.get(
+        buildUrl("/api/auth/data-delete-audit?limit=50"),
+        {
+          headers: getAuthHeaders(token),
+        },
+      );
+
+      if (response.data.success) {
+        setDeleteAuditLogs(
+          Array.isArray(response.data.audits) ? response.data.audits : [],
+        );
+        setDeleteAuditTotal(Number(response.data.total) || 0);
+      }
+    } catch (error) {
+      console.error("Error loading delete audit tracking:", error);
+      setDeleteAuditError(
+        error.response?.data?.message || "Failed to load delete audit tracking",
+      );
+    } finally {
+      setDeleteAuditLoading(false);
+    }
   };
 
   const loadAccountData = async () => {
@@ -197,12 +230,16 @@ const AccountManagement = () => {
               updated_by: deletePinStatusResponse.data.updated_by || null,
             });
           }
+          await loadDeleteAuditLogs(token);
         } else {
           setDeletePinStatus({
             isConfigured: false,
             updated_at: null,
             updated_by: null,
           });
+          setDeleteAuditLogs([]);
+          setDeleteAuditTotal(0);
+          setDeleteAuditError("");
         }
       }
 
@@ -840,6 +877,87 @@ const AccountManagement = () => {
     } catch {
       return "Recently updated";
     }
+  };
+
+  const humanizeAuditValue = (value) =>
+    String(value || "")
+      .trim()
+      .replace(/[_-]+/g, " ")
+      .replace(/\b\w/g, (letter) => letter.toUpperCase());
+
+  const getAuditSnapshotValue = (audit, keys) => {
+    const snapshot =
+      audit?.target_snapshot && typeof audit.target_snapshot === "object"
+        ? audit.target_snapshot
+        : {};
+    for (const key of keys) {
+      const value = snapshot[key];
+      if (value !== undefined && value !== null && String(value).trim()) {
+        return String(value).trim();
+      }
+    }
+    return "";
+  };
+
+  const getDeleteAuditTargetName = (audit) => {
+    const snapshotName = getAuditSnapshotValue(audit, [
+      "product_name",
+      "productName",
+      "name",
+      "title",
+      "model",
+      "label",
+      "slug",
+    ]);
+    const directName = String(audit?.target_name || "").trim();
+    const targetName = directName || snapshotName;
+    if (targetName) return targetName;
+
+    const targetTable = humanizeAuditValue(audit?.target_table) || "Deleted Item";
+    return audit?.target_id ? `${targetTable} #${audit.target_id}` : targetTable;
+  };
+
+  const getDeleteAuditTargetMeta = (audit) => {
+    const parts = [
+      humanizeAuditValue(audit?.target_type),
+      humanizeAuditValue(audit?.target_table),
+      audit?.target_id ? `ID ${audit.target_id}` : "",
+    ].filter(Boolean);
+    return parts.join(" | ") || "Target details unavailable";
+  };
+
+  const getDeleteAuditUserLabel = (audit) => {
+    const fullName = [
+      audit?.deleted_by_first_name,
+      audit?.deleted_by_last_name,
+    ]
+      .map((value) => String(value || "").trim())
+      .filter(Boolean)
+      .join(" ");
+
+    return (
+      fullName ||
+      audit?.deleted_by_user_name ||
+      audit?.deleted_by_email ||
+      audit?.deleted_by_current_email ||
+      (audit?.deleted_by ? `User #${audit.deleted_by}` : "Unknown user")
+    );
+  };
+
+  const getDeleteAuditUserMeta = (audit) => {
+    const email =
+      audit?.deleted_by_email || audit?.deleted_by_current_email || "";
+    const role = humanizeAuditValue(audit?.deleted_by_role);
+    return [email, role].filter(Boolean).join(" | ");
+  };
+
+  const getDeleteAuditOutcomeClass = (audit) => {
+    const outcome = String(audit?.outcome || "").toLowerCase();
+    const status = Number(audit?.http_status);
+    if (outcome === "deleted" || (status >= 200 && status < 300)) {
+      return "bg-green-50 text-green-700";
+    }
+    return "bg-red-50 text-red-700";
   };
 
   const getPasswordStrengthColor = () => {
@@ -1729,6 +1847,7 @@ const AccountManagement = () => {
       )}
 
       {activeTab === "delete-pin" && isAdminRole && (
+        <>
         <section className="grid gap-4 lg:grid-cols-[1.08fr_0.92fr]">
           <article className="min-w-0 rounded-xl border border-slate-200 bg-white p-4 shadow-[0_12px_36px_rgba(15,23,42,0.045)] sm:p-6">
             <div className="mb-6 flex items-start gap-3">
@@ -1931,6 +2050,137 @@ const AccountManagement = () => {
             </div>
           </aside>
         </section>
+        <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-[0_12px_36px_rgba(15,23,42,0.045)] sm:p-5">
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-base font-bold text-slate-950">
+                  Delete Audit Tracking
+                </h2>
+                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-600">
+                  {deleteAuditTotal} records
+                </span>
+              </div>
+              <p className="mt-1 text-xs leading-5 text-slate-500">
+                Tracks reason, deleted product or target, date, status and the
+                admin user who approved the delete.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => loadDeleteAuditLogs()}
+              disabled={deleteAuditLoading}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-slate-200 px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {deleteAuditLoading ? (
+                <FaSpinner className="animate-spin" />
+              ) : (
+                <FaHistory />
+              )}
+              Refresh
+            </button>
+          </div>
+
+          {deleteAuditError && (
+            <div className="mb-4 flex items-center gap-3 rounded-lg border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
+              <FaExclamationCircle />
+              {deleteAuditError}
+            </div>
+          )}
+
+          <div className="overflow-hidden rounded-xl border border-slate-200">
+            <div className="overflow-x-auto">
+              <table className="min-w-[980px] w-full divide-y divide-slate-200 text-left text-sm">
+                <thead className="bg-slate-50 text-xs uppercase tracking-[0.08em] text-slate-500">
+                  <tr>
+                    <th className="px-4 py-3 font-bold">Date</th>
+                    <th className="px-4 py-3 font-bold">User Name</th>
+                    <th className="px-4 py-3 font-bold">Product / Target</th>
+                    <th className="px-4 py-3 font-bold">Reason</th>
+                    <th className="px-4 py-3 font-bold">Status</th>
+                    <th className="px-4 py-3 font-bold">Route / IP</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200 bg-white">
+                  {deleteAuditLoading && !deleteAuditLogs.length && (
+                    <tr>
+                      <td
+                        colSpan={6}
+                        className="px-4 py-8 text-center text-sm text-slate-500"
+                      >
+                        <FaSpinner className="mx-auto mb-2 animate-spin text-xl text-rose-500" />
+                        Loading delete audit tracking...
+                      </td>
+                    </tr>
+                  )}
+
+                  {!deleteAuditLoading && !deleteAuditLogs.length && (
+                    <tr>
+                      <td
+                        colSpan={6}
+                        className="px-4 py-8 text-center text-sm text-slate-500"
+                      >
+                        No audited deletes found yet.
+                      </td>
+                    </tr>
+                  )}
+
+                  {deleteAuditLogs.map((audit) => (
+                    <tr key={audit.id} className="align-top hover:bg-slate-50/70">
+                      <td className="whitespace-nowrap px-4 py-4 text-xs font-semibold text-slate-700">
+                        {formatPinUpdatedAt(audit.created_at)}
+                      </td>
+                      <td className="px-4 py-4">
+                        <p className="font-semibold text-slate-900">
+                          {getDeleteAuditUserLabel(audit)}
+                        </p>
+                        <p className="mt-1 text-xs text-slate-500">
+                          {getDeleteAuditUserMeta(audit) || "No user metadata"}
+                        </p>
+                      </td>
+                      <td className="px-4 py-4">
+                        <p className="max-w-[240px] font-semibold text-slate-900">
+                          {getDeleteAuditTargetName(audit)}
+                        </p>
+                        <p className="mt-1 text-xs text-slate-500">
+                          {getDeleteAuditTargetMeta(audit)}
+                        </p>
+                      </td>
+                      <td className="px-4 py-4">
+                        <p className="max-w-[280px] whitespace-pre-wrap text-sm leading-6 text-slate-700">
+                          {audit.reason || "No reason recorded"}
+                        </p>
+                      </td>
+                      <td className="px-4 py-4">
+                        <span
+                          className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${getDeleteAuditOutcomeClass(
+                            audit,
+                          )}`}
+                        >
+                          {humanizeAuditValue(audit.outcome) || "Unknown"}
+                        </span>
+                        {audit.http_status && (
+                          <p className="mt-1 text-xs text-slate-500">
+                            HTTP {audit.http_status}
+                          </p>
+                        )}
+                      </td>
+                      <td className="px-4 py-4">
+                        <p className="max-w-[260px] break-all text-xs font-medium text-slate-700">
+                          {audit.target_route || "Route unavailable"}
+                        </p>
+                        <p className="mt-1 text-xs text-slate-500">
+                          {audit.request_ip || "IP unavailable"}
+                        </p>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+        </>
       )}
 
       {deletePinPasswordModal.open && (
