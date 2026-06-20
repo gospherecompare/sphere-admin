@@ -208,12 +208,17 @@ const isFutureDateValue = (value) => {
   return Number.isFinite(timestamp) && timestamp > Date.now();
 };
 
-const getListingStatusKey = (row) => {
+const isBlogRowPublished = (row) => {
   const baseStatus = String(row?.status || "")
     .trim()
     .toLowerCase();
+  return typeof row?.is_published === "boolean"
+    ? row.is_published
+    : baseStatus === "published";
+};
 
-  if (baseStatus === "published") {
+const getListingStatusKey = (row) => {
+  if (isBlogRowPublished(row)) {
     return isFutureDateValue(row?.published_at) ? "scheduled" : "published";
   }
 
@@ -731,6 +736,7 @@ const BlogEditor = () => {
   const [selectedLibraryId, setSelectedLibraryId] = useState(null);
   const [loadingEntryId, setLoadingEntryId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
+  const [publishingId, setPublishingId] = useState(null);
   const [newPostMenuOpen, setNewPostMenuOpen] = useState(false);
   const [libraryActionMenuId, setLibraryActionMenuId] = useState(null);
   const [composerSidebarTab, setComposerSidebarTab] = useState("post");
@@ -1094,7 +1100,11 @@ const BlogEditor = () => {
       setTrending(normalizeBoolean(existing.trending));
       setPinned(normalizeBoolean(existing.pinned));
       setPublishedAt(toDateTimeLocalValue(existing.published_at));
-      setStatus(existing.status === "published" ? "published" : "draft");
+      setStatus(
+        existing.is_published || existing.status === "published"
+          ? "published"
+          : "draft",
+      );
       loadEditorTemplate(
         resolveStoredArticleContent(existing, DEFAULT_PRODUCT_TEMPLATE),
       );
@@ -1608,7 +1618,11 @@ const BlogEditor = () => {
       setTrending(normalizeBoolean(article.trending));
       setPinned(normalizeBoolean(article.pinned));
       setPublishedAt(toDateTimeLocalValue(article.published_at));
-      setStatus(article.status === "published" ? "published" : "draft");
+      setStatus(
+        article.is_published || article.status === "published"
+          ? "published"
+          : "draft",
+      );
       loadEditorTemplate(
         resolveStoredArticleContent(
           article,
@@ -1948,7 +1962,14 @@ const BlogEditor = () => {
     const productIdsForSave =
       blogMode === "product" ? normalizeSelectedProductIds(selectedProductIds) : [];
     const productIdForSave = productIdsForSave[0] || null;
-    const nextStatus = statusOverride || status;
+    const nextIsPublished =
+      statusOverride === "published"
+        ? true
+        : statusOverride === "draft"
+          ? false
+          : status === "published";
+    const wasPublished = status === "published";
+    const nextStatus = nextIsPublished ? "published" : "draft";
     const contentForSave = buildEditorSurfaceHtml(contentTemplate);
     const unresolvedTokens = collectArticleTemplateTokens(
       renderBlogTemplatePreview(contentForSave, tokenMap),
@@ -2020,6 +2041,7 @@ const BlogEditor = () => {
           featured,
           trending,
           pinned,
+          is_published: nextIsPublished,
           status: nextStatus,
           published_at: publishedAt || null,
           content_template: contentForSave,
@@ -2033,8 +2055,10 @@ const BlogEditor = () => {
       }
 
       setMessage(
-        nextStatus === "published"
+        nextIsPublished
           ? "Content published successfully"
+          : wasPublished
+            ? "Content unpublished successfully"
           : "Draft saved successfully",
       );
       if (data?.blog?.id) {
@@ -2047,7 +2071,7 @@ const BlogEditor = () => {
           data.blog.product_ids,
         );
       }
-      setStatus(nextStatus);
+      setStatus(data?.blog?.is_published ? "published" : nextStatus);
       if (data?.blog?.slug) setSlug(data.blog.slug);
       if (data?.blog?.category) setCategory(data.blog.category);
       if (typeof data?.blog?.author_name !== "undefined") {
@@ -2178,6 +2202,55 @@ const BlogEditor = () => {
       setError(err.message || "Failed to delete content");
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  const toggleBlogPublishState = async (row) => {
+    const targetId = Number(row?.id);
+    if (!Number.isInteger(targetId) || targetId <= 0) return;
+
+    const currentlyPublished = isBlogRowPublished(row);
+    const nextIsPublished = !currentlyPublished;
+
+    setPublishingId(targetId);
+    setError("");
+    setMessage("");
+
+    try {
+      const response = await fetch(
+        buildUrl(`/api/admin/blogs/${targetId}/publish`),
+        {
+          method: "PATCH",
+          headers: authHeaders,
+          body: JSON.stringify({ is_published: nextIsPublished }),
+        },
+      );
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(
+          data?.message ||
+            `Failed to ${nextIsPublished ? "publish" : "unpublish"} content`,
+        );
+      }
+
+      if (blogId === targetId || selectedLibraryId === targetId) {
+        setStatus(nextIsPublished ? "published" : "draft");
+        if (typeof data?.blog?.published_at !== "undefined") {
+          setPublishedAt(toDateTimeLocalValue(data.blog.published_at));
+        }
+      }
+
+      setMessage(
+        nextIsPublished
+          ? "Content published successfully."
+          : "Content unpublished successfully.",
+      );
+      await loadLibrary();
+    } catch (err) {
+      setError(err.message || "Failed to update publish status");
+    } finally {
+      setPublishingId(null);
     }
   };
 
@@ -2378,12 +2451,15 @@ const BlogEditor = () => {
   const composerCrumbLabel = blogId ? "Edit Post" : "Add New Post";
   const composerStatusKey = getListingStatusKey({
     status,
+    is_published: status === "published",
     published_at: publishedAt,
   });
   const composerStatusLabel = getListingStatusLabel({
     status,
+    is_published: status === "published",
     published_at: publishedAt,
   });
+  const isComposerPublished = status === "published";
   const composerUpdatedSource =
     activeComposerRow?.updated_at ||
     activeComposerRow?.published_at ||
@@ -2616,7 +2692,11 @@ const BlogEditor = () => {
                 disabled={saving}
                 className={`${composerButtonClassName} h-11 px-5 disabled:opacity-60`}
               >
-                {saving && status !== "published" ? "Saving..." : "Save as Draft"}
+                {saving && !isComposerPublished
+                  ? "Saving..."
+                  : isComposerPublished
+                    ? "Unpublish"
+                    : "Save as Draft"}
               </button>
 
               <button
@@ -2636,7 +2716,7 @@ const BlogEditor = () => {
                   className="inline-flex h-11 items-center justify-center gap-2 bg-[#5B2EFF] px-5 text-sm font-semibold text-white transition hover:bg-[#4D23E0] disabled:opacity-60"
                 >
                   <FaUpload className="text-[11px]" />
-                  {saving && status === "published" ? "Publishing..." : "Publish"}
+                  {saving && isComposerPublished ? "Publishing..." : "Publish"}
                 </button>
                 <button
                   type="button"
@@ -2815,6 +2895,7 @@ const BlogEditor = () => {
                           : getDefaultStoryCategory("general"));
                       const rowStatus = getListingStatusKey(row);
                       const publishedDate = formatDateParts(row.published_at);
+                      const updatedDate = formatDateParts(row.updated_at);
 
                       return (
                         <tr
@@ -2919,6 +3000,14 @@ const BlogEditor = () => {
                                 {publishedDate.timeLabel}
                               </div>
                             ) : null}
+                            {row.updated_at ? (
+                              <div className="mt-2 text-xs font-medium text-slate-500">
+                                Updated {updatedDate.dateLabel}
+                                {updatedDate.timeLabel
+                                  ? `, ${updatedDate.timeLabel}`
+                                  : ""}
+                              </div>
+                            ) : null}
                           </td>
 
                           <td className="px-4 py-4">
@@ -2983,6 +3072,19 @@ const BlogEditor = () => {
                                     type="button"
                                     onClick={() => {
                                       setLibraryActionMenuId(null);
+                                      void toggleBlogPublishState(row);
+                                    }}
+                                    disabled={publishingId === row.id}
+                                    className="flex w-full items-center border-b border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                                  >
+                                    {isBlogRowPublished(row)
+                                      ? "Unpublish post"
+                                      : "Publish post"}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setLibraryActionMenuId(null);
                                       void deleteBlog(row);
                                     }}
                                     className="flex w-full items-center px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50"
@@ -3023,6 +3125,7 @@ const BlogEditor = () => {
                         : getDefaultStoryCategory("general"));
                     const rowStatus = getListingStatusKey(row);
                     const publishedDate = formatDateParts(row.published_at);
+                    const updatedDate = formatDateParts(row.updated_at);
 
                     return (
                       <article
@@ -3111,6 +3214,14 @@ const BlogEditor = () => {
                               {publishedDate.dateLabel}
                               {publishedDate.timeLabel ? `, ${publishedDate.timeLabel}` : ""}
                             </div>
+                            {row.updated_at ? (
+                              <div className="mt-1 text-xs font-medium text-slate-500">
+                                Updated {updatedDate.dateLabel}
+                                {updatedDate.timeLabel
+                                  ? `, ${updatedDate.timeLabel}`
+                                  : ""}
+                              </div>
+                            ) : null}
                           </div>
                         </div>
 
@@ -3134,6 +3245,19 @@ const BlogEditor = () => {
                           >
                             <FaCopy className="text-[11px]" />
                             Copy Link
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void toggleBlogPublishState(row)}
+                            disabled={publishingId === row.id}
+                            className="inline-flex h-9 items-center gap-2 border border-emerald-200 bg-emerald-50 px-3 text-xs font-semibold text-emerald-700 transition hover:border-emerald-300 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {publishingId === row.id ? (
+                              <FaSyncAlt className="animate-spin text-[11px]" />
+                            ) : (
+                              <FaCheckCircle className="text-[11px]" />
+                            )}
+                            {isBlogRowPublished(row) ? "Unpublish" : "Publish"}
                           </button>
                           <button
                             type="button"
@@ -3677,16 +3801,37 @@ const BlogEditor = () => {
                     <div className="space-y-4 px-2 py-4 md:px-4">
                       <div>
                         <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                          Status
+                          Publish
                         </label>
-                        <select
-                          value={status}
-                          onChange={(event) => setStatus(event.target.value)}
-                          className={composerFieldClassName}
+                        <label
+                          className={`flex cursor-pointer items-center gap-3 border px-3 py-3 transition ${
+                            isComposerPublished
+                              ? "border-emerald-200 bg-emerald-50"
+                              : "border-slate-200 bg-white hover:bg-slate-50"
+                          }`}
                         >
-                          <option value="draft">Draft</option>
-                          <option value="published">Published</option>
-                        </select>
+                          <input
+                            type="checkbox"
+                            checked={isComposerPublished}
+                            onChange={(event) =>
+                              setStatus(
+                                event.target.checked ? "published" : "draft",
+                              )
+                            }
+                            className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                          />
+                          <span className="min-w-0">
+                            <span className="block text-sm font-semibold text-slate-900">
+                              {isComposerPublished
+                                ? "Published"
+                                : "Unpublished"}
+                            </span>
+                            <span className="mt-0.5 block text-xs text-slate-500">
+                              is_published:{" "}
+                              {isComposerPublished ? "true" : "false"}
+                            </span>
+                          </span>
+                        </label>
                       </div>
 
                       <div>
