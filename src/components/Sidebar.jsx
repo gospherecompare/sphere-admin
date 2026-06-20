@@ -208,7 +208,7 @@ const DESKTOP_SECTIONS = [
     title: "CONTENT OPS",
     items: [
       {
-        label: "Newsroom CMS",
+        label: "News CMS",
         icon: FaNewspaper,
         path: "/content/news-articles",
         prefixes: ["/content/news-articles"],

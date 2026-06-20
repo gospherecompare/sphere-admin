@@ -298,7 +298,7 @@ const MainLayout = ({
                         "content.news.manage",
                       ]}
                       title="News & Articles access required"
-                      message="This newsroom studio is available to roles with News & Articles permissions."
+                      message="This news studio is available to roles with News & Articles permissions."
                     >
                       <ROUTE_CONFIG.newsArticles.component />
                     </AccessGate>

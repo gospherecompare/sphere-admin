@@ -60,9 +60,9 @@ const TITLE_ROUTES = [
   routeMeta("/settings/compare-scoring", "Compare Scoring Studio", "Compare Intelligence Engine"),
   routeMeta("/settings/spec-score-algorithms", "Spec Score Algorithms", "Compare Intelligence Engine"),
 
-  routeMeta("/content", "Newsroom Publishing Studio", "Content Operations Cloud"),
-  routeMeta("/content/news-articles", "Newsroom Publishing Studio", "Content Operations Cloud"),
-  routeMeta("/content/blogs", "Newsroom Publishing Studio", "Content Operations Cloud"),
+  routeMeta("/content", "News Publishing Studio", "Content Operations Cloud"),
+  routeMeta("/content/news-articles", "News Publishing Studio", "Content Operations Cloud"),
+  routeMeta("/content/blogs", "News Publishing Studio", "Content Operations Cloud"),
 
   routeMeta("/marketing", "Banner Campaign Studio", "Marketing Operations Cloud"),
   routeMeta("/marketing/banners", "Banner Campaign Studio", "Marketing Operations Cloud"),

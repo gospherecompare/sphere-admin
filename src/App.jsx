@@ -931,7 +931,7 @@ function App() {
               <RouteAccessGate
                 path="/content/news-articles"
                 title="News & Articles access required"
-                message="This newsroom studio is available to roles with News & Articles permissions."
+                message="This news studio is available to roles with News & Articles permissions."
               >
                 <BlogEditor />
               </RouteAccessGate>

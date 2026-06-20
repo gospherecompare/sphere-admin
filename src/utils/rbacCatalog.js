@@ -247,7 +247,7 @@ export const ROLE_PRESETS = {
   },
   content_admin: {
     label: "Content Admin",
-    description: "Owns newsroom, media, SEO, and editorial publishing workflows.",
+    description: "Owns news, media, SEO, and publishing workflows.",
     permissions: [
       "dashboard.view",
       "account.*",

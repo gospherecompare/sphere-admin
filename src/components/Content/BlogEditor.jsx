@@ -66,11 +66,28 @@ const PRODUCT_TYPE_LABELS = {
 };
 
 const STORY_CATEGORY_OPTIONS = [
-  { value: "news", label: "News" },
-  { value: "mobiles", label: "Mobiles" },
-  { value: "gadgets", label: "Gadgets" },
-  { value: "guides", label: "Guides" },
+  { value: "technology", label: "Technology" },
+  { value: "ai", label: "AI" },
+  { value: "smartphones", label: "Smartphones" },
+  { value: "chips", label: "Chips & Semiconductors" },
+  { value: "laptops", label: "Laptops" },
+  { value: "software", label: "Software" },
+  { value: "cybersecurity", label: "Cybersecurity" },
+  { value: "consumer-tech", label: "Consumer Tech" },
+  { value: "apps", label: "Apps" },
+  { value: "internet", label: "Internet" },
+  { value: "science", label: "Science" },
+  { value: "space", label: "Space" },
+  { value: "health-tech", label: "Health Technology" },
+  { value: "renewable-energy", label: "Renewable Energy" },
+  { value: "sports-technology", label: "Sports Technology" },
+  { value: "wearables", label: "Wearables" },
+  { value: "sports-science", label: "Sports Science" },
   { value: "launches", label: "Launches" },
+  { value: "guides", label: "Guides" },
+  { value: "gadgets", label: "Gadgets" },
+  { value: "mobiles", label: "Mobiles (Legacy)" },
+  { value: "news", label: "News" },
 ];
 
 const HERO_IMAGE_SOURCE = {
@@ -304,7 +321,7 @@ const formatWordCountLabel = (value) => {
 };
 
 const getDefaultStoryCategory = (mode = "general") =>
-  mode === "product" ? "launches" : "news";
+  mode === "product" ? "launches" : "technology";
 
 const normalizeSelectedProductIds = (...sources) => {
   const seen = new Set();
@@ -690,9 +707,11 @@ const BlogEditor = () => {
   const [slug, setSlug] = useState("");
   const [excerpt, setExcerpt] = useState("");
   const [category, setCategory] = useState(getDefaultStoryCategory("product"));
+  const [brandName, setBrandName] = useState("");
   const [authorName, setAuthorName] = useState(getDefaultAuthorName());
   const [authorUserId, setAuthorUserId] = useState("");
   const [authorOptions, setAuthorOptions] = useState([]);
+  const [brandOptions, setBrandOptions] = useState([]);
   const [metaTitle, setMetaTitle] = useState("");
   const [metaDescription, setMetaDescription] = useState("");
   const [heroImage, setHeroImage] = useState("");
@@ -836,6 +855,46 @@ const BlogEditor = () => {
     };
   }, [authHeaders]);
 
+  useEffect(() => {
+    let mounted = true;
+
+    const refreshBrandOptions = async () => {
+      try {
+        const response = await fetch(buildUrl("/api/brands"), {
+          headers: authHeaders,
+        });
+        const data = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+          throw new Error(data?.message || "Failed to load brands");
+        }
+
+        const rows = Array.isArray(data?.brands)
+          ? data.brands
+          : Array.isArray(data)
+            ? data
+            : [];
+        const options = Array.from(
+          new Set(
+            rows
+              .map((brand) => String(brand?.name || "").trim())
+              .filter(Boolean),
+          ),
+        ).sort((a, b) => a.localeCompare(b));
+
+        if (mounted) setBrandOptions(options);
+      } catch {
+        if (mounted) setBrandOptions([]);
+      }
+    };
+
+    refreshBrandOptions();
+
+    return () => {
+      mounted = false;
+    };
+  }, [authHeaders]);
+
   const libraryStats = useMemo(() => {
     return libraryRows.reduce(
       (acc, row) => {
@@ -973,6 +1032,19 @@ const BlogEditor = () => {
     [selectedProduct],
   );
 
+  const selectedProductBrandName = useMemo(
+    () => String(selectedProduct?.brand_name || "").trim(),
+    [selectedProduct?.brand_name],
+  );
+
+  const effectiveBrandName = useMemo(
+    () =>
+      String(
+        brandName || (blogMode === "product" ? selectedProductBrandName : ""),
+      ).trim(),
+    [blogMode, brandName, selectedProductBrandName],
+  );
+
   const selectedProductImageChoices = useMemo(
     () =>
       collectImageCandidates(
@@ -1068,6 +1140,7 @@ const BlogEditor = () => {
       setSlug(existing.slug || "");
       setExcerpt(existing.excerpt || "");
       setCategory(existing.category || getDefaultStoryCategory("product"));
+      setBrandName(existing.brand_name || primaryProduct?.brand_name || "");
       setAuthorName(existing.author_name || "");
       setAuthorUserId(
         existing.author_user_id ? String(existing.author_user_id) : "",
@@ -1118,6 +1191,7 @@ const BlogEditor = () => {
     setSlug("");
     setExcerpt("");
     setCategory(getDefaultStoryCategory("product"));
+    setBrandName(primaryProduct?.brand_name || "");
     setAuthorName(getDefaultAuthorName());
     setAuthorUserId("");
     setMetaTitle("");
@@ -1165,6 +1239,7 @@ const BlogEditor = () => {
     setSlug("");
     setExcerpt("");
     setCategory(getDefaultStoryCategory("product"));
+    setBrandName("");
     setAuthorName(getDefaultAuthorName());
     setAuthorUserId("");
     setMetaTitle("");
@@ -1202,6 +1277,7 @@ const BlogEditor = () => {
     setSlug("");
     setExcerpt("");
     setCategory(getDefaultStoryCategory("general"));
+    setBrandName("");
     setAuthorName(getDefaultAuthorName());
     setAuthorUserId("");
     setMetaTitle("");
@@ -1364,6 +1440,9 @@ const BlogEditor = () => {
       }
       if (!heroImageAlt || currentHeroSource === HERO_IMAGE_SOURCE.ASSET) {
         setHeroImageAlt(buildProductSelectionAlt(products));
+      }
+      if (!String(brandName || "").trim() && primaryProduct?.brand_name) {
+        setBrandName(primaryProduct.brand_name);
       }
 
       setMessage(
@@ -1600,6 +1679,7 @@ const BlogEditor = () => {
         article.category ||
           getDefaultStoryCategory(isProductStory ? "product" : "general"),
       );
+      setBrandName(article.brand_name || nextProducts[0]?.brand_name || "");
       setAuthorName(article.author_name || "");
       setAuthorUserId(
         article.author_user_id ? String(article.author_user_id) : "",
@@ -2031,6 +2111,7 @@ const BlogEditor = () => {
           meta_title: metaTitle,
           meta_description: metaDescription,
           category,
+          brand_name: effectiveBrandName || null,
           author_name: authorName,
           author_user_id: authorUserId || null,
           hero_image: heroImage || null,
@@ -2074,6 +2155,9 @@ const BlogEditor = () => {
       setStatus(data?.blog?.is_published ? "published" : nextStatus);
       if (data?.blog?.slug) setSlug(data.blog.slug);
       if (data?.blog?.category) setCategory(data.blog.category);
+      if (typeof data?.blog?.brand_name !== "undefined") {
+        setBrandName(data.blog.brand_name || effectiveBrandName || "");
+      }
       if (typeof data?.blog?.author_name !== "undefined") {
         setAuthorName(data.blog.author_name || "");
       }
@@ -2844,7 +2928,7 @@ const BlogEditor = () => {
             ) : null}
 
             <div className="hidden lg:block overflow-x-auto">
-              <table className="min-w-[980px] w-full divide-y divide-slate-200">
+              <table className="min-w-[1160px] w-full divide-y divide-slate-200">
                 <thead className="bg-white">
                   <tr className="text-left text-xs font-semibold uppercase tracking-[0.08em] text-slate-600">
                     <th className="w-12 px-4 py-4">
@@ -2859,7 +2943,9 @@ const BlogEditor = () => {
                     <th className="w-[180px] px-4 py-4">Author</th>
                     <th className="w-[200px] px-4 py-4">Category</th>
                     <th className="w-[130px] px-4 py-4">Status</th>
-                    <th className="w-[170px] px-4 py-4">Published On</th>
+                    <th className="w-[220px] min-w-[220px] whitespace-nowrap px-4 py-4">
+                      Published On
+                    </th>
                     <th className="w-[140px] px-4 py-4 text-right">Actions</th>
                   </tr>
                 </thead>
@@ -2991,7 +3077,7 @@ const BlogEditor = () => {
                             </span>
                           </td>
 
-                          <td className="px-4 py-4 text-sm text-slate-700">
+                          <td className="w-[220px] min-w-[220px] whitespace-nowrap px-4 py-4 text-sm text-slate-700">
                             <div className="font-semibold text-slate-900">
                               {publishedDate.dateLabel}
                             </div>
@@ -3998,6 +4084,47 @@ const BlogEditor = () => {
                       <div className="mt-2 text-right text-xs font-medium text-slate-400">
                         {excerptWordCountLabel}
                       </div>
+                    </div>
+                  </div>
+
+                  <div className="border-b border-slate-200 bg-white">
+                    <div className="border-b border-slate-200 px-2 py-4 md:px-4">
+                      <h3 className="text-base font-semibold text-slate-900">
+                        Brand
+                      </h3>
+                    </div>
+                    <div className="space-y-3 px-2 py-4 md:px-4">
+                      <div>
+                        <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                          Brand / Source
+                        </label>
+                        <input
+                          value={brandName}
+                          onChange={(event) => setBrandName(event.target.value)}
+                          placeholder={
+                            blogMode === "product"
+                              ? selectedProductBrandName || "Primary product brand"
+                              : "Example: Google, OnePlus, NASA, ISRO"
+                          }
+                          list="blog-brand-options"
+                          className={composerFieldClassName}
+                        />
+                        <datalist id="blog-brand-options">
+                          {brandOptions.map((option) => (
+                            <option key={option} value={option} />
+                          ))}
+                        </datalist>
+                      </div>
+                      <div className="text-xs leading-5 text-slate-500">
+                        {blogMode === "product"
+                          ? `Shown on public cards. If empty, it uses ${selectedProductBrandName || "the primary product brand"}.`
+                          : "Shown on public cards for general technology, science, and internet stories."}
+                      </div>
+                      {effectiveBrandName ? (
+                        <div className="inline-flex border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-600">
+                          Public label: {effectiveBrandName}
+                        </div>
+                      ) : null}
                     </div>
                   </div>
 
