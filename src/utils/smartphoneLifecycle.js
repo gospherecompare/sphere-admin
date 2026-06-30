@@ -22,6 +22,33 @@ const normalizeLifecycleStatus = (value) => {
   return null;
 };
 
+const normalizeSaleStage = (value) => {
+  const text = normalizeText(value).toLowerCase().replace(/[\s-]+/g, "_");
+  if (!text) return null;
+  if (/out_?of_?stock|sold_?out/.test(text)) return "out_of_stock";
+  if (/pre_?order|pre_?book|prebooking|presale/.test(text)) return "preorder";
+  if (/sale_?scheduled|scheduled|coming_?soon/.test(text)) {
+    return "sale_scheduled";
+  }
+  if (/sale_?live|on_?sale|available|in_?stock/.test(text)) return "on_sale";
+  if (/sale_?started|started/.test(text)) return "sale_started";
+  if (/store_?pending|pending|listed/.test(text)) return "store_pending";
+  if (/tbd|unknown|not_?started|none/.test(text)) return "sale_tbd";
+  return text;
+};
+
+const normalizeStoreStage = (value) => {
+  const text = normalizeText(value).toLowerCase().replace(/[\s-]+/g, "_");
+  if (!text) return null;
+  if (/pre_?order|pre_?book|prebooking|presale/.test(text)) {
+    return "prebooking";
+  }
+  if (/live|available|in_?stock/.test(text)) return "live";
+  if (/pending|listed|store_?pending/.test(text)) return "listed";
+  if (/none|no_?store|tbd|unknown/.test(text)) return "none";
+  return text;
+};
+
 const parseDateValue = (value) => {
   if (!value) return null;
   if (value instanceof Date) {
@@ -196,8 +223,8 @@ const getSmartphoneLifecycle = ({
   additionalStoreRows = [],
 } = {}) => {
   const directLaunchStage = normalizeLifecycleStatus(launchStatus);
-  const directSaleStage = normalizeText(saleStage);
-  const directStoreStage = normalizeText(storeStage);
+  const directSaleStage = normalizeSaleStage(saleStage);
+  const directStoreStage = normalizeStoreStage(storeStage);
 
   if (directLaunchStage || directSaleStage || directStoreStage) {
     return {
@@ -286,6 +313,74 @@ const getSmartphoneLifecycle = ({
   };
 };
 
+const getSmartphoneRenderState = ({
+  launchStage,
+  saleStage,
+  storeStage,
+} = {}) => {
+  const launch = normalizeLifecycleStatus(launchStage) || "unknown";
+  const sale = normalizeSaleStage(saleStage) || "sale_tbd";
+  const store = normalizeStoreStage(storeStage) || "none";
+
+  const isLive =
+    store === "live" || sale === "on_sale" || sale === "sale_live";
+
+  if (isLive) {
+    return {
+      renderType: "available",
+      displayStatus: "Available now",
+    };
+  }
+
+  if (sale === "out_of_stock") {
+    return {
+      renderType: "available",
+      displayStatus: "Out of stock",
+    };
+  }
+
+  if (sale === "preorder" || store === "prebooking") {
+    return {
+      renderType: "upcoming",
+      displayStatus: "Upcoming",
+    };
+  }
+
+  if (sale === "sale_scheduled") {
+    return {
+      renderType: "upcoming",
+      displayStatus: "Upcoming",
+    };
+  }
+
+  if (launch === "released") {
+    return {
+      renderType: "upcoming",
+      displayStatus: "Upcoming",
+    };
+  }
+
+  if (launch === "announced") {
+    return {
+      renderType: "upcoming",
+      displayStatus: "Announced",
+    };
+  }
+
+  if (launch === "rumored") {
+    return {
+      renderType: "upcoming",
+      displayStatus: "Rumored",
+    };
+  }
+
+  return {
+    renderType: "upcoming",
+    displayStatus:
+      launch === "upcoming" ? "Upcoming" : formatLaunchStageLabel(launch) || "Upcoming",
+  };
+};
+
 const isUpcomingLaunchStage = (value) =>
   ["rumored", "announced", "upcoming"].includes(value);
 
@@ -314,8 +409,12 @@ const formatSaleStageLabel = (value) => {
       return "Sale Scheduled";
     case "on_sale":
       return "On Sale";
+    case "sale_live":
+      return "Sale Live";
     case "sale_started":
       return "Sale Started";
+    case "out_of_stock":
+      return "Out of Stock";
     case "store_pending":
       return "Store Links Pending";
     case "sale_tbd":
@@ -346,8 +445,11 @@ export {
   formatStoreStageLabel,
   getEarliestSaleStartDate,
   getSmartphoneLifecycle,
+  getSmartphoneRenderState,
   getTodayDateOnly,
   isUpcomingLaunchStage,
+  normalizeSaleStage,
+  normalizeStoreStage,
   normalizeLifecycleStatus,
   parseDateValue,
   toDateOnly,

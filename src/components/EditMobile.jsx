@@ -15,8 +15,12 @@ import {
   formatSaleStageLabel,
   formatStoreStageLabel,
   getSmartphoneLifecycle,
+  getSmartphoneRenderState,
   isUpcomingLaunchStage,
 } from "../utils/smartphoneLifecycle";
+import {
+  buildMobileSubmitPayload,
+} from "../utils/mobileEditorLogic";
 import {
   editorCardClassName,
   editorDangerButtonClassName,
@@ -76,11 +80,44 @@ import {
   FaSimCard,
 } from "react-icons/fa";
 
-const stripSphereFields = (section, disableSphere) => {
-  if (!disableSphere || !section || typeof section !== "object") return section;
-  const { sphere_score, sphere_description, sphere_images, ...rest } = section;
-  return rest;
-};
+const LAUNCH_STATUS_OPTIONS = [
+  { value: "rumored", label: "Rumored" },
+  { value: "announced", label: "Announced" },
+  { value: "released", label: "Released" },
+];
+
+const SALE_STATUS_OPTIONS = [
+  { value: "sale_tbd", label: "Sale TBD" },
+  { value: "sale_scheduled", label: "Sale Scheduled" },
+  { value: "preorder", label: "Pre-order" },
+  { value: "on_sale", label: "Sale Live" },
+  { value: "out_of_stock", label: "Out of Stock" },
+];
+
+const STORE_STAGE_OPTIONS = [
+  { value: "none", label: "None" },
+  { value: "listed", label: "Store Pending" },
+  { value: "prebooking", label: "Pre-booking" },
+  { value: "live", label: "Live" },
+];
+
+const LAUNCH_DATE_TYPE_OPTIONS = [
+  { value: "rumored", label: "Rumored" },
+  { value: "expected", label: "Expected" },
+  { value: "confirmed", label: "Confirmed" },
+];
+
+const CONFIDENCE_OPTIONS = [
+  { value: "low", label: "Low" },
+  { value: "medium", label: "Medium" },
+  { value: "high", label: "High" },
+];
+
+const SPEC_CONFIDENCE_OPTIONS = [
+  { value: "leaked", label: "Leaked" },
+  { value: "expected", label: "Expected" },
+  { value: "confirmed", label: "Confirmed" },
+];
 
 const EditMobile = () => {
   const { id } = useParams();
@@ -154,6 +191,12 @@ const EditMobile = () => {
     brand: "",
     model: "",
     launch_date: "",
+    launch_status_override: "released",
+    sale_status_override: "sale_tbd",
+    store_stage_override: "none",
+    launch_date_type: "confirmed",
+    price_confidence: "medium",
+    spec_confidence: "expected",
     official_preorder_url: "",
     created_at: "",
     images: [],
@@ -184,13 +227,24 @@ const EditMobile = () => {
 
   const autoLifecycleState = getSmartphoneLifecycle({
     launchDate: formData.launch_date,
+    launchStatus: formData.launch_status_override,
+    saleStage: formData.sale_status_override,
+    storeStage: formData.store_stage_override,
     variants: formData.variants,
   });
   const launchStatusAuto = autoLifecycleState.launchStage;
-  const effectiveLaunchStatus = autoLifecycleState.launchStage;
+  const effectiveLaunchStatus =
+    formData.launch_status_override || autoLifecycleState.launchStage;
   const saleStage = autoLifecycleState.saleStage;
   const storeStage = autoLifecycleState.storeStage;
-  const isUpcomingDevice = isUpcomingLaunchStage(effectiveLaunchStatus);
+  const renderState = getSmartphoneRenderState({
+    launchStage: effectiveLaunchStatus,
+    saleStage,
+    storeStage,
+  });
+  const isUpcomingDevice =
+    renderState.renderType === "upcoming" ||
+    isUpcomingLaunchStage(effectiveLaunchStatus);
   const specEditorHiddenKeys = [
     "score",
     "sphere_score",
@@ -1007,6 +1061,30 @@ const EditMobile = () => {
             apiData?.created_at,
             apiData?.createdAt,
           ),
+          launch_status_override:
+            apiData?.launch_status_override ||
+            apiData?.launchStatusOverride ||
+            apiData?.launch_status ||
+            apiData?.launchStatus ||
+            "released",
+          sale_status_override:
+            apiData?.sale_status_override ||
+            apiData?.saleStatusOverride ||
+            apiData?.sale_status ||
+            apiData?.saleStatus ||
+            "sale_tbd",
+          store_stage_override:
+            apiData?.store_stage_override ||
+            apiData?.storeStageOverride ||
+            apiData?.store_stage ||
+            apiData?.storeStage ||
+            "none",
+          launch_date_type:
+            apiData?.launch_date_type || apiData?.launchDateType || "confirmed",
+          price_confidence:
+            apiData?.price_confidence || apiData?.priceConfidence || "medium",
+          spec_confidence:
+            apiData?.spec_confidence || apiData?.specConfidence || "expected",
           created_at: apiData?.created_at || apiData?.createdAt || "",
           images: Array.isArray(
             safeParse(apiData?.images_json ?? apiData?.images, []),
@@ -1393,57 +1471,6 @@ const EditMobile = () => {
     });
   };
 
-  // Clean payload by removing null/empty values and client-only keys
-  const cleanPayload = (input) => {
-    const clean = (val) => {
-      if (val === null || val === undefined) return undefined;
-      if (typeof val === "string") {
-        const s = val.trim();
-        return s === "" ? undefined : s;
-      }
-      if (Array.isArray(val)) {
-        const a = val.map(clean).filter((v) => v !== undefined);
-        return a.length ? a : undefined;
-      }
-      if (typeof val === "object") {
-        const out = {};
-        Object.keys(val).forEach((k) => {
-          const v = clean(val[k]);
-          if (v !== undefined) out[k] = v;
-        });
-        return Object.keys(out).length ? out : undefined;
-      }
-      return val;
-    };
-
-    const cleaned = clean(input) || {};
-
-    // Preserve explicit empty arrays for "replace semantics" fields so the API can
-    // apply deletions (e.g., deleting the last store from a variant).
-    if (Array.isArray(input?.variants) && input.variants.length === 0) {
-      cleaned.variants = [];
-    }
-    if (
-      Array.isArray(input?.variant_store_prices) &&
-      input.variant_store_prices.length === 0
-    ) {
-      cleaned.variant_store_prices = [];
-    }
-
-    // For variant_store_prices, drop variant_index when variant_id present
-    if (Array.isArray(cleaned.variant_store_prices)) {
-      cleaned.variant_store_prices = cleaned.variant_store_prices.map((sp) => {
-        if (sp.variant_id) {
-          const { variant_index, ...rest } = sp;
-          return rest;
-        }
-        return sp;
-      });
-    }
-
-    return cleaned;
-  };
-
   // Add variant
   const addVariant = () => {
     addArrayFieldItem("variants", {
@@ -1622,6 +1649,12 @@ const EditMobile = () => {
       brand: formData.brand || "",
       model: formData.model || "",
       launch_date: formData.launch_date || "",
+      launch_status_override: formData.launch_status_override || "",
+      sale_status_override: formData.sale_status_override || "",
+      store_stage_override: formData.store_stage_override || "",
+      launch_date_type: formData.launch_date_type || "",
+      price_confidence: formData.price_confidence || "",
+      spec_confidence: formData.spec_confidence || "",
       official_preorder_url: formData.official_preorder_url || "",
       colors: Array.isArray(formData.colors) ? formData.colors : [],
       is_foldable: Boolean(formData.is_foldable),
@@ -1682,119 +1715,22 @@ const EditMobile = () => {
     }
 
     try {
-      const sanitizeSpec = (section) =>
-        stripSphereFields(section, isUpcomingDevice);
-      const buildDesign = sanitizeSpec(formData.build_design);
-      const display = sanitizeSpec(formData.display);
-      const performance = sanitizeSpec(formData.performance);
-      const camera = sanitizeSpec(formData.camera);
-      const battery = sanitizeSpec(formData.battery);
-      const connectivity = sanitizeSpec(formData.connectivity);
-      const network = sanitizeSpec(formData.network);
-      const ports = sanitizeSpec(formData.ports);
-      const audio = sanitizeSpec(formData.audio);
-      const multimedia = sanitizeSpec(formData.multimedia);
-
-      const submitData = {
+      const submitData = buildMobileSubmitPayload({
+        formData,
+        mode: "edit",
         id,
-        name: formData.name || "",
-        product_name: formData.name || "",
-        product_type: "smartphone",
-        segment: formData.segment || "",
-        category: formData.segment || "",
-        brand: formData.brand || "",
-        brand_name: formData.brand || "",
-        model: formData.model || "",
-        launch_date: formData.launch_date || null,
-        official_preorder_url: formData.official_preorder_url || null,
-        publish: publishEnabled,
-        images: formData.images || [],
-        images_json: formData.images || [],
-        colors: formData.colors.filter((color) => color.name && color.code),
-        build_design: buildDesign,
-        build_design_json: buildDesign,
-        display,
-        display_json: display,
-        performance,
-        performance_json: performance,
-        camera,
-        camera_json: camera,
-        battery,
-        battery_json: battery,
-        connectivity,
-        connectivity_json: connectivity,
-        network,
-        network_json: network,
-        sensors: formData.sensors || null,
-        ports,
-        ports_json: ports,
-        port_json: ports,
-        audio,
-        audio_json: audio,
-        multimedia,
-        multimedia_json: multimedia,
-        is_foldable: formData.is_foldable || false,
-        published: publishEnabled,
-        // include variants and per-variant store prices so edits persist
-        variants: (formData.variants || []).map((v) => ({
-          id: v.id || null,
-          ram: v.ram || null,
-          storage: v.storage || null,
-          base_price: v.base_price ? Number(v.base_price) : null,
-          custom_properties: v.custom_properties || {},
-        })),
-        variant_store_prices: (function () {
-          const out = [];
-          (formData.variants || []).forEach((v, vi) => {
-            const stores = Array.isArray(v.stores) ? v.stores : [];
-            stores.forEach((s) => {
-              out.push({
-                id: s.id || null,
-                variant_id: v.id || null,
-                variant_index: v.id ? undefined : vi,
-                store_name: s.store_name || null,
-                price: s.price ? Number(s.price) : null,
-                url: s.url || null,
-                offer_text: s.offer_text || null,
-                sale_start_date: toDateInputValue(s.sale_start_date) || null,
-                discount: s.discount || null,
-                offers: s.offers || null,
-                custom_properties: s.custom_properties || {},
-              });
-            });
-          });
-          return out;
-        })(),
-        variants_json: (formData.variants || []).map((v) => ({
-          ram: v.ram || null,
-          storage: v.storage || null,
-          base_price: v.base_price ? Number(v.base_price) : null,
-          variant_id: v.id || null,
-          store_prices: (Array.isArray(v.stores) ? v.stores : []).map((s) => ({
-            id: s.id || null,
-            store: s.store_name || null,
-            store_name: s.store_name || null,
-            price: s.price ? Number(s.price) : null,
-            url: s.url || null,
-            offer_text: s.offer_text || null,
-            sale_start_date: toDateInputValue(s.sale_start_date) || null,
-            delivery_info: s.delivery_info || s.deliveryInfo || null,
-            discount: s.discount || null,
-            offers: s.offers || null,
-            custom_properties: s.custom_properties || {},
-          })),
-        })),
-      };
+        isUpcomingDevice,
+        publishEnabled,
+      });
 
       const token = Cookies.get("authToken");
-      const cleaned = cleanPayload(submitData);
       const res = await fetch(buildUrl(`/api/smartphone/${id}`), {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
           Authorization: token ? `Bearer ${token}` : "",
         },
-        body: JSON.stringify(cleaned),
+        body: JSON.stringify(submitData),
       });
 
       if (!res.ok) {
@@ -3540,16 +3476,57 @@ const EditMobile = () => {
                   />
                 </div>
 
-                <div className="sm:col-span-2">
-                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-                    Launch Stage
-                  </label>
-                  <div className="w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700">
-                    {formatLaunchStageLabel(launchStatusAuto) || "Released"}
+                <div className="sm:col-span-2 rounded-xl border border-blue-100 bg-blue-50/60 p-3">
+                  <div className="mb-3">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-700">
+                      Market Lifecycle
+                    </p>
+                    <p className="mt-1 text-xs text-slate-600">
+                      Controls whether this product renders on upcoming routes or all smartphones.
+                    </p>
                   </div>
-                  <div className="mt-1 space-y-1 text-xs text-gray-500">
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {[
+                      ["launch_status_override", "Launch Status", LAUNCH_STATUS_OPTIONS],
+                      ["sale_status_override", "Sale Status", SALE_STATUS_OPTIONS],
+                      ["store_stage_override", "Store Stage", STORE_STAGE_OPTIONS],
+                      ["launch_date_type", "Launch Date Type", LAUNCH_DATE_TYPE_OPTIONS],
+                      ["price_confidence", "Price Confidence", CONFIDENCE_OPTIONS],
+                      ["spec_confidence", "Spec Confidence", SPEC_CONFIDENCE_OPTIONS],
+                    ].map(([name, label, options]) => (
+                      <label key={name} className="block">
+                        <span className="block text-xs font-medium text-gray-700 mb-1">
+                          {label}
+                        </span>
+                        <select
+                          name={name}
+                          value={formData[name] || ""}
+                          onChange={handleChange}
+                          className={editorSelectClassName}
+                        >
+                          {options.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    ))}
+                  </div>
+
+                  <div className="mt-3 rounded-lg border border-white bg-white px-3 py-2 text-xs text-slate-600 shadow-sm">
+                    <p>
+                      Auto launch: {formatLaunchStageLabel(launchStatusAuto) || "Released"}
+                    </p>
                     <p>Sale stage: {formatSaleStageLabel(saleStage) || "Sale Date TBA"}</p>
                     <p>Store state: {formatStoreStageLabel(storeStage) || "No Store Listing"}</p>
+                    <p className="mt-2 font-semibold text-slate-900">
+                      Render Result: {renderState.renderType === "available" ? "All Smartphones" : "Upcoming"}
+                    </p>
+                    <p className="font-semibold text-blue-700">
+                      Display Status: {renderState.displayStatus}
+                    </p>
                   </div>
                 </div>
               </div>

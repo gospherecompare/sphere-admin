@@ -16,9 +16,11 @@ import {
   formatSaleStageLabel,
   formatStoreStageLabel,
   getSmartphoneLifecycle,
+  getSmartphoneRenderState,
   isUpcomingLaunchStage,
 } from "../utils/smartphoneLifecycle";
 import { saveProductNewsLinks } from "../utils/productNewsLinks";
+import { buildMobileSubmitPayload } from "../utils/mobileEditorLogic";
 import ProductNewsAssignments from "./ProductNewsAssignments";
 import {
   FaMobile,
@@ -175,6 +177,12 @@ const createInitialMobileFormData = () => ({
     brand: "",
     model: "",
     launch_date: "",
+    launch_status_override: "released",
+    sale_status_override: "sale_tbd",
+    store_stage_override: "none",
+    launch_date_type: "confirmed",
+    price_confidence: "medium",
+    spec_confidence: "expected",
     official_preorder_url: "",
     colors: [],
     is_foldable: false,
@@ -185,11 +193,44 @@ const createInitialMobileFormData = () => ({
   variants: [],
 });
 
-const stripSphereFields = (section, disableSphere) => {
-  if (!disableSphere || !section || typeof section !== "object") return section;
-  const { sphere_score, sphere_description, sphere_images, ...rest } = section;
-  return rest;
-};
+const LAUNCH_STATUS_OPTIONS = [
+  { value: "rumored", label: "Rumored" },
+  { value: "announced", label: "Announced" },
+  { value: "released", label: "Released" },
+];
+
+const SALE_STATUS_OPTIONS = [
+  { value: "sale_tbd", label: "Sale TBD" },
+  { value: "sale_scheduled", label: "Sale Scheduled" },
+  { value: "preorder", label: "Pre-order" },
+  { value: "on_sale", label: "Sale Live" },
+  { value: "out_of_stock", label: "Out of Stock" },
+];
+
+const STORE_STAGE_OPTIONS = [
+  { value: "none", label: "None" },
+  { value: "listed", label: "Store Pending" },
+  { value: "prebooking", label: "Pre-booking" },
+  { value: "live", label: "Live" },
+];
+
+const LAUNCH_DATE_TYPE_OPTIONS = [
+  { value: "rumored", label: "Rumored" },
+  { value: "expected", label: "Expected" },
+  { value: "confirmed", label: "Confirmed" },
+];
+
+const CONFIDENCE_OPTIONS = [
+  { value: "low", label: "Low" },
+  { value: "medium", label: "Medium" },
+  { value: "high", label: "High" },
+];
+
+const SPEC_CONFIDENCE_OPTIONS = [
+  { value: "leaked", label: "Leaked" },
+  { value: "expected", label: "Expected" },
+  { value: "confirmed", label: "Confirmed" },
+];
 
 const CreateMobile = () => {
   const navigate = useNavigate();
@@ -245,13 +286,24 @@ const CreateMobile = () => {
 
   const autoLifecycleState = getSmartphoneLifecycle({
     launchDate: formData.smartphone.launch_date,
+    launchStatus: formData.smartphone.launch_status_override,
+    saleStage: formData.smartphone.sale_status_override,
+    storeStage: formData.smartphone.store_stage_override,
     variants: formData.variants,
   });
   const launchStatusAuto = autoLifecycleState.launchStage;
-  const effectiveLaunchStatus = autoLifecycleState.launchStage;
+  const effectiveLaunchStatus =
+    formData.smartphone.launch_status_override || autoLifecycleState.launchStage;
   const saleStage = autoLifecycleState.saleStage;
   const storeStage = autoLifecycleState.storeStage;
-  const isUpcomingDevice = isUpcomingLaunchStage(effectiveLaunchStatus);
+  const renderState = getSmartphoneRenderState({
+    launchStage: effectiveLaunchStatus,
+    saleStage,
+    storeStage,
+  });
+  const isUpcomingDevice =
+    renderState.renderType === "upcoming" ||
+    isUpcomingLaunchStage(effectiveLaunchStatus);
 
   // Refs for dropdown closing
   const brandDropdownRef = useRef(null);
@@ -1140,106 +1192,13 @@ const CreateMobile = () => {
     }
 
     try {
-      const sanitizeSpec = (section) =>
-        stripSphereFields(section, isUpcomingDevice);
-      const buildDesign = sanitizeSpec(formData.smartphone.build_design);
-      const display = sanitizeSpec(formData.smartphone.display);
-      const performance = sanitizeSpec(formData.smartphone.performance);
-      const camera = sanitizeSpec(formData.smartphone.camera);
-      const battery = sanitizeSpec(formData.smartphone.battery);
-      const connectivity = sanitizeSpec(formData.smartphone.connectivity);
-      const network = sanitizeSpec(formData.smartphone.network);
-      const ports = sanitizeSpec(formData.smartphone.ports);
-      const audio = sanitizeSpec(formData.smartphone.audio);
-      const multimedia = sanitizeSpec(formData.smartphone.multimedia);
-
       const token = Cookies.get("authToken");
-      const submitData = {
-          product: {
-            name: formData.product.name,
-            brand_id: Number(formData.product.brand_id),
-          },
-          smartphone: {
-            segment: formData.smartphone.segment,
-            category: formData.smartphone.segment,
-            brand: formData.smartphone.brand,
-            model: formData.smartphone.model,
-            launch_date: formData.smartphone.launch_date || null,
-            official_preorder_url:
-              formData.smartphone.official_preorder_url || null,
-            colors: formData.smartphone.colors.filter(
-              (color) => color.name && color.code,
-            ),
-          build_design: buildDesign,
-          display,
-          performance,
-          camera,
-          battery,
-          connectivity,
-          network,
-          ports,
-          audio,
-          multimedia,
-          sensors: formData.smartphone.sensors || null,
-        },
-        images: formData.images,
-        variants: formData.variants.map((v) => ({
-          ram: v.ram || null,
-          storage: v.storage || null,
-          base_price: v.base_price ? Number(v.base_price) : null,
-          stores: v.stores.map((s) => ({
-            store_name: s.store_name || null,
-            price: s.price ? Number(s.price) : null,
-            url: s.url || null,
-            offer_text: s.offer_text || null,
-            sale_start_date: s.sale_start_date || null,
-            discount: s.discount || null,
-            offers: s.offers || null,
-          })),
-        })),
-        published: publishEnabled,
-        // Also include the "suffix json" payload shape for compatibility
-        // with endpoints that expect flattened *_json fields.
-        product_name: formData.product.name,
-        product_type: "smartphone",
-        brand_name: formData.smartphone.brand,
-        category: formData.smartphone.segment,
-        model: formData.smartphone.model,
-        launch_date: formData.smartphone.launch_date || null,
-        official_preorder_url:
-          formData.smartphone.official_preorder_url || null,
-        sensors: formData.smartphone.sensors || null,
-        publish: publishEnabled,
-        images_json: formData.images,
-        build_design_json: buildDesign,
-        display_json: display,
-        performance_json: performance,
-        camera_json: camera,
-        battery_json: battery,
-        connectivity_json: connectivity,
-        network_json: network,
-        ports_json: ports,
-        audio_json: audio,
-        multimedia_json: multimedia,
-        variants_json: formData.variants.map((v) => ({
-          ram: v.ram || null,
-          storage: v.storage || null,
-          base_price: v.base_price ? Number(v.base_price) : null,
-          variant_id: null,
-          store_prices: (v.stores || []).map((s) => ({
-            store: s.store_name || null,
-            store_name: s.store_name || null,
-            price: s.price ? Number(s.price) : null,
-            currency: s.currency || undefined,
-            availability: s.availability || undefined,
-            url: s.url || null,
-            offer_text: s.offer_text || null,
-            sale_start_date: s.sale_start_date || null,
-            discount: s.discount || null,
-            offers: s.offers || null,
-          })),
-        })),
-      };
+      const submitData = buildMobileSubmitPayload({
+        formData,
+        mode: "create",
+        isUpcomingDevice,
+        publishEnabled,
+      });
 
       const res = await fetch(buildUrl("/api/smartphones"), {
         method: "POST",
@@ -1905,16 +1864,57 @@ const CreateMobile = () => {
                   />
                 </div>
 
-                <div className="sm:col-span-2">
-                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-                    Launch Stage
-                  </label>
-                  <div className="w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700">
-                    {formatLaunchStageLabel(launchStatusAuto) || "Released"}
+                <div className="sm:col-span-2 rounded-xl border border-blue-100 bg-blue-50/60 p-3">
+                  <div className="mb-3">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-700">
+                      Market Lifecycle
+                    </p>
+                    <p className="mt-1 text-xs text-slate-600">
+                      Controls where this phone appears before and after sale goes live.
+                    </p>
                   </div>
-                  <div className="mt-1 space-y-1 text-xs text-gray-500">
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {[
+                      ["launch_status_override", "Launch Status", LAUNCH_STATUS_OPTIONS],
+                      ["sale_status_override", "Sale Status", SALE_STATUS_OPTIONS],
+                      ["store_stage_override", "Store Stage", STORE_STAGE_OPTIONS],
+                      ["launch_date_type", "Launch Date Type", LAUNCH_DATE_TYPE_OPTIONS],
+                      ["price_confidence", "Price Confidence", CONFIDENCE_OPTIONS],
+                      ["spec_confidence", "Spec Confidence", SPEC_CONFIDENCE_OPTIONS],
+                    ].map(([name, label, options]) => (
+                      <label key={name} className="block">
+                        <span className="block text-xs font-medium text-gray-700 mb-1">
+                          {label}
+                        </span>
+                        <select
+                          name={name}
+                          value={formData.smartphone[name] || ""}
+                          onChange={handleSmartphoneChange}
+                          className="w-full border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 focus:border-blue-500 focus:outline-none"
+                        >
+                          {options.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    ))}
+                  </div>
+
+                  <div className="mt-3 rounded-lg border border-white bg-white px-3 py-2 text-xs text-slate-600 shadow-sm">
+                    <p>
+                      Auto launch: {formatLaunchStageLabel(launchStatusAuto) || "Released"}
+                    </p>
                     <p>Sale stage: {formatSaleStageLabel(saleStage) || "Sale Date TBA"}</p>
                     <p>Store state: {formatStoreStageLabel(storeStage) || "No Store Listing"}</p>
+                    <p className="mt-2 font-semibold text-slate-900">
+                      Render Result: {renderState.renderType === "available" ? "All Smartphones" : "Upcoming"}
+                    </p>
+                    <p className="font-semibold text-blue-700">
+                      Display Status: {renderState.displayStatus}
+                    </p>
                   </div>
                 </div>
               </div>
