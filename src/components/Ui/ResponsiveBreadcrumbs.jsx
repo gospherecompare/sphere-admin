@@ -12,48 +12,45 @@ const formatLabel = (segment) =>
     .split("-")
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
+      <div className="bg-white">
+        <div className="mx-auto w-full max-w-[1280px] px-4 pb-1 pt-3 sm:px-6 sm:pt-3 lg:px-8">
+          <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-2 text-[12px] text-[#7d8898]">
+            <div className="flex flex-wrap items-center gap-2">
+              <Link to="/" className="transition-colors duration-200 hover:text-[#2563eb] inline-flex items-center gap-2">
+                <FaHome className="h-3.5 w-3.5 text-[#7d8898]" />
+                <span className="text-[12px] text-[#7d8898] hidden sm:inline">Dashboard</span>
+              </Link>
+              <FaChevronRight className="h-2.5 w-2.5 text-[#b6c2cf]" />
+            </div>
 
-const ResponsiveBreadcrumbs = ({ maxItemsOnMobile = 2 }) => {
-  const location = useLocation();
-  const pathnames = location.pathname.split("/").filter(Boolean);
+            {breadcrumbs.map((breadcrumb, index) => {
+              const isLast = index === breadcrumbs.length - 1;
+              if (breadcrumb.isEllipsis) {
+                return (
+                  <div key={index} className="flex items-center gap-2">
+                    <span className="text-[12px] text-[#7d8898]">{breadcrumb.label}</span>
+                  </div>
+                );
+              }
 
-  if (pathnames.length === 0) return null;
+              return (
+                <div key={breadcrumb.index || index} className="flex items-center gap-2">
+                  {!isLast ? (
+                    <Link to={breadcrumb.path} className="transition-colors duration-200 hover:text-[#2563eb]">
+                      <span className="text-[12px] text-[#7d8898] max-w-xs truncate">{breadcrumb.label}</span>
+                    </Link>
+                  ) : (
+                    <span className="text-[12px] font-semibold text-[#1f2937] max-w-xs truncate">{breadcrumb.label}</span>
+                  )}
 
-  const getVisibleBreadcrumbs = () => {
-    if (pathnames.length <= maxItemsOnMobile) {
-      return pathnames.map((name, index) => ({
-        name,
-        label: formatLabel(name),
-        path: `/${pathnames.slice(0, index + 1).join("/")}`,
-        index,
-      }));
-    }
-
-    return [
-      {
-        name: pathnames[0],
-        label: formatLabel(pathnames[0]),
-        path: `/${pathnames[0]}`,
-        index: 0,
-      },
-      {
-        name: "ellipsis",
-        label: "...",
-        path: "#",
-        isEllipsis: true,
-      },
-      {
-        name: pathnames[pathnames.length - 1],
-        label: formatLabel(pathnames[pathnames.length - 1]),
-        path: `/${pathnames.join("/")}`,
-        index: pathnames.length - 1,
-      },
-    ];
-  };
-
-  const breadcrumbs = getVisibleBreadcrumbs();
-
-  return (
+                  {!isLast ? <FaChevronRight className="h-2.5 w-2.5 text-[#b6c2cf]" /> : null}
+                </div>
+              );
+            })}
+          </nav>
+        </div>
+      </div>
+    );
     <nav
       className="rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm overflow-x-auto px-4 py-3 md:px-6 md:py-4"
       aria-label="Breadcrumb"

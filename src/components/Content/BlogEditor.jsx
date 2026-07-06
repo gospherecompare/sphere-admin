@@ -3934,15 +3934,41 @@ const BlogEditor = () => {
                       </div>
 
                       <div>
-                        <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                          Published on
-                        </label>
+                        <div className="mb-1.5 flex items-center justify-between gap-2">
+                          <label className="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                            Published on
+                          </label>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setPublishedAt(toDateTimeLocalValue(new Date()))
+                              }
+                              className="text-xs font-semibold text-blue-600 hover:text-blue-700"
+                            >
+                              Use now
+                            </button>
+                            {publishedAt ? (
+                              <button
+                                type="button"
+                                onClick={() => setPublishedAt("")}
+                                className="text-xs font-semibold text-slate-500 hover:text-slate-700"
+                              >
+                                Clear
+                              </button>
+                            ) : null}
+                          </div>
+                        </div>
                         <input
                           type="datetime-local"
                           value={publishedAt}
                           onChange={(event) => setPublishedAt(event.target.value)}
                           className={composerFieldClassName}
                         />
+                        <p className="mt-1.5 text-xs leading-5 text-slate-500">
+                          Leave empty to use the current date and time when
+                          publishing. Set a manual value to backdate or schedule.
+                        </p>
                       </div>
 
                       {blogId ? (

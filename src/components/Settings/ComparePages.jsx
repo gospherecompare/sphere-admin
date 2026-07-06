@@ -452,6 +452,7 @@ export default function ComparePages() {
   const [suggestions, setSuggestions] = useState([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const [syncingAutomaticPages, setSyncingAutomaticPages] = useState(false);
+  const [refreshingCompetitors, setRefreshingCompetitors] = useState(false);
   const [existingPageHint, setExistingPageHint] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [registryQuery, setRegistryQuery] = useState("");
@@ -528,6 +529,35 @@ export default function ComparePages() {
       setSyncingAutomaticPages(false);
     }
   }, [authHeaders, loadPages, showToast]);
+
+  const refreshCompetitorAnalysis = useCallback(async () => {
+    setRefreshingCompetitors(true);
+    setError("");
+    try {
+      const response = await fetch(buildUrl("/api/admin/competitors/recompute"), {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({ limit: 5 }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data?.message || data?.error || `HTTP ${response.status}`);
+      }
+      showToast(
+        "Competitors Refreshed",
+        `Updated ${Number(data?.updated_products) || 0} phones with ${
+          Number(data?.inserted_rows) || 0
+        } recommendations`,
+        "success",
+      );
+    } catch (err) {
+      const message = err?.message || "Failed to refresh competitor analysis";
+      setError(message);
+      showToast("Error", message, "error");
+    } finally {
+      setRefreshingCompetitors(false);
+    }
+  }, [authHeaders, showToast]);
 
   const loadPageDetail = useCallback(
     async (pageId) => {
@@ -1172,7 +1202,13 @@ export default function ComparePages() {
           <button
             type="button"
             onClick={loadPages}
-            disabled={loading || saving || deleting || syncingAutomaticPages}
+            disabled={
+              loading ||
+              saving ||
+              deleting ||
+              syncingAutomaticPages ||
+              refreshingCompetitors
+            }
             className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
           >
             <FaSyncAlt className={loading ? "animate-spin" : ""} />
@@ -1181,7 +1217,13 @@ export default function ComparePages() {
           <button
             type="button"
             onClick={syncAutomaticPages}
-            disabled={loading || saving || deleting || syncingAutomaticPages}
+            disabled={
+              loading ||
+              saving ||
+              deleting ||
+              syncingAutomaticPages ||
+              refreshingCompetitors
+            }
             className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
           >
             {syncingAutomaticPages ? (
@@ -1191,6 +1233,25 @@ export default function ComparePages() {
             )}
             Auto Sync
             <span className="ml-1 h-2 w-2 rounded-full bg-emerald-500" />
+          </button>
+          <button
+            type="button"
+            onClick={refreshCompetitorAnalysis}
+            disabled={
+              loading ||
+              saving ||
+              deleting ||
+              syncingAutomaticPages ||
+              refreshingCompetitors
+            }
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
+          >
+            {refreshingCompetitors ? (
+              <FaSpinner className="animate-spin" />
+            ) : (
+              <FaSyncAlt />
+            )}
+            Refresh Competitors
           </button>
           <button
             type="button"
