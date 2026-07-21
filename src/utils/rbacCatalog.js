@@ -203,11 +203,6 @@ export const RBAC_MODULES = [
     label: "SEO",
     actions: ["view", "edit", "manage"],
   },
-  {
-    key: "customers",
-    label: "Customers",
-    actions: ["view", "create", "edit", "delete", "manage", "export"],
-  },
   { key: "account", label: "Account Settings", actions: ["view", "edit"] },
 ];
 
@@ -366,8 +361,6 @@ export const ROLE_PRESETS = {
     permissions: [
       "dashboard.view",
       "account.*",
-      "customers.view",
-      "customers.edit",
       "products.view",
       "products.smartphones.view",
       "products.laptops.view",

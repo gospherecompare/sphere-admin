@@ -48,14 +48,12 @@ const MENU_ITEMS = [
     icon: <FaUsers />,
     requiredAnyPermissions: [
       "users.view",
-      "customers.view",
       "roles.view",
       "permissions.view",
       "activity.view",
     ],
     submenu: [
       { label: "Users", path: "/user-management", requiredAnyPermissions: ["users.view"] },
-      { label: "Customers", path: "/customer-management" },
       { label: "Permissions", path: "/permission-management" },
     ],
   },

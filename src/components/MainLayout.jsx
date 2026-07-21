@@ -216,10 +216,6 @@ const MainLayout = ({
                   path="/user-management"
                   element={<ROUTE_CONFIG.userManagement.component />}
                 />
-                <Route
-                  path="/customer-management"
-                  element={<ROUTE_CONFIG.customerManagement.component />}
-                />
 
                 {/* Account */}
                 <Route

@@ -307,12 +307,6 @@ const DESKTOP_SECTIONS = [
         path: "/permission-management",
         prefixes: ["/permission-management"],
       },
-      {
-        label: "Customers",
-        icon: FaUsers,
-        path: "/customer-management",
-        prefixes: ["/customer-management"],
-      },
     ],
   },
   {

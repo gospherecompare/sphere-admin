@@ -151,7 +151,9 @@ const buildLinePath = (values, width, height, padding) => {
     .map((value, index) => {
       const x =
         padding +
-        (values.length === 1 ? usableWidth / 2 : (usableWidth / (values.length - 1)) * index);
+        (values.length === 1
+          ? usableWidth / 2
+          : (usableWidth / (values.length - 1)) * index);
       const normalized = (value - minValue) / (maxValue - minValue || 1);
       const y = height - padding - normalized * usableHeight;
       return `${index === 0 ? "M" : "L"} ${x.toFixed(2)} ${y.toFixed(2)}`;
@@ -200,19 +202,32 @@ const EmptyState = ({ label }) => (
   </div>
 );
 
-const SummaryCard = ({ icon: Icon, iconWrapClass, title, value, delta, helper }) => (
+const SummaryCard = ({
+  icon: Icon,
+  iconWrapClass,
+  title,
+  value,
+  delta,
+  helper,
+}) => (
   <div className="rounded-xl border border-slate-200 bg-white px-4 py-4 shadow-[0_12px_30px_rgba(15,23,42,0.04)]">
     <div className="flex items-start gap-3">
-      <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${iconWrapClass}`}>
+      <div
+        className={`flex h-12 w-12 items-center justify-center rounded-xl ${iconWrapClass}`}
+      >
         <Icon className="text-lg" />
       </div>
       <div className="min-w-0 flex-1">
         <p className="text-xs font-medium text-slate-500">{title}</p>
-        <p className="mt-1 text-[1.7rem] font-bold tracking-tight text-slate-950">{value}</p>
+        <p className="mt-1 text-[1.7rem] font-bold tracking-tight text-slate-950">
+          {value}
+        </p>
         <p className="mt-1 text-xs text-slate-500">
           <span
             className={`font-semibold ${
-              Number.isFinite(delta) && delta < 0 ? "text-rose-600" : "text-emerald-600"
+              Number.isFinite(delta) && delta < 0
+                ? "text-rose-600"
+                : "text-emerald-600"
             }`}
           >
             {Number.isFinite(delta)
@@ -255,12 +270,22 @@ const DesktopPerformanceChart = ({ labels, publishedSeries, draftSeries }) => {
 
       <div className="overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:h-0">
         <div className="min-w-[620px]">
-          <svg viewBox={`0 0 ${width} ${height + 34}`} className="h-[250px] w-full">
+          <svg
+            viewBox={`0 0 ${width} ${height + 34}`}
+            className="h-[250px] w-full"
+          >
             {[0, 1, 2, 3, 4].map((row) => {
               const y = padding + ((height - padding * 2) / 4) * row;
               return (
                 <g key={row}>
-                  <line x1={padding} x2={width - padding} y1={y} y2={y} stroke="#E7EAF4" strokeWidth="1" />
+                  <line
+                    x1={padding}
+                    x2={width - padding}
+                    y1={y}
+                    y2={y}
+                    stroke="#E7EAF4"
+                    strokeWidth="1"
+                  />
                   <text x="0" y={y + 4} fontSize="11" fill="#94A3B8">
                     {yLabels[4 - row]}
                   </text>
@@ -268,23 +293,48 @@ const DesktopPerformanceChart = ({ labels, publishedSeries, draftSeries }) => {
               );
             })}
 
-            <path d={publishedPath} fill="none" stroke="#345CFF" strokeWidth="3" strokeLinecap="round" />
-            <path d={draftPath} fill="none" stroke="#9A46FF" strokeWidth="3" strokeLinecap="round" />
+            <path
+              d={publishedPath}
+              fill="none"
+              stroke="#345CFF"
+              strokeWidth="3"
+              strokeLinecap="round"
+            />
+            <path
+              d={draftPath}
+              fill="none"
+              stroke="#9A46FF"
+              strokeWidth="3"
+              strokeLinecap="round"
+            />
 
             {labels.map((label, index) => {
               const usableWidth = width - padding * 2;
               const usableHeight = height - padding * 2;
-              const x = padding + (usableWidth / Math.max(labels.length - 1, 1)) * index;
+              const x =
+                padding +
+                (usableWidth / Math.max(labels.length - 1, 1)) * index;
               const publishedY =
-                height - padding - (parseNumber(publishedSeries[index], 0) / maxValue) * usableHeight;
+                height -
+                padding -
+                (parseNumber(publishedSeries[index], 0) / maxValue) *
+                  usableHeight;
               const draftY =
-                height - padding - (parseNumber(draftSeries[index], 0) / maxValue) * usableHeight;
+                height -
+                padding -
+                (parseNumber(draftSeries[index], 0) / maxValue) * usableHeight;
 
               return (
                 <g key={label}>
                   <circle cx={x} cy={publishedY} r="4" fill="#345CFF" />
                   <circle cx={x} cy={draftY} r="4" fill="#9A46FF" />
-                  <text x={x} y={height + 20} textAnchor="middle" fontSize="11" fill="#64748B">
+                  <text
+                    x={x}
+                    y={height + 20}
+                    textAnchor="middle"
+                    fontSize="11"
+                    fill="#64748B"
+                  >
                     {label}
                   </text>
                 </g>
@@ -299,7 +349,8 @@ const DesktopPerformanceChart = ({ labels, publishedSeries, draftSeries }) => {
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const userName = Cookies.get("userName") || Cookies.get("username") || "Admin";
+  const userName =
+    Cookies.get("userName") || Cookies.get("username") || "Admin";
   const firstName = String(userName).split(" ")[0] || "Admin";
   const currentPermissions = useMemo(() => getCurrentPermissions(), []);
   const [payloads, setPayloads] = useState({
@@ -321,11 +372,26 @@ const Dashboard = () => {
     setErrors([]);
 
     const endpoints = [
-      ["publishStatus", "/api/reports/publish-status", true, ["publish_by_type"]],
-      ["recentActivity", "/api/reports/recent-publish-activity", true, ["recent_publish_activity"]],
+      [
+        "publishStatus",
+        "/api/reports/publish-status",
+        true,
+        ["publish_by_type"],
+      ],
+      [
+        "recentActivity",
+        "/api/reports/recent-publish-activity",
+        true,
+        ["recent_publish_activity"],
+      ],
       ["launchDevices", "/api/reports/launch-timing", true, ["devices"]],
       ["trending", "/api/public/trending/all?limit=12", false, ["trending"]],
-      ["searchDevices", "/api/public/search-popularity?limit=8", false, ["devices"]],
+      [
+        "searchDevices",
+        "/api/public/search-popularity?limit=8",
+        false,
+        ["devices"],
+      ],
       [
         "featureClicks",
         "/api/public/popular-features?deviceType=smartphone&days=7&limit=8",
@@ -400,12 +466,18 @@ const Dashboard = () => {
         const launchDate = toDate(device.launch_date);
         return launchDate && startOfDay(launchDate) >= today;
       })
-      .sort((left, right) => toDate(left.launch_date) - toDate(right.launch_date));
+      .sort(
+        (left, right) => toDate(left.launch_date) - toDate(right.launch_date),
+      );
 
-    const recentPublished = payloads.recentActivity.filter((item) => item.is_published);
+    const recentPublished = payloads.recentActivity.filter(
+      (item) => item.is_published,
+    );
     const activeEditors = new Set(
       payloads.recentActivity
-        .map((item) => normalizeText(item.user_name, item.email, item.published_by))
+        .map((item) =>
+          normalizeText(item.user_name, item.email, item.published_by),
+        )
         .filter(Boolean),
     ).size;
 
@@ -418,15 +490,21 @@ const Dashboard = () => {
     const labels = days.map((date) =>
       date.toLocaleDateString("en-IN", { month: "short", day: "2-digit" }),
     );
-    const publishedSeries = dayKeys.map((key) =>
-      payloads.recentActivity.filter(
-        (item) => item.is_published && toDate(item.updated_at)?.toISOString().slice(0, 10) === key,
-      ).length,
+    const publishedSeries = dayKeys.map(
+      (key) =>
+        payloads.recentActivity.filter(
+          (item) =>
+            item.is_published &&
+            toDate(item.updated_at)?.toISOString().slice(0, 10) === key,
+        ).length,
     );
-    const draftSeries = dayKeys.map((key) =>
-      payloads.recentActivity.filter(
-        (item) => !item.is_published && toDate(item.updated_at)?.toISOString().slice(0, 10) === key,
-      ).length,
+    const draftSeries = dayKeys.map(
+      (key) =>
+        payloads.recentActivity.filter(
+          (item) =>
+            !item.is_published &&
+            toDate(item.updated_at)?.toISOString().slice(0, 10) === key,
+        ).length,
     );
 
     const searchTotal = payloads.searchDevices.reduce(
@@ -442,7 +520,8 @@ const Dashboard = () => {
       0,
     );
     const featureClickTotal = payloads.featureClicks.reduce(
-      (sum, item) => sum + parseCount(item.clicks ?? item.count ?? item.total_clicks),
+      (sum, item) =>
+        sum + parseCount(item.clicks ?? item.count ?? item.total_clicks),
       0,
     );
     const avgTrendScore = payloads.trending.length
@@ -516,7 +595,9 @@ const Dashboard = () => {
       {
         label: "Publish Events",
         value: formatCompact(payloads.recentActivity.length),
-        delta: getTrendDelta(publishedSeries.map((value, index) => value + draftSeries[index])),
+        delta: getTrendDelta(
+          publishedSeries.map((value, index) => value + draftSeries[index]),
+        ),
       },
       {
         label: "Published Updates",
@@ -553,7 +634,8 @@ const Dashboard = () => {
 
   const quickActions = useMemo(() => {
     const canUse = (permissions) =>
-      !permissions?.length || hasAnyPermissions(permissions, currentPermissions);
+      !permissions?.length ||
+      hasAnyPermissions(permissions, currentPermissions);
 
     const actions = [
       {
@@ -582,7 +664,9 @@ const Dashboard = () => {
         path: "/reports/search-popularity",
         metric: `${formatCompact(dashboard.searchTotal)} signals`,
         priority: dashboard.searchTotal ? 80 : 0,
-        visible: dashboard.searchTotal > 0 && canUse(["reports.view", "reports.export"]),
+        visible:
+          dashboard.searchTotal > 0 &&
+          canUse(["reports.view", "reports.export"]),
       },
       {
         label: "Feature Clicks",
@@ -624,7 +708,11 @@ const Dashboard = () => {
         path: "/content/news-articles",
         metric: "Editorial workspace",
         priority: 35,
-        visible: canUse(["content.news.view", "content.news.create", "content.news.*"]),
+        visible: canUse([
+          "content.news.view",
+          "content.news.create",
+          "content.news.*",
+        ]),
       },
       {
         label: "Banner Studio",
@@ -640,7 +728,12 @@ const Dashboard = () => {
       .filter((action) => action.visible)
       .sort((left, right) => right.priority - left.priority)
       .slice(0, 6);
-  }, [currentPermissions, dashboard, payloads.categories.length, payloads.comparePages.length]);
+  }, [
+    currentPermissions,
+    dashboard,
+    payloads.categories.length,
+    payloads.comparePages.length,
+  ]);
 
   const primaryAction = quickActions[0] || null;
 
@@ -653,14 +746,17 @@ const Dashboard = () => {
       <section className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h1 className="text-[1.9rem] font-bold tracking-tight text-slate-950 sm:text-[2.2rem]">
-            Welcome back, {firstName}! <span className="inline-block">{"\u{1F44B}"}</span>
+            Welcome back, {firstName}!{" "}
+            <span className="inline-block">{"\u{1F44B}"}</span>
           </h1>
           <p className="mt-2 text-sm text-slate-500 sm:text-base">
-            Live platform intelligence from publishing, discovery, search, and comparison data.
+            Live platform intelligence from publishing, discovery, search, and
+            comparison data.
           </p>
           {errors.length > 0 && (
             <p className="mt-2 text-xs font-medium text-amber-600">
-              {errors.length} dashboard source{errors.length > 1 ? "s" : ""} unavailable.
+              {errors.length} dashboard source{errors.length > 1 ? "s" : ""}{" "}
+              unavailable.
             </p>
           )}
         </div>
@@ -668,7 +764,9 @@ const Dashboard = () => {
         <div className="flex flex-col gap-3 sm:flex-row">
           <div className="inline-flex items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-[0_12px_30px_rgba(15,23,42,0.04)]">
             <FaCalendarAlt className="text-slate-500" />
-            {lastUpdated ? `Synced ${formatTimeAgo(lastUpdated)}` : "Syncing dashboard"}
+            {lastUpdated
+              ? `Synced ${formatTimeAgo(lastUpdated)}`
+              : "Syncing dashboard"}
           </div>
           <button
             type="button"
@@ -688,7 +786,11 @@ const Dashboard = () => {
             disabled={!primaryAction}
             className="inline-flex items-center justify-center gap-3 rounded-xl bg-gradient-to-r from-[#345CFF] to-[#7A2CFF] px-5 py-3 text-sm font-semibold text-white shadow-[0_18px_35px_rgba(92,76,255,0.25)]"
           >
-            {primaryAction ? React.createElement(primaryAction.icon) : <FaPlus />}
+            {primaryAction ? (
+              React.createElement(primaryAction.icon)
+            ) : (
+              <FaPlus />
+            )}
             {primaryAction?.label || "No Action"}
           </button>
         </div>
@@ -703,15 +805,24 @@ const Dashboard = () => {
       <section className="grid grid-cols-1 gap-5 xl:grid-cols-[1.75fr_1.05fr_1.15fr]">
         <SectionCard>
           <div className="flex items-center gap-2">
-            <h2 className="text-lg font-semibold text-slate-950">Performance Overview</h2>
+            <h2 className="text-lg font-semibold text-slate-950">
+              Performance Overview
+            </h2>
             <FaInfoCircle className="text-sm text-slate-300" />
           </div>
 
           <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
             {dashboard.performanceMetrics.map((metric) => (
-              <div key={metric.label} className="rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3">
-                <p className="text-[11px] font-medium text-slate-500">{metric.label}</p>
-                <p className="mt-1 text-[1.15rem] font-bold text-slate-950">{metric.value}</p>
+              <div
+                key={metric.label}
+                className="rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3"
+              >
+                <p className="text-[11px] font-medium text-slate-500">
+                  {metric.label}
+                </p>
+                <p className="mt-1 text-[1.15rem] font-bold text-slate-950">
+                  {metric.value}
+                </p>
                 <p className="mt-1 text-xs font-semibold text-emerald-600">
                   {Number.isFinite(metric.delta)
                     ? `${metric.delta >= 0 ? "up" : "down"} ${formatDelta(metric.delta)}`
@@ -730,7 +841,9 @@ const Dashboard = () => {
 
         <SectionCard>
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-slate-950">Top Search Devices</h2>
+            <h2 className="text-lg font-semibold text-slate-950">
+              Top Search Devices
+            </h2>
             <button
               type="button"
               onClick={() => navigate("/reports/search-popularity")}
@@ -743,11 +856,26 @@ const Dashboard = () => {
           <div className="mt-5 space-y-4">
             {payloads.searchDevices.length > 0 ? (
               payloads.searchDevices.slice(0, 5).map((device, index) => {
-                const name = normalizeText(device.name, device.product_name, device.model, "Unknown device");
-                const count = parseCount(device.search_count ?? device.searches ?? device.count ?? device.score);
-                const pct = dashboard.searchTotal ? (count / dashboard.searchTotal) * 100 : 0;
+                const name = normalizeText(
+                  device.name,
+                  device.product_name,
+                  device.model,
+                  "Unknown device",
+                );
+                const count = parseCount(
+                  device.search_count ??
+                    device.searches ??
+                    device.count ??
+                    device.score,
+                );
+                const pct = dashboard.searchTotal
+                  ? (count / dashboard.searchTotal) * 100
+                  : 0;
                 return (
-                  <div key={`${name}-${index}`} className="flex items-center gap-3">
+                  <div
+                    key={`${name}-${index}`}
+                    className="flex items-center gap-3"
+                  >
                     <div
                       className={`flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-r text-xs font-semibold text-white ${gradientPalettes[index % gradientPalettes.length]}`}
                     >
@@ -757,8 +885,12 @@ const Dashboard = () => {
                       {getInitials(name)}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-slate-900">{name}</p>
-                      <p className="text-xs text-slate-500">{formatCompact(count)} searches</p>
+                      <p className="truncate text-sm font-semibold text-slate-900">
+                        {name}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        {formatCompact(count)} searches
+                      </p>
                       <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
                         <div
                           className="h-full rounded-full bg-gradient-to-r from-[#345CFF] to-[#8A35FF]"
@@ -766,7 +898,9 @@ const Dashboard = () => {
                         />
                       </div>
                     </div>
-                    <p className="text-xs font-medium text-slate-500">{pct.toFixed(1)}%</p>
+                    <p className="text-xs font-medium text-slate-500">
+                      {pct.toFixed(1)}%
+                    </p>
                   </div>
                 );
               })
@@ -780,9 +914,13 @@ const Dashboard = () => {
           <div className="overflow-hidden rounded-xl bg-gradient-to-br from-[#345CFF] via-[#6243FF] to-[#9431FF] p-5 text-white shadow-[0_18px_45px_rgba(97,75,255,0.26)]">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <h2 className="text-lg font-semibold">Today&apos;s Publish Health</h2>
+                <h2 className="text-lg font-semibold">
+                  Today&apos;s Publish Health
+                </h2>
                 <p className="mt-1 text-sm text-white/75">
-                  {lastUpdated ? `Last synced ${formatTimeAgo(lastUpdated)}` : "Waiting for sync"}
+                  {lastUpdated
+                    ? `Last synced ${formatTimeAgo(lastUpdated)}`
+                    : "Waiting for sync"}
                 </p>
               </div>
               <button type="button" className="text-white/70">
@@ -791,9 +929,14 @@ const Dashboard = () => {
             </div>
 
             <div className="mt-6 flex flex-col gap-5 sm:flex-row sm:items-center">
-              <div className="relative mx-auto h-40 w-40 flex-shrink-0 rounded-full p-[14px]" style={publishRingStyle}>
+              <div
+                className="relative mx-auto h-40 w-40 flex-shrink-0 rounded-full p-[14px]"
+                style={publishRingStyle}
+              >
                 <div className="flex h-full w-full flex-col items-center justify-center rounded-full bg-gradient-to-br from-[#456BFF] to-[#7B38FF] text-center">
-                  <p className="text-4xl font-bold">{dashboard.publishHealth}%</p>
+                  <p className="text-4xl font-bold">
+                    {dashboard.publishHealth}%
+                  </p>
                   <p className="mt-1 text-sm text-white/80">Overall Health</p>
                 </div>
               </div>
@@ -805,7 +948,8 @@ const Dashboard = () => {
                     Published
                   </span>
                   <span className="font-semibold">
-                    {formatNumber(dashboard.publishTotals.published)} ({dashboard.publishHealth}%)
+                    {formatNumber(dashboard.publishTotals.published)} (
+                    {dashboard.publishHealth}%)
                   </span>
                 </div>
                 <div className="flex items-center justify-between gap-6">
@@ -816,7 +960,11 @@ const Dashboard = () => {
                   <span className="font-semibold">
                     {formatNumber(dashboard.publishTotals.drafts)} (
                     {dashboard.publishTotals.total
-                      ? Math.round((dashboard.publishTotals.drafts / dashboard.publishTotals.total) * 100)
+                      ? Math.round(
+                          (dashboard.publishTotals.drafts /
+                            dashboard.publishTotals.total) *
+                            100,
+                        )
                       : 0}
                     %)
                   </span>
@@ -826,7 +974,9 @@ const Dashboard = () => {
                     <span className="h-2.5 w-2.5 rounded-full bg-fuchsia-300" />
                     Upcoming
                   </span>
-                  <span className="font-semibold">{formatNumber(dashboard.upcomingLaunches.length)}</span>
+                  <span className="font-semibold">
+                    {formatNumber(dashboard.upcomingLaunches.length)}
+                  </span>
                 </div>
               </div>
             </div>
@@ -834,7 +984,9 @@ const Dashboard = () => {
 
           <SectionCard>
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-slate-950">Quick Actions</h2>
+              <h2 className="text-lg font-semibold text-slate-950">
+                Quick Actions
+              </h2>
               <FaArrowRight className="text-sm text-slate-300" />
             </div>
 
@@ -852,8 +1004,12 @@ const Dashboard = () => {
                       <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#EFF3FF] to-[#F4ECFF] text-[#5A49FF]">
                         <Icon className="text-sm" />
                       </div>
-                      <p className="mt-3 text-xs font-semibold text-slate-700">{action.label}</p>
-                      <p className="mt-1 truncate text-[10px] font-medium text-slate-400">{action.metric}</p>
+                      <p className="mt-3 text-xs font-semibold text-slate-700">
+                        {action.label}
+                      </p>
+                      <p className="mt-1 truncate text-[10px] font-medium text-slate-400">
+                        {action.metric}
+                      </p>
                     </button>
                   );
                 })
@@ -867,7 +1023,9 @@ const Dashboard = () => {
 
           <SectionCard>
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-slate-950">Discovery Insights</h2>
+              <h2 className="text-lg font-semibold text-slate-950">
+                Discovery Insights
+              </h2>
               <button
                 type="button"
                 onClick={() => navigate("/reports/feature-clicks")}
@@ -879,14 +1037,30 @@ const Dashboard = () => {
 
             <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
               {[
-                { label: "Search Signals", value: formatCompact(dashboard.searchTotal) },
-                { label: "Feature Clicks", value: formatCompact(dashboard.featureClickTotal) },
-                { label: "Compare Pages", value: formatCompact(payloads.comparePages.length) },
+                {
+                  label: "Search Signals",
+                  value: formatCompact(dashboard.searchTotal),
+                },
+                {
+                  label: "Feature Clicks",
+                  value: formatCompact(dashboard.featureClickTotal),
+                },
+                {
+                  label: "Compare Pages",
+                  value: formatCompact(payloads.comparePages.length),
+                },
               ].map((metric) => (
-                <div key={metric.label} className="rounded-xl border border-slate-200 bg-slate-50/60 px-4 py-3">
+                <div
+                  key={metric.label}
+                  className="rounded-xl border border-slate-200 bg-slate-50/60 px-4 py-3"
+                >
                   <p className="text-[11px] text-slate-500">{metric.label}</p>
-                  <p className="mt-1 text-xl font-bold text-slate-950">{metric.value}</p>
-                  <p className="mt-1 text-xs font-semibold text-emerald-600">Live</p>
+                  <p className="mt-1 text-xl font-bold text-slate-950">
+                    {metric.value}
+                  </p>
+                  <p className="mt-1 text-xs font-semibold text-emerald-600">
+                    Live
+                  </p>
                 </div>
               ))}
             </div>
@@ -897,7 +1071,9 @@ const Dashboard = () => {
       <section className="grid grid-cols-1 gap-5 xl:grid-cols-[1.15fr_1.2fr_1fr]">
         <SectionCard>
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-slate-950">Recent Activity</h2>
+            <h2 className="text-lg font-semibold text-slate-950">
+              Recent Activity
+            </h2>
             <button
               type="button"
               onClick={() => navigate("/reports/recentactivity")}
@@ -910,19 +1086,30 @@ const Dashboard = () => {
           <div className="mt-4 space-y-3">
             {payloads.recentActivity.length > 0 ? (
               payloads.recentActivity.slice(0, 5).map((item, index) => (
-                <div key={`${item.product_id}-${item.updated_at}-${index}`} className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-3">
+                <div
+                  key={`${item.product_id}-${item.updated_at}-${index}`}
+                  className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-3"
+                >
                   <div className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-xl bg-violet-500 text-white">
                     <FaCheckCircle className="text-sm" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold text-slate-900">
-                      {normalizeText(item.product_name, "Unnamed product")} {item.is_published ? "published" : "saved as draft"}
+                      {normalizeText(item.product_name, "Unnamed product")}{" "}
+                      {item.is_published ? "published" : "saved as draft"}
                     </p>
                     <p className="mt-0.5 text-xs text-slate-500">
-                      by {normalizeText(item.user_name, item.email, "Unknown user")}
+                      by{" "}
+                      {normalizeText(
+                        item.user_name,
+                        item.email,
+                        "Unknown user",
+                      )}
                     </p>
                   </div>
-                  <p className="text-xs text-slate-400">{formatTimeAgo(item.updated_at)}</p>
+                  <p className="text-xs text-slate-400">
+                    {formatTimeAgo(item.updated_at)}
+                  </p>
                 </div>
               ))
             ) : (
@@ -933,8 +1120,13 @@ const Dashboard = () => {
 
         <SectionCard>
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-slate-950">Top Trending This Week</h2>
-            <button type="button" className="inline-flex items-center gap-1 text-xs font-medium text-slate-500">
+            <h2 className="text-lg font-semibold text-slate-950">
+              Top Trending This Week
+            </h2>
+            <button
+              type="button"
+              className="inline-flex items-center gap-1 text-xs font-medium text-slate-500"
+            >
               Score <FaChevronDown className="text-[10px]" />
             </button>
           </div>
@@ -942,13 +1134,25 @@ const Dashboard = () => {
           <div className="mt-4 space-y-3">
             {payloads.trending.length > 0 ? (
               payloads.trending.slice(0, 5).map((item, index) => {
-                const name = normalizeText(item.name, item.product_name, item.model, "Unknown product");
+                const name = normalizeText(
+                  item.name,
+                  item.product_name,
+                  item.model,
+                  "Unknown product",
+                );
                 const score = parseNumber(
-                  item.trending_score ?? item.trend_score ?? item.score ?? item.spec_score ?? item.hook_score,
+                  item.trending_score ??
+                    item.trend_score ??
+                    item.score ??
+                    item.spec_score ??
+                    item.hook_score,
                   0,
                 );
                 return (
-                  <div key={`${item.id || item.product_id || name}-${index}`} className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-3">
+                  <div
+                    key={`${item.id || item.product_id || name}-${index}`}
+                    className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-3"
+                  >
                     <div
                       className={`flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-r text-[11px] font-semibold text-white ${gradientPalettes[index % gradientPalettes.length]}`}
                     >
@@ -958,11 +1162,17 @@ const Dashboard = () => {
                       {getInitials(name)}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-slate-900">{name}</p>
-                      <p className="text-xs text-slate-500">{normalizeText(item.product_type, item.type, "Product")}</p>
+                      <p className="truncate text-sm font-semibold text-slate-900">
+                        {name}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        {normalizeText(item.product_type, item.type, "Product")}
+                      </p>
                     </div>
                     <div className="text-right">
-                      <p className="text-2xl font-bold text-slate-950">{score.toFixed(0)}</p>
+                      <p className="text-2xl font-bold text-slate-950">
+                        {score.toFixed(0)}
+                      </p>
                       <p className="text-xs font-semibold text-emerald-600">
                         <FaArrowUp className="inline-block" />
                       </p>
@@ -978,7 +1188,9 @@ const Dashboard = () => {
 
         <SectionCard>
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-slate-950">Most Clicked Features</h2>
+            <h2 className="text-lg font-semibold text-slate-950">
+              Most Clicked Features
+            </h2>
             <button
               type="button"
               onClick={() => navigate("/reports/feature-clicks")}
@@ -991,14 +1203,27 @@ const Dashboard = () => {
           <div className="mt-5 space-y-4">
             {payloads.featureClicks.length > 0 ? (
               payloads.featureClicks.slice(0, 6).map((feature) => {
-                const label = normalizeText(feature.feature_label, feature.feature, feature.feature_id, "Feature");
-                const clicks = parseCount(feature.clicks ?? feature.count ?? feature.total_clicks);
-                const value = dashboard.featureClickTotal ? (clicks / dashboard.featureClickTotal) * 100 : 0;
+                const label = normalizeText(
+                  feature.feature_label,
+                  feature.feature,
+                  feature.feature_id,
+                  "Feature",
+                );
+                const clicks = parseCount(
+                  feature.clicks ?? feature.count ?? feature.total_clicks,
+                );
+                const value = dashboard.featureClickTotal
+                  ? (clicks / dashboard.featureClickTotal) * 100
+                  : 0;
                 return (
                   <div key={label}>
                     <div className="mb-1 flex items-center justify-between text-sm">
-                      <span className="font-medium text-slate-700">{label}</span>
-                      <span className="text-slate-500">{value.toFixed(1)}%</span>
+                      <span className="font-medium text-slate-700">
+                        {label}
+                      </span>
+                      <span className="text-slate-500">
+                        {value.toFixed(1)}%
+                      </span>
                     </div>
                     <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
                       <div
@@ -1018,7 +1243,9 @@ const Dashboard = () => {
 
       <SectionCard>
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-slate-950">Upcoming Launches</h2>
+          <h2 className="text-lg font-semibold text-slate-950">
+            Upcoming Launches
+          </h2>
           <button
             type="button"
             onClick={() => navigate("/reports/launch-timing")}
@@ -1032,7 +1259,11 @@ const Dashboard = () => {
           {dashboard.upcomingLaunches.length > 0 ? (
             <div className="flex min-w-max gap-4">
               {dashboard.upcomingLaunches.slice(0, 8).map((launch, index) => {
-                const name = normalizeText(launch.product_name, launch.name, "Unnamed device");
+                const name = normalizeText(
+                  launch.product_name,
+                  launch.name,
+                  "Unnamed device",
+                );
                 const left = daysUntil(launch.launch_date);
                 return (
                   <div
@@ -1045,10 +1276,18 @@ const Dashboard = () => {
                       {getInitials(name)}
                     </div>
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-slate-900">{name}</p>
-                      <p className="mt-1 text-xs text-slate-500">{formatDate(launch.launch_date)}</p>
+                      <p className="truncate text-sm font-semibold text-slate-900">
+                        {name}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        {formatDate(launch.launch_date)}
+                      </p>
                       <span className="mt-2 inline-flex rounded-full bg-[#EFE9FF] px-3 py-1 text-[11px] font-semibold text-[#6A45FF]">
-                        {left === null ? "Date pending" : left <= 0 ? "Launching now" : `${left} days left`}
+                        {left === null
+                          ? "Date pending"
+                          : left <= 0
+                            ? "Launching now"
+                            : `${left} days left`}
                       </span>
                     </div>
                   </div>

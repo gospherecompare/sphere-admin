@@ -196,6 +196,7 @@ const EditMobile = () => {
     store_stage_override: "none",
     launch_date_type: "confirmed",
     price_confidence: "medium",
+    expected_price: "",
     spec_confidence: "expected",
     official_preorder_url: "",
     created_at: "",
@@ -1083,6 +1084,7 @@ const EditMobile = () => {
             apiData?.launch_date_type || apiData?.launchDateType || "confirmed",
           price_confidence:
             apiData?.price_confidence || apiData?.priceConfidence || "medium",
+          expected_price: apiData?.expected_price || apiData?.expectedPrice || "",
           spec_confidence:
             apiData?.spec_confidence || apiData?.specConfidence || "expected",
           created_at: apiData?.created_at || apiData?.createdAt || "",
@@ -1654,6 +1656,7 @@ const EditMobile = () => {
       store_stage_override: formData.store_stage_override || "",
       launch_date_type: formData.launch_date_type || "",
       price_confidence: formData.price_confidence || "",
+      expected_price: formData.expected_price || "",
       spec_confidence: formData.spec_confidence || "",
       official_preorder_url: formData.official_preorder_url || "",
       colors: Array.isArray(formData.colors) ? formData.colors : [],
@@ -3514,6 +3517,24 @@ const EditMobile = () => {
                       </label>
                     ))}
                   </div>
+
+                  <label className="mt-3 block">
+                    <span className="block text-xs font-medium text-gray-700 mb-1">
+                      Expected Price
+                    </span>
+                    <input
+                      type="number"
+                      min="0"
+                      name="expected_price"
+                      value={formData.expected_price || ""}
+                      onChange={handleChange}
+                      className={editorInputClassName}
+                      placeholder="Optional, e.g. 15999"
+                    />
+                    <p className="mt-1 text-xs text-slate-500">
+                      Used only when no confirmed variant/store price exists.
+                    </p>
+                  </label>
 
                   <div className="mt-3 rounded-lg border border-white bg-white px-3 py-2 text-xs text-slate-600 shadow-sm">
                     <p>

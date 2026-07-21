@@ -36,7 +36,6 @@ const TITLE_ROUTES = [
   routeMeta("/users", "User Management Workspace", "Identity Governance"),
   routeMeta("/roles", "Role Management Workspace", "Identity Governance"),
   routeMeta("/user-management", "User Management Workspace", "Identity Governance"),
-  routeMeta("/customer-management", "Customer Directory Workspace", "CRM Operations Hub"),
   routeMeta("/account-management", "Account Settings Workspace", "System Administration"),
   routeMeta("/change-password", "Credential Security Settings", "System Administration"),
   routeMeta("/permission-management", "Roles and Permissions Matrix", "Identity Governance"),
@@ -134,7 +133,6 @@ const inferWorkspaceFromPath = (pathname = "") => {
   if (pathname.startsWith("/edit-mobile/")) return "Product Experience Suite";
   if (pathname.startsWith("/user-management")) return "Identity Governance";
   if (pathname.startsWith("/permission-management")) return "Identity Governance";
-  if (pathname.startsWith("/customer-management")) return "CRM Operations Hub";
   if (pathname.startsWith("/account-management")) return "System Administration";
   if (pathname.startsWith("/change-password")) return "System Administration";
   if (pathname.startsWith("/smartphonesrating")) return "Engagement Analytics Desk";

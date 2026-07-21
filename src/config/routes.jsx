@@ -27,7 +27,6 @@ const CreateLaptop = lazy(() => import("../components/CreateLaptop"));
 const CreateHomeAppliance = lazy(() => import("../components/CreateAppliance"));
 const ViewLaptops = lazy(() => import("../components/ViewLaptop"));
 const ViewTVs = lazy(() => import("../components/ViewAppliance"));
-const ViewCustomers = lazy(() => import("../components/ViewCustomers"));
 const RamStorageConfig = lazy(() => import("../components/Ramstorage"));
 const Brand = lazy(() => import("../components/Brand"));
 const CategoryManagement = lazy(() => import("../components/Category"));
@@ -193,11 +192,6 @@ export const ROUTE_CONFIG = {
     path: "/user-management",
     component: UserManagement,
     label: "User Management",
-  },
-  customerManagement: {
-    path: "/customer-management",
-    component: ViewCustomers,
-    label: "Customer Management",
   },
 
   // Account

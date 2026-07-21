@@ -108,11 +108,6 @@ export const ROUTE_ACCESS_RULES = [
     title: "User management access required",
   },
   {
-    pattern: "/customer-management",
-    requiredAnyPermissions: ["customers.view", "customers.manage", "users.view"],
-    title: "Customer management access required",
-  },
-  {
     pattern: "/permission-management",
     requiredAnyPermissions: ["roles.manage", "permissions.manage", "roles.view", "permissions.view"],
     title: "Permission management is restricted",

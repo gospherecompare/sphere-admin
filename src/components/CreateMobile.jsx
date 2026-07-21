@@ -182,6 +182,7 @@ const createInitialMobileFormData = () => ({
     store_stage_override: "none",
     launch_date_type: "confirmed",
     price_confidence: "medium",
+    expected_price: "",
     spec_confidence: "expected",
     official_preorder_url: "",
     colors: [],
@@ -1902,6 +1903,24 @@ const CreateMobile = () => {
                       </label>
                     ))}
                   </div>
+
+                  <label className="mt-3 block">
+                    <span className="block text-xs font-medium text-gray-700 mb-1">
+                      Expected Price
+                    </span>
+                    <input
+                      type="number"
+                      min="0"
+                      name="expected_price"
+                      value={formData.smartphone.expected_price || ""}
+                      onChange={handleSmartphoneChange}
+                      className="w-full border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 focus:border-blue-500 focus:outline-none"
+                      placeholder="Optional, e.g. 15999"
+                    />
+                    <p className="mt-1 text-xs text-slate-500">
+                      Used only when no confirmed variant/store price exists.
+                    </p>
+                  </label>
 
                   <div className="mt-3 rounded-lg border border-white bg-white px-3 py-2 text-xs text-slate-600 shadow-sm">
                     <p>

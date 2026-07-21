@@ -1,8 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  FaArrowLeft,
   FaCheckCircle,
   FaExclamationCircle,
   FaExternalLinkAlt,
+  FaListUl,
   FaMagic,
   FaPlus,
   FaSave,
@@ -17,6 +19,14 @@ import { buildUrl, getAuthToken } from "../../api";
 const SITE_ORIGIN = "https://tryhook.shop";
 const MAX_COMPARE_ITEMS = 3;
 const PAGE_SIZE = 8;
+const DEFAULT_AUTO_SYNC_DAYS = 180;
+const LATEST_WINDOW_OPTIONS = [
+  { value: "all", label: "All Time" },
+  { value: "2", label: "Last 2 days" },
+  { value: "7", label: "Last 1 week" },
+  { value: "30", label: "Last 30 days" },
+  { value: "custom", label: "From date" },
+];
 const DEFAULT_GENERATION_REASONS = [
   "User Comparison Trend",
   "Price Segment Demand",
@@ -435,6 +445,79 @@ const normalizeComparePage = (page) => {
   };
 };
 
+const normalizeCompareStats = (stats, pages = []) => {
+  const fallbackPages = Array.isArray(pages) ? pages : [];
+  const toStatNumber = (value, fallback = 0) => {
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? numeric : fallback;
+  };
+  return {
+    total: toStatNumber(stats?.total, fallbackPages.length),
+    published: toStatNumber(
+      stats?.published,
+      fallbackPages.filter((page) => page.status === "published").length,
+    ),
+    draft: toStatNumber(
+      stats?.draft,
+      fallbackPages.filter((page) => page.status === "draft").length,
+    ),
+    automatic: toStatNumber(
+      stats?.automatic,
+      fallbackPages.filter((page) => page.source === "automatic").length,
+    ),
+    manual: toStatNumber(
+      stats?.manual,
+      fallbackPages.filter((page) => page.source === "manual").length,
+    ),
+    automatic_published: toStatNumber(stats?.automatic_published),
+    automatic_draft: toStatNumber(stats?.automatic_draft),
+    filtered_total: toStatNumber(stats?.filtered_total, fallbackPages.length),
+    latest_updated_at: stats?.latest_updated_at || null,
+    filtered_latest_updated_at: stats?.filtered_latest_updated_at || null,
+  };
+};
+
+const resolveComparePageLatestTimestamp = (page) => {
+  const raw =
+    page?.updated_at ||
+    page?.generated_at ||
+    page?.published_at ||
+    page?.last_compared_at ||
+    "";
+  const date = raw ? new Date(raw) : null;
+  return date && !Number.isNaN(date.getTime()) ? date.getTime() : null;
+};
+
+const resolveLatestWindowDays = (filter, fromDate = "") => {
+  if (filter === "custom") {
+    const date = fromDate ? new Date(`${fromDate}T00:00:00`) : null;
+    if (!date || Number.isNaN(date.getTime())) return null;
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+    const diffDays = Math.ceil((today.getTime() - date.getTime()) / 86400000);
+    return Math.max(1, diffDays);
+  }
+
+  const numeric = Number(filter);
+  return Number.isFinite(numeric) && numeric > 0 ? numeric : null;
+};
+
+const matchesLatestWindow = (page, filter, fromDate = "") => {
+  if (!filter || filter === "all") return true;
+  const pageTime = resolveComparePageLatestTimestamp(page);
+  if (!pageTime) return false;
+
+  if (filter === "custom") {
+    const date = fromDate ? new Date(`${fromDate}T00:00:00`) : null;
+    if (!date || Number.isNaN(date.getTime())) return true;
+    return pageTime >= date.getTime();
+  }
+
+  const days = resolveLatestWindowDays(filter);
+  if (!days) return true;
+  return Date.now() - pageTime <= days * 86400000;
+};
+
 const createEmptyForm = () => ({ ...EMPTY_FORM, items: [] });
 
 export default function ComparePages() {
@@ -459,8 +542,14 @@ export default function ComparePages() {
   const [sourceFilter, setSourceFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [segmentFilter, setSegmentFilter] = useState("all");
+  const [latestWindowFilter, setLatestWindowFilter] = useState("all");
+  const [latestFromDate, setLatestFromDate] = useState("");
   const [isCreateModeForced, setIsCreateModeForced] = useState(false);
+  const [activeStudioView, setActiveStudioView] = useState("registry");
   const [toasts, setToasts] = useState([]);
+  const [compareStats, setCompareStats] = useState(() =>
+    normalizeCompareStats(null, []),
+  );
   const searchInputRef = useRef(null);
   const requestedThumbIdsRef = useRef(new Set());
 
@@ -480,11 +569,39 @@ export default function ComparePages() {
     };
   }, []);
 
+  const buildComparePagesUrl = useCallback(() => {
+    const params = new URLSearchParams({ limit: "300" });
+    const query = normalizeText(registryQuery);
+    const latestDays = resolveLatestWindowDays(
+      latestWindowFilter,
+      latestFromDate,
+    );
+
+    if (query) params.set("q", query);
+    if (sourceFilter !== "all") params.set("source", sourceFilter);
+    if (statusFilter !== "all") params.set("status", statusFilter);
+    if (segmentFilter !== "all") params.set("segment", segmentFilter);
+    if (latestWindowFilter === "custom" && latestFromDate) {
+      params.set("from_date", latestFromDate);
+    } else if (latestDays) {
+      params.set("days", String(latestDays));
+    }
+
+    return `/api/admin/compare-pages?${params.toString()}`;
+  }, [
+    latestFromDate,
+    latestWindowFilter,
+    registryQuery,
+    segmentFilter,
+    sourceFilter,
+    statusFilter,
+  ]);
+
   const loadPages = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
-      const response = await fetch(buildUrl("/api/admin/compare-pages"), {
+      const response = await fetch(buildUrl(buildComparePagesUrl()), {
         method: "GET",
         headers: authHeaders(),
       });
@@ -494,13 +611,14 @@ export default function ComparePages() {
         ? data.pages.map(normalizeComparePage)
         : [];
       setPages(nextPages);
+      setCompareStats(normalizeCompareStats(data?.stats, nextPages));
       setCurrentPage(1);
     } catch (err) {
       setError("Failed to load compare pages");
     } finally {
       setLoading(false);
     }
-  }, [authHeaders]);
+  }, [authHeaders, buildComparePagesUrl]);
 
   const syncAutomaticPages = useCallback(async () => {
     setSyncingAutomaticPages(true);
@@ -509,6 +627,12 @@ export default function ComparePages() {
       const response = await fetch(buildUrl("/api/admin/compare-pages/auto-sync"), {
         method: "POST",
         headers: authHeaders(),
+        body: JSON.stringify({
+          days:
+            resolveLatestWindowDays(latestWindowFilter, latestFromDate) ||
+            DEFAULT_AUTO_SYNC_DAYS,
+          limit: 300,
+        }),
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
@@ -528,7 +652,7 @@ export default function ComparePages() {
     } finally {
       setSyncingAutomaticPages(false);
     }
-  }, [authHeaders, loadPages, showToast]);
+  }, [authHeaders, latestFromDate, latestWindowFilter, loadPages, showToast]);
 
   const refreshCompetitorAnalysis = useCallback(async () => {
     setRefreshingCompetitors(true);
@@ -581,6 +705,7 @@ export default function ComparePages() {
         setForm(page);
         setExistingPageHint(null);
         setIsCreateModeForced(false);
+        setActiveStudioView("editor");
       } catch (err) {
         setError("Failed to load compare page details");
       } finally {
@@ -745,6 +870,7 @@ export default function ComparePages() {
     setExistingPageHint(null);
     setError("");
     setIsCreateModeForced(true);
+    setActiveStudioView("editor");
   };
 
   const addItemToForm = (item, makePrimary = false) => {
@@ -933,7 +1059,8 @@ export default function ComparePages() {
       setPages((prev) => prev.filter((page) => page.id !== deletedId));
       setSelectedPageId(null);
       setForm({ ...createEmptyForm(), status: "draft" });
-      setIsCreateModeForced(true);
+      setIsCreateModeForced(false);
+      setActiveStudioView("registry");
       showToast("Deleted", "Compare page removed", "success");
     } catch (err) {
       setError("Failed to delete compare page");
@@ -962,10 +1089,29 @@ export default function ComparePages() {
       const matchesSegment =
         segmentFilter === "all" ||
         normalizeText(page.segment_label) === normalizeText(segmentFilter);
+      const matchesLatest = matchesLatestWindow(
+        page,
+        latestWindowFilter,
+        latestFromDate,
+      );
 
-      return matchesQuery && matchesSource && matchesStatus && matchesSegment;
+      return (
+        matchesQuery &&
+        matchesSource &&
+        matchesStatus &&
+        matchesSegment &&
+        matchesLatest
+      );
     });
-  }, [pages, registryQuery, segmentFilter, sourceFilter, statusFilter]);
+  }, [
+    latestFromDate,
+    latestWindowFilter,
+    pages,
+    registryQuery,
+    segmentFilter,
+    sourceFilter,
+    statusFilter,
+  ]);
 
   const segmentOptions = useMemo(
     () =>
@@ -1015,9 +1161,10 @@ export default function ComparePages() {
     ],
   );
 
-  const publishedPageCount = pages.filter((page) => page.status === "published").length;
-  const automaticPageCount = pages.filter((page) => page.source === "automatic").length;
-  const manualPageCount = pages.filter((page) => page.source === "manual").length;
+  const totalPageCount = compareStats.total;
+  const publishedPageCount = compareStats.published;
+  const automaticPageCount = compareStats.automatic;
+  const manualPageCount = compareStats.manual;
 
   const totalPages = Math.max(1, Math.ceil(filteredPages.length / PAGE_SIZE));
   const currentPageSafe = Math.min(currentPage, totalPages);
@@ -1269,7 +1416,7 @@ export default function ComparePages() {
         {[
           {
             label: "Total Pages",
-            value: pages.length.toLocaleString("en-IN"),
+            value: totalPageCount.toLocaleString("en-IN"),
             helper: "All compare pages",
             accent: "bg-violet-50 text-violet-600",
             icon: FaSave,
@@ -1354,8 +1501,43 @@ export default function ComparePages() {
         </div>
       ) : null}
 
-      <section className="grid gap-4 xl:grid-cols-[minmax(0,1.02fr)_minmax(0,1.08fr)]">
-        <div className="overflow-hidden rounded-md border border-slate-200 bg-white">
+      <section className="space-y-4">
+        <div className="flex flex-col gap-3 rounded-md border border-slate-200 bg-white px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-4">
+          <div className="inline-flex w-full rounded-md border border-slate-200 bg-slate-50 p-1 sm:w-auto">
+            <button
+              type="button"
+              onClick={() => setActiveStudioView("registry")}
+              className={`inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-md px-4 text-sm font-semibold transition sm:flex-none ${
+                activeStudioView === "registry"
+                  ? "bg-white text-[#4D39FF] shadow-sm"
+                  : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              <FaListUl className="text-sm" />
+              Registry
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveStudioView("editor")}
+              className={`inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-md px-4 text-sm font-semibold transition sm:flex-none ${
+                activeStudioView === "editor"
+                  ? "bg-white text-[#4D39FF] shadow-sm"
+                  : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              <FaMagic className="text-sm" />
+              Editor
+            </button>
+          </div>
+          <p className="text-sm text-slate-500">
+            {activeStudioView === "registry"
+              ? `${filteredPages.length.toLocaleString("en-IN")} compare pages in registry`
+              : `Editing ${editorIdentity}`}
+          </p>
+        </div>
+
+        {activeStudioView === "registry" ? (
+          <div className="overflow-hidden rounded-md border border-slate-200 bg-white">
           <div className="border-b border-slate-200 px-3 py-4 sm:px-4">
             <h2 className="text-lg font-semibold text-slate-950">
               Compare Page Registry
@@ -1363,7 +1545,7 @@ export default function ComparePages() {
           </div>
 
           <div className="border-b border-slate-200 px-2 py-3 sm:px-4">
-            <div className="grid gap-3 lg:grid-cols-[minmax(0,1.45fr)_0.9fr_0.9fr_0.9fr_auto]">
+            <div className="grid gap-3 lg:grid-cols-[minmax(0,1.35fr)_0.75fr_0.75fr_0.85fr_0.9fr_auto]">
               <div className="relative">
                 <FaSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400" />
                 <input
@@ -1404,17 +1586,57 @@ export default function ComparePages() {
                   </option>
                 ))}
               </select>
+              <div className="grid gap-2">
+                <select
+                  value={latestWindowFilter}
+                  onChange={(event) => setLatestWindowFilter(event.target.value)}
+                  className="h-11 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-[#4D39FF]"
+                >
+                  {LATEST_WINDOW_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                {latestWindowFilter === "custom" ? (
+                  <input
+                    type="date"
+                    value={latestFromDate}
+                    onChange={(event) => setLatestFromDate(event.target.value)}
+                    className="h-11 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-[#4D39FF] lg:col-span-1"
+                  />
+                ) : null}
+              </div>
               <button
                 type="button"
+                onClick={loadPages}
+                disabled={loading || syncingAutomaticPages}
                 className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50"
               >
-                <FaSearch className="text-sm" />
+                {loading ? (
+                  <FaSpinner className="animate-spin text-sm" />
+                ) : (
+                  <FaSearch className="text-sm" />
+                )}
               </button>
             </div>
           </div>
 
-          <div className="px-3 py-3 text-sm text-slate-500 sm:px-4">
-            {filteredPages.length.toLocaleString("en-IN")} results
+          <div className="flex flex-col gap-1 px-3 py-3 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between sm:px-4">
+            <span>
+              {filteredPages.length.toLocaleString("en-IN")} loaded
+              {compareStats.filtered_total !== filteredPages.length
+                ? ` of ${compareStats.filtered_total.toLocaleString("en-IN")}`
+                : ""}{" "}
+              results
+            </span>
+            <span>
+              Updated{" "}
+              {formatDateTime(
+                compareStats.filtered_latest_updated_at ||
+                  compareStats.latest_updated_at,
+              ) || "not synced yet"}
+            </span>
           </div>
 
           <div className="hidden lg:block">
@@ -1672,10 +1894,20 @@ export default function ComparePages() {
             </div>
           </div>
         </div>
+        ) : null}
 
-        <div className="overflow-hidden rounded-md border border-slate-200 bg-white">
+        {activeStudioView === "editor" ? (
+          <div className="overflow-hidden rounded-md border border-slate-200 bg-white">
           <div className="flex flex-col gap-3 border-b border-slate-200 px-3 py-4 sm:flex-row sm:items-start sm:justify-between sm:px-4">
-            <div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <button
+                type="button"
+                onClick={() => setActiveStudioView("registry")}
+                className="inline-flex h-9 items-center justify-center gap-2 self-start rounded-md border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+              >
+                <FaArrowLeft className="text-xs" />
+                Registry
+              </button>
               <h2 className="text-lg font-semibold text-slate-950">
                 Compare Page Editor
               </h2>
@@ -2215,6 +2447,7 @@ export default function ComparePages() {
             </section>
           </div>
         </div>
+        ) : null}
       </section>
     </div>
   );

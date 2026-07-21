@@ -201,10 +201,6 @@ const ROUTE_TRAILS = [
 
   { path: "/user-management", trail: [DASHBOARD_CRUMB, { label: "Users" }] },
   {
-    path: "/customer-management",
-    trail: [DASHBOARD_CRUMB, { label: "Customers" }],
-  },
-  {
     path: "/account-management",
     trail: [DASHBOARD_CRUMB, { label: "My Account" }],
   },

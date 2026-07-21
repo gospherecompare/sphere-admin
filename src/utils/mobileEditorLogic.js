@@ -219,6 +219,7 @@ const normalizeCreateMobileEditorData = (formData) => {
     storeStageOverride: smartphone.store_stage_override || "",
     launchDateType: smartphone.launch_date_type || "",
     priceConfidence: smartphone.price_confidence || "",
+    expectedPrice: smartphone.expected_price || smartphone.expectedPrice || "",
     specConfidence: smartphone.spec_confidence || "",
     officialPreorderUrl: smartphone.official_preorder_url || "",
     colors: normalizeColors(smartphone.colors),
@@ -283,6 +284,12 @@ const normalizeEditMobileEditorData = (formData) => {
       formData?.priceConfidence ||
       smartphone.price_confidence ||
       smartphone.priceConfidence ||
+      "",
+    expectedPrice:
+      formData?.expected_price ||
+      formData?.expectedPrice ||
+      smartphone.expected_price ||
+      smartphone.expectedPrice ||
       "",
     specConfidence:
       formData?.spec_confidence ||
@@ -423,6 +430,7 @@ export const buildMobileSubmitPayload = ({
   );
   const launchDateType = normalizeLifecycleOption(normalized.launchDateType);
   const priceConfidence = normalizeLifecycleOption(normalized.priceConfidence);
+  const expectedPrice = toNumberOrNull(normalized.expectedPrice);
   const specConfidence = normalizeLifecycleOption(normalized.specConfidence);
   const officialPreorderUrl = trimOrNull(normalized.officialPreorderUrl);
   const sensors = normalized.sensors || null;
@@ -445,6 +453,7 @@ export const buildMobileSubmitPayload = ({
     store_stage_override: storeStageOverride,
     launch_date_type: launchDateType,
     price_confidence: priceConfidence,
+    expected_price: expectedPrice,
     spec_confidence: specConfidence,
     official_preorder_url: officialPreorderUrl,
     images: normalized.images,
@@ -472,6 +481,7 @@ export const buildMobileSubmitPayload = ({
     store_stage_override: storeStageOverride,
     launch_date_type: launchDateType,
     price_confidence: priceConfidence,
+    expected_price: expectedPrice,
     spec_confidence: specConfidence,
     official_preorder_url: officialPreorderUrl,
     publish: Boolean(publishEnabled),

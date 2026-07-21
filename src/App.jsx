@@ -30,7 +30,6 @@ import CreateLaptop from "./components/CreateLaptop";
 import CreateHomeAppliance from "./components/CreateAppliance";
 import ViewLaptops from "./components/ViewLaptop";
 import ViewTVs from "./components/ViewAppliance";
-import ViewCustomers from "./components/ViewCustomers";
 import RamStorageConfig from "./components/Ramstorage";
 import Brand from "./components/Brand";
 import CategoryManagement from "./components/Category";
@@ -758,18 +757,6 @@ function App() {
                 message="Your account needs user-management permissions to open this workspace."
               >
                 <UserManagement />
-              </RouteAccessGate>
-            }
-          />
-          <Route
-            path="customer-management"
-            element={
-              <RouteAccessGate
-                path="/customer-management"
-                title="Customer management access required"
-                message="This screen is available to roles that can manage customers or users."
-              >
-                <ViewCustomers />
               </RouteAccessGate>
             }
           />
