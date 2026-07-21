@@ -636,6 +636,7 @@ const ViewMobiles = ({
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
+  const [bulkUpdating, setBulkUpdating] = useState(false);
 
   useEffect(() => {
     const seededSearch = location.state?.searchTerm;
@@ -657,6 +658,14 @@ const ViewMobiles = ({
 
   const removeToast = (id) => {
     setToasts((previous) => previous.filter((toast) => toast.id !== id));
+  };
+
+  const getAuthHeaders = () => {
+    const token = Cookies.get("authToken");
+    return {
+      "Content-Type": "application/json",
+      Authorization: token ? `Bearer ${token}` : "",
+    };
   };
 
   const resolveProductId = (mobile) =>
@@ -1326,6 +1335,35 @@ const ViewMobiles = ({
   const startIndex = (currentPage - 1) * rowsPerPage;
   const endIndex = startIndex + rowsPerPage;
   const paginatedMobiles = filteredMobiles.slice(startIndex, endIndex);
+  const selectedRowKeySet = useMemo(
+    () => new Set(selectedRowKeys),
+    [selectedRowKeys],
+  );
+  const selectedMobiles = useMemo(
+    () =>
+      filteredMobiles.filter((mobile) =>
+        selectedRowKeySet.has(mobile.rowKey),
+      ),
+    [filteredMobiles, selectedRowKeySet],
+  );
+  const selectedProductIds = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          selectedMobiles
+            .map((mobile) => Number(resolveProductId(mobile)))
+            .filter((id) => Number.isInteger(id) && id > 0),
+        ),
+      ),
+    [selectedMobiles],
+  );
+  const selectedPublishedCount = selectedMobiles.filter(
+    (mobile) => Boolean(mobile.published),
+  ).length;
+  const selectedDraftCount = Math.max(
+    0,
+    selectedMobiles.length - selectedPublishedCount,
+  );
 
   useEffect(() => {
     setSelectedRowKeys((previous) => {
@@ -1371,7 +1409,7 @@ const ViewMobiles = ({
 
   const allVisibleSelected =
     paginatedMobiles.length > 0 &&
-    paginatedMobiles.every((mobile) => selectedRowKeys.includes(mobile.rowKey));
+    paginatedMobiles.every((mobile) => selectedRowKeySet.has(mobile.rowKey));
 
   const clearFilters = () => {
     setSearchTerm("");
@@ -1415,6 +1453,147 @@ const ViewMobiles = ({
         ? previous.filter((value) => value !== rowKey)
         : [...previous, rowKey],
     );
+  };
+
+  const bulkUpdatePublishStatus = async (nextPublished) => {
+    if (!selectedProductIds.length) {
+      showToast("No Selection", "Select mobiles first", "error");
+      return;
+    }
+
+    setBulkUpdating(true);
+    setError("");
+    try {
+      const response = await fetch(buildUrl("/api/admin/smartphones/bulk"), {
+        method: "PATCH",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          ids: selectedProductIds,
+          is_published: nextPublished,
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data?.message || `HTTP ${response.status}`);
+      }
+
+      const updatedIds = new Set(
+        (Array.isArray(data?.updated_ids)
+          ? data.updated_ids
+          : selectedProductIds
+        )
+          .map((id) => Number(id))
+          .filter((id) => Number.isInteger(id) && id > 0),
+      );
+
+      setMobiles((previous) =>
+        previous.map((candidate) => {
+          const candidateId = Number(resolveProductId(candidate));
+          if (!updatedIds.has(candidateId)) return candidate;
+          return {
+            ...candidate,
+            published: Boolean(nextPublished),
+            raw: candidate.raw
+              ? {
+                  ...candidate.raw,
+                  published: Boolean(nextPublished),
+                  is_published: Boolean(nextPublished),
+                }
+              : candidate.raw,
+          };
+        }),
+      );
+      setSelectedRowKeys([]);
+      showToast(
+        "Bulk Updated",
+        `${Number(data?.updated_count) || updatedIds.size} mobile${
+          (Number(data?.updated_count) || updatedIds.size) === 1 ? "" : "s"
+        } ${nextPublished ? "published" : "unpublished"}`,
+        "success",
+      );
+    } catch (bulkError) {
+      console.error("Bulk publish update failed:", bulkError);
+      const message =
+        bulkError.message || "Unable to update selected mobile statuses";
+      setError(message);
+      showToast("Bulk Update Failed", message, "error");
+    } finally {
+      setBulkUpdating(false);
+    }
+  };
+
+  const bulkDeleteSelectedMobiles = async () => {
+    if (!selectedProductIds.length) {
+      showToast("No Selection", "Select mobiles first", "error");
+      return;
+    }
+
+    if (selectedPublishedCount > 0) {
+      showToast(
+        "Delete Blocked",
+        "Unpublish selected live mobiles before deleting them.",
+        "error",
+      );
+      return;
+    }
+
+    const deleteApproval = requestDeleteApproval({
+      itemName: `${selectedProductIds.length} selected mobile${
+        selectedProductIds.length === 1 ? "" : "s"
+      }`,
+      itemLabel: "mobiles",
+    });
+    if (!deleteApproval) return;
+    if (deleteApproval.error) {
+      showToast("Delete Blocked", deleteApproval.error, "error");
+      return;
+    }
+
+    setBulkUpdating(true);
+    setError("");
+    try {
+      const response = await fetch(buildUrl("/api/admin/smartphones/bulk"), {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          ids: selectedProductIds,
+          ...deleteApproval,
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data?.message || `HTTP ${response.status}`);
+      }
+
+      const deletedIds = new Set(
+        (Array.isArray(data?.deleted_ids)
+          ? data.deleted_ids
+          : selectedProductIds
+        )
+          .map((id) => Number(id))
+          .filter((id) => Number.isInteger(id) && id > 0),
+      );
+      setMobiles((previous) =>
+        previous.filter(
+          (candidate) => !deletedIds.has(Number(resolveProductId(candidate))),
+        ),
+      );
+      setSelectedRowKeys([]);
+      showToast(
+        "Deleted",
+        `Deleted ${Number(data?.deleted_count) || deletedIds.size} mobile${
+          (Number(data?.deleted_count) || deletedIds.size) === 1 ? "" : "s"
+        }`,
+        "success",
+      );
+    } catch (bulkError) {
+      console.error("Bulk delete failed:", bulkError);
+      const message = bulkError.message || "Unable to delete selected mobiles";
+      setError(message);
+      showToast("Bulk Delete Failed", message, "error");
+    } finally {
+      setBulkUpdating(false);
+    }
   };
 
   const handleDelete = async (mobile) => {
@@ -1965,6 +2144,71 @@ const ViewMobiles = ({
               </SelectField>
             </div>
           ) : null}
+
+          {selectedRowKeys.length ? (
+            <div className="mt-3 flex flex-col gap-3 border-t border-slate-200 bg-slate-50 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-slate-800">
+                  {selectedProductIds.length} selected
+                </p>
+                <p className="mt-0.5 text-xs text-slate-500">
+                  {selectedPublishedCount} published, {selectedDraftCount}{" "}
+                  unpublished
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => bulkUpdatePublishStatus(true)}
+                  disabled={bulkUpdating || !selectedProductIds.length}
+                  className="inline-flex h-9 items-center justify-center gap-2 border border-emerald-200 bg-white px-3 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:opacity-60"
+                >
+                  {bulkUpdating ? (
+                    <FaSpinner className="animate-spin text-xs" />
+                  ) : (
+                    <FaCheckCircle className="text-xs" />
+                  )}
+                  Publish
+                </button>
+                <button
+                  type="button"
+                  onClick={() => bulkUpdatePublishStatus(false)}
+                  disabled={bulkUpdating || !selectedProductIds.length}
+                  className="inline-flex h-9 items-center justify-center gap-2 border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:bg-white disabled:opacity-60"
+                >
+                  <FaEyeSlash className="text-xs" />
+                  Unpublish
+                </button>
+                <button
+                  type="button"
+                  onClick={bulkDeleteSelectedMobiles}
+                  disabled={
+                    bulkUpdating ||
+                    !selectedProductIds.length ||
+                    selectedPublishedCount > 0
+                  }
+                  className="inline-flex h-9 items-center justify-center gap-2 border border-rose-200 bg-white px-3 text-xs font-semibold text-rose-600 transition hover:bg-rose-50 disabled:opacity-60"
+                  title={
+                    selectedPublishedCount > 0
+                      ? "Unpublish selected mobiles before deleting"
+                      : "Delete selected mobiles"
+                  }
+                >
+                  <FaTrash className="text-xs" />
+                  Delete
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedRowKeys([])}
+                  disabled={bulkUpdating}
+                  className="inline-flex h-9 items-center justify-center gap-2 border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-500 transition hover:bg-white disabled:opacity-60"
+                >
+                  <FaTimes className="text-xs" />
+                  Clear
+                </button>
+              </div>
+            </div>
+          ) : null}
         </div>
 
         <div className="hidden overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:h-0 lg:block">
@@ -1976,6 +2220,8 @@ const ViewMobiles = ({
                     type="checkbox"
                     checked={allVisibleSelected}
                     onChange={toggleSelectAllVisible}
+                    disabled={bulkUpdating || paginatedMobiles.length === 0}
+                    aria-label="Select visible mobiles"
                     className="h-4 w-4 rounded-none border-slate-300 text-[#5A49FF] focus:ring-[#5A49FF]"
                   />
                 </th>
@@ -2035,6 +2281,8 @@ const ViewMobiles = ({
                           type="checkbox"
                           checked={selected}
                           onChange={() => toggleSelectedRow(mobile.rowKey)}
+                          disabled={bulkUpdating}
+                          aria-label={`Select ${mobile.name}`}
                           className="h-4 w-4 rounded-none border-slate-300 text-[#5A49FF] focus:ring-[#5A49FF]"
                         />
                       </td>
@@ -2273,6 +2521,8 @@ const ViewMobiles = ({
                           type="checkbox"
                           checked={selected}
                           onChange={() => toggleSelectedRow(mobile.rowKey)}
+                          disabled={bulkUpdating}
+                          aria-label={`Select ${mobile.name}`}
                           className="mt-1 h-4 w-4 rounded-none border-slate-300 text-[#5A49FF] focus:ring-[#5A49FF]"
                         />
 

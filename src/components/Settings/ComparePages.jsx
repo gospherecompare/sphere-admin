@@ -21,7 +21,7 @@ const MAX_COMPARE_ITEMS = 3;
 const PAGE_SIZE = 8;
 const DEFAULT_AUTO_SYNC_DAYS = 180;
 const LATEST_WINDOW_OPTIONS = [
-  { value: "all", label: "All Time" },
+  { value: "all", label: "All Launches" },
   { value: "2", label: "Last 2 days" },
   { value: "7", label: "Last 1 week" },
   { value: "30", label: "Last 30 days" },
@@ -71,6 +71,17 @@ const formatDateTime = (value) => {
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
+  }).format(date);
+};
+
+const formatDateOnly = (value) => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
   }).format(date);
 };
 
@@ -439,6 +450,13 @@ const normalizeComparePage = (page) => {
       Number(page?.manual_compare_count ?? page?.manualCompareCount) || 0,
     last_compared_at: page?.last_compared_at ?? page?.lastComparedAt ?? null,
     generated_at: page?.generated_at ?? page?.generatedAt ?? null,
+    launch_date: page?.launch_date ?? page?.launchDate ?? null,
+    primary_launch_date:
+      page?.primary_launch_date ?? page?.primaryLaunchDate ?? null,
+    latest_launch_date:
+      page?.latest_launch_date ?? page?.latestLaunchDate ?? null,
+    oldest_launch_date:
+      page?.oldest_launch_date ?? page?.oldestLaunchDate ?? null,
     route_path: normalizeText(page?.route_path ?? page?.routePath),
     updated_at: page?.updated_at ?? page?.updatedAt ?? null,
     published_at: page?.published_at ?? page?.publishedAt ?? null,
@@ -474,15 +492,21 @@ const normalizeCompareStats = (stats, pages = []) => {
     filtered_total: toStatNumber(stats?.filtered_total, fallbackPages.length),
     latest_updated_at: stats?.latest_updated_at || null,
     filtered_latest_updated_at: stats?.filtered_latest_updated_at || null,
+    latest_launch_date: stats?.latest_launch_date || null,
+    filtered_latest_launch_date: stats?.filtered_latest_launch_date || null,
   };
 };
 
 const resolveComparePageLatestTimestamp = (page) => {
+  const itemLaunchDates = (Array.isArray(page?.items) ? page.items : [])
+    .map((item) => item?.launch_date || item?.launchDate)
+    .filter(Boolean)
+    .sort();
   const raw =
-    page?.updated_at ||
-    page?.generated_at ||
-    page?.published_at ||
-    page?.last_compared_at ||
+    page?.primary_launch_date ||
+    page?.launch_date ||
+    page?.latest_launch_date ||
+    itemLaunchDates[itemLaunchDates.length - 1] ||
     "";
   const date = raw ? new Date(raw) : null;
   return date && !Number.isNaN(date.getTime()) ? date.getTime() : null;
@@ -546,6 +570,8 @@ export default function ComparePages() {
   const [latestFromDate, setLatestFromDate] = useState("");
   const [isCreateModeForced, setIsCreateModeForced] = useState(false);
   const [activeStudioView, setActiveStudioView] = useState("registry");
+  const [selectedRegistryIds, setSelectedRegistryIds] = useState([]);
+  const [bulkUpdating, setBulkUpdating] = useState(false);
   const [toasts, setToasts] = useState([]);
   const [compareStats, setCompareStats] = useState(() =>
     normalizeCompareStats(null, []),
@@ -571,6 +597,7 @@ export default function ComparePages() {
 
   const buildComparePagesUrl = useCallback(() => {
     const params = new URLSearchParams({ limit: "300" });
+    params.set("date_basis", "launch");
     const query = normalizeText(registryQuery);
     const latestDays = resolveLatestWindowDays(
       latestWindowFilter,
@@ -863,7 +890,7 @@ export default function ComparePages() {
 
   const resetDraft = () => {
     setSelectedPageId(null);
-    setForm({ ...createEmptyForm(), status: "draft" });
+    setForm({ ...createEmptyForm(), status: "published" });
     setSearchQuery("");
     setSearchResults([]);
     setSuggestions([]);
@@ -966,6 +993,7 @@ export default function ComparePages() {
       return;
     }
 
+    const isNewPage = !form.id;
     setSaving(true);
     setError("");
     try {
@@ -1017,6 +1045,16 @@ export default function ComparePages() {
           String(right.updated_at || "").localeCompare(String(left.updated_at || "")),
         );
       });
+      if (isNewPage) {
+        setRegistryQuery("");
+        setSourceFilter("all");
+        setStatusFilter("all");
+        setSegmentFilter("all");
+        setLatestWindowFilter("all");
+        setLatestFromDate("");
+        setCurrentPage(1);
+        setActiveStudioView("registry");
+      }
       showToast(
         "Saved",
         page.status === "published"
@@ -1057,8 +1095,9 @@ export default function ComparePages() {
 
       const deletedId = form.id;
       setPages((prev) => prev.filter((page) => page.id !== deletedId));
+      setSelectedRegistryIds((prev) => prev.filter((id) => id !== deletedId));
       setSelectedPageId(null);
-      setForm({ ...createEmptyForm(), status: "draft" });
+      setForm({ ...createEmptyForm(), status: "published" });
       setIsCreateModeForced(false);
       setActiveStudioView("registry");
       showToast("Deleted", "Compare page removed", "success");
@@ -1126,6 +1165,15 @@ export default function ComparePages() {
     setCurrentPage((prev) => Math.min(prev, totalPages));
   }, [filteredPages.length]);
 
+  useEffect(() => {
+    const validIds = new Set(
+      pages
+        .map((page) => Number(page?.id))
+        .filter((value) => Number.isInteger(value) && value > 0),
+    );
+    setSelectedRegistryIds((prev) => prev.filter((id) => validIds.has(id)));
+  }, [pages]);
+
   const previewSegmentLabel = useMemo(
     () => form.segment_label || resolveSmartphoneSegmentLabel(form.items),
     [form.items, form.segment_label],
@@ -1172,6 +1220,20 @@ export default function ComparePages() {
     const start = (currentPageSafe - 1) * PAGE_SIZE;
     return filteredPages.slice(start, start + PAGE_SIZE);
   }, [currentPageSafe, filteredPages]);
+  const selectedRegistryIdSet = useMemo(
+    () => new Set(selectedRegistryIds),
+    [selectedRegistryIds],
+  );
+  const visibleRegistryIds = useMemo(
+    () =>
+      paginatedPages
+        .map((page) => Number(page?.id))
+        .filter((value) => Number.isInteger(value) && value > 0),
+    [paginatedPages],
+  );
+  const allVisibleRegistryRowsSelected =
+    visibleRegistryIds.length > 0 &&
+    visibleRegistryIds.every((id) => selectedRegistryIdSet.has(id));
 
   const pageRangeStart =
     filteredPages.length === 0 ? 0 : (currentPageSafe - 1) * PAGE_SIZE + 1;
@@ -1300,6 +1362,132 @@ export default function ComparePages() {
     : "New Draft";
 
   const currentRoutePath = form.route_path || previewRoutePath;
+
+  const toggleRegistryPageSelection = (pageId) => {
+    const normalizedId = Number(pageId);
+    if (!Number.isInteger(normalizedId) || normalizedId <= 0) return;
+    setSelectedRegistryIds((prev) =>
+      prev.includes(normalizedId)
+        ? prev.filter((id) => id !== normalizedId)
+        : [...prev, normalizedId],
+    );
+  };
+
+  const toggleVisibleRegistrySelection = () => {
+    if (!visibleRegistryIds.length) return;
+    setSelectedRegistryIds((prev) => {
+      const selected = new Set(prev);
+      const shouldClearVisible = visibleRegistryIds.every((id) => selected.has(id));
+      if (shouldClearVisible) {
+        visibleRegistryIds.forEach((id) => selected.delete(id));
+      } else {
+        visibleRegistryIds.forEach((id) => selected.add(id));
+      }
+      return Array.from(selected);
+    });
+  };
+
+  const bulkUpdateSelectedPages = async (updates = {}) => {
+    if (!selectedRegistryIds.length) {
+      showToast("No Selection", "Select compare pages first", "error");
+      return;
+    }
+
+    setBulkUpdating(true);
+    setError("");
+    try {
+      const response = await fetch(buildUrl("/api/admin/compare-pages/bulk"), {
+        method: "PATCH",
+        headers: authHeaders(),
+        body: JSON.stringify({
+          ids: selectedRegistryIds,
+          ...updates,
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data?.message || `HTTP ${response.status}`);
+      }
+
+      const updatedPages = Array.isArray(data?.pages)
+        ? data.pages.map(normalizeComparePage)
+        : [];
+      if (updatedPages.length) {
+        const updatedById = new Map(
+          updatedPages.map((page) => [Number(page.id), page]),
+        );
+        setPages((prev) =>
+          prev.map((page) => updatedById.get(Number(page.id)) || page),
+        );
+      }
+      setSelectedRegistryIds([]);
+      await loadPages();
+      showToast(
+        "Bulk Updated",
+        `Updated ${Number(data?.updated_count) || updatedPages.length} compare pages`,
+        "success",
+      );
+    } catch (err) {
+      const message = err?.message || "Failed to update selected compare pages";
+      setError(message);
+      showToast("Error", message, "error");
+    } finally {
+      setBulkUpdating(false);
+    }
+  };
+
+  const bulkDeleteSelectedPages = async () => {
+    if (!selectedRegistryIds.length) {
+      showToast("No Selection", "Select compare pages first", "error");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Delete ${selectedRegistryIds.length} selected compare page${
+        selectedRegistryIds.length === 1 ? "" : "s"
+      }?`,
+    );
+    if (!confirmed) return;
+
+    setBulkUpdating(true);
+    setError("");
+    try {
+      const response = await fetch(buildUrl("/api/admin/compare-pages/bulk"), {
+        method: "DELETE",
+        headers: authHeaders(),
+        body: JSON.stringify({ ids: selectedRegistryIds }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data?.message || `HTTP ${response.status}`);
+      }
+
+      const deletedIds = new Set(
+        (Array.isArray(data?.deleted_ids) ? data.deleted_ids : selectedRegistryIds)
+          .map((id) => Number(id))
+          .filter((id) => Number.isInteger(id) && id > 0),
+      );
+      setPages((prev) => prev.filter((page) => !deletedIds.has(Number(page.id))));
+      if (deletedIds.has(Number(selectedPageId))) {
+        setSelectedPageId(null);
+        setForm({ ...createEmptyForm(), status: "published" });
+        setIsCreateModeForced(false);
+      }
+      setSelectedRegistryIds([]);
+      await loadPages();
+      showToast(
+        "Deleted",
+        `Deleted ${Number(data?.deleted_count) || deletedIds.size} compare pages`,
+        "success",
+      );
+    } catch (err) {
+      const message = err?.message || "Failed to delete selected compare pages";
+      setError(message);
+      showToast("Error", message, "error");
+    } finally {
+      setBulkUpdating(false);
+    }
+  };
 
   return (
     <div className="space-y-4 lg:space-y-5">
@@ -1631,6 +1819,12 @@ export default function ComparePages() {
               results
             </span>
             <span>
+              Launch{" "}
+              {formatDateOnly(
+                compareStats.filtered_latest_launch_date ||
+                  compareStats.latest_launch_date,
+              ) || "not set"}
+              {" | "}
               Updated{" "}
               {formatDateTime(
                 compareStats.filtered_latest_updated_at ||
@@ -1639,17 +1833,87 @@ export default function ComparePages() {
             </span>
           </div>
 
+          {selectedRegistryIds.length ? (
+            <div className="flex flex-col gap-3 border-t border-slate-200 bg-slate-50 px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-4">
+              <span className="text-sm font-semibold text-slate-700">
+                {selectedRegistryIds.length} selected
+              </span>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => bulkUpdateSelectedPages({ status: "published" })}
+                  disabled={bulkUpdating}
+                  className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-emerald-200 bg-white px-3 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:opacity-60"
+                >
+                  <FaCheckCircle className="text-xs" />
+                  Publish
+                </button>
+                <button
+                  type="button"
+                  onClick={() => bulkUpdateSelectedPages({ status: "draft" })}
+                  disabled={bulkUpdating}
+                  className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 disabled:opacity-60"
+                >
+                  <FaTimes className="text-xs" />
+                  Draft
+                </button>
+                <button
+                  type="button"
+                  onClick={() => bulkUpdateSelectedPages({ source: "automatic" })}
+                  disabled={bulkUpdating}
+                  className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-blue-200 bg-white px-3 text-xs font-semibold text-[#345CFF] transition hover:bg-blue-50 disabled:opacity-60"
+                >
+                  <FaMagic className="text-xs" />
+                  Automatic
+                </button>
+                <button
+                  type="button"
+                  onClick={() => bulkUpdateSelectedPages({ source: "manual" })}
+                  disabled={bulkUpdating}
+                  className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-amber-200 bg-white px-3 text-xs font-semibold text-amber-700 transition hover:bg-amber-50 disabled:opacity-60"
+                >
+                  <FaSave className="text-xs" />
+                  Manual
+                </button>
+                <button
+                  type="button"
+                  onClick={bulkDeleteSelectedPages}
+                  disabled={bulkUpdating}
+                  className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-red-200 bg-white px-3 text-xs font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-60"
+                >
+                  {bulkUpdating ? (
+                    <FaSpinner className="animate-spin text-xs" />
+                  ) : (
+                    <FaTrash className="text-xs" />
+                  )}
+                  Delete
+                </button>
+              </div>
+            </div>
+          ) : null}
+
           <div className="hidden lg:block">
             <div className="overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:h-0">
-              <table className="min-w-[920px] w-full text-sm text-slate-700">
+              <table className="min-w-[1040px] w-full text-sm text-slate-700">
                 <thead>
                   <tr className="border-y border-slate-200 bg-slate-50 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                    <th className="w-10 px-3 py-3 sm:px-4">
+                      <input
+                        type="checkbox"
+                        checked={allVisibleRegistryRowsSelected}
+                        onChange={toggleVisibleRegistrySelection}
+                        disabled={!visibleRegistryIds.length || bulkUpdating}
+                        aria-label="Select visible compare pages"
+                        className="h-4 w-4 rounded border-slate-300 text-[#4D39FF] focus:ring-[#4D39FF]"
+                      />
+                    </th>
                     <th className="px-3 py-3 sm:px-4">Compare Page</th>
                     <th className="px-3 py-3">Devices</th>
                     <th className="px-3 py-3">Source</th>
                     <th className="px-3 py-3">Segment</th>
                     <th className="px-3 py-3">Count</th>
                     <th className="px-3 py-3">Status</th>
+                    <th className="px-3 py-3">Launch</th>
                     <th className="px-3 py-3">Updated</th>
                     <th className="px-3 py-3 text-right">Actions</th>
                   </tr>
@@ -1657,13 +1921,13 @@ export default function ComparePages() {
                 <tbody>
                   {loading ? (
                     <tr>
-                      <td colSpan="8" className="px-4 py-10 text-center">
+                      <td colSpan="10" className="px-4 py-10 text-center">
                         <FaSpinner className="mx-auto animate-spin text-xl text-[#4D39FF]" />
                       </td>
                     </tr>
                   ) : paginatedPages.length === 0 ? (
                     <tr>
-                      <td colSpan="8" className="px-4 py-10 text-center text-sm text-slate-500">
+                      <td colSpan="10" className="px-4 py-10 text-center text-sm text-slate-500">
                         No compare pages found.
                       </td>
                     </tr>
@@ -1677,6 +1941,16 @@ export default function ComparePages() {
                             isActive ? "bg-[#F5F3FF]" : "hover:bg-slate-50"
                           }`}
                         >
+                          <td className="px-3 py-3 align-top sm:px-4">
+                            <input
+                              type="checkbox"
+                              checked={selectedRegistryIdSet.has(Number(page.id))}
+                              onChange={() => toggleRegistryPageSelection(page.id)}
+                              disabled={bulkUpdating}
+                              aria-label={`Select ${page.title || page.slug || "compare page"}`}
+                              className="h-4 w-4 rounded border-slate-300 text-[#4D39FF] focus:ring-[#4D39FF]"
+                            />
+                          </td>
                           <td className="px-3 py-3 align-top sm:px-4">
                             <div className="max-w-[240px]">
                               <p className="line-clamp-2 text-sm font-semibold text-slate-900">
@@ -1735,6 +2009,13 @@ export default function ComparePages() {
                             </span>
                           </td>
                           <td className="px-3 py-3 align-top text-xs text-slate-500">
+                            {formatDateOnly(
+                              page.primary_launch_date ||
+                                page.launch_date ||
+                                page.latest_launch_date,
+                            ) || "-"}
+                          </td>
+                          <td className="px-3 py-3 align-top text-xs text-slate-500">
                             {formatDateTime(page.updated_at) || "Not saved"}
                           </td>
                           <td className="px-3 py-3 align-top text-right">
@@ -1788,13 +2069,23 @@ export default function ComparePages() {
                   >
                     <div className="rounded-md border border-slate-200 bg-white px-3 py-3">
                       <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
+                        <div className="flex min-w-0 items-start gap-3">
+                          <input
+                            type="checkbox"
+                            checked={selectedRegistryIdSet.has(Number(page.id))}
+                            onChange={() => toggleRegistryPageSelection(page.id)}
+                            disabled={bulkUpdating}
+                            aria-label={`Select ${page.title || page.slug || "compare page"}`}
+                            className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-[#4D39FF] focus:ring-[#4D39FF]"
+                          />
+                          <div className="min-w-0">
                           <h3 className="line-clamp-2 text-sm font-semibold text-slate-900">
                             {page.title || page.slug || "Untitled compare page"}
                           </h3>
                           <p className="mt-1 line-clamp-1 text-xs text-slate-500">
                             {page.route_path || previewRoutePath}
                           </p>
+                          </div>
                         </div>
                         <button
                           type="button"
@@ -1839,6 +2130,18 @@ export default function ComparePages() {
                             Segment
                           </p>
                           <p className="mt-1 text-slate-700">{page.segment_label || "-"}</p>
+                        </div>
+                        <div>
+                          <p className="font-semibold uppercase tracking-[0.12em] text-slate-400">
+                            Launch
+                          </p>
+                          <p className="mt-1 text-slate-700">
+                            {formatDateOnly(
+                              page.primary_launch_date ||
+                                page.launch_date ||
+                                page.latest_launch_date,
+                            ) || "-"}
+                          </p>
                         </div>
                         <div>
                           <p className="font-semibold uppercase tracking-[0.12em] text-slate-400">
@@ -2412,7 +2715,9 @@ export default function ComparePages() {
                     Delete Page
                   </button>
                 ) : (
-                  <span className="text-sm text-slate-400">Create a new compare page draft</span>
+                  <span className="text-sm text-slate-400">
+                    Create a published compare page
+                  </span>
                 )}
 
                 <div className="flex flex-col gap-2 sm:flex-row">

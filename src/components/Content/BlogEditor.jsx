@@ -40,6 +40,7 @@ import {
   FaImage,
   FaStar,
   FaCheckCircle,
+  FaUserEdit,
 } from "react-icons/fa";
 import { buildUrl, getAuthToken } from "../../api";
 import { uploadToCloudinary } from "../../config/cloudinary";
@@ -751,6 +752,8 @@ const BlogEditor = () => {
   const [libraryPage, setLibraryPage] = useState(1);
   const [libraryPageSize, setLibraryPageSize] = useState(10);
   const [selectedLibraryIds, setSelectedLibraryIds] = useState([]);
+  const [bulkAuthorUserId, setBulkAuthorUserId] = useState("");
+  const [bulkUpdating, setBulkUpdating] = useState(false);
   const [workspaceView, setWorkspaceView] = useState("listing");
   const [selectedLibraryId, setSelectedLibraryId] = useState(null);
   const [loadingEntryId, setLoadingEntryId] = useState(null);
@@ -1010,6 +1013,25 @@ const BlogEditor = () => {
     const start = (libraryPage - 1) * libraryPageSize;
     return filteredLibrary.slice(start, start + libraryPageSize);
   }, [filteredLibrary, libraryPage, libraryPageSize]);
+
+  const selectedLibraryIdSet = useMemo(
+    () => new Set(selectedLibraryIds),
+    [selectedLibraryIds],
+  );
+  const selectedLibraryRows = useMemo(
+    () =>
+      libraryRows.filter((row) =>
+        selectedLibraryIdSet.has(Number(row?.id)),
+      ),
+    [libraryRows, selectedLibraryIdSet],
+  );
+  const selectedPublishedCount = selectedLibraryRows.filter((row) =>
+    isBlogRowPublished(row),
+  ).length;
+  const selectedDraftCount = Math.max(
+    0,
+    selectedLibraryRows.length - selectedPublishedCount,
+  );
 
   const selectedCandidateProduct = useMemo(() => {
     const normalizedId = Number(candidateProductId);
@@ -2383,6 +2405,169 @@ const BlogEditor = () => {
     });
   };
 
+  const mergeUpdatedLibraryRows = (rows = []) => {
+    const updatedRows = Array.isArray(rows) ? rows : [];
+    if (!updatedRows.length) return;
+
+    const updatedById = new Map(
+      updatedRows
+        .map((row) => [Number(row?.id), row])
+        .filter(([id]) => Number.isInteger(id) && id > 0),
+    );
+    setLibraryRows((prev) =>
+      prev.map((row) => updatedById.get(Number(row?.id)) || row),
+    );
+
+    const activeId = Number(blogId || selectedLibraryId);
+    const activeRow = updatedById.get(activeId);
+    if (activeRow) {
+      setStatus(
+        activeRow.is_published || activeRow.status === "published"
+          ? "published"
+          : "draft",
+      );
+      if (typeof activeRow.published_at !== "undefined") {
+        setPublishedAt(toDateTimeLocalValue(activeRow.published_at));
+      }
+      if (typeof activeRow.author_name !== "undefined") {
+        setAuthorName(activeRow.author_name || "");
+      }
+      if (typeof activeRow.author_user_id !== "undefined") {
+        setAuthorUserId(
+          activeRow.author_user_id ? String(activeRow.author_user_id) : "",
+        );
+      }
+    }
+  };
+
+  const bulkUpdateNewsArticles = async (updates = {}, successMessage = "") => {
+    if (!selectedLibraryIds.length) {
+      setError("Select news articles first");
+      return;
+    }
+
+    setBulkUpdating(true);
+    setError("");
+    setMessage("");
+    try {
+      const response = await fetch(buildUrl("/api/admin/blogs/bulk"), {
+        method: "PATCH",
+        headers: authHeaders,
+        body: JSON.stringify({
+          ids: selectedLibraryIds,
+          ...updates,
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(data?.message || "Failed to update selected articles");
+      }
+
+      mergeUpdatedLibraryRows(data?.rows || data?.data || []);
+      setSelectedLibraryIds([]);
+      await loadLibrary();
+      setMessage(
+        successMessage ||
+          `Updated ${Number(data?.updated_count) || selectedLibraryIds.length} news article${
+            (Number(data?.updated_count) || selectedLibraryIds.length) === 1
+              ? ""
+              : "s"
+          }.`,
+      );
+    } catch (err) {
+      setError(err.message || "Failed to update selected articles");
+    } finally {
+      setBulkUpdating(false);
+    }
+  };
+
+  const bulkAssignAuthor = async () => {
+    if (!bulkAuthorUserId) {
+      setError("Choose an author before applying bulk author update");
+      return;
+    }
+
+    const selectedAuthor = authorOptions.find(
+      (option) => String(option.value) === String(bulkAuthorUserId),
+    );
+
+    await bulkUpdateNewsArticles(
+      {
+        author_user_id: Number(bulkAuthorUserId),
+        author_name: selectedAuthor?.label || "",
+      },
+      `Assigned ${selectedAuthor?.label || "author"} to selected news articles.`,
+    );
+    setBulkAuthorUserId("");
+  };
+
+  const bulkDeleteNewsArticles = async () => {
+    if (!selectedLibraryIds.length) {
+      setError("Select news articles first");
+      return;
+    }
+
+    const deleteApproval = requestDeleteApproval({
+      itemName: `${selectedLibraryIds.length} selected news article${
+        selectedLibraryIds.length === 1 ? "" : "s"
+      }`,
+      itemLabel: "news articles",
+    });
+    if (!deleteApproval) return;
+    if (deleteApproval.error) {
+      setError(deleteApproval.error);
+      return;
+    }
+
+    setBulkUpdating(true);
+    setError("");
+    setMessage("");
+    try {
+      const response = await fetch(buildUrl("/api/admin/blogs/bulk"), {
+        method: "DELETE",
+        headers: authHeaders,
+        body: JSON.stringify({
+          ids: selectedLibraryIds,
+          ...deleteApproval,
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(data?.message || "Failed to delete selected articles");
+      }
+
+      const deletedIds = new Set(
+        (Array.isArray(data?.deleted_ids)
+          ? data.deleted_ids
+          : selectedLibraryIds
+        )
+          .map((id) => Number(id))
+          .filter((id) => Number.isInteger(id) && id > 0),
+      );
+      setLibraryRows((prev) =>
+        prev.filter((row) => !deletedIds.has(Number(row?.id))),
+      );
+      if (deletedIds.has(Number(blogId || selectedLibraryId))) {
+        setSelectedLibraryId(null);
+        setBlogId(null);
+        startNewGeneralArticle();
+      }
+      setSelectedLibraryIds([]);
+      await loadLibrary();
+      setMessage(
+        `Deleted ${Number(data?.deleted_count) || deletedIds.size} news article${
+          (Number(data?.deleted_count) || deletedIds.size) === 1 ? "" : "s"
+        }.`,
+      );
+    } catch (err) {
+      setError(err.message || "Failed to delete selected articles");
+    } finally {
+      setBulkUpdating(false);
+    }
+  };
+
   const exportLibraryCsv = () => {
     if (typeof window === "undefined" || filteredLibrary.length === 0) return;
 
@@ -2477,7 +2662,7 @@ const BlogEditor = () => {
 
   const areAllPageRowsSelected =
     selectedPageIds.length > 0 &&
-    selectedPageIds.every((id) => selectedLibraryIds.includes(id));
+    selectedPageIds.every((id) => selectedLibraryIdSet.has(id));
 
   const currentPageRangeStart =
     filteredLibrary.length === 0 ? 0 : (libraryPage - 1) * libraryPageSize + 1;
@@ -2927,6 +3112,101 @@ const BlogEditor = () => {
               </div>
             ) : null}
 
+            {selectedLibraryIds.length ? (
+              <div className="flex flex-col gap-3 border-b border-slate-200 bg-slate-50 px-2 py-3 md:px-4 xl:flex-row xl:items-center xl:justify-between">
+                <div>
+                  <div className="text-sm font-semibold text-slate-900">
+                    {selectedLibraryIds.length} selected
+                  </div>
+                  <div className="mt-0.5 text-xs text-slate-500">
+                    {selectedPublishedCount} published, {selectedDraftCount} draft
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-2 md:flex-row md:flex-wrap md:items-center xl:justify-end">
+                  <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
+                    <select
+                      value={bulkAuthorUserId}
+                      onChange={(event) =>
+                        setBulkAuthorUserId(event.target.value)
+                      }
+                      disabled={bulkUpdating || authorOptions.length === 0}
+                      className="h-9 min-w-[220px] border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 outline-none transition focus:border-slate-400 disabled:opacity-60"
+                    >
+                      <option value="">Choose author</option>
+                      {authorOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => void bulkAssignAuthor()}
+                      disabled={bulkUpdating || !bulkAuthorUserId}
+                      className="inline-flex h-9 items-center justify-center gap-2 border border-violet-200 bg-white px-3 text-xs font-semibold text-violet-700 transition hover:bg-violet-50 disabled:opacity-60"
+                    >
+                      <FaUserEdit className="text-xs" />
+                      Assign Author
+                    </button>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      void bulkUpdateNewsArticles(
+                        { is_published: true },
+                        "Selected news articles published.",
+                      )
+                    }
+                    disabled={bulkUpdating}
+                    className="inline-flex h-9 items-center justify-center gap-2 border border-emerald-200 bg-white px-3 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:opacity-60"
+                  >
+                    {bulkUpdating ? (
+                      <FaSyncAlt className="animate-spin text-xs" />
+                    ) : (
+                      <FaCheckCircle className="text-xs" />
+                    )}
+                    Publish
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      void bulkUpdateNewsArticles(
+                        { is_published: false },
+                        "Selected news articles moved to draft.",
+                      )
+                    }
+                    disabled={bulkUpdating}
+                    className="inline-flex h-9 items-center justify-center gap-2 border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:bg-white disabled:opacity-60"
+                  >
+                    <FaEraser className="text-xs" />
+                    Draft
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void bulkDeleteNewsArticles()}
+                    disabled={bulkUpdating}
+                    className="inline-flex h-9 items-center justify-center gap-2 border border-red-200 bg-white px-3 text-xs font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-60"
+                  >
+                    <FaTrashAlt className="text-xs" />
+                    Delete
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedLibraryIds([]);
+                      setBulkAuthorUserId("");
+                    }}
+                    disabled={bulkUpdating}
+                    className="inline-flex h-9 items-center justify-center gap-2 border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-500 transition hover:bg-white disabled:opacity-60"
+                  >
+                    Clear
+                  </button>
+                </div>
+              </div>
+            ) : null}
+
             <div className="hidden lg:block overflow-x-auto">
               <table className="min-w-[1160px] w-full divide-y divide-slate-200">
                 <thead className="bg-white">
@@ -2936,6 +3216,8 @@ const BlogEditor = () => {
                         type="checkbox"
                         checked={areAllPageRowsSelected}
                         onChange={toggleLibrarySelectionForPage}
+                        disabled={bulkUpdating || paginatedLibrary.length === 0}
+                        aria-label="Select visible news articles"
                         className="h-4 w-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500"
                       />
                     </th>
@@ -2997,6 +3279,8 @@ const BlogEditor = () => {
                               type="checkbox"
                               checked={selectedLibraryIds.includes(rowId)}
                               onChange={() => toggleLibrarySelection(rowId)}
+                              disabled={bulkUpdating}
+                              aria-label={`Select ${row.title || "news article"}`}
                               className="mt-1 h-4 w-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500"
                             />
                           </td>
@@ -3225,6 +3509,8 @@ const BlogEditor = () => {
                             type="checkbox"
                             checked={selectedLibraryIds.includes(rowId)}
                             onChange={() => toggleLibrarySelection(rowId)}
+                            disabled={bulkUpdating}
+                            aria-label={`Select ${row.title || "news article"}`}
                             className="mt-1 h-4 w-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500"
                           />
 
