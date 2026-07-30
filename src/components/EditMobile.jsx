@@ -3528,7 +3528,7 @@ const EditMobile = () => {
                       name="expected_price"
                       value={formData.expected_price || ""}
                       onChange={handleChange}
-                      className={editorInputClassName}
+                      className={editorFieldClassName}
                       placeholder="Optional, e.g. 15999"
                     />
                     <p className="mt-1 text-xs text-slate-500">
