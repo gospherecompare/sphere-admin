@@ -61,6 +61,7 @@ import LoginStatusPoster from "./components/LoginStatusPoster";
 import { buildUrl, getAuthToken } from "./api";
 import { createMobileReminderItems } from "./utils/mobileReminders";
 import { buildDocumentTitle } from "./utils/pageTitles";
+import WorkspacePageHeader from "./components/Ui/WorkspacePageHeader";
 
 const AUTH_NOTICE_STORAGE_KEY = "hooksAdminAuthNotice";
 const POST_LOGIN_REDIRECT_KEY = "hooksAdminPostLoginRedirect";
@@ -427,7 +428,7 @@ const MainLayout = ({
   }
 
   return (
-    <div className="relative isolate flex h-screen overflow-hidden bg-[#F6F8FF]">
+    <div className="hooks-admin-shell relative isolate flex h-screen overflow-hidden bg-[#F6F8FF]">
       <Sidebar
         collapsed={sidebarCollapsed}
         isMobile={isMobile}
@@ -436,14 +437,14 @@ const MainLayout = ({
         onLogout={() => clearAuth("logout")}
       />
 
-      <div className="flex min-w-0 flex-1 flex-col bg-[#F6F8FF]">
+      <div className="hooks-admin-main flex min-w-0 flex-1 flex-col bg-[#F6F8FF]">
         <Navbar
           onToggleSidebar={toggleSidebar}
           sidebarOpen={sidebarOpen}
           isMobile={isMobile}
           onLogout={() => clearAuth("logout")}
         />
-        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-[#F6F8FF] p-0 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:h-0 [&::-webkit-scrollbar]:w-0">
+        <main className="hooks-admin-content flex-1 overflow-x-hidden overflow-y-auto bg-[#F6F8FF] p-0 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:h-0 [&::-webkit-scrollbar]:w-0">
           <LoginStatusPoster
             open={loginPosterOpen}
             loading={loginPosterLoading}
@@ -460,6 +461,7 @@ const MainLayout = ({
             }`}
           >
             {isMobile ? null : <Breadcrumbs />}
+            <WorkspacePageHeader />
             <div key={`${location.pathname}${location.search}${location.hash}`}>
               <Outlet />
             </div>

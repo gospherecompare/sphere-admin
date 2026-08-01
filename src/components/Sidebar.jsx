@@ -494,7 +494,7 @@ const DesktopNavItem = ({ item, location, collapsed }) => {
 
 const DesktopSidebar = ({ collapsed, location, sections }) => (
   <aside
-    className={`sticky top-0 hidden h-screen min-h-screen shrink-0 overflow-hidden border-r border-white/10 bg-[radial-gradient(circle_at_top,_rgba(90,73,255,0.22),_transparent_22%),linear-gradient(180deg,_#0F1833_0%,_#0A1228_50%,_#081024_100%)] text-white lg:flex lg:flex-col ${
+    className={`hooks-admin-sidebar ${collapsed ? "hooks-admin-sidebar-collapsed" : ""} sticky top-0 hidden h-screen min-h-screen shrink-0 overflow-hidden border-r border-white/10 bg-[radial-gradient(circle_at_top,_rgba(90,73,255,0.22),_transparent_22%),linear-gradient(180deg,_#0F1833_0%,_#0A1228_50%,_#081024_100%)] text-white lg:flex lg:flex-col ${
       collapsed ? "w-20" : "w-[214px]"
     } transition-all duration-300`}
   >
@@ -511,7 +511,7 @@ const DesktopSidebar = ({ collapsed, location, sections }) => (
       ) : (
         <Link to="/dashboard" className="flex min-w-0 items-center gap-3">
           <div className="min-w-0">
-            <p className="truncate text-[1.9rem] font-bold leading-none tracking-tight text-white uppercase">
+            <p className="hooks-admin-brand-title truncate text-[1.9rem] font-bold leading-none tracking-tight text-white uppercase">
               hooks
             </p>
             <p className="mt-1 text-[10px] uppercase tracking-[0.24em] text-slate-400">
@@ -724,7 +724,7 @@ const MobileDrawer = ({
             onClick={() => setMobileOpen(false)}
             className="min-w-0"
           >
-            <p className="truncate text-[1.9rem] font-bold leading-none tracking-tight text-white uppercase">
+            <p className="hooks-admin-brand-title truncate text-[1.9rem] font-bold leading-none tracking-tight text-white uppercase">
               hooks
             </p>
             <p className="mt-1 text-[10px] uppercase tracking-[0.24em] text-slate-400">

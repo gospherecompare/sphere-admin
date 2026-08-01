@@ -94,6 +94,7 @@ export {
 // ===================== Existing Components (Re-exports) =====================
 export { default as HookLogo } from "./hooklogo";
 export { default as LoadingSpinner } from "./LoadingSpinner";
+export { default as WorkspacePageHeader } from "./WorkspacePageHeader";
 
 // ===================== Theme & Config =====================
 export { default as erpTheme } from "@/config/erp-theme";
