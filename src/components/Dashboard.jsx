@@ -743,7 +743,7 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-5 lg:space-y-6">
-      <section className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <section className="hooks-dashboard-hero flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h1 className="text-[1.9rem] font-bold tracking-tight text-slate-950 sm:text-[2.2rem]">
             Welcome back, {firstName}!{" "}
