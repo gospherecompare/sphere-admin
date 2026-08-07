@@ -33,6 +33,7 @@ import ViewTVs from "./components/ViewAppliance";
 import RamStorageConfig from "./components/Ramstorage";
 import Brand from "./components/Brand";
 import CategoryManagement from "./components/Category";
+import MerchantProductSync from "./components/MerchantProductSync";
 import OnlineStoreManagement from "./components/Store";
 import ProductCategoryReport from "./components/Reports/ProductCategory";
 import ProductPublishStatusReport from "./components/Reports/ProductPublish";
@@ -677,6 +678,18 @@ function App() {
           <Route
             path="products"
             element={<Navigate to="/products/smartphones/inventory" replace />}
+          />
+          <Route
+            path="merchant-product-sync"
+            element={
+              <RouteAccessGate
+                path="/merchant-product-sync"
+                title="Merchant sync access required"
+                message="You need product management access to open merchant sync controls."
+              >
+                <MerchantProductSync />
+              </RouteAccessGate>
+            }
           />
           <Route
             path="products/laptops/inventory"
