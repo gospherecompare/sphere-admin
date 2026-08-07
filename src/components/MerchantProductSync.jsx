@@ -79,6 +79,7 @@ const MerchantProductSync = () => {
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [bulkSaving, setBulkSaving] = useState(false);
   const [error, setError] = useState(null);
   const [toast, setToast] = useState(null);
   const [createData, setCreateData] = useState({
@@ -225,6 +226,64 @@ const MerchantProductSync = () => {
     }
 
     return Object.keys(payload).length ? payload : null;
+  };
+
+  const buildBulkPayload = () => {
+    return records
+      .map((row) => {
+        const payload = buildPatchPayload(row);
+        if (!payload) return null;
+        return {
+          product_id: row.product_id,
+          ...payload,
+        };
+      })
+      .filter(Boolean);
+  };
+
+  const handleSaveAll = async () => {
+    const payload = buildBulkPayload();
+    if (!payload.length) {
+      showToast("No changed records to save", "error");
+      return;
+    }
+
+    setBulkSaving(true);
+    setError(null);
+    try {
+      const res = await fetch(buildUrl("/api/merchant-product-sync/bulk"), {
+        method: "POST",
+        headers: getHeaders(),
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.message || body.error || `HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      const updated = Array.isArray(data.data) ? data.data : [];
+      setRecords((current) =>
+        current.map((row) => {
+          const updatedRecord = updated.find(
+            (item) => Number(item.product_id) === Number(row.product_id),
+          );
+          return updatedRecord || row;
+        }),
+      );
+      setEditValues((current) => {
+        const next = { ...current };
+        payload.forEach((item) => {
+          delete next[item.product_id];
+        });
+        return next;
+      });
+      showToast(`Saved ${updated.length} merchant sync record(s)`, "success");
+    } catch (err) {
+      setError(err.message || "Failed to save merchant sync records.");
+      showToast(err.message || "Failed to save merchant sync records", "error");
+    } finally {
+      setBulkSaving(false);
+    }
   };
 
   const handleSaveRow = async (row) => {
@@ -403,8 +462,26 @@ const MerchantProductSync = () => {
                 Update merchant sync metadata for existing product records.
               </p>
             </div>
-            <div className="text-sm text-slate-500">
-              {loading ? "Loading records..." : `${records.length} record(s)`}
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <div className="text-sm text-slate-500">
+                {loading ? "Loading records..." : `${records.length} record(s)`}
+              </div>
+              <button
+                type="button"
+                onClick={handleSaveAll}
+                className={PRIMARY_BUTTON_CLASS}
+                disabled={bulkSaving || saving || loading || !records.length}
+              >
+                {bulkSaving ? (
+                  <>
+                    <FaSpinner className="animate-spin" /> Saving all
+                  </>
+                ) : (
+                  <>
+                    <FaSave /> Save all
+                  </>
+                )}
+              </button>
             </div>
           </div>
         </div>
