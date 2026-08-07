@@ -696,8 +696,8 @@ const Navbar = ({ isMobile, sidebarOpen, onToggleSidebar, onLogout }) => {
           placeholder="Search for products, brands, categories, articles..."
           className={
             mobile
-              ? "h-12 w-full rounded-xl border border-slate-200 bg-white pl-11 pr-12 text-sm text-slate-800 placeholder:text-slate-400 focus:border-[#345CFF] focus:outline-none"
-              : "h-12 w-full rounded-xl border border-slate-200 bg-white pl-11 pr-24 text-sm text-slate-800 placeholder:text-slate-400 shadow-[0_10px_28px_rgba(15,23,42,0.05)] focus:border-[#345CFF] focus:outline-none"
+              ? "hooks-admin-search h-12 w-full rounded-xl border border-slate-200 bg-white pl-11 pr-12 text-sm text-slate-800 placeholder:text-slate-400 focus:border-[#345CFF] focus:outline-none"
+              : "hooks-admin-search h-12 w-full rounded-xl border border-slate-200 bg-white pl-11 pr-24 text-sm text-slate-800 placeholder:text-slate-400 shadow-[0_10px_28px_rgba(15,23,42,0.05)] focus:border-[#345CFF] focus:outline-none"
           }
         />
         {mobile ? (
@@ -740,7 +740,7 @@ const Navbar = ({ isMobile, sidebarOpen, onToggleSidebar, onLogout }) => {
 
   if (isMobile) {
     return (
-      <nav className="sticky top-0 z-40 border-b border-slate-200 bg-white shadow-[0_14px_35px_rgba(15,23,42,0.06)]">
+      <nav className="hooks-admin-topbar sticky top-0 z-40 border-b border-slate-200 bg-white shadow-[0_14px_35px_rgba(15,23,42,0.06)]">
         <div className="px-2 py-3">
           <div className="relative flex items-center justify-between gap-3">
             <button
@@ -837,8 +837,8 @@ const Navbar = ({ isMobile, sidebarOpen, onToggleSidebar, onLogout }) => {
   }
 
   return (
-    <nav className="sticky top-0 z-40 border-b border-slate-200 bg-white shadow-[0_14px_35px_rgba(15,23,42,0.06)]">
-      <div className="mx-auto flex w-full max-w-[1720px] items-center gap-4 px-6 py-4 lg:px-8">
+    <nav className="hooks-admin-topbar sticky top-0 z-40 border-b border-slate-200 bg-white shadow-[0_14px_35px_rgba(15,23,42,0.06)]">
+      <div className="hooks-admin-topbar-inner mx-auto flex w-full max-w-[1720px] items-center gap-4 px-6 py-4 lg:px-8">
         <button
           type="button"
           onClick={onToggleSidebar}

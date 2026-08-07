@@ -103,6 +103,11 @@ export const ROUTE_ACCESS_RULES = [
     title: "Appliance inventory access required",
   },
   {
+    pattern: "/merchant-product-sync",
+    requiredAnyPermissions: ["products.manage", "products.view"],
+    title: "Merchant sync access required",
+  },
+  {
     pattern: "/user-management",
     requiredAnyPermissions: ["users.view", "users.manage"],
     title: "User management access required",
