@@ -222,6 +222,7 @@ const normalizeCreateMobileEditorData = (formData) => {
     expectedPrice: smartphone.expected_price || smartphone.expectedPrice || "",
     specConfidence: smartphone.spec_confidence || "",
     officialPreorderUrl: smartphone.official_preorder_url || "",
+    createAiSummary: smartphone.create_ai_summary !== false,
     colors: normalizeColors(smartphone.colors),
     images: toArray(formData?.images),
     variants: toArray(formData?.variants),
@@ -303,6 +304,11 @@ const normalizeEditMobileEditorData = (formData) => {
       smartphone.official_preorder_url ||
       smartphone.officialPreorderUrl ||
       "",
+    createAiSummary:
+      formData?.create_ai_summary !== false &&
+      formData?.createAiSummary !== false &&
+      smartphone.create_ai_summary !== false &&
+      smartphone.createAiSummary !== false,
     colors: normalizeColors(formData?.colors || smartphone.colors),
     images: toArray(formData?.images || smartphone.images),
     variants: toArray(formData?.variants || smartphone.variants),
@@ -456,6 +462,7 @@ export const buildMobileSubmitPayload = ({
     expected_price: expectedPrice,
     spec_confidence: specConfidence,
     official_preorder_url: officialPreorderUrl,
+    create_ai_summary: normalized.createAiSummary !== false,
     images: normalized.images,
     colors: normalized.colors,
     ...specs,

@@ -199,6 +199,7 @@ const EditMobile = () => {
     expected_price: "",
     spec_confidence: "expected",
     official_preorder_url: "",
+    create_ai_summary: true,
     created_at: "",
     images: [],
     colors: [],
@@ -3299,6 +3300,29 @@ const EditMobile = () => {
               Update product details, specifications, variants, and media for {formData?.name || "this smartphone"}.
             </p>
           </div>
+
+          <label className="flex items-start gap-3 border border-amber-200 bg-amber-50 px-3 py-3 xl:max-w-sm">
+            <input
+              type="checkbox"
+              name="create_ai_summary"
+              checked={formData.create_ai_summary !== false}
+              onChange={(event) =>
+                setFormData((previous) => ({
+                  ...previous,
+                  create_ai_summary: event.target.checked,
+                }))
+              }
+              className="mt-0.5 h-4 w-4 border-slate-300 text-amber-600 focus:ring-amber-500"
+            />
+            <span>
+              <span className="block text-sm font-semibold text-slate-800">
+                Create AI summary automatically
+              </span>
+              <span className="mt-1 block text-xs leading-5 text-slate-600">
+                Enabled by default. Generation runs after saving.
+              </span>
+            </span>
+          </label>
 
           <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
             <button

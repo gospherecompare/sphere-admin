@@ -331,10 +331,14 @@ const normalizeSelectedProductIds = (...sources) => {
   const pushValue = (value) => {
     const normalized = Number(
       value && typeof value === "object"
-        ? value.product_id ?? value.productId ?? value.id
+        ? (value.product_id ?? value.productId ?? value.id)
         : value,
     );
-    if (!Number.isInteger(normalized) || normalized <= 0 || seen.has(normalized)) {
+    if (
+      !Number.isInteger(normalized) ||
+      normalized <= 0 ||
+      seen.has(normalized)
+    ) {
       return;
     }
     seen.add(normalized);
@@ -359,9 +363,7 @@ const orderSelectedProducts = (products = [], productIds = []) => {
       .filter(([productId]) => Number.isInteger(productId) && productId > 0),
   );
   const orderedIds = normalizeSelectedProductIds(productIds);
-  return orderedIds
-    .map((productId) => byId.get(productId))
-    .filter(Boolean);
+  return orderedIds.map((productId) => byId.get(productId)).filter(Boolean);
 };
 
 const buildSelectedProductNames = (products = []) =>
@@ -478,11 +480,17 @@ const containsArticleMarkup = (value) =>
   );
 
 const normalizeArticleContent = (value) => {
-  let text = String(value || "").replace(/\r\n?/g, "\n").trim();
+  let text = String(value || "")
+    .replace(/\r\n?/g, "\n")
+    .trim();
 
   // Older stories can contain encoded HTML. Decode only until the structural
   // tags appear so text such as "3 &lt; 5" remains text instead of becoming a tag.
-  for (let pass = 0; pass < 3 && text && !containsArticleMarkup(text); pass += 1) {
+  for (
+    let pass = 0;
+    pass < 3 && text && !containsArticleMarkup(text);
+    pass += 1
+  ) {
     const next = decodeHtmlEntitiesOnce(text);
     if (next === text) break;
     text = next;
@@ -576,9 +584,7 @@ const buildInlineImageHtml = (source, { alt = "", caption = "" } = {}) => {
     `<img src="${escapeHtml(normalizedSource)}" alt="${escapeHtml(
       normalizedAlt,
     )}" />`,
-    normalizedCaption
-      ? `<p><em>${escapeHtml(normalizedCaption)}</em></p>`
-      : "",
+    normalizedCaption ? `<p><em>${escapeHtml(normalizedCaption)}</em></p>` : "",
     "<p><br /></p>",
   ].join("");
 };
@@ -1020,9 +1026,7 @@ const BlogEditor = () => {
   );
   const selectedLibraryRows = useMemo(
     () =>
-      libraryRows.filter((row) =>
-        selectedLibraryIdSet.has(Number(row?.id)),
-      ),
+      libraryRows.filter((row) => selectedLibraryIdSet.has(Number(row?.id))),
     [libraryRows, selectedLibraryIdSet],
   );
   const selectedPublishedCount = selectedLibraryRows.filter((row) =>
@@ -1038,9 +1042,7 @@ const BlogEditor = () => {
     if (!Number.isInteger(normalizedId) || normalizedId <= 0) return null;
 
     return (
-      candidates.find(
-        (row) => Number(row?.product_id) === normalizedId,
-      ) || null
+      candidates.find((row) => Number(row?.product_id) === normalizedId) || null
     );
   }, [candidateProductId, candidates]);
 
@@ -1118,7 +1120,10 @@ const BlogEditor = () => {
   };
 
   const applyProductSelection = (products = [], preferredProductIds = []) => {
-    const orderedProducts = orderSelectedProducts(products, preferredProductIds);
+    const orderedProducts = orderSelectedProducts(
+      products,
+      preferredProductIds,
+    );
     const orderedIds = normalizeSelectedProductIds(
       preferredProductIds.length ? preferredProductIds : orderedProducts,
     );
@@ -1183,8 +1188,7 @@ const BlogEditor = () => {
             );
       setHeroImage(heroChoice);
       setHeroImageSource(
-        existingHeroSource ||
-          inferHeroImageSource(heroChoice, primaryImages),
+        existingHeroSource || inferHeroImageSource(heroChoice, primaryImages),
       );
       setHeroImageAlt(
         existing.hero_image_alt || buildProductSelectionAlt(orderedProducts),
@@ -1512,16 +1516,14 @@ const BlogEditor = () => {
   const handleSetPrimaryProduct = (productIdToPromote) => {
     const nextIds = [
       productIdToPromote,
-      ...selectedProductIds.filter((productId) => productId !== productIdToPromote),
+      ...selectedProductIds.filter(
+        (productId) => productId !== productIdToPromote,
+      ),
     ];
     loadProductContext(nextIds, { resetDraft: false, hydrateExisting: false });
   };
 
-  const insertInlineImage = ({
-    source,
-    alt = "",
-    caption = "",
-  }) => {
+  const insertInlineImage = ({ source, alt = "", caption = "" }) => {
     const markup = buildInlineImageHtml(source, {
       alt: alt || title || "Article image",
       caption,
@@ -1732,7 +1734,9 @@ const BlogEditor = () => {
         ),
       );
       setMessage(
-        isProductStory ? "Loaded saved product-linked story." : "Loaded saved article.",
+        isProductStory
+          ? "Loaded saved product-linked story."
+          : "Loaded saved article.",
       );
     } catch (err) {
       setError(err.message || "Failed to load article");
@@ -1847,7 +1851,10 @@ const BlogEditor = () => {
     ).trim();
     const isEditingExistingLink = editorUiState.isLink || Boolean(currentHref);
 
-    if (selectionText && (!normalizedText || normalizedText === selectionText)) {
+    if (
+      selectionText &&
+      (!normalizedText || normalizedText === selectionText)
+    ) {
       storyEditorRef.current?.setLink?.(normalizedUrl);
       setMessage("Link updated in content.");
       closeLinkDialog();
@@ -2062,7 +2069,9 @@ const BlogEditor = () => {
 
   const saveBlog = async (statusOverride = null) => {
     const productIdsForSave =
-      blogMode === "product" ? normalizeSelectedProductIds(selectedProductIds) : [];
+      blogMode === "product"
+        ? normalizeSelectedProductIds(selectedProductIds)
+        : [];
     const productIdForSave = productIdsForSave[0] || null;
     const nextIsPublished =
       statusOverride === "published"
@@ -2162,17 +2171,14 @@ const BlogEditor = () => {
           ? "Content published successfully"
           : wasPublished
             ? "Content unpublished successfully"
-          : "Draft saved successfully",
+            : "Draft saved successfully",
       );
       if (data?.blog?.id) {
         setBlogId(data.blog.id);
         setSelectedLibraryId(data.blog.id);
       }
       if (Array.isArray(data?.blog?.product_ids)) {
-        applyProductSelection(
-          selectedProducts,
-          data.blog.product_ids,
-        );
+        applyProductSelection(selectedProducts, data.blog.product_ids);
       }
       setStatus(data?.blog?.is_published ? "published" : nextStatus);
       if (data?.blog?.slug) setSlug(data.blog.slug);
@@ -2590,9 +2596,7 @@ const BlogEditor = () => {
       headers.join(","),
       ...rows.map((row) =>
         headers
-          .map((header) =>
-            `"${String(row[header] ?? "").replace(/"/g, '""')}"`,
-          )
+          .map((header) => `"${String(row[header] ?? "").replace(/"/g, '""')}"`)
           .join(","),
       ),
     ].join("\n");
@@ -2707,14 +2711,15 @@ const BlogEditor = () => {
     [libraryStats],
   );
 
-  const activeTagList = useMemo(() => normalizeBlogTags(tagsInput), [tagsInput]);
+  const activeTagList = useMemo(
+    () => normalizeBlogTags(tagsInput),
+    [tagsInput],
+  );
   const activeComposerRow = useMemo(() => {
     const activeId = Number(blogId || selectedLibraryId);
     if (!Number.isInteger(activeId) || activeId <= 0) return null;
 
-    return (
-      libraryRows.find((row) => Number(row?.id) === activeId) || null
-    );
+    return libraryRows.find((row) => Number(row?.id) === activeId) || null;
   }, [blogId, libraryRows, selectedLibraryId]);
   const composerEntryLabel = blogId ? "Edit Blog Post" : "Add New Post";
   const composerCrumbLabel = blogId ? "Edit Post" : "Add New Post";
@@ -2749,13 +2754,13 @@ const BlogEditor = () => {
       ? "h3"
       : editorUiState.isCodeBlock
         ? "code"
-      : editorUiState.isBlockquote
-        ? "quote"
-        : editorUiState.isBulletList
-          ? "bullets"
-          : editorUiState.isOrderedList
-            ? "numbers"
-            : "paragraph";
+        : editorUiState.isBlockquote
+          ? "quote"
+          : editorUiState.isBulletList
+            ? "bullets"
+            : editorUiState.isOrderedList
+              ? "numbers"
+              : "paragraph";
   const titleWordCountLabel = formatWordCountLabel(title);
   const excerptWordCountLabel = formatWordCountLabel(excerpt);
   const heroImageAltWordCountLabel = formatWordCountLabel(heroImageAlt);
@@ -2783,7 +2788,11 @@ const BlogEditor = () => {
     ].reduce((sum, value) => sum + value, 0),
   );
   const seoScoreLabel =
-    seoScore >= 85 ? "Great job!" : seoScore >= 65 ? "Almost there" : "Needs work";
+    seoScore >= 85
+      ? "Great job!"
+      : seoScore >= 65
+        ? "Almost there"
+        : "Needs work";
   const seoScorePercent = Math.max(0, Math.min(100, Number(seoScore) || 0));
   const focusKeywordValue = activeTagList[0] || "";
   const focusKeywordWordCountLabel = formatWordCountLabel(focusKeywordValue);
@@ -2829,9 +2838,7 @@ const BlogEditor = () => {
   };
 
   return (
-    <div
-      className="mx-auto flex w-full max-w-[1720px] flex-col gap-8 px-1 py-2"
-    >
+    <div className="mx-auto flex w-full max-w-[1720px] flex-col gap-8 px-1 py-2">
       {workspaceView === "listing" ? (
         <div className="px-1 py-1 sm:px-2">
           <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
@@ -2845,76 +2852,76 @@ const BlogEditor = () => {
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <button
+                type="button"
+                onClick={exportLibraryCsv}
+                disabled={filteredLibrary.length === 0}
+                className="inline-flex h-11 items-center justify-center gap-2 border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 disabled:opacity-60 md:px-5"
+              >
+                <FaDownload className="text-xs" />
+                Export
+              </button>
+
+              <div className="relative inline-flex border border-slate-200">
                 <button
                   type="button"
-                  onClick={exportLibraryCsv}
-                  disabled={filteredLibrary.length === 0}
-                  className="inline-flex h-11 items-center justify-center gap-2 border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 disabled:opacity-60 md:px-5"
+                  onClick={() => {
+                    setNewPostMenuOpen(false);
+                    startNewGeneralArticle();
+                  }}
+                  className="inline-flex h-11 items-center gap-2 bg-[#5B2EFF] px-3 text-sm font-semibold text-white transition hover:bg-[#4D23E0] md:px-5"
                 >
-                  <FaDownload className="text-xs" />
-                  Export
+                  <FaPlus className="text-xs" />
+                  New Post
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setNewPostMenuOpen((prev) => !prev)}
+                  className="inline-flex h-11 items-center border-l border-white/20 bg-[#5B2EFF] px-3 text-white transition hover:bg-[#4D23E0]"
+                >
+                  <FaChevronDown className="text-xs" />
                 </button>
 
-                <div className="relative inline-flex border border-slate-200">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setNewPostMenuOpen(false);
-                      startNewGeneralArticle();
-                    }}
-                    className="inline-flex h-11 items-center gap-2 bg-[#5B2EFF] px-3 text-sm font-semibold text-white transition hover:bg-[#4D23E0] md:px-5"
-                  >
-                    <FaPlus className="text-xs" />
-                    New Post
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setNewPostMenuOpen((prev) => !prev)}
-                    className="inline-flex h-11 items-center border-l border-white/20 bg-[#5B2EFF] px-3 text-white transition hover:bg-[#4D23E0]"
-                  >
-                    <FaChevronDown className="text-xs" />
-                  </button>
-
-                  {newPostMenuOpen ? (
-                    <div className="absolute right-0 top-[calc(100%+0.75rem)] z-20 w-56 overflow-hidden border border-slate-200 bg-white">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setNewPostMenuOpen(false);
-                          startNewGeneralArticle();
-                        }}
-                        className="flex w-full items-start border-b border-slate-200 px-3 py-3 text-left transition hover:bg-slate-50"
-                      >
-                        <div>
-                          <div className="text-sm font-semibold text-slate-900">
-                            General article
-                          </div>
-                          <div className="mt-1 text-xs leading-5 text-slate-500">
-                            Start a normal post not linked to a product.
-                          </div>
+                {newPostMenuOpen ? (
+                  <div className="absolute right-0 top-[calc(100%+0.75rem)] z-20 w-56 overflow-hidden border border-slate-200 bg-white">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNewPostMenuOpen(false);
+                        startNewGeneralArticle();
+                      }}
+                      className="flex w-full items-start border-b border-slate-200 px-3 py-3 text-left transition hover:bg-slate-50"
+                    >
+                      <div>
+                        <div className="text-sm font-semibold text-slate-900">
+                          General article
                         </div>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setNewPostMenuOpen(false);
-                          startNewProductStory();
-                        }}
-                        className="flex w-full items-start px-3 py-3 text-left transition hover:bg-slate-50"
-                      >
-                        <div>
-                          <div className="text-sm font-semibold text-slate-900">
-                            Product-linked story
-                          </div>
-                          <div className="mt-1 text-xs leading-5 text-slate-500">
-                            Build a post from a connected device profile.
-                          </div>
+                        <div className="mt-1 text-xs leading-5 text-slate-500">
+                          Start a normal post not linked to a product.
                         </div>
-                      </button>
-                    </div>
-                  ) : null}
-                </div>
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNewPostMenuOpen(false);
+                        startNewProductStory();
+                      }}
+                      className="flex w-full items-start px-3 py-3 text-left transition hover:bg-slate-50"
+                    >
+                      <div>
+                        <div className="text-sm font-semibold text-slate-900">
+                          Product-linked story
+                        </div>
+                        <div className="mt-1 text-xs leading-5 text-slate-500">
+                          Build a post from a connected device profile.
+                        </div>
+                      </div>
+                    </button>
+                  </div>
+                ) : null}
               </div>
+            </div>
           </div>
         </div>
       ) : (
@@ -3032,7 +3039,9 @@ const BlogEditor = () => {
 
                 <select
                   value={libraryAuthorFilter}
-                  onChange={(event) => setLibraryAuthorFilter(event.target.value)}
+                  onChange={(event) =>
+                    setLibraryAuthorFilter(event.target.value)
+                  }
                   className={listingFieldClassName}
                 >
                   <option value="all">All Authors</option>
@@ -3119,7 +3128,8 @@ const BlogEditor = () => {
                     {selectedLibraryIds.length} selected
                   </div>
                   <div className="mt-0.5 text-xs text-slate-500">
-                    {selectedPublishedCount} published, {selectedDraftCount} draft
+                    {selectedPublishedCount} published, {selectedDraftCount}{" "}
+                    draft
                   </div>
                 </div>
 
@@ -3501,7 +3511,9 @@ const BlogEditor = () => {
                       <article
                         key={`mobile-${row.id}`}
                         className={`px-2 py-4 md:px-4 ${
-                          selectedLibraryId === row.id ? "bg-violet-50/70" : "bg-white"
+                          selectedLibraryId === row.id
+                            ? "bg-violet-50/70"
+                            : "bg-white"
                         }`}
                       >
                         <div className="flex items-start gap-3">
@@ -3584,7 +3596,9 @@ const BlogEditor = () => {
                             </div>
                             <div className="mt-1 text-sm font-medium text-slate-700">
                               {publishedDate.dateLabel}
-                              {publishedDate.timeLabel ? `, ${publishedDate.timeLabel}` : ""}
+                              {publishedDate.timeLabel
+                                ? `, ${publishedDate.timeLabel}`
+                                : ""}
                             </div>
                             {row.updated_at ? (
                               <div className="mt-1 text-xs font-medium text-slate-500">
@@ -3674,7 +3688,9 @@ const BlogEditor = () => {
               <div className="flex items-center justify-between gap-2 sm:justify-end">
                 <button
                   type="button"
-                  onClick={() => setLibraryPage((prev) => Math.max(1, prev - 1))}
+                  onClick={() =>
+                    setLibraryPage((prev) => Math.max(1, prev - 1))
+                  }
                   disabled={libraryPage <= 1}
                   className="inline-flex h-10 w-10 items-center justify-center border border-slate-200 bg-white text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 disabled:opacity-40"
                 >
@@ -3724,1399 +3740,1451 @@ const BlogEditor = () => {
           </div>
         ) : null}
 
-      {workspaceView === "composer" ? (
-        <div className="px-1 pb-8 sm:px-2">
-          <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_352px] xl:gap-0">
-            <div className="space-y-5">
-              <div
-                id="story-editor-panel"
-                className="overflow-hidden border border-slate-200 bg-white"
-              >
-                <div className="px-2 py-5 md:px-6 md:py-6">
-                  <div className="space-y-5">
-                    <div>
-                      <label className="mb-2 block text-sm font-semibold text-slate-900">
-                        Title <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        value={title}
-                        onChange={(event) => setTitle(event.target.value)}
-                        placeholder="Enter the post title"
-                        className="h-12 w-full border border-slate-200 bg-white px-2 text-sm text-slate-800 outline-none transition focus:border-slate-400 focus:ring-0 md:px-4"
-                      />
-                      <div className="mt-2 text-right text-xs font-medium text-slate-400">
-                        {titleWordCountLabel}
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col gap-2 text-sm sm:flex-row sm:items-center">
-                      <div className="min-w-0 flex-1 truncate text-slate-600">
-                        <span className="font-medium text-slate-500">
-                          Permalink:
-                        </span>{" "}
-                        {editorPermalinkDisplay}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={focusSlugField}
-                        className="inline-flex h-8 items-center justify-center border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-white"
-                      >
-                        Edit
-                      </button>
-                    </div>
-
-                    <div>
-                      <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                        <label className="text-sm font-semibold text-slate-900">
-                          Content
+        {workspaceView === "composer" ? (
+          <div className="px-1 pb-8 sm:px-2">
+            <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_352px] xl:gap-0">
+              <div className="space-y-5">
+                <div
+                  id="story-editor-panel"
+                  className="overflow-hidden border border-slate-200 bg-white"
+                >
+                  <div className="px-2 py-5 md:px-6 md:py-6">
+                    <div className="space-y-5">
+                      <div>
+                        <label className="mb-2 block text-sm font-semibold text-slate-900">
+                          Title <span className="text-red-500">*</span>
                         </label>
-                        <div className="text-xs font-medium text-slate-400">
-                          {editorSelectionLabel}
+                        <input
+                          value={title}
+                          onChange={(event) => setTitle(event.target.value)}
+                          placeholder="Enter the post title"
+                          className="h-12 w-full border border-slate-200 bg-white px-2 text-sm text-slate-800 outline-none transition focus:border-slate-400 focus:ring-0 md:px-4"
+                        />
+                        <div className="mt-2 text-right text-xs font-medium text-slate-400">
+                          {titleWordCountLabel}
                         </div>
                       </div>
 
-                      <div className="overflow-hidden border border-slate-200 bg-white">
-                        <div className="border-b border-slate-200 bg-white px-3 py-2.5">
-                          <div className="flex flex-wrap items-center gap-1.5">
-                            <select
-                              value={editorBlockModeValue}
-                              onChange={(event) =>
-                                applyEditorBlockMode(event.target.value)
-                              }
-                              className="h-9 min-w-[138px] border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-slate-400 focus:ring-0"
-                            >
-                              <option value="paragraph">Paragraph</option>
-                              <option value="h2">Heading 2</option>
-                              <option value="h3">Heading 3</option>
-                              <option value="code">Code Block</option>
-                              <option value="quote">Quote</option>
-                              <option value="bullets">Bullet List</option>
-                              <option value="numbers">Numbered List</option>
-                            </select>
+                      <div className="flex flex-col gap-2 text-sm sm:flex-row sm:items-center">
+                        <div className="min-w-0 flex-1 truncate text-slate-600">
+                          <span className="font-medium text-slate-500">
+                            Permalink:
+                          </span>{" "}
+                          {editorPermalinkDisplay}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={focusSlugField}
+                          className="inline-flex h-8 items-center justify-center border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-white"
+                        >
+                          Edit
+                        </button>
+                      </div>
 
-                            {editorUiState.isBulletList ||
-                            editorUiState.isOrderedList ? (
+                      <div>
+                        <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                          <label className="text-sm font-semibold text-slate-900">
+                            Content
+                          </label>
+                          <div className="text-xs font-medium text-slate-400">
+                            {editorSelectionLabel}
+                          </div>
+                        </div>
+
+                        <div className="overflow-hidden border border-slate-200 bg-white">
+                          <div className="border-b border-slate-200 bg-white px-3 py-2.5">
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <select
+                                value={editorBlockModeValue}
+                                onChange={(event) =>
+                                  applyEditorBlockMode(event.target.value)
+                                }
+                                className="h-9 min-w-[138px] border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-slate-400 focus:ring-0"
+                              >
+                                <option value="paragraph">Paragraph</option>
+                                <option value="h2">Heading 2</option>
+                                <option value="h3">Heading 3</option>
+                                <option value="code">Code Block</option>
+                                <option value="quote">Quote</option>
+                                <option value="bullets">Bullet List</option>
+                                <option value="numbers">Numbered List</option>
+                              </select>
+
+                              {editorUiState.isBulletList ||
+                              editorUiState.isOrderedList ? (
+                                <button
+                                  type="button"
+                                  onPointerDown={(event) =>
+                                    handleToolbarAction(event, () =>
+                                      applyEditorBlockMode("paragraph"),
+                                    )
+                                  }
+                                  className="inline-flex h-9 items-center justify-center border border-[#7C3AED]/20 bg-[#F3EEFF] px-3 text-xs font-semibold text-[#5B34E6] transition hover:border-[#7C3AED]/35 hover:bg-[#EDE7FF]"
+                                  title="Exit the current list and continue with a paragraph"
+                                >
+                                  End list
+                                </button>
+                              ) : null}
+
+                              <div className="mx-1 hidden h-6 w-px bg-slate-200 sm:block" />
+
                               <button
                                 type="button"
                                 onPointerDown={(event) =>
                                   handleToolbarAction(event, () =>
-                                    applyEditorBlockMode("paragraph"),
+                                    storyEditorRef.current?.toggleBold?.(),
                                   )
                                 }
-                                className="inline-flex h-9 items-center justify-center border border-[#7C3AED]/20 bg-[#F3EEFF] px-3 text-xs font-semibold text-[#5B34E6] transition hover:border-[#7C3AED]/35 hover:bg-[#EDE7FF]"
-                                title="Exit the current list and continue with a paragraph"
+                                className={getComposerIconButtonClassName(
+                                  editorUiState.isBold,
+                                )}
+                                title="Bold"
                               >
-                                End list
+                                <FaBold />
                               </button>
-                            ) : null}
-
-                            <div className="mx-1 hidden h-6 w-px bg-slate-200 sm:block" />
-
-                            <button
-                              type="button"
-                              onPointerDown={(event) =>
-                                handleToolbarAction(
-                                  event,
-                                  () => storyEditorRef.current?.toggleBold?.(),
-                                )
-                              }
-                              className={getComposerIconButtonClassName(
-                                editorUiState.isBold,
-                              )}
-                              title="Bold"
-                            >
-                              <FaBold />
-                            </button>
-                            <button
-                              type="button"
-                              onPointerDown={(event) =>
-                                handleToolbarAction(
-                                  event,
-                                  () => storyEditorRef.current?.toggleItalic?.(),
-                                )
-                              }
-                              className={getComposerIconButtonClassName(
-                                editorUiState.isItalic,
-                              )}
-                              title="Italic"
-                            >
-                              <FaItalic />
-                            </button>
-                            <button
-                              type="button"
-                              onPointerDown={(event) =>
-                                handleToolbarAction(
-                                  event,
-                                  () =>
-                                    storyEditorRef.current?.toggleUnderline?.(),
-                                )
-                              }
-                              className={getComposerIconButtonClassName(
-                                editorUiState.isUnderline,
-                              )}
-                              title="Underline"
-                            >
-                              <FaUnderline />
-                            </button>
-                            <button
-                              type="button"
-                              onPointerDown={(event) =>
-                                handleToolbarAction(
-                                  event,
-                                  () => storyEditorRef.current?.toggleStrike?.(),
-                                )
-                              }
-                              className={getComposerIconButtonClassName(
-                                editorUiState.isStrike,
-                              )}
-                              title="Strikethrough"
-                            >
-                              <FaStrikethrough />
-                            </button>
-                            <button
-                              type="button"
-                              onPointerDown={(event) =>
-                                handleToolbarAction(event, () =>
-                                  storyEditorRef.current?.clearFormatting?.(),
-                                )
-                              }
-                              className={getComposerIconButtonClassName(false)}
-                              title="Clear formatting and continue with normal text"
-                            >
-                              <FaEraser />
-                            </button>
-                            <button
-                              type="button"
-                              onPointerDown={(event) =>
-                                handleToolbarAction(event, applyLink)
-                              }
-                              className={getComposerIconButtonClassName(
-                                editorUiState.isLink,
-                              )}
-                              title="Add link"
-                            >
-                              <FaLink />
-                            </button>
-                            <button
-                              type="button"
-                              onPointerDown={(event) =>
-                                handleToolbarAction(
-                                  event,
-                                  () => storyEditorRef.current?.unsetLink?.(),
-                                  !editorUiState.isLink,
-                                )
-                              }
-                              className={getComposerIconButtonClassName(
-                                false,
-                                !editorUiState.isLink,
-                              )}
-                              title="Remove link"
-                            >
-                              <FaLink className="opacity-55" />
-                            </button>
-                            <button
-                              type="button"
-                              onPointerDown={(event) =>
-                                handleToolbarAction(
-                                  event,
-                                  () => openInlineImagePicker(),
-                                  uploadingInlineImage,
-                                )
-                              }
-                              className={getComposerIconButtonClassName(
-                                false,
-                                uploadingInlineImage,
-                              )}
-                              title="Upload image"
-                            >
-                              <FaImage />
-                            </button>
-                            <button
-                              type="button"
-                              onPointerDown={(event) =>
-                                handleToolbarAction(
-                                  event,
-                                  insertEmbedPlaceholder,
-                                )
-                              }
-                              className={getComposerIconButtonClassName(false)}
-                              title="Insert embed block"
-                            >
-                              <FaNewspaper />
-                            </button>
-                            <button
-                              type="button"
-                              onPointerDown={(event) =>
-                                handleToolbarAction(
-                                  event,
-                                  () =>
-                                    storyEditorRef.current?.toggleBlockquote?.(),
-                                )
-                              }
-                              className={getComposerIconButtonClassName(
-                                editorUiState.isBlockquote,
-                              )}
-                              title="Quote"
-                            >
-                              <FaQuoteRight />
-                            </button>
-                            <button
-                              type="button"
-                              onPointerDown={(event) =>
-                                handleToolbarAction(
-                                  event,
-                                  () =>
-                                    storyEditorRef.current?.toggleBulletList?.(),
-                                )
-                              }
-                              className={getComposerIconButtonClassName(
-                                editorUiState.isBulletList,
-                              )}
-                              title="Bullet list"
-                            >
-                              <FaListUl />
-                            </button>
-                            <button
-                              type="button"
-                              onPointerDown={(event) =>
-                                handleToolbarAction(
-                                  event,
-                                  () =>
-                                    storyEditorRef.current?.toggleOrderedList?.(),
-                                )
-                              }
-                              className={getComposerIconButtonClassName(
-                                editorUiState.isOrderedList,
-                              )}
-                              title="Numbered list"
-                            >
-                              <FaListOl />
-                            </button>
-                            <button
-                              type="button"
-                              onPointerDown={(event) =>
-                                handleToolbarAction(event, insertTableLayout)
-                              }
-                              className={getComposerIconButtonClassName(false)}
-                              title="Insert table"
-                            >
-                              <FaTable />
-                            </button>
-                            <button
-                              type="button"
-                              onPointerDown={(event) =>
-                                handleToolbarAction(
-                                  event,
-                                  () =>
-                                    storyEditorRef.current?.toggleCodeBlock?.(),
-                                )
-                              }
-                              className={getComposerIconButtonClassName(
-                                editorUiState.isCodeBlock,
-                              )}
-                              title="Code block"
-                            >
-                              <FaCode />
-                            </button>
-
-                            <div className="mx-1 hidden h-6 w-px bg-slate-200 sm:block" />
-
-                            <button
-                              type="button"
-                              onPointerDown={(event) =>
-                                handleToolbarAction(
-                                  event,
-                                  () => storyEditorRef.current?.undo?.(),
-                                  !editorUiState.canUndo,
-                                )
-                              }
-                              className={getComposerIconButtonClassName(
-                                false,
-                                !editorUiState.canUndo,
-                              )}
-                              title="Undo"
-                            >
-                              <FaUndo />
-                            </button>
-                            <button
-                              type="button"
-                              onPointerDown={(event) =>
-                                handleToolbarAction(
-                                  event,
-                                  () => storyEditorRef.current?.redo?.(),
-                                  !editorUiState.canRedo,
-                                )
-                              }
-                              className={getComposerIconButtonClassName(
-                                false,
-                                !editorUiState.canRedo,
-                              )}
-                              title="Redo"
-                            >
-                              <FaRedo />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setComposerSidebarTab("block")}
-                              className="ml-auto inline-flex h-9 w-9 items-center justify-center border border-slate-200 bg-white text-slate-400 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700"
-                              title="More options"
-                            >
-                              <FaEllipsisV />
-                            </button>
-                          </div>
-                        </div>
-
-                        <input
-                          ref={heroImageInputRef}
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={async (event) => {
-                            const file = event.target.files?.[0] || null;
-                            await handleHeroImageUpload(file);
-                            event.target.value = "";
-                          }}
-                        />
-
-                        <input
-                          ref={inlineImageInputRef}
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={async (event) => {
-                            const file = event.target.files?.[0] || null;
-                            await handleInlineImageUpload(file);
-                            event.target.value = "";
-                          }}
-                        />
-
-                        <div className="min-h-[580px] bg-white">
-                          <TiptapStoryEditor
-                            ref={storyEditorRef}
-                            value={contentTemplate}
-                            onChange={setContentTemplate}
-                            onEditorStateChange={setEditorUiState}
-                            normalizeContent={buildEditorSurfaceHtml}
-                            className="min-h-[580px]"
-                          />
-                        </div>
-
-                        <div className="flex flex-col gap-2 border-t border-slate-200 px-2 py-3 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between md:px-4">
-                          <div className="flex flex-wrap items-center gap-4">
-                            <span>Words: {articleWordCount}</span>
-                          </div>
-
-                          <div className="flex flex-wrap items-center gap-3">
-                            <span>
-                              {message ? "Saved a few seconds ago" : "Editing in progress"}
-                            </span>
-                            <span className="font-medium text-slate-700">
-                              {saving
-                                ? "Saving..."
-                                : composerStatusLabel === "Published"
-                                  ? "Published"
-                                  : "Draft saved"}
-                            </span>
-                            <span
-                              className={`inline-flex h-5 w-5 items-center justify-center rounded-full ${
-                                message
-                                  ? "bg-emerald-100 text-emerald-600"
-                                  : "bg-slate-100 text-slate-400"
-                              }`}
-                            >
-                              <FaCheckCircle className="text-[10px]" />
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-            </div>
-
-            <div className="space-y-0 xl:sticky xl:top-6 xl:self-start xl:border-l xl:border-slate-200">
-              <div className="border-b border-slate-200 px-2 md:px-4">
-                <div className="grid grid-cols-2">
-                  {[
-                    { key: "post", label: "Post" },
-                    { key: "block", label: "Block" },
-                  ].map((tab) => (
-                    <button
-                      key={tab.key}
-                      type="button"
-                      onClick={() => setComposerSidebarTab(tab.key)}
-                      className={`relative px-2 py-3 text-sm font-semibold transition md:px-4 ${
-                        composerSidebarTab === tab.key
-                          ? "text-[#5B34E6]"
-                          : "text-slate-500 hover:text-slate-900"
-                      }`}
-                    >
-                      {tab.label}
-                      {composerSidebarTab === tab.key ? (
-                        <span className="absolute inset-x-4 bottom-0 h-px bg-[#5B34E6]" />
-                      ) : null}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {composerSidebarTab === "post" ? (
-                <>
-                  <div className="border-b border-slate-200 bg-white">
-                    <div className="border-b border-slate-200 px-2 py-4 md:px-4">
-                      <h3 className="text-base font-semibold text-slate-900">
-                        Status & Visibility
-                      </h3>
-                    </div>
-                    <div className="space-y-4 px-2 py-4 md:px-4">
-                      <div>
-                        <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                          Publish
-                        </label>
-                        <label
-                          className={`flex cursor-pointer items-center gap-3 border px-3 py-3 transition ${
-                            isComposerPublished
-                              ? "border-emerald-200 bg-emerald-50"
-                              : "border-slate-200 bg-white hover:bg-slate-50"
-                          }`}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={isComposerPublished}
-                            onChange={(event) =>
-                              setStatus(
-                                event.target.checked ? "published" : "draft",
-                              )
-                            }
-                            className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-                          />
-                          <span className="min-w-0">
-                            <span className="block text-sm font-semibold text-slate-900">
-                              {isComposerPublished
-                                ? "Published"
-                                : "Unpublished"}
-                            </span>
-                            <span className="mt-0.5 block text-xs text-slate-500">
-                              is_published:{" "}
-                              {isComposerPublished ? "true" : "false"}
-                            </span>
-                          </span>
-                        </label>
-                      </div>
-
-                      <div>
-                        <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                          Visibility
-                        </label>
-                        <select
-                          value="public"
-                          readOnly
-                          className={composerFieldClassName}
-                        >
-                          <option value="public">Public</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <div className="mb-1.5 flex items-center justify-between gap-2">
-                          <label className="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                            Published on
-                          </label>
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setPublishedAt(toDateTimeLocalValue(new Date()))
-                              }
-                              className="text-xs font-semibold text-blue-600 hover:text-blue-700"
-                            >
-                              Use now
-                            </button>
-                            {publishedAt ? (
                               <button
                                 type="button"
-                                onClick={() => setPublishedAt("")}
-                                className="text-xs font-semibold text-slate-500 hover:text-slate-700"
+                                onPointerDown={(event) =>
+                                  handleToolbarAction(event, () =>
+                                    storyEditorRef.current?.toggleItalic?.(),
+                                  )
+                                }
+                                className={getComposerIconButtonClassName(
+                                  editorUiState.isItalic,
+                                )}
+                                title="Italic"
                               >
-                                Clear
+                                <FaItalic />
                               </button>
-                            ) : null}
+                              <button
+                                type="button"
+                                onPointerDown={(event) =>
+                                  handleToolbarAction(event, () =>
+                                    storyEditorRef.current?.toggleUnderline?.(),
+                                  )
+                                }
+                                className={getComposerIconButtonClassName(
+                                  editorUiState.isUnderline,
+                                )}
+                                title="Underline"
+                              >
+                                <FaUnderline />
+                              </button>
+                              <button
+                                type="button"
+                                onPointerDown={(event) =>
+                                  handleToolbarAction(event, () =>
+                                    storyEditorRef.current?.toggleStrike?.(),
+                                  )
+                                }
+                                className={getComposerIconButtonClassName(
+                                  editorUiState.isStrike,
+                                )}
+                                title="Strikethrough"
+                              >
+                                <FaStrikethrough />
+                              </button>
+                              <button
+                                type="button"
+                                onPointerDown={(event) =>
+                                  handleToolbarAction(event, () =>
+                                    storyEditorRef.current?.clearFormatting?.(),
+                                  )
+                                }
+                                className={getComposerIconButtonClassName(
+                                  false,
+                                )}
+                                title="Clear formatting and continue with normal text"
+                              >
+                                <FaEraser />
+                              </button>
+                              <button
+                                type="button"
+                                onPointerDown={(event) =>
+                                  handleToolbarAction(event, applyLink)
+                                }
+                                className={getComposerIconButtonClassName(
+                                  editorUiState.isLink,
+                                )}
+                                title="Add link"
+                              >
+                                <FaLink />
+                              </button>
+                              <button
+                                type="button"
+                                onPointerDown={(event) =>
+                                  handleToolbarAction(
+                                    event,
+                                    () => storyEditorRef.current?.unsetLink?.(),
+                                    !editorUiState.isLink,
+                                  )
+                                }
+                                className={getComposerIconButtonClassName(
+                                  false,
+                                  !editorUiState.isLink,
+                                )}
+                                title="Remove link"
+                              >
+                                <FaLink className="opacity-55" />
+                              </button>
+                              <button
+                                type="button"
+                                onPointerDown={(event) =>
+                                  handleToolbarAction(
+                                    event,
+                                    () => openInlineImagePicker(),
+                                    uploadingInlineImage,
+                                  )
+                                }
+                                className={getComposerIconButtonClassName(
+                                  false,
+                                  uploadingInlineImage,
+                                )}
+                                title="Upload image"
+                              >
+                                <FaImage />
+                              </button>
+                              <button
+                                type="button"
+                                onPointerDown={(event) =>
+                                  handleToolbarAction(
+                                    event,
+                                    insertEmbedPlaceholder,
+                                  )
+                                }
+                                className={getComposerIconButtonClassName(
+                                  false,
+                                )}
+                                title="Insert embed block"
+                              >
+                                <FaNewspaper />
+                              </button>
+                              <button
+                                type="button"
+                                onPointerDown={(event) =>
+                                  handleToolbarAction(event, () =>
+                                    storyEditorRef.current?.toggleBlockquote?.(),
+                                  )
+                                }
+                                className={getComposerIconButtonClassName(
+                                  editorUiState.isBlockquote,
+                                )}
+                                title="Quote"
+                              >
+                                <FaQuoteRight />
+                              </button>
+                              <button
+                                type="button"
+                                onPointerDown={(event) =>
+                                  handleToolbarAction(event, () =>
+                                    storyEditorRef.current?.toggleBulletList?.(),
+                                  )
+                                }
+                                className={getComposerIconButtonClassName(
+                                  editorUiState.isBulletList,
+                                )}
+                                title="Bullet list"
+                              >
+                                <FaListUl />
+                              </button>
+                              <button
+                                type="button"
+                                onPointerDown={(event) =>
+                                  handleToolbarAction(event, () =>
+                                    storyEditorRef.current?.toggleOrderedList?.(),
+                                  )
+                                }
+                                className={getComposerIconButtonClassName(
+                                  editorUiState.isOrderedList,
+                                )}
+                                title="Numbered list"
+                              >
+                                <FaListOl />
+                              </button>
+                              <button
+                                type="button"
+                                onPointerDown={(event) =>
+                                  handleToolbarAction(event, insertTableLayout)
+                                }
+                                className={getComposerIconButtonClassName(
+                                  false,
+                                )}
+                                title="Insert table"
+                              >
+                                <FaTable />
+                              </button>
+                              <button
+                                type="button"
+                                onPointerDown={(event) =>
+                                  handleToolbarAction(event, () =>
+                                    storyEditorRef.current?.toggleCodeBlock?.(),
+                                  )
+                                }
+                                className={getComposerIconButtonClassName(
+                                  editorUiState.isCodeBlock,
+                                )}
+                                title="Code block"
+                              >
+                                <FaCode />
+                              </button>
+
+                              <div className="mx-1 hidden h-6 w-px bg-slate-200 sm:block" />
+
+                              <button
+                                type="button"
+                                onPointerDown={(event) =>
+                                  handleToolbarAction(
+                                    event,
+                                    () => storyEditorRef.current?.undo?.(),
+                                    !editorUiState.canUndo,
+                                  )
+                                }
+                                className={getComposerIconButtonClassName(
+                                  false,
+                                  !editorUiState.canUndo,
+                                )}
+                                title="Undo"
+                              >
+                                <FaUndo />
+                              </button>
+                              <button
+                                type="button"
+                                onPointerDown={(event) =>
+                                  handleToolbarAction(
+                                    event,
+                                    () => storyEditorRef.current?.redo?.(),
+                                    !editorUiState.canRedo,
+                                  )
+                                }
+                                className={getComposerIconButtonClassName(
+                                  false,
+                                  !editorUiState.canRedo,
+                                )}
+                                title="Redo"
+                              >
+                                <FaRedo />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setComposerSidebarTab("block")}
+                                className="ml-auto inline-flex h-9 w-9 items-center justify-center border border-slate-200 bg-white text-slate-400 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700"
+                                title="More options"
+                              >
+                                <FaEllipsisV />
+                              </button>
+                            </div>
+                          </div>
+
+                          <input
+                            ref={heroImageInputRef}
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={async (event) => {
+                              const file = event.target.files?.[0] || null;
+                              await handleHeroImageUpload(file);
+                              event.target.value = "";
+                            }}
+                          />
+
+                          <input
+                            ref={inlineImageInputRef}
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={async (event) => {
+                              const file = event.target.files?.[0] || null;
+                              await handleInlineImageUpload(file);
+                              event.target.value = "";
+                            }}
+                          />
+
+                          <div className="min-h-[580px] bg-white">
+                            <TiptapStoryEditor
+                              ref={storyEditorRef}
+                              value={contentTemplate}
+                              onChange={setContentTemplate}
+                              onEditorStateChange={setEditorUiState}
+                              normalizeContent={buildEditorSurfaceHtml}
+                              className="min-h-[580px]"
+                            />
+                          </div>
+
+                          <div className="flex flex-col gap-2 border-t border-slate-200 px-2 py-3 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between md:px-4">
+                            <div className="flex flex-wrap items-center gap-4">
+                              <span>Words: {articleWordCount}</span>
+                            </div>
+
+                            <div className="flex flex-wrap items-center gap-3">
+                              <span>
+                                {message
+                                  ? "Saved a few seconds ago"
+                                  : "Editing in progress"}
+                              </span>
+                              <span className="font-medium text-slate-700">
+                                {saving
+                                  ? "Saving..."
+                                  : composerStatusLabel === "Published"
+                                    ? "Published"
+                                    : "Draft saved"}
+                              </span>
+                              <span
+                                className={`inline-flex h-5 w-5 items-center justify-center rounded-full ${
+                                  message
+                                    ? "bg-emerald-100 text-emerald-600"
+                                    : "bg-slate-100 text-slate-400"
+                                }`}
+                              >
+                                <FaCheckCircle className="text-[10px]" />
+                              </span>
+                            </div>
                           </div>
                         </div>
-                        <input
-                          type="datetime-local"
-                          value={publishedAt}
-                          onChange={(event) => setPublishedAt(event.target.value)}
-                          className={composerFieldClassName}
-                        />
-                        <p className="mt-1.5 text-xs leading-5 text-slate-500">
-                          Leave empty to use the current date and time when
-                          publishing. Set a manual value to backdate or schedule.
-                        </p>
                       </div>
-
-                      {blogId ? (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            deleteBlog({
-                              id: blogId,
-                              title,
-                              product_id:
-                                blogMode === "product" ? selectedProductId : null,
-                              product_ids:
-                                blogMode === "product" ? selectedProductIds : [],
-                              products:
-                                blogMode === "product" ? selectedProducts : [],
-                              product_type:
-                                blogMode === "product" ? productType : null,
-                            })
-                          }
-                          disabled={deletingId === blogId}
-                          className={`${composerDangerButtonClassName} h-11 px-2 disabled:opacity-60 md:px-4`}
-                        >
-                          {deletingId === blogId ? "Moving..." : "Move to Trash"}
-                        </button>
-                      ) : null}
                     </div>
                   </div>
+                </div>
+              </div>
 
-                  <div className="border-b border-slate-200 bg-white">
-                    <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-2 py-4 md:px-4">
-                      <h3 className="text-base font-semibold text-slate-900">
-                        Categories
-                      </h3>
+              <div className="space-y-0 xl:sticky xl:top-6 xl:self-start xl:border-l xl:border-slate-200">
+                <div className="border-b border-slate-200 px-2 md:px-4">
+                  <div className="grid grid-cols-2">
+                    {[
+                      { key: "post", label: "Post" },
+                      { key: "block", label: "Block" },
+                    ].map((tab) => (
                       <button
+                        key={tab.key}
                         type="button"
-                        onClick={() => setComposerSidebarTab("block")}
-                        className="text-xs font-semibold text-[#5B34E6] transition hover:text-[#4524c7]"
+                        onClick={() => setComposerSidebarTab(tab.key)}
+                        className={`relative px-2 py-3 text-sm font-semibold transition md:px-4 ${
+                          composerSidebarTab === tab.key
+                            ? "text-[#5B34E6]"
+                            : "text-slate-500 hover:text-slate-900"
+                        }`}
                       >
-                        Add New Category
+                        {tab.label}
+                        {composerSidebarTab === tab.key ? (
+                          <span className="absolute inset-x-4 bottom-0 h-px bg-[#5B34E6]" />
+                        ) : null}
                       </button>
-                    </div>
-                    <div className="space-y-3 px-2 py-4 md:px-4">
-                      {STORY_CATEGORY_OPTIONS.map((option) => {
-                        const checked =
-                          String(category || "").trim().toLowerCase() ===
-                          option.value;
+                    ))}
+                  </div>
+                </div>
 
-                        return (
+                {composerSidebarTab === "post" ? (
+                  <>
+                    <div className="border-b border-slate-200 bg-white">
+                      <div className="border-b border-slate-200 px-2 py-4 md:px-4">
+                        <h3 className="text-base font-semibold text-slate-900">
+                          Status & Visibility
+                        </h3>
+                      </div>
+                      <div className="space-y-4 px-2 py-4 md:px-4">
+                        <div>
+                          <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                            Publish
+                          </label>
                           <label
-                            key={option.value}
-                            className="flex cursor-pointer items-center gap-3 text-sm text-slate-700"
+                            className={`flex cursor-pointer items-center gap-3 border px-3 py-3 transition ${
+                              isComposerPublished
+                                ? "border-emerald-200 bg-emerald-50"
+                                : "border-slate-200 bg-white hover:bg-slate-50"
+                            }`}
                           >
                             <input
                               type="checkbox"
-                              checked={checked}
-                              onChange={() => setCategory(option.value)}
-                              className="h-4 w-4 rounded border-slate-300 text-[#5B34E6] focus:ring-[#5B34E6]"
-                            />
-                            <span>{option.label}</span>
-                          </label>
-                        );
-                      })}
-                      <button
-                        type="button"
-                        onClick={() => setComposerSidebarTab("block")}
-                        className="pt-1 text-sm font-medium text-[#5B34E6] transition hover:text-[#4524c7]"
-                      >
-                        View All Categories
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="border-b border-slate-200 bg-white">
-                    <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-2 py-4 md:px-4">
-                      <h3 className="text-base font-semibold text-slate-900">
-                        Tags
-                      </h3>
-                      <button
-                        type="button"
-                        onClick={focusTagsField}
-                        className="text-xs font-semibold text-[#5B34E6] transition hover:text-[#4524c7]"
-                      >
-                        Add New Tag
-                      </button>
-                    </div>
-                    <div className="px-2 py-4 md:px-4">
-                      <div className="flex flex-wrap gap-2">
-                        {activeTagList.length ? (
-                          activeTagList.map((tag) => (
-                            <button
-                              key={tag}
-                              type="button"
-                              onClick={() =>
-                                setTagsInput(
-                                  activeTagList
-                                    .filter((value) => value !== tag)
-                                    .join(", "),
+                              checked={isComposerPublished}
+                              onChange={(event) =>
+                                setStatus(
+                                  event.target.checked ? "published" : "draft",
                                 )
                               }
-                              className="inline-flex items-center gap-2 rounded-full bg-[#F3EEFF] px-3 py-1 text-xs font-medium text-[#5B34E6]"
-                            >
-                              <span>{tag}</span>
-                              <span className="text-[10px]">x</span>
-                            </button>
-                          ))
-                        ) : (
-                          <span className="text-sm text-slate-400">
-                            No tags added yet
-                          </span>
-                        )}
-                      </div>
-                      <input
-                        ref={tagsInputRef}
-                        value={tagsInput}
-                        onChange={(event) => setTagsInput(event.target.value)}
-                        placeholder="Press comma to separate tags"
-                        className={`mt-3 ${composerFieldClassName}`}
-                      />
-                      <div className="mt-2 text-xs text-slate-400">
-                        Press Enter or comma to add more tags
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="border-b border-slate-200 bg-white">
-                    <div className="border-b border-slate-200 px-2 py-4 md:px-4">
-                      <h3 className="text-base font-semibold text-slate-900">
-                        Excerpt
-                      </h3>
-                    </div>
-                    <div className="px-2 py-4 md:px-4">
-                      <textarea
-                        value={excerpt}
-                        onChange={(event) => setExcerpt(event.target.value)}
-                        rows={4}
-                        placeholder="Write a short summary for cards and search results"
-                        className={composerTextareaClassName}
-                      />
-                      <div className="mt-2 text-right text-xs font-medium text-slate-400">
-                        {excerptWordCountLabel}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="border-b border-slate-200 bg-white">
-                    <div className="border-b border-slate-200 px-2 py-4 md:px-4">
-                      <h3 className="text-base font-semibold text-slate-900">
-                        Brand
-                      </h3>
-                    </div>
-                    <div className="space-y-3 px-2 py-4 md:px-4">
-                      <div>
-                        <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                          Brand / Source
-                        </label>
-                        <input
-                          value={brandName}
-                          onChange={(event) => setBrandName(event.target.value)}
-                          placeholder={
-                            blogMode === "product"
-                              ? selectedProductBrandName || "Primary product brand"
-                              : "Example: Google, OnePlus, NASA, ISRO"
-                          }
-                          list="blog-brand-options"
-                          className={composerFieldClassName}
-                        />
-                        <datalist id="blog-brand-options">
-                          {brandOptions.map((option) => (
-                            <option key={option} value={option} />
-                          ))}
-                        </datalist>
-                      </div>
-                      <div className="text-xs leading-5 text-slate-500">
-                        {blogMode === "product"
-                          ? `Shown on public cards. If empty, it uses ${selectedProductBrandName || "the primary product brand"}.`
-                          : "Shown on public cards for general technology, science, and internet stories."}
-                      </div>
-                      {effectiveBrandName ? (
-                        <div className="inline-flex border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-600">
-                          Public label: {effectiveBrandName}
-                        </div>
-                      ) : null}
-                    </div>
-                  </div>
-
-                  <div className="border-b border-slate-200 bg-white">
-                    <div className="border-b border-slate-200 px-2 py-4 md:px-4">
-                      <h3 className="text-base font-semibold text-slate-900">
-                        Thumbnail Image
-                      </h3>
-                    </div>
-                    <div className="space-y-4 px-2 py-4 md:px-4">
-                      <div className="overflow-hidden border border-slate-200 bg-slate-50">
-                        <div className="aspect-[16/9]">
-                          {heroImage ? (
-                            <img
-                              src={heroImage}
-                              alt={heroImageAlt || defaultHeroAltText}
-                              className="h-full w-full object-cover"
+                              className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
                             />
-                          ) : (
-                            <div className="flex h-full items-center justify-center px-4 text-center text-sm text-slate-400">
-                              <div>
-                                <FaImage className="mx-auto text-2xl" />
-                                <div className="mt-3">
-                                  No thumbnail selected for this story
-                                </div>
-                              </div>
-                            </div>
-                          )}
+                            <span className="min-w-0">
+                              <span className="block text-sm font-semibold text-slate-900">
+                                {isComposerPublished
+                                  ? "Published"
+                                  : "Unpublished"}
+                              </span>
+                              <span className="mt-0.5 block text-xs text-slate-500">
+                                is_published:{" "}
+                                {isComposerPublished ? "true" : "false"}
+                              </span>
+                            </span>
+                          </label>
                         </div>
-                      </div>
 
-                      <div className="flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          onClick={openHeroImagePicker}
-                          disabled={uploadingHeroImage}
-                          className={`${composerButtonClassName} h-11 px-4 disabled:opacity-60`}
-                        >
-                          <FaUpload className="text-xs" />
-                          {uploadingHeroImage ? "Uploading..." : "Upload Image"}
-                        </button>
-
-                        {blogMode === "product" && defaultSelectedProductImage ? (
-                          <button
-                            type="button"
-                            onClick={handleUsePrimaryProductImage}
-                            className={`${composerButtonClassName} h-11 px-4`}
+                        <div>
+                          <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                            Visibility
+                          </label>
+                          <select
+                            value="public"
+                            readOnly
+                            className={composerFieldClassName}
                           >
-                            Use Product Image
-                          </button>
-                        ) : null}
-
-                        <button
-                          type="button"
-                          onClick={handleRemoveHeroImage}
-                          disabled={
-                            !heroImage &&
-                            currentHeroImageSource === HERO_IMAGE_SOURCE.NONE
-                          }
-                          className={`${composerDangerButtonClassName} h-11 px-4 disabled:opacity-60`}
-                        >
-                          <FaTrashAlt className="text-xs" />
-                          Remove
-                        </button>
-                      </div>
-
-                      <div>
-                        <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                          Image URL
-                        </label>
-                        <input
-                          value={
-                            currentHeroImageSource === HERO_IMAGE_SOURCE.NONE
-                              ? ""
-                              : heroImage
-                          }
-                          onChange={(event) => {
-                            const nextValue = String(event.target.value || "").trim();
-                            setHeroImage(nextValue);
-                            setHeroImageSource(
-                              nextValue
-                                ? HERO_IMAGE_SOURCE.URL
-                                : HERO_IMAGE_SOURCE.NONE,
-                            );
-                          }}
-                          placeholder="https://example.com/story-thumbnail.jpg"
-                          className={composerFieldClassName}
-                        />
-                        <div className="mt-2 text-xs leading-5 text-slate-500">
-                          {blogMode === "product"
-                            ? "Upload a custom thumbnail, paste an image URL, or switch back to the primary product image."
-                            : "Upload a custom thumbnail or paste an external image URL."}
+                            <option value="public">Public</option>
+                          </select>
                         </div>
-                      </div>
 
-                      <div>
-                        <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                          Alt Text
-                        </label>
-                        <input
-                          value={heroImageAlt}
-                          onChange={(event) => setHeroImageAlt(event.target.value)}
-                          placeholder={defaultHeroAltText}
-                          className={composerFieldClassName}
-                        />
-                        <div className="mt-1 text-right text-xs font-medium text-slate-400">
-                          {heroImageAltWordCountLabel}
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                          Caption
-                        </label>
-                        <textarea
-                          value={heroImageCaption}
-                          onChange={(event) =>
-                            setHeroImageCaption(event.target.value)
-                          }
-                          rows={3}
-                          placeholder="Optional photo caption or credit"
-                          className={composerTextareaClassName}
-                        />
-                        <div className="mt-1 text-right text-xs font-medium text-slate-400">
-                          {heroImageCaptionWordCountLabel}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="border-b border-slate-200 bg-white">
-                    <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-2 py-4 md:px-4">
-                      <h3 className="text-base font-semibold text-slate-900">
-                        SEO
-                      </h3>
-                      <span className="text-xs font-semibold text-[#5B34E6]">
-                        Edit Snippet
-                      </span>
-                    </div>
-                    <div className="space-y-4 px-2 py-4 md:px-4">
-                      <div>
-                        <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                          SEO Title
-                        </label>
-                        <input
-                          value={metaTitle}
-                          onChange={(event) => setMetaTitle(event.target.value)}
-                          className={composerFieldClassName}
-                        />
-                        <div className="mt-1 text-right text-xs font-medium text-slate-400">
-                          {metaTitleWordCountLabel}
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                          Meta Description
-                        </label>
-                        <textarea
-                          value={metaDescription}
-                          onChange={(event) =>
-                            setMetaDescription(event.target.value)
-                          }
-                          rows={3}
-                          className={composerTextareaClassName}
-                        />
-                        <div className="mt-1 text-right text-xs font-medium text-slate-400">
-                          {metaDescriptionWordCountLabel}
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                          Focus Keyword
-                        </label>
-                        <input
-                          value={focusKeywordValue}
-                          onChange={(event) => {
-                            const nextKeyword = String(
-                              event.target.value || "",
-                            ).trim();
-                            const nextTags = [...activeTagList];
-
-                            if (nextKeyword) {
-                              if (nextTags.length) {
-                                nextTags[0] = nextKeyword;
-                              } else {
-                                nextTags.push(nextKeyword);
-                              }
-                            } else if (nextTags.length) {
-                              nextTags.shift();
-                            }
-
-                            setTagsInput(
-                              Array.from(new Set(nextTags.filter(Boolean))).join(
-                                ", ",
-                              ),
-                            );
-                          }}
-                          className={composerFieldClassName}
-                        />
-                        <div className="mt-1 text-right text-xs font-medium text-slate-400">
-                          {focusKeywordWordCountLabel}
-                        </div>
-                      </div>
-
-                      <div className="border border-emerald-100 bg-emerald-50 px-2 py-3 md:px-4">
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="text-sm font-semibold text-emerald-700">
-                            SEO Score: {seoScore} / 100
-                          </div>
-                          <div className="text-xs font-semibold text-emerald-700">
-                            {seoScoreLabel}
-                          </div>
-                        </div>
-                        <div className="mt-3 h-2 rounded-full bg-white/80">
-                          <div
-                            className="h-full rounded-full bg-gradient-to-r from-emerald-400 via-emerald-500 to-lime-500 transition-all"
-                            style={{ width: `${seoScorePercent}%` }}
-                          />
-                        </div>
-                        <div className="mt-2 text-xs text-emerald-700/80">
-                          Improve the title, summary, and focus keyword coverage to strengthen organic reach.
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="border-b border-slate-200 bg-white">
-                    <div className="border-b border-slate-200 px-2 py-4 md:px-4">
-                      <h3 className="text-base font-semibold text-slate-900">
-                        Story Setup
-                      </h3>
-                    </div>
-                    <div className="space-y-4 px-2 py-4 md:px-4">
-                      <div>
-                        <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                          Post Type
-                        </label>
-                        <div className="grid grid-cols-2 gap-2">
-                          <button
-                            type="button"
-                            onClick={() => startNewGeneralArticle()}
-                            className={`border px-3 py-2.5 text-sm font-semibold transition ${
-                              blogMode === "general"
-                                ? "border-[#CFC3FF] bg-[#F3EEFF] text-[#5B34E6]"
-                                : "border border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50"
-                            }`}
-                          >
-                            General
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => startNewProductStory(productType)}
-                            className={`border px-3 py-2.5 text-sm font-semibold transition ${
-                              blogMode === "product"
-                                ? "border-[#CFC3FF] bg-[#F3EEFF] text-[#5B34E6]"
-                                : "border border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50"
-                            }`}
-                          >
-                            Product Linked
-                          </button>
-                        </div>
-                      </div>
-
-                      {blogMode === "product" ? (
-                        <>
-                          <div>
-                            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                              Product Type
+                        <div>
+                          <div className="mb-1.5 flex items-center justify-between gap-2">
+                            <label className="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                              Published on
                             </label>
-                            <select
-                              value={productType}
-                              onChange={(event) => setProductType(event.target.value)}
-                              className={composerFieldClassName}
-                            >
-                              <option value="smartphone">Smartphones</option>
-                              <option value="laptop">Laptops</option>
-                              <option value="tv">TVs</option>
-                            </select>
-                          </div>
-
-                          <div>
-                            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                              Candidate Product
-                            </label>
-                            <div className="flex gap-2">
-                              <select
-                                value={candidateProductId || ""}
-                                onChange={(event) =>
-                                  setCandidateProductId(
-                                    Number(event.target.value) || null,
-                                  )
-                                }
-                                disabled={candidatesLoading || candidates.length === 0}
-                                className={`${composerFieldClassName} disabled:bg-slate-50`}
-                              >
-                                {candidates.length === 0 ? (
-                                  <option value="">
-                                    {candidatesLoading ? "Loading..." : "No candidates"}
-                                  </option>
-                                ) : null}
-                                {candidates.map((row) => (
-                                  <option key={row.product_id} value={row.product_id}>
-                                    {row.name} ({row.brand_name || "Brand"})
-                                    {selectedProductIds.includes(Number(row.product_id))
-                                      ? " - Linked"
-                                      : ""}
-                                  </option>
-                                ))}
-                              </select>
+                            <div className="flex items-center gap-2">
                               <button
                                 type="button"
-                                onClick={handleAddCandidateProduct}
-                                disabled={
-                                  !candidateProductId ||
-                                  candidatesLoading ||
-                                  selectedProductIds.includes(
-                                    Number(candidateProductId),
+                                onClick={() =>
+                                  setPublishedAt(
+                                    toDateTimeLocalValue(new Date()),
                                   )
                                 }
-                                className={`${composerButtonClassName} h-11 shrink-0 px-4 disabled:opacity-50`}
+                                className="text-xs font-semibold text-blue-600 hover:text-blue-700"
                               >
-                                Add
+                                Use now
                               </button>
+                              {publishedAt ? (
+                                <button
+                                  type="button"
+                                  onClick={() => setPublishedAt("")}
+                                  className="text-xs font-semibold text-slate-500 hover:text-slate-700"
+                                >
+                                  Clear
+                                </button>
+                              ) : null}
                             </div>
-                            <div className="mt-2 text-xs leading-5 text-slate-500">
-                              Change the type filter anytime to add smartphones,
-                              laptops, and TVs into one story.
+                          </div>
+                          <input
+                            type="datetime-local"
+                            value={publishedAt}
+                            onChange={(event) =>
+                              setPublishedAt(event.target.value)
+                            }
+                            className={composerFieldClassName}
+                          />
+                          <p className="mt-1.5 text-xs leading-5 text-slate-500">
+                            Leave empty to use the current date and time when
+                            publishing. Set a manual value to backdate or
+                            schedule.
+                          </p>
+                        </div>
+
+                        {blogId ? (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              deleteBlog({
+                                id: blogId,
+                                title,
+                                product_id:
+                                  blogMode === "product"
+                                    ? selectedProductId
+                                    : null,
+                                product_ids:
+                                  blogMode === "product"
+                                    ? selectedProductIds
+                                    : [],
+                                products:
+                                  blogMode === "product"
+                                    ? selectedProducts
+                                    : [],
+                                product_type:
+                                  blogMode === "product" ? productType : null,
+                              })
+                            }
+                            disabled={deletingId === blogId}
+                            className={`${composerDangerButtonClassName} h-11 px-2 disabled:opacity-60 md:px-4`}
+                          >
+                            {deletingId === blogId
+                              ? "Moving..."
+                              : "Move to Trash"}
+                          </button>
+                        ) : null}
+                      </div>
+                    </div>
+
+                    <div className="border-b border-slate-200 bg-white">
+                      <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-2 py-4 md:px-4">
+                        <h3 className="text-base font-semibold text-slate-900">
+                          Categories
+                        </h3>
+                        <button
+                          type="button"
+                          onClick={() => setComposerSidebarTab("block")}
+                          className="text-xs font-semibold text-[#5B34E6] transition hover:text-[#4524c7]"
+                        >
+                          Add New Category
+                        </button>
+                      </div>
+                      <div className="space-y-3 px-2 py-4 md:px-4">
+                        {STORY_CATEGORY_OPTIONS.map((option) => {
+                          const checked =
+                            String(category || "")
+                              .trim()
+                              .toLowerCase() === option.value;
+
+                          return (
+                            <label
+                              key={option.value}
+                              className="flex cursor-pointer items-center gap-3 text-sm text-slate-700"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={() => setCategory(option.value)}
+                                className="h-4 w-4 rounded border-slate-300 text-[#5B34E6] focus:ring-[#5B34E6]"
+                              />
+                              <span>{option.label}</span>
+                            </label>
+                          );
+                        })}
+                        <button
+                          type="button"
+                          onClick={() => setComposerSidebarTab("block")}
+                          className="pt-1 text-sm font-medium text-[#5B34E6] transition hover:text-[#4524c7]"
+                        >
+                          View All Categories
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="border-b border-slate-200 bg-white">
+                      <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-2 py-4 md:px-4">
+                        <h3 className="text-base font-semibold text-slate-900">
+                          Tags
+                        </h3>
+                        <button
+                          type="button"
+                          onClick={focusTagsField}
+                          className="text-xs font-semibold text-[#5B34E6] transition hover:text-[#4524c7]"
+                        >
+                          Add New Tag
+                        </button>
+                      </div>
+                      <div className="px-2 py-4 md:px-4">
+                        <div className="flex flex-wrap gap-2">
+                          {activeTagList.length ? (
+                            activeTagList.map((tag) => (
+                              <button
+                                key={tag}
+                                type="button"
+                                onClick={() =>
+                                  setTagsInput(
+                                    activeTagList
+                                      .filter((value) => value !== tag)
+                                      .join(", "),
+                                  )
+                                }
+                                className="inline-flex items-center gap-2 rounded-full bg-[#F3EEFF] px-3 py-1 text-xs font-medium text-[#5B34E6]"
+                              >
+                                <span>{tag}</span>
+                                <span className="text-[10px]">x</span>
+                              </button>
+                            ))
+                          ) : (
+                            <span className="text-sm text-slate-400">
+                              No tags added yet
+                            </span>
+                          )}
+                        </div>
+                        <input
+                          ref={tagsInputRef}
+                          value={tagsInput}
+                          onChange={(event) => setTagsInput(event.target.value)}
+                          placeholder="Press comma to separate tags"
+                          className={`mt-3 ${composerFieldClassName}`}
+                        />
+                        <div className="mt-2 text-xs text-slate-400">
+                          Press Enter or comma to add more tags
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="border-b border-slate-200 bg-white">
+                      <div className="border-b border-slate-200 px-2 py-4 md:px-4">
+                        <h3 className="text-base font-semibold text-slate-900">
+                          Excerpt
+                        </h3>
+                      </div>
+                      <div className="px-2 py-4 md:px-4">
+                        <textarea
+                          value={excerpt}
+                          onChange={(event) => setExcerpt(event.target.value)}
+                          rows={4}
+                          placeholder="Write a short summary for cards and search results"
+                          className={composerTextareaClassName}
+                        />
+                        <div className="mt-2 text-right text-xs font-medium text-slate-400">
+                          {excerptWordCountLabel}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="border-b border-slate-200 bg-white">
+                      <div className="border-b border-slate-200 px-2 py-4 md:px-4">
+                        <h3 className="text-base font-semibold text-slate-900">
+                          Brand
+                        </h3>
+                      </div>
+                      <div className="space-y-3 px-2 py-4 md:px-4">
+                        <div>
+                          <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                            Brand / Source
+                          </label>
+                          <input
+                            value={brandName}
+                            onChange={(event) =>
+                              setBrandName(event.target.value)
+                            }
+                            placeholder={
+                              blogMode === "product"
+                                ? selectedProductBrandName ||
+                                  "Primary product brand"
+                                : "Example: Google, OnePlus, NASA, ISRO"
+                            }
+                            list="blog-brand-options"
+                            className={composerFieldClassName}
+                          />
+                          <datalist id="blog-brand-options">
+                            {brandOptions.map((option) => (
+                              <option key={option} value={option} />
+                            ))}
+                          </datalist>
+                        </div>
+                        <div className="text-xs leading-5 text-slate-500">
+                          {blogMode === "product"
+                            ? `Shown on public cards. If empty, it uses ${selectedProductBrandName || "the primary product brand"}.`
+                            : "Shown on public cards for general technology, science, and internet stories."}
+                        </div>
+                        {effectiveBrandName ? (
+                          <div className="inline-flex border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-600">
+                            Public label: {effectiveBrandName}
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+
+                    <div className="border-b border-slate-200 bg-white">
+                      <div className="border-b border-slate-200 px-2 py-4 md:px-4">
+                        <h3 className="text-base font-semibold text-slate-900">
+                          Thumbnail Image
+                        </h3>
+                      </div>
+                      <div className="space-y-4 px-2 py-4 md:px-4">
+                        <div className="overflow-hidden border border-slate-200 bg-slate-50">
+                          <div className="aspect-[16/9]">
+                            {heroImage ? (
+                              <img
+                                src={heroImage}
+                                alt={heroImageAlt || defaultHeroAltText}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <div className="flex h-full items-center justify-center px-4 text-center text-sm text-slate-400">
+                                <div>
+                                  <FaImage className="mx-auto text-2xl" />
+                                  <div className="mt-3">
+                                    No thumbnail selected for this story
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={openHeroImagePicker}
+                            disabled={uploadingHeroImage}
+                            className={`${composerButtonClassName} h-11 px-4 disabled:opacity-60`}
+                          >
+                            <FaUpload className="text-xs" />
+                            {uploadingHeroImage
+                              ? "Uploading..."
+                              : "Upload Image"}
+                          </button>
+
+                          {blogMode === "product" &&
+                          defaultSelectedProductImage ? (
+                            <button
+                              type="button"
+                              onClick={handleUsePrimaryProductImage}
+                              className={`${composerButtonClassName} h-11 px-4`}
+                            >
+                              Use Product Image
+                            </button>
+                          ) : null}
+
+                          <button
+                            type="button"
+                            onClick={handleRemoveHeroImage}
+                            disabled={
+                              !heroImage &&
+                              currentHeroImageSource === HERO_IMAGE_SOURCE.NONE
+                            }
+                            className={`${composerDangerButtonClassName} h-11 px-4 disabled:opacity-60`}
+                          >
+                            <FaTrashAlt className="text-xs" />
+                            Remove
+                          </button>
+                        </div>
+
+                        <div>
+                          <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                            Image URL
+                          </label>
+                          <input
+                            value={
+                              currentHeroImageSource === HERO_IMAGE_SOURCE.NONE
+                                ? ""
+                                : heroImage
+                            }
+                            onChange={(event) => {
+                              const nextValue = String(
+                                event.target.value || "",
+                              ).trim();
+                              setHeroImage(nextValue);
+                              setHeroImageSource(
+                                nextValue
+                                  ? HERO_IMAGE_SOURCE.URL
+                                  : HERO_IMAGE_SOURCE.NONE,
+                              );
+                            }}
+                            placeholder="https://example.com/story-thumbnail.jpg"
+                            className={composerFieldClassName}
+                          />
+                          <div className="mt-2 text-xs leading-5 text-slate-500">
+                            {blogMode === "product"
+                              ? "Upload a custom thumbnail, paste an image URL, or switch back to the primary product image."
+                              : "Upload a custom thumbnail or paste an external image URL."}
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                            Alt Text
+                          </label>
+                          <input
+                            value={heroImageAlt}
+                            onChange={(event) =>
+                              setHeroImageAlt(event.target.value)
+                            }
+                            placeholder={defaultHeroAltText}
+                            className={composerFieldClassName}
+                          />
+                          <div className="mt-1 text-right text-xs font-medium text-slate-400">
+                            {heroImageAltWordCountLabel}
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                            Caption
+                          </label>
+                          <textarea
+                            value={heroImageCaption}
+                            onChange={(event) =>
+                              setHeroImageCaption(event.target.value)
+                            }
+                            rows={3}
+                            placeholder="Optional photo caption or credit"
+                            className={composerTextareaClassName}
+                          />
+                          <div className="mt-1 text-right text-xs font-medium text-slate-400">
+                            {heroImageCaptionWordCountLabel}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="border-b border-slate-200 bg-white">
+                      <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-2 py-4 md:px-4">
+                        <h3 className="text-base font-semibold text-slate-900">
+                          SEO
+                        </h3>
+                        <span className="text-xs font-semibold text-[#5B34E6]">
+                          Edit Snippet
+                        </span>
+                      </div>
+                      <div className="space-y-4 px-2 py-4 md:px-4">
+                        <div>
+                          <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                            SEO Title
+                          </label>
+                          <input
+                            value={metaTitle}
+                            onChange={(event) =>
+                              setMetaTitle(event.target.value)
+                            }
+                            className={composerFieldClassName}
+                          />
+                          <div className="mt-1 text-right text-xs font-medium text-slate-400">
+                            {metaTitleWordCountLabel}
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                            Meta Description
+                          </label>
+                          <textarea
+                            value={metaDescription}
+                            onChange={(event) =>
+                              setMetaDescription(event.target.value)
+                            }
+                            rows={3}
+                            className={composerTextareaClassName}
+                          />
+                          <div className="mt-1 text-right text-xs font-medium text-slate-400">
+                            {metaDescriptionWordCountLabel}
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                            Focus Keyword
+                          </label>
+                          <input
+                            value={focusKeywordValue}
+                            onChange={(event) => {
+                              const nextKeyword = String(
+                                event.target.value || "",
+                              ).trim();
+                              const nextTags = [...activeTagList];
+
+                              if (nextKeyword) {
+                                if (nextTags.length) {
+                                  nextTags[0] = nextKeyword;
+                                } else {
+                                  nextTags.push(nextKeyword);
+                                }
+                              } else if (nextTags.length) {
+                                nextTags.shift();
+                              }
+
+                              setTagsInput(
+                                Array.from(
+                                  new Set(nextTags.filter(Boolean)),
+                                ).join(", "),
+                              );
+                            }}
+                            className={composerFieldClassName}
+                          />
+                          <div className="mt-1 text-right text-xs font-medium text-slate-400">
+                            {focusKeywordWordCountLabel}
+                          </div>
+                        </div>
+
+                        <div className="border border-emerald-100 bg-emerald-50 px-2 py-3 md:px-4">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="text-sm font-semibold text-emerald-700">
+                              SEO Score: {seoScore} / 100
                             </div>
-                            {selectedCandidateProduct ? (
-                              <div className="mt-3 flex items-center gap-3 border border-slate-200 bg-white px-3 py-3">
-                                <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden border border-slate-200 bg-slate-100">
-                                  {selectedCandidateProductImage ? (
+                            <div className="text-xs font-semibold text-emerald-700">
+                              {seoScoreLabel}
+                            </div>
+                          </div>
+                          <div className="mt-3 h-2 rounded-full bg-white/80">
+                            <div
+                              className="h-full rounded-full bg-gradient-to-r from-emerald-400 via-emerald-500 to-lime-500 transition-all"
+                              style={{ width: `${seoScorePercent}%` }}
+                            />
+                          </div>
+                          <div className="mt-2 text-xs text-emerald-700/80">
+                            Improve the title, summary, and focus keyword
+                            coverage to strengthen organic reach.
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="border-b border-slate-200 bg-white">
+                      <div className="border-b border-slate-200 px-2 py-4 md:px-4">
+                        <h3 className="text-base font-semibold text-slate-900">
+                          Story Setup
+                        </h3>
+                      </div>
+                      <div className="space-y-4 px-2 py-4 md:px-4">
+                        <div>
+                          <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                            Post Type
+                          </label>
+                          <div className="grid grid-cols-2 gap-2">
+                            <button
+                              type="button"
+                              onClick={() => startNewGeneralArticle()}
+                              className={`border px-3 py-2.5 text-sm font-semibold transition ${
+                                blogMode === "general"
+                                  ? "border-[#CFC3FF] bg-[#F3EEFF] text-[#5B34E6]"
+                                  : "border border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+                              }`}
+                            >
+                              General
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => startNewProductStory(productType)}
+                              className={`border px-3 py-2.5 text-sm font-semibold transition ${
+                                blogMode === "product"
+                                  ? "border-[#CFC3FF] bg-[#F3EEFF] text-[#5B34E6]"
+                                  : "border border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+                              }`}
+                            >
+                              Product Linked
+                            </button>
+                          </div>
+                        </div>
+
+                        {blogMode === "product" ? (
+                          <>
+                            <div>
+                              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                                Product Type
+                              </label>
+                              <select
+                                value={productType}
+                                onChange={(event) =>
+                                  setProductType(event.target.value)
+                                }
+                                className={composerFieldClassName}
+                              >
+                                <option value="smartphone">Smartphones</option>
+                                <option value="laptop">Laptops</option>
+                                <option value="tv">TVs</option>
+                              </select>
+                            </div>
+
+                            <div>
+                              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                                Candidate Product
+                              </label>
+                              <div className="flex gap-2">
+                                <select
+                                  value={candidateProductId || ""}
+                                  onChange={(event) =>
+                                    setCandidateProductId(
+                                      Number(event.target.value) || null,
+                                    )
+                                  }
+                                  disabled={
+                                    candidatesLoading || candidates.length === 0
+                                  }
+                                  className={`${composerFieldClassName} disabled:bg-slate-50`}
+                                >
+                                  {candidates.length === 0 ? (
+                                    <option value="">
+                                      {candidatesLoading
+                                        ? "Loading..."
+                                        : "No candidates"}
+                                    </option>
+                                  ) : null}
+                                  {candidates.map((row) => (
+                                    <option
+                                      key={row.product_id}
+                                      value={row.product_id}
+                                    >
+                                      {row.name} ({row.brand_name || "Brand"})
+                                      {selectedProductIds.includes(
+                                        Number(row.product_id),
+                                      )
+                                        ? " - Linked"
+                                        : ""}
+                                    </option>
+                                  ))}
+                                </select>
+                                <button
+                                  type="button"
+                                  onClick={handleAddCandidateProduct}
+                                  disabled={
+                                    !candidateProductId ||
+                                    candidatesLoading ||
+                                    selectedProductIds.includes(
+                                      Number(candidateProductId),
+                                    )
+                                  }
+                                  className={`${composerButtonClassName} h-11 shrink-0 px-4 disabled:opacity-50`}
+                                >
+                                  Add
+                                </button>
+                              </div>
+                              <div className="mt-2 text-xs leading-5 text-slate-500">
+                                Change the type filter anytime to add
+                                smartphones, laptops, and TVs into one story.
+                              </div>
+                              {selectedCandidateProduct ? (
+                                <div className="mt-3 flex items-center gap-3 border border-slate-200 bg-white px-3 py-3">
+                                  <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden border border-slate-200 bg-slate-100">
+                                    {selectedCandidateProductImage ? (
+                                      <img
+                                        src={selectedCandidateProductImage}
+                                        alt={
+                                          selectedCandidateProduct?.name ||
+                                          "Product"
+                                        }
+                                        className="h-full w-full object-cover"
+                                      />
+                                    ) : (
+                                      <div className="flex h-full w-full items-center justify-center text-slate-400">
+                                        <FaImage className="text-lg" />
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <div className="truncate font-semibold text-slate-900">
+                                      {selectedCandidateProduct?.name ||
+                                        "Unnamed product"}
+                                    </div>
+                                    <div className="mt-1 text-xs text-slate-500">
+                                      {[
+                                        selectedCandidateProduct?.brand_name,
+                                        selectedCandidateProduct?.product_type,
+                                      ]
+                                        .filter(Boolean)
+                                        .join(" / ") || "Product details"}
+                                    </div>
+                                    <div className="mt-1 text-sm text-slate-700">
+                                      {selectedCandidateProduct?.price ||
+                                        "No price"}
+                                    </div>
+                                  </div>
+                                </div>
+                              ) : null}
+                            </div>
+
+                            <div className="border border-slate-200 bg-slate-50 px-2 py-4 text-sm text-slate-700 md:px-4">
+                              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                                Linked Products
+                              </div>
+                              {selectedProducts.length === 0 ? (
+                                <div className="mt-2 text-sm leading-6 text-slate-500">
+                                  Add products from the candidate list to build
+                                  a multi-product story. The first linked item
+                                  becomes the primary product for hero defaults
+                                  and summary tokens.
+                                </div>
+                              ) : (
+                                <div className="mt-3 space-y-3">
+                                  {selectedProducts.map((product, index) => {
+                                    const productThumbnail =
+                                      getProductThumbnail(product);
+
+                                    return (
+                                      <div
+                                        key={product.product_id}
+                                        className="border border-slate-200 bg-white px-3 py-3"
+                                      >
+                                        <div className="flex items-start justify-between gap-3">
+                                          <div className="flex min-w-0 flex-1 items-start gap-3">
+                                            <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden border border-slate-200 bg-slate-100">
+                                              {productThumbnail ? (
+                                                <img
+                                                  src={productThumbnail}
+                                                  alt={
+                                                    product?.name || "Product"
+                                                  }
+                                                  className="h-full w-full object-cover"
+                                                />
+                                              ) : (
+                                                <div className="flex h-full w-full items-center justify-center text-slate-400">
+                                                  <FaImage className="text-lg" />
+                                                </div>
+                                              )}
+                                            </div>
+                                            <div className="min-w-0">
+                                              <div className="flex flex-wrap items-center gap-2">
+                                                <div className="font-semibold text-slate-900">
+                                                  {product?.name ||
+                                                    "Unnamed product"}
+                                                </div>
+                                                {index === 0 ? (
+                                                  <span className="inline-flex border border-violet-200 bg-violet-50 px-2 py-0.5 text-[11px] font-semibold text-violet-700">
+                                                    Primary
+                                                  </span>
+                                                ) : null}
+                                              </div>
+                                              <div className="mt-1 text-xs text-slate-500">
+                                                {[
+                                                  product?.brand_name,
+                                                  product?.product_type,
+                                                ]
+                                                  .filter(Boolean)
+                                                  .join(" / ") ||
+                                                  "Product details"}
+                                              </div>
+                                              <div className="mt-1 text-sm text-slate-700">
+                                                {product?.price || "-"}
+                                              </div>
+                                            </div>
+                                          </div>
+
+                                          <div className="flex shrink-0 gap-2">
+                                            {index > 0 ? (
+                                              <button
+                                                type="button"
+                                                onClick={() =>
+                                                  handleSetPrimaryProduct(
+                                                    Number(product.product_id),
+                                                  )
+                                                }
+                                                className="inline-flex h-8 items-center justify-center border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+                                              >
+                                                Make Primary
+                                              </button>
+                                            ) : null}
+                                            <button
+                                              type="button"
+                                              onClick={() =>
+                                                handleRemoveSelectedProduct(
+                                                  Number(product.product_id),
+                                                )
+                                              }
+                                              className="inline-flex h-8 items-center justify-center border border-red-200 bg-red-50 px-3 text-[11px] font-semibold text-red-600 transition hover:border-red-300 hover:bg-red-100"
+                                            >
+                                              Remove
+                                            </button>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="border border-slate-200 bg-slate-50 px-2 py-4 text-sm text-slate-700 md:px-4">
+                              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                                Primary Product Snapshot
+                              </div>
+                              <div className="mt-3 flex items-start gap-3">
+                                <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden border border-slate-200 bg-white">
+                                  {selectedPrimaryProductImage ? (
                                     <img
-                                      src={selectedCandidateProductImage}
-                                      alt={selectedCandidateProduct?.name || "Product"}
+                                      src={selectedPrimaryProductImage}
+                                      alt={
+                                        selectedProduct?.name ||
+                                        "Primary product"
+                                      }
                                       className="h-full w-full object-cover"
                                     />
                                   ) : (
                                     <div className="flex h-full w-full items-center justify-center text-slate-400">
-                                      <FaImage className="text-lg" />
+                                      <FaImage className="text-xl" />
                                     </div>
                                   )}
                                 </div>
-                                <div className="min-w-0 flex-1">
-                                  <div className="truncate font-semibold text-slate-900">
-                                    {selectedCandidateProduct?.name || "Unnamed product"}
+                                <div className="min-w-0">
+                                  <div className="font-semibold text-slate-900">
+                                    {selectedProduct?.name || "-"}
                                   </div>
-                                  <div className="mt-1 text-xs text-slate-500">
-                                    {[
-                                      selectedCandidateProduct?.brand_name,
-                                      selectedCandidateProduct?.product_type,
-                                    ]
-                                      .filter(Boolean)
-                                      .join(" / ") || "Product details"}
+                                  <div className="mt-1">
+                                    {selectedProduct?.brand_name || "-"}
                                   </div>
-                                  <div className="mt-1 text-sm text-slate-700">
-                                    {selectedCandidateProduct?.price || "No price"}
+                                  <div className="mt-1">
+                                    {selectedProduct?.price || "-"}
                                   </div>
                                 </div>
                               </div>
-                            ) : null}
-                          </div>
-
-                          <div className="border border-slate-200 bg-slate-50 px-2 py-4 text-sm text-slate-700 md:px-4">
-                            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                              Linked Products
                             </div>
-                            {selectedProducts.length === 0 ? (
-                              <div className="mt-2 text-sm leading-6 text-slate-500">
-                                Add products from the candidate list to build a
-                                multi-product story. The first linked item becomes
-                                the primary product for hero defaults and summary
-                                tokens.
-                              </div>
-                            ) : (
-                              <div className="mt-3 space-y-3">
-                                {selectedProducts.map((product, index) => {
-                                  const productThumbnail = getProductThumbnail(product);
-
-                                  return (
-                                    <div
-                                      key={product.product_id}
-                                      className="border border-slate-200 bg-white px-3 py-3"
-                                    >
-                                      <div className="flex items-start justify-between gap-3">
-                                        <div className="flex min-w-0 flex-1 items-start gap-3">
-                                          <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden border border-slate-200 bg-slate-100">
-                                            {productThumbnail ? (
-                                              <img
-                                                src={productThumbnail}
-                                                alt={product?.name || "Product"}
-                                                className="h-full w-full object-cover"
-                                              />
-                                            ) : (
-                                              <div className="flex h-full w-full items-center justify-center text-slate-400">
-                                                <FaImage className="text-lg" />
-                                              </div>
-                                            )}
-                                          </div>
-                                          <div className="min-w-0">
-                                            <div className="flex flex-wrap items-center gap-2">
-                                              <div className="font-semibold text-slate-900">
-                                                {product?.name || "Unnamed product"}
-                                              </div>
-                                              {index === 0 ? (
-                                                <span className="inline-flex border border-violet-200 bg-violet-50 px-2 py-0.5 text-[11px] font-semibold text-violet-700">
-                                                  Primary
-                                                </span>
-                                              ) : null}
-                                            </div>
-                                            <div className="mt-1 text-xs text-slate-500">
-                                              {[product?.brand_name, product?.product_type]
-                                                .filter(Boolean)
-                                                .join(" / ") || "Product details"}
-                                            </div>
-                                            <div className="mt-1 text-sm text-slate-700">
-                                              {product?.price || "-"}
-                                            </div>
-                                          </div>
-                                        </div>
-
-                                        <div className="flex shrink-0 gap-2">
-                                          {index > 0 ? (
-                                            <button
-                                              type="button"
-                                              onClick={() =>
-                                                handleSetPrimaryProduct(
-                                                  Number(product.product_id),
-                                                )
-                                              }
-                                              className="inline-flex h-8 items-center justify-center border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
-                                            >
-                                              Make Primary
-                                            </button>
-                                          ) : null}
-                                          <button
-                                            type="button"
-                                            onClick={() =>
-                                              handleRemoveSelectedProduct(
-                                                Number(product.product_id),
-                                              )
-                                            }
-                                            className="inline-flex h-8 items-center justify-center border border-red-200 bg-red-50 px-3 text-[11px] font-semibold text-red-600 transition hover:border-red-300 hover:bg-red-100"
-                                          >
-                                            Remove
-                                          </button>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            )}
-                          </div>
-
-                          <div className="border border-slate-200 bg-slate-50 px-2 py-4 text-sm text-slate-700 md:px-4">
-                            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                              Primary Product Snapshot
-                            </div>
-                            <div className="mt-3 flex items-start gap-3">
-                              <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden border border-slate-200 bg-white">
-                                {selectedPrimaryProductImage ? (
-                                  <img
-                                    src={selectedPrimaryProductImage}
-                                    alt={selectedProduct?.name || "Primary product"}
-                                    className="h-full w-full object-cover"
-                                  />
-                                ) : (
-                                  <div className="flex h-full w-full items-center justify-center text-slate-400">
-                                    <FaImage className="text-xl" />
-                                  </div>
-                                )}
-                              </div>
-                              <div className="min-w-0">
-                                <div className="font-semibold text-slate-900">
-                                  {selectedProduct?.name || "-"}
-                                </div>
-                                <div className="mt-1">
-                                  {selectedProduct?.brand_name || "-"}
-                                </div>
-                                <div className="mt-1">{selectedProduct?.price || "-"}</div>
-                              </div>
-                            </div>
-                          </div>
-                        </>
-                      ) : (
-                        <div className="border border-indigo-100 bg-indigo-50 px-2 py-4 text-sm leading-6 text-indigo-700 md:px-4">
-                          General article mode is best for explainers, roundups,
-                          and editorial posts that are not tied to one product.
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="border-b border-slate-200 bg-white">
-                    <div className="border-b border-slate-200 px-2 py-4 md:px-4">
-                      <h3 className="text-base font-semibold text-slate-900">
-                        Author & Permalink
-                      </h3>
-                    </div>
-                    <div className="space-y-4 px-2 py-4 md:px-4">
-                      <div>
-                        <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                          Author
-                        </label>
-                        <select
-                          value={authorUserId}
-                          onChange={(event) => {
-                            const nextAuthorId = event.target.value;
-                            setAuthorUserId(nextAuthorId);
-                            const selectedAuthor = authorOptions.find(
-                              (option) =>
-                                String(option.value) === String(nextAuthorId),
-                            );
-                            if (selectedAuthor?.label) {
-                              setAuthorName(selectedAuthor.label);
-                            }
-                          }}
-                          className={composerFieldClassName}
-                        >
-                          <option value="">Custom byline</option>
-                          {authorOptions.map((option) => (
-                            <option key={option.value} value={option.value}>
-                              {option.label} - {option.secondary}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                          Custom Byline
-                        </label>
-                        <input
-                          value={authorName}
-                          onChange={(event) => setAuthorName(event.target.value)}
-                          className={composerFieldClassName}
-                        />
-                        <div className="mt-1 text-right text-xs font-medium text-slate-400">
-                          {authorNameWordCountLabel}
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                          Slug
-                        </label>
-                        <input
-                          ref={slugInputRef}
-                          value={slug}
-                          onChange={(event) => setSlug(event.target.value)}
-                          placeholder="optional-custom-slug"
-                          className={composerFieldClassName}
-                        />
-                      </div>
-
-                      <div className="border border-slate-200 bg-slate-50 px-2 py-3 text-sm text-slate-600 md:px-4">
-                        {editorPermalinkDisplay}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="border-b border-slate-200 bg-white">
-                    <div className="border-b border-slate-200 px-2 py-4 md:px-4">
-                      <h3 className="text-base font-semibold text-slate-900">
-                        Post Flags
-                      </h3>
-                    </div>
-                    <div className="flex flex-wrap gap-2 px-2 py-4 md:px-4">
-                      {[
-                        {
-                          key: "featured",
-                          label: "Featured",
-                          active: featured,
-                          onClick: () => setFeatured((prev) => !prev),
-                        },
-                        {
-                          key: "trending",
-                          label: "Trending",
-                          active: trending,
-                          onClick: () => setTrending((prev) => !prev),
-                        },
-                        {
-                          key: "pinned",
-                          label: "Pinned",
-                          active: pinned,
-                          onClick: () => setPinned((prev) => !prev),
-                        },
-                      ].map((item) => (
-                        <button
-                          key={item.key}
-                          type="button"
-                          onClick={item.onClick}
-                          className={`inline-flex items-center border px-3 py-2 text-xs font-semibold transition ${
-                            item.active
-                              ? "border-[#CFC3FF] bg-[#F3EEFF] text-[#5B34E6]"
-                              : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50"
-                          }`}
-                        >
-                          {item.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="border-b border-slate-200 bg-white">
-                    <div className="border-b border-slate-200 px-2 py-4 md:px-4">
-                      <h3 className="text-base font-semibold text-slate-900">
-                        Starter Layouts
-                      </h3>
-                    </div>
-                    <div className="space-y-2 px-2 py-4 md:px-4">
-                      {editorTemplateActions.map((item) => (
-                        <button
-                          key={item.key}
-                          type="button"
-                          onClick={item.onClick}
-                          className="flex w-full items-start justify-between border border-slate-200 bg-white px-2 py-3 text-left transition hover:border-slate-300 hover:bg-slate-50 md:px-4"
-                        >
-                          <div>
-                            <div className="text-sm font-semibold text-slate-900">
-                              {item.label}
-                            </div>
-                            <div className="mt-1 text-xs leading-5 text-slate-500">
-                              {item.description}
-                            </div>
-                          </div>
-                          <FaPlus className="mt-1 text-xs text-slate-400" />
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="border-b border-slate-200 bg-white">
-                    <div className="border-b border-slate-200 px-2 py-4 md:px-4">
-                      <h3 className="text-base font-semibold text-slate-900">
-                        Product Facts
-                      </h3>
-                    </div>
-                    <div className="px-2 py-4 md:px-4">
-                      <div className="flex max-h-48 flex-wrap gap-2 overflow-y-auto">
-                        {blogMode !== "product" ? (
-                          <span className="text-sm text-slate-400">
-                            Switch to a product-linked story to use dynamic facts.
-                          </span>
-                        ) : tokenKeys.length === 0 ? (
-                          <span className="text-sm text-slate-400">
-                            No product facts available
-                          </span>
+                          </>
                         ) : (
-                          tokenKeys.map((tokenKey) => (
-                            <button
-                              key={tokenKey}
-                              type="button"
-                              onPointerDown={(event) =>
-                                handleToolbarAction(
-                                  event,
-                                  () => insertToken(tokenKey),
-                                )
-                              }
-                              className="border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-100"
-                            >
-                              {`{{${tokenKey}}}`}
-                            </button>
-                          ))
+                          <div className="border border-indigo-100 bg-indigo-50 px-2 py-4 text-sm leading-6 text-indigo-700 md:px-4">
+                            General article mode is best for explainers,
+                            roundups, and editorial posts that are not tied to
+                            one product.
+                          </div>
                         )}
                       </div>
                     </div>
-                  </div>
-                </>
-              )}
+
+                    <div className="border-b border-slate-200 bg-white">
+                      <div className="border-b border-slate-200 px-2 py-4 md:px-4">
+                        <h3 className="text-base font-semibold text-slate-900">
+                          Author & Permalink
+                        </h3>
+                      </div>
+                      <div className="space-y-4 px-2 py-4 md:px-4">
+                        <div>
+                          <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                            Author
+                          </label>
+                          <select
+                            value={authorUserId}
+                            onChange={(event) => {
+                              const nextAuthorId = event.target.value;
+                              setAuthorUserId(nextAuthorId);
+                              const selectedAuthor = authorOptions.find(
+                                (option) =>
+                                  String(option.value) === String(nextAuthorId),
+                              );
+                              if (selectedAuthor?.label) {
+                                setAuthorName(selectedAuthor.label);
+                              }
+                            }}
+                            className={composerFieldClassName}
+                          >
+                            <option value="">Custom byline</option>
+                            {authorOptions.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label} - {option.secondary}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                            Custom Byline
+                          </label>
+                          <input
+                            value={authorName}
+                            onChange={(event) =>
+                              setAuthorName(event.target.value)
+                            }
+                            className={composerFieldClassName}
+                          />
+                          <div className="mt-1 text-right text-xs font-medium text-slate-400">
+                            {authorNameWordCountLabel}
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                            Slug
+                          </label>
+                          <input
+                            ref={slugInputRef}
+                            value={slug}
+                            onChange={(event) => setSlug(event.target.value)}
+                            placeholder="optional-custom-slug"
+                            className={composerFieldClassName}
+                          />
+                        </div>
+
+                        <div className="border border-slate-200 bg-slate-50 px-2 py-3 text-sm text-slate-600 md:px-4">
+                          {editorPermalinkDisplay}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="border-b border-slate-200 bg-white">
+                      <div className="border-b border-slate-200 px-2 py-4 md:px-4">
+                        <h3 className="text-base font-semibold text-slate-900">
+                          Post Flags
+                        </h3>
+                      </div>
+                      <div className="flex flex-wrap gap-2 px-2 py-4 md:px-4">
+                        {[
+                          {
+                            key: "featured",
+                            label: "Featured",
+                            active: featured,
+                            onClick: () => setFeatured((prev) => !prev),
+                          },
+                          {
+                            key: "trending",
+                            label: "Trending",
+                            active: trending,
+                            onClick: () => setTrending((prev) => !prev),
+                          },
+                          {
+                            key: "pinned",
+                            label: "Pinned",
+                            active: pinned,
+                            onClick: () => setPinned((prev) => !prev),
+                          },
+                        ].map((item) => (
+                          <button
+                            key={item.key}
+                            type="button"
+                            onClick={item.onClick}
+                            className={`inline-flex items-center border px-3 py-2 text-xs font-semibold transition ${
+                              item.active
+                                ? "border-[#CFC3FF] bg-[#F3EEFF] text-[#5B34E6]"
+                                : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+                            }`}
+                          >
+                            {item.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="border-b border-slate-200 bg-white">
+                      <div className="border-b border-slate-200 px-2 py-4 md:px-4">
+                        <h3 className="text-base font-semibold text-slate-900">
+                          Starter Layouts
+                        </h3>
+                      </div>
+                      <div className="space-y-2 px-2 py-4 md:px-4">
+                        {editorTemplateActions.map((item) => (
+                          <button
+                            key={item.key}
+                            type="button"
+                            onClick={item.onClick}
+                            className="flex w-full items-start justify-between border border-slate-200 bg-white px-2 py-3 text-left transition hover:border-slate-300 hover:bg-slate-50 md:px-4"
+                          >
+                            <div>
+                              <div className="text-sm font-semibold text-slate-900">
+                                {item.label}
+                              </div>
+                              <div className="mt-1 text-xs leading-5 text-slate-500">
+                                {item.description}
+                              </div>
+                            </div>
+                            <FaPlus className="mt-1 text-xs text-slate-400" />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="border-b border-slate-200 bg-white">
+                      <div className="border-b border-slate-200 px-2 py-4 md:px-4">
+                        <h3 className="text-base font-semibold text-slate-900">
+                          Product Facts
+                        </h3>
+                      </div>
+                      <div className="px-2 py-4 md:px-4">
+                        <div className="flex max-h-48 flex-wrap gap-2 overflow-y-auto">
+                          {blogMode !== "product" ? (
+                            <span className="text-sm text-slate-400">
+                              Switch to a product-linked story to use dynamic
+                              facts.
+                            </span>
+                          ) : tokenKeys.length === 0 ? (
+                            <span className="text-sm text-slate-400">
+                              No product facts available
+                            </span>
+                          ) : (
+                            tokenKeys.map((tokenKey) => (
+                              <button
+                                key={tokenKey}
+                                type="button"
+                                onPointerDown={(event) =>
+                                  handleToolbarAction(event, () =>
+                                    insertToken(tokenKey),
+                                  )
+                                }
+                                className="border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-100"
+                              >
+                                {`{{${tokenKey}}}`}
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      ) : null}
-
+        ) : null}
       </div>
       {linkDialogOpen ? (
         <div className="fixed inset-0 z-50 bg-slate-950/40 p-4 backdrop-blur-sm sm:p-6">
@@ -5246,10 +5314,3 @@ const BlogEditor = () => {
 };
 
 export default BlogEditor;
-
-
-
-
-
-
-
