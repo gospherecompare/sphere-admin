@@ -617,6 +617,13 @@ const ViewMobiles = ({
   const [error, setError] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
   const [toasts, setToasts] = useState([]);
+  const [aiSummaryUsage, setAiSummaryUsage] = useState({
+    total: 0,
+    generated: 0,
+    processing: 0,
+    waiting: 0,
+    failed: 0,
+  });
 
   const [searchTerm, setSearchTerm] = useState("");
   const [brandFilter, setBrandFilter] = useState("all");
@@ -742,6 +749,15 @@ const ViewMobiles = ({
         }
 
         const payload = await response.json();
+        setAiSummaryUsage(
+          payload?.ai_summary_usage || {
+            total: 0,
+            generated: 0,
+            processing: 0,
+            waiting: 0,
+            failed: 0,
+          },
+        );
         let rows = [];
 
         if (Array.isArray(payload)) rows = payload;
@@ -794,6 +810,7 @@ const ViewMobiles = ({
               mobile.trend_velocity ?? mobile.trendVelocity,
             ),
             freshness: toScore(mobile.freshness),
+            aiSummaryStatus: mobile.ai_summary_status || "not_created",
             published,
             launch_date: firstFilledValue(
               mobile.launch_date,
@@ -905,6 +922,7 @@ const ViewMobiles = ({
               buyer_intent: row.buyer_intent,
               trend_velocity: row.trend_velocity,
               freshness: row.freshness,
+              aiSummaryStatus: row.aiSummaryStatus,
               raw: row.raw || {},
               created_at:
                 row.raw?.created_at ||
@@ -1838,6 +1856,30 @@ const ViewMobiles = ({
     }
   };
 
+  const queueMissingAiSummaries = async () => {
+    try {
+      const response = await fetch(buildUrl("/api/admin/ai/products/queue"), {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ limit: 1000 }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload?.message || `HTTP ${response.status}`);
+      showToast(
+        "AI Queue Started",
+        `${payload.queued || 0} product summaries queued for background generation`,
+        "success",
+      );
+      setReloadKey((previous) => previous + 1);
+    } catch (queueError) {
+      showToast(
+        "AI Queue Failed",
+        queueError.message || "Unable to queue AI summaries",
+        "error",
+      );
+    }
+  };
+
   const openPreview = (mobile) => {
     navigate("/products/smartphones/preview", {
       state: {
@@ -1899,9 +1941,30 @@ const ViewMobiles = ({
               <span className="ml-1 align-middle text-[1.4rem]">{`\u{1F4F1}`}</span>
             </h1>
             <p className="mt-2 text-base text-slate-500">{subtitle}</p>
+            <p className="mt-2 text-sm font-semibold text-amber-700">
+              AI summaries: {aiSummaryUsage.generated} complete
+              {aiSummaryUsage.processing > 0
+                ? `, ${aiSummaryUsage.processing} processing`
+                : ""}
+              {aiSummaryUsage.waiting > 0
+                ? `, ${aiSummaryUsage.waiting} waiting for data`
+                : ""}
+              {aiSummaryUsage.failed > 0
+                ? `, ${aiSummaryUsage.failed} failed`
+                : ""}
+            </p>
           </div>
 
           <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+            <button
+              type="button"
+              onClick={queueMissingAiSummaries}
+              className={`${secondaryButtonClassName} w-full sm:w-auto`}
+              title="Queue missing AI summaries"
+            >
+              <FaRobot className="text-sm" />
+              Queue AI summaries
+            </button>
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
@@ -2234,6 +2297,7 @@ const ViewMobiles = ({
                 <th className="px-3 py-3">Performance Score</th>
                 <th className="px-3 py-3">Search Volume</th>
                 <th className="px-3 py-3">Status</th>
+                <th className="px-3 py-3">AI Summary</th>
                 <th className="px-3 py-3">Trending Rank</th>
                 <th className="px-3 py-3 text-right xl:px-4">Actions</th>
               </tr>
@@ -2241,7 +2305,7 @@ const ViewMobiles = ({
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="12" className="px-4 py-16 text-center">
+                  <td colSpan="13" className="px-4 py-16 text-center">
                     <div className="flex flex-col items-center gap-3 text-slate-500">
                       <FaSpinner className="animate-spin text-2xl text-[#5A49FF]" />
                       Loading mobile inventory...
@@ -2250,7 +2314,7 @@ const ViewMobiles = ({
                 </tr>
               ) : paginatedMobiles.length === 0 ? (
                 <tr>
-                  <td colSpan="12" className="px-4 py-16 text-center">
+                  <td colSpan="13" className="px-4 py-16 text-center">
                     <div className="flex flex-col items-center gap-3 text-slate-500">
                       <FaMobile className="text-4xl text-slate-300" />
                       <p className="text-base font-semibold text-slate-700">
@@ -2398,6 +2462,32 @@ const ViewMobiles = ({
                               "No Store Listing"}
                           </span>
                         </div>
+                      </td>
+
+                      <td className="px-3 py-3">
+                        <span className={`inline-flex px-2 py-1 text-xs font-semibold ${
+                          mobile.aiSummaryStatus === "generated"
+                            ? "border border-emerald-200 bg-emerald-50 text-emerald-700"
+                            : mobile.aiSummaryStatus === "failed"
+                              ? "border border-rose-200 bg-rose-50 text-rose-700"
+                              : mobile.aiSummaryStatus === "disabled"
+                                ? "border border-slate-200 bg-slate-50 text-slate-500"
+                                : "border border-amber-200 bg-amber-50 text-amber-700"
+                        }`}>
+                          {mobile.aiSummaryStatus === "generated"
+                            ? "Complete"
+                            : mobile.aiSummaryStatus === "generating"
+                              ? "Generating"
+                              : mobile.aiSummaryStatus === "pending"
+                                ? "Queued"
+                                  : mobile.aiSummaryStatus === "failed"
+                                    ? "Failed"
+                                    : mobile.aiSummaryStatus === "waiting_for_data"
+                                      ? "Waiting for data"
+                                      : mobile.aiSummaryStatus === "disabled"
+                                        ? "Disabled"
+                                        : "Not created"}
+                        </span>
                       </td>
 
                       <td className="px-3 py-3">

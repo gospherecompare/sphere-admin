@@ -185,6 +185,7 @@ const createInitialMobileFormData = () => ({
     expected_price: "",
     spec_confidence: "expected",
     official_preorder_url: "",
+    create_ai_summary: true,
     colors: [],
     is_foldable: false,
     ...createDefaultSmartphoneSpecs(),
@@ -1920,6 +1921,32 @@ const CreateMobile = () => {
                     <p className="mt-1 text-xs text-slate-500">
                       Used only when no confirmed variant/store price exists.
                     </p>
+                  </label>
+
+                  <label className="mt-3 flex items-start gap-3 border border-amber-200 bg-amber-50 px-3 py-3">
+                    <input
+                      type="checkbox"
+                      name="create_ai_summary"
+                      checked={formData.smartphone.create_ai_summary !== false}
+                      onChange={(event) =>
+                        setFormData((previous) => ({
+                          ...previous,
+                          smartphone: {
+                            ...previous.smartphone,
+                            create_ai_summary: event.target.checked,
+                          },
+                        }))
+                      }
+                      className="mt-0.5 h-4 w-4 border-slate-300 text-amber-600 focus:ring-amber-500"
+                    />
+                    <span>
+                      <span className="block text-sm font-semibold text-slate-800">
+                        Create AI summary automatically
+                      </span>
+                      <span className="mt-1 block text-xs leading-5 text-slate-600">
+                        Enabled by default. Generation runs in the background after saving.
+                      </span>
+                    </span>
                   </label>
 
                   <div className="mt-3 rounded-lg border border-white bg-white px-3 py-2 text-xs text-slate-600 shadow-sm">
