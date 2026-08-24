@@ -15,6 +15,7 @@ import {
   FaFilter,
   FaMobile,
   FaPlus,
+  FaRobot,
   FaRedo,
   FaSearch,
   FaSpinner,
