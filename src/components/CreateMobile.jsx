@@ -295,7 +295,8 @@ const CreateMobile = () => {
   });
   const launchStatusAuto = autoLifecycleState.launchStage;
   const effectiveLaunchStatus =
-    formData.smartphone.launch_status_override || autoLifecycleState.launchStage;
+    formData.smartphone.launch_status_override ||
+    autoLifecycleState.launchStage;
   const saleStage = autoLifecycleState.saleStage;
   const storeStage = autoLifecycleState.storeStage;
   const renderState = getSmartphoneRenderState({
@@ -1710,7 +1711,9 @@ const CreateMobile = () => {
       <div className="mb-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-6">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-700/80 mb-1">Inventory</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-700/80 mb-1">
+              Inventory
+            </p>
             <h1 className="font-semibold tracking-[-0.03em] text-slate-950 text-xl sm:text-2xl md:text-3xl">
               Create New Mobile
             </h1>
@@ -1872,18 +1875,43 @@ const CreateMobile = () => {
                       Market Lifecycle
                     </p>
                     <p className="mt-1 text-xs text-slate-600">
-                      Controls where this phone appears before and after sale goes live.
+                      Controls where this phone appears before and after sale
+                      goes live.
                     </p>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     {[
-                      ["launch_status_override", "Launch Status", LAUNCH_STATUS_OPTIONS],
-                      ["sale_status_override", "Sale Status", SALE_STATUS_OPTIONS],
-                      ["store_stage_override", "Store Stage", STORE_STAGE_OPTIONS],
-                      ["launch_date_type", "Launch Date Type", LAUNCH_DATE_TYPE_OPTIONS],
-                      ["price_confidence", "Price Confidence", CONFIDENCE_OPTIONS],
-                      ["spec_confidence", "Spec Confidence", SPEC_CONFIDENCE_OPTIONS],
+                      [
+                        "launch_status_override",
+                        "Launch Status",
+                        LAUNCH_STATUS_OPTIONS,
+                      ],
+                      [
+                        "sale_status_override",
+                        "Sale Status",
+                        SALE_STATUS_OPTIONS,
+                      ],
+                      [
+                        "store_stage_override",
+                        "Store Stage",
+                        STORE_STAGE_OPTIONS,
+                      ],
+                      [
+                        "launch_date_type",
+                        "Launch Date Type",
+                        LAUNCH_DATE_TYPE_OPTIONS,
+                      ],
+                      [
+                        "price_confidence",
+                        "Price Confidence",
+                        CONFIDENCE_OPTIONS,
+                      ],
+                      [
+                        "spec_confidence",
+                        "Spec Confidence",
+                        SPEC_CONFIDENCE_OPTIONS,
+                      ],
                     ].map(([name, label, options]) => (
                       <label key={name} className="block">
                         <span className="block text-xs font-medium text-gray-700 mb-1">
@@ -1944,19 +1972,30 @@ const CreateMobile = () => {
                         Create AI summary automatically
                       </span>
                       <span className="mt-1 block text-xs leading-5 text-slate-600">
-                        Enabled by default. Generation runs in the background after saving.
+                        Enabled by default. Generation runs in the background
+                        after saving.
                       </span>
                     </span>
                   </label>
 
                   <div className="mt-3 rounded-lg border border-white bg-white px-3 py-2 text-xs text-slate-600 shadow-sm">
                     <p>
-                      Auto launch: {formatLaunchStageLabel(launchStatusAuto) || "Released"}
+                      Auto launch:{" "}
+                      {formatLaunchStageLabel(launchStatusAuto) || "Released"}
                     </p>
-                    <p>Sale stage: {formatSaleStageLabel(saleStage) || "Sale Date TBA"}</p>
-                    <p>Store state: {formatStoreStageLabel(storeStage) || "No Store Listing"}</p>
+                    <p>
+                      Sale stage:{" "}
+                      {formatSaleStageLabel(saleStage) || "Sale Date TBA"}
+                    </p>
+                    <p>
+                      Store state:{" "}
+                      {formatStoreStageLabel(storeStage) || "No Store Listing"}
+                    </p>
                     <p className="mt-2 font-semibold text-slate-900">
-                      Render Result: {renderState.renderType === "available" ? "All Smartphones" : "Upcoming"}
+                      Render Result:{" "}
+                      {renderState.renderType === "available"
+                        ? "All Smartphones"
+                        : "Upcoming"}
                     </p>
                     <p className="font-semibold text-blue-700">
                       Display Status: {renderState.displayStatus}
@@ -2714,7 +2753,11 @@ const CreateMobile = () => {
                       <DynamicForm
                         data={formData.smartphone[activeSpecTab]?.fold || {}}
                         onChange={(next) =>
-                          setFoldableSpecSectionSide(activeSpecTab, "fold", next)
+                          setFoldableSpecSectionSide(
+                            activeSpecTab,
+                            "fold",
+                            next,
+                          )
                         }
                         hiddenKeys={specEditorHiddenKeys}
                         labelOverrides={specUi.labelOverrides}
@@ -2731,7 +2774,11 @@ const CreateMobile = () => {
                       <DynamicForm
                         data={formData.smartphone[activeSpecTab]?.flip || {}}
                         onChange={(next) =>
-                          setFoldableSpecSectionSide(activeSpecTab, "flip", next)
+                          setFoldableSpecSectionSide(
+                            activeSpecTab,
+                            "flip",
+                            next,
+                          )
                         }
                         hiddenKeys={specEditorHiddenKeys}
                         labelOverrides={specUi.labelOverrides}
@@ -2756,7 +2803,6 @@ const CreateMobile = () => {
                     }
                   />
                 )}
-
               </div>
             </div>
           )}
@@ -2863,7 +2909,7 @@ const CreateMobile = () => {
             ) : (
               <>
                 <FaSave />
-              <span>Create Mobile</span>
+                <span>Create Mobile</span>
               </>
             )}
           </button>
@@ -2890,7 +2936,3 @@ const CreateMobile = () => {
 };
 
 export default CreateMobile;
-
-
-
-

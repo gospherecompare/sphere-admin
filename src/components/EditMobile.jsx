@@ -18,9 +18,7 @@ import {
   getSmartphoneRenderState,
   isUpcomingLaunchStage,
 } from "../utils/smartphoneLifecycle";
-import {
-  buildMobileSubmitPayload,
-} from "../utils/mobileEditorLogic";
+import { buildMobileSubmitPayload } from "../utils/mobileEditorLogic";
 import {
   editorCardClassName,
   editorDangerButtonClassName,
@@ -1085,7 +1083,8 @@ const EditMobile = () => {
             apiData?.launch_date_type || apiData?.launchDateType || "confirmed",
           price_confidence:
             apiData?.price_confidence || apiData?.priceConfidence || "medium",
-          expected_price: apiData?.expected_price || apiData?.expectedPrice || "",
+          expected_price:
+            apiData?.expected_price || apiData?.expectedPrice || "",
           spec_confidence:
             apiData?.spec_confidence || apiData?.specConfidence || "expected",
           created_at: apiData?.created_at || apiData?.createdAt || "",
@@ -1115,7 +1114,9 @@ const EditMobile = () => {
           build_design: extractSphereRating(
             apiData?.build_design_json ?? apiData?.build_design,
           ),
-          display: extractSphereRating(apiData?.display_json ?? apiData?.display),
+          display: extractSphereRating(
+            apiData?.display_json ?? apiData?.display,
+          ),
           performance: extractSphereRating(
             apiData?.performance_json ?? apiData?.performance,
           ),
@@ -1132,7 +1133,9 @@ const EditMobile = () => {
             return extractSphereRating(connectivityObj);
           })(),
           network: (function () {
-            const n = extractSphereRating(apiData?.network_json ?? apiData?.network);
+            const n = extractSphereRating(
+              apiData?.network_json ?? apiData?.network,
+            );
             if (n && Object.keys(n).length) return n;
             return extractSphereRating(connectivityObj);
           })(),
@@ -2978,7 +2981,8 @@ const EditMobile = () => {
         }
       };
       document.addEventListener("mousedown", handleOutsideClick);
-      return () => document.removeEventListener("mousedown", handleOutsideClick);
+      return () =>
+        document.removeEventListener("mousedown", handleOutsideClick);
     }, [showPicker]);
 
     const today = new Date();
@@ -3172,7 +3176,9 @@ const EditMobile = () => {
                 <button
                   key={idx}
                   type="button"
-                  onClick={() => day && setPickerDate((prev) => ({ ...prev, day }))}
+                  onClick={() =>
+                    day && setPickerDate((prev) => ({ ...prev, day }))
+                  }
                   disabled={!day}
                   className={`w-full aspect-square rounded-lg text-sm font-semibold transition-all transform ${
                     !day
@@ -3297,7 +3303,8 @@ const EditMobile = () => {
               />
             </div>
             <p className="mt-2 text-sm text-slate-500">
-              Update product details, specifications, variants, and media for {formData?.name || "this smartphone"}.
+              Update product details, specifications, variants, and media for{" "}
+              {formData?.name || "this smartphone"}.
             </p>
           </div>
 
@@ -3366,1626 +3373,1717 @@ const EditMobile = () => {
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
         <div className="min-w-0 space-y-4">
-        {/* Basic Information Section */}
-        <div
-          ref={(node) => {
-            sectionRefs.current.basic = node;
-          }}
-          className={editorCardClassName}
-        >
-          <button
-            onClick={() => toggleSection("basic")}
-            className={editorSectionButtonClassName}
+          {/* Basic Information Section */}
+          <div
+            ref={(node) => {
+              sectionRefs.current.basic = node;
+            }}
+            className={editorCardClassName}
           >
-            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-              <div className="flex h-8 w-8 items-center justify-center border border-blue-200 bg-blue-50 flex-shrink-0">
-                <FaMobile className="text-blue-600 text-sm" />
-              </div>
-              <div className="text-left min-w-0">
-                <h2 className="font-semibold text-sm sm:text-base text-gray-800">
-                  Basic Information
-                </h2>
-                <p className="text-xs text-gray-600 hidden sm:block">
-                  Name, brand, model and segment
-                </p>
-              </div>
-            </div>
-            {expandedSections.basic ? (
-              <FaChevronDown className="text-sm flex-shrink-0 ml-2" />
-            ) : (
-              <FaChevronRight className="text-sm flex-shrink-0 ml-2" />
-            )}
-          </button>
-
-          {expandedSections.basic && (
-            <div className={`${editorSectionBodyClassName} space-y-3 sm:space-y-4`}>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                <div>
-                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-                    Mobile Name *
-                  </label>
-                  <input
-                    type="text"
-                    name="name"
-                    value={formData.name || ""}
-                    onChange={handleChange}
-                    required
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="e.g., iPhone 15 Pro Max"
-                  />
+            <button
+              onClick={() => toggleSection("basic")}
+              className={editorSectionButtonClassName}
+            >
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                <div className="flex h-8 w-8 items-center justify-center border border-blue-200 bg-blue-50 flex-shrink-0">
+                  <FaMobile className="text-blue-600 text-sm" />
                 </div>
-
-                <div>
-                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-                    Brand *
-                  </label>
-                  <CustomDropdown
-                    value={formData.brand}
-                    placeholder="Select Brand"
-                    isOpen={showBrandDropdown}
-                    setIsOpen={setShowBrandDropdown}
-                    searchValue={brandSearch}
-                    setSearchValue={setBrandSearch}
-                    filteredOptions={filteredBrands}
-                    onSelect={handleBrandSelect}
-                    selectedLabel={getSelectedBrandName()}
-                    dropdownRef={brandDropdownRef}
-                    type="brand"
-                    showSearch={true}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-                    Model *
-                  </label>
-                  <input
-                    type="text"
-                    name="model"
-                    value={formData.model || ""}
-                    onChange={handleChange}
-                    required
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="e.g., A3103"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-                    Segment *
-                  </label>
-                  <CustomDropdown
-                    value={formData.segment}
-                    placeholder="Select Segment"
-                    isOpen={showCategoryDropdown}
-                    setIsOpen={setShowCategoryDropdown}
-                    searchValue={categorySearch}
-                    setSearchValue={setCategorySearch}
-                    filteredOptions={filteredCategories}
-                    onSelect={handleCategorySelect}
-                    selectedLabel={getSelectedCategoryLabel()}
-                    dropdownRef={categoryDropdownRef}
-                    type="category"
-                    showSearch={true}
-                  />
-                </div>
-
-                <div className="sm:col-span-2">
-                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-                    Launch Date
-                  </label>
-                  <DatePicker />
-                  {parseDateSafe(formData.created_at) && (
-                    <p className="mt-2 text-xs text-gray-500">
-                      Created:{" "}
-                      {parseDateSafe(formData.created_at).toLocaleString("en-US", {
-                        year: "numeric",
-                        month: "short",
-                        day: "2-digit",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </p>
-                  )}
-                </div>
-
-                <div className="sm:col-span-2">
-                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-                    Official Preorder URL
-                  </label>
-                  <input
-                    type="url"
-                    name="official_preorder_url"
-                    value={formData.official_preorder_url || ""}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="https://brand.com/product/preorder"
-                  />
-                </div>
-
-                <div className="sm:col-span-2 rounded-xl border border-blue-100 bg-blue-50/60 p-3">
-                  <div className="mb-3">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-700">
-                      Market Lifecycle
-                    </p>
-                    <p className="mt-1 text-xs text-slate-600">
-                      Controls whether this product renders on upcoming routes or all smartphones.
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    {[
-                      ["launch_status_override", "Launch Status", LAUNCH_STATUS_OPTIONS],
-                      ["sale_status_override", "Sale Status", SALE_STATUS_OPTIONS],
-                      ["store_stage_override", "Store Stage", STORE_STAGE_OPTIONS],
-                      ["launch_date_type", "Launch Date Type", LAUNCH_DATE_TYPE_OPTIONS],
-                      ["price_confidence", "Price Confidence", CONFIDENCE_OPTIONS],
-                      ["spec_confidence", "Spec Confidence", SPEC_CONFIDENCE_OPTIONS],
-                    ].map(([name, label, options]) => (
-                      <label key={name} className="block">
-                        <span className="block text-xs font-medium text-gray-700 mb-1">
-                          {label}
-                        </span>
-                        <select
-                          name={name}
-                          value={formData[name] || ""}
-                          onChange={handleChange}
-                          className={editorSelectClassName}
-                        >
-                          {options.map((option) => (
-                            <option key={option.value} value={option.value}>
-                              {option.label}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                    ))}
-                  </div>
-
-                  <label className="mt-3 block">
-                    <span className="block text-xs font-medium text-gray-700 mb-1">
-                      Expected Price
-                    </span>
-                    <input
-                      type="number"
-                      min="0"
-                      name="expected_price"
-                      value={formData.expected_price || ""}
-                      onChange={handleChange}
-                      className={editorFieldClassName}
-                      placeholder="Optional, e.g. 15999"
-                    />
-                    <p className="mt-1 text-xs text-slate-500">
-                      Used only when no confirmed variant/store price exists.
-                    </p>
-                  </label>
-
-                  <div className="mt-3 rounded-lg border border-white bg-white px-3 py-2 text-xs text-slate-600 shadow-sm">
-                    <p>
-                      Auto launch: {formatLaunchStageLabel(launchStatusAuto) || "Released"}
-                    </p>
-                    <p>Sale stage: {formatSaleStageLabel(saleStage) || "Sale Date TBA"}</p>
-                    <p>Store state: {formatStoreStageLabel(storeStage) || "No Store Listing"}</p>
-                    <p className="mt-2 font-semibold text-slate-900">
-                      Render Result: {renderState.renderType === "available" ? "All Smartphones" : "Upcoming"}
-                    </p>
-                    <p className="font-semibold text-blue-700">
-                      Display Status: {renderState.displayStatus}
-                    </p>
-                  </div>
+                <div className="text-left min-w-0">
+                  <h2 className="font-semibold text-sm sm:text-base text-gray-800">
+                    Basic Information
+                  </h2>
+                  <p className="text-xs text-gray-600 hidden sm:block">
+                    Name, brand, model and segment
+                  </p>
                 </div>
               </div>
-            </div>
-          )}
-        </div>
-
-        {/* Images Section */}
-        <div
-          ref={(node) => {
-            sectionRefs.current.images = node;
-          }}
-          className={editorCardClassName}
-        >
-          <button
-            onClick={() => toggleSection("images")}
-            className={editorSectionButtonClassName}
-          >
-            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-              <div className="flex h-8 w-8 items-center justify-center border border-purple-200 bg-purple-50 flex-shrink-0">
-                <FaCamera className="text-purple-600 text-sm" />
-              </div>
-              <div className="text-left min-w-0">
-                <h2 className="font-semibold text-sm sm:text-base text-gray-800">
-                  Images
-                </h2>
-                <p className="text-xs text-gray-600 hidden sm:block">
-                  {formData.images.length} images uploaded
-                </p>
-              </div>
-            </div>
-            {expandedSections.images ? (
-              <FaChevronDown className="text-sm flex-shrink-0 ml-2" />
-            ) : (
-              <FaChevronRight className="text-sm flex-shrink-0 ml-2" />
-            )}
-          </button>
-
-          {expandedSections.images && (
-            <div className={editorSectionBodyClassName}>
-              {formData.images.length > 0 && (
-                <div className="mb-4">
-                  <div className="flex flex-wrap gap-2">
-                    {formData.images.map((src, idx) => (
-                      <div key={idx} className="relative">
-                        <div className="h-16 w-16 overflow-hidden border border-slate-200 bg-gray-100 sm:h-20 sm:w-20">
-                          <img
-                            src={src}
-                            alt={`img-${idx}`}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                        <button
-                          onClick={() => removeImage(idx)}
-                          className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center border border-rose-200 bg-white text-xs text-rose-600 hover:bg-rose-50"
-                        >
-                          ×
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+              {expandedSections.basic ? (
+                <FaChevronDown className="text-sm flex-shrink-0 ml-2" />
+              ) : (
+                <FaChevronRight className="text-sm flex-shrink-0 ml-2" />
               )}
+            </button>
 
-              <div className="relative">
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  title="Upload mobile images"
-                  aria-label="Upload mobile images"
-                  onChange={(e) => {
-                    const files = Array.from(e.target.files || []);
-                    if (files.length) handleImageUpload(files);
-                  }}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                />
-                <div className="border border-dashed border-slate-300 p-4 text-center transition-colors hover:border-[#345CFF]">
-                  <FaCamera className="text-gray-400 text-lg sm:text-xl mx-auto mb-2" />
-                  <p className="text-xs sm:text-sm text-gray-600">
-                    {uploading ? "Uploading..." : "Click to upload images"}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    PNG, JPG, GIF up to 10MB each
+            {expandedSections.basic && (
+              <div
+                className={`${editorSectionBodyClassName} space-y-3 sm:space-y-4`}
+              >
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                  <div>
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                      Mobile Name *
+                    </label>
+                    <input
+                      type="text"
+                      name="name"
+                      value={formData.name || ""}
+                      onChange={handleChange}
+                      required
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="e.g., iPhone 15 Pro Max"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                      Brand *
+                    </label>
+                    <CustomDropdown
+                      value={formData.brand}
+                      placeholder="Select Brand"
+                      isOpen={showBrandDropdown}
+                      setIsOpen={setShowBrandDropdown}
+                      searchValue={brandSearch}
+                      setSearchValue={setBrandSearch}
+                      filteredOptions={filteredBrands}
+                      onSelect={handleBrandSelect}
+                      selectedLabel={getSelectedBrandName()}
+                      dropdownRef={brandDropdownRef}
+                      type="brand"
+                      showSearch={true}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                      Model *
+                    </label>
+                    <input
+                      type="text"
+                      name="model"
+                      value={formData.model || ""}
+                      onChange={handleChange}
+                      required
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="e.g., A3103"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                      Segment *
+                    </label>
+                    <CustomDropdown
+                      value={formData.segment}
+                      placeholder="Select Segment"
+                      isOpen={showCategoryDropdown}
+                      setIsOpen={setShowCategoryDropdown}
+                      searchValue={categorySearch}
+                      setSearchValue={setCategorySearch}
+                      filteredOptions={filteredCategories}
+                      onSelect={handleCategorySelect}
+                      selectedLabel={getSelectedCategoryLabel()}
+                      dropdownRef={categoryDropdownRef}
+                      type="category"
+                      showSearch={true}
+                    />
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                      Launch Date
+                    </label>
+                    <DatePicker />
+                    {parseDateSafe(formData.created_at) && (
+                      <p className="mt-2 text-xs text-gray-500">
+                        Created:{" "}
+                        {parseDateSafe(formData.created_at).toLocaleString(
+                          "en-US",
+                          {
+                            year: "numeric",
+                            month: "short",
+                            day: "2-digit",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          },
+                        )}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                      Official Preorder URL
+                    </label>
+                    <input
+                      type="url"
+                      name="official_preorder_url"
+                      value={formData.official_preorder_url || ""}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="https://brand.com/product/preorder"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-2 rounded-xl border border-blue-100 bg-blue-50/60 p-3">
+                    <div className="mb-3">
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-700">
+                        Market Lifecycle
+                      </p>
+                      <p className="mt-1 text-xs text-slate-600">
+                        Controls whether this product renders on upcoming routes
+                        or all smartphones.
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      {[
+                        [
+                          "launch_status_override",
+                          "Launch Status",
+                          LAUNCH_STATUS_OPTIONS,
+                        ],
+                        [
+                          "sale_status_override",
+                          "Sale Status",
+                          SALE_STATUS_OPTIONS,
+                        ],
+                        [
+                          "store_stage_override",
+                          "Store Stage",
+                          STORE_STAGE_OPTIONS,
+                        ],
+                        [
+                          "launch_date_type",
+                          "Launch Date Type",
+                          LAUNCH_DATE_TYPE_OPTIONS,
+                        ],
+                        [
+                          "price_confidence",
+                          "Price Confidence",
+                          CONFIDENCE_OPTIONS,
+                        ],
+                        [
+                          "spec_confidence",
+                          "Spec Confidence",
+                          SPEC_CONFIDENCE_OPTIONS,
+                        ],
+                      ].map(([name, label, options]) => (
+                        <label key={name} className="block">
+                          <span className="block text-xs font-medium text-gray-700 mb-1">
+                            {label}
+                          </span>
+                          <select
+                            name={name}
+                            value={formData[name] || ""}
+                            onChange={handleChange}
+                            className={editorSelectClassName}
+                          >
+                            {options.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      ))}
+                    </div>
+
+                    <label className="mt-3 block">
+                      <span className="block text-xs font-medium text-gray-700 mb-1">
+                        Expected Price
+                      </span>
+                      <input
+                        type="number"
+                        min="0"
+                        name="expected_price"
+                        value={formData.expected_price || ""}
+                        onChange={handleChange}
+                        className={editorFieldClassName}
+                        placeholder="Optional, e.g. 15999"
+                      />
+                      <p className="mt-1 text-xs text-slate-500">
+                        Used only when no confirmed variant/store price exists.
+                      </p>
+                    </label>
+
+                    <div className="mt-3 rounded-lg border border-white bg-white px-3 py-2 text-xs text-slate-600 shadow-sm">
+                      <p>
+                        Auto launch:{" "}
+                        {formatLaunchStageLabel(launchStatusAuto) || "Released"}
+                      </p>
+                      <p>
+                        Sale stage:{" "}
+                        {formatSaleStageLabel(saleStage) || "Sale Date TBA"}
+                      </p>
+                      <p>
+                        Store state:{" "}
+                        {formatStoreStageLabel(storeStage) ||
+                          "No Store Listing"}
+                      </p>
+                      <p className="mt-2 font-semibold text-slate-900">
+                        Render Result:{" "}
+                        {renderState.renderType === "available"
+                          ? "All Smartphones"
+                          : "Upcoming"}
+                      </p>
+                      <p className="font-semibold text-blue-700">
+                        Display Status: {renderState.displayStatus}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Images Section */}
+          <div
+            ref={(node) => {
+              sectionRefs.current.images = node;
+            }}
+            className={editorCardClassName}
+          >
+            <button
+              onClick={() => toggleSection("images")}
+              className={editorSectionButtonClassName}
+            >
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                <div className="flex h-8 w-8 items-center justify-center border border-purple-200 bg-purple-50 flex-shrink-0">
+                  <FaCamera className="text-purple-600 text-sm" />
+                </div>
+                <div className="text-left min-w-0">
+                  <h2 className="font-semibold text-sm sm:text-base text-gray-800">
+                    Images
+                  </h2>
+                  <p className="text-xs text-gray-600 hidden sm:block">
+                    {formData.images.length} images uploaded
                   </p>
                 </div>
               </div>
-            </div>
-          )}
-        </div>
+              {expandedSections.images ? (
+                <FaChevronDown className="text-sm flex-shrink-0 ml-2" />
+              ) : (
+                <FaChevronRight className="text-sm flex-shrink-0 ml-2" />
+              )}
+            </button>
 
-        {/* Variants Section with updated store fields */}
-        <div
-          ref={(node) => {
-            sectionRefs.current.variants = node;
-          }}
-          className={editorCardClassName}
-        >
-          <button
-            onClick={() => toggleSection("variants")}
-            className={editorSectionButtonClassName}
-          >
-            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-              <div className="flex h-8 w-8 items-center justify-center border border-green-200 bg-green-50 flex-shrink-0">
-                <FaBoxOpen className="text-green-600 text-sm" />
-              </div>
-              <div className="text-left min-w-0">
-                <h2 className="font-semibold text-sm sm:text-base text-gray-800">
-                  Variants & Stores
-                </h2>
-                <p className="text-xs text-gray-600 hidden sm:block">
-                  {formData.variants.length} variants added
-                </p>
-              </div>
-            </div>
-            {expandedSections.variants ? (
-              <FaChevronDown className="text-sm flex-shrink-0 ml-2" />
-            ) : (
-              <FaChevronRight className="text-sm flex-shrink-0 ml-2" />
-            )}
-          </button>
-
-          {expandedSections.variants && (
-            <div className={`${editorSectionBodyClassName} space-y-3 sm:space-y-4`}>
-              <button
-                onClick={addVariant}
-                className="flex items-center gap-2 text-blue-600 hover:text-blue-700 text-sm"
-              >
-                <FaPlus className="text-sm" />
-                <span>Add Variant</span>
-              </button>
-
-              {formData.variants.map((variant, index) => (
-                <div
-                  key={index}
-                  className="border border-slate-200 bg-slate-50 p-3 sm:p-4"
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-medium text-gray-800 text-sm sm:text-base">
-                      Variant #{index + 1}
-                    </h3>
-                    <button
-                      onClick={() => removeArrayFieldItem("variants", index)}
-                      className="text-red-500 hover:text-red-700 text-sm"
-                    >
-                      <FaTrash />
-                    </button>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-4">
-                    <div>
-                      <label className="block text-xs sm:text-sm font-medium text-gray-600 mb-1">
-                        RAM
-                      </label>
-                      <CustomDropdown
-                        value={variant.ram || ""}
-                        placeholder="Select RAM"
-                        isOpen={showRamDropdown[index] || false}
-                        setIsOpen={(val) =>
-                          setShowRamDropdown((prev) => ({
-                            ...prev,
-                            [index]: val,
-                          }))
-                        }
-                        searchValue={ramSearch[index] || ""}
-                        setSearchValue={(val) =>
-                          setRamSearch((prev) => ({ ...prev, [index]: val }))
-                        }
-                        filteredOptions={(memoryOptions.rams || []).filter(
-                          (opt) =>
-                            opt.name
-                              .toLowerCase()
-                              .includes((ramSearch[index] || "").toLowerCase()),
-                        )}
-                        onSelect={(opt) => {
-                          handleArrayFieldChange(
-                            "variants",
-                            index,
-                            "ram",
-                            opt.name,
-                          );
-                          setShowRamDropdown((prev) => ({
-                            ...prev,
-                            [index]: false,
-                          }));
-                        }}
-                        selectedLabel={
-                          memoryOptions.rams?.find((r) => r.name === variant.ram)
-                            ?.name ||
-                          variant.ram ||
-                          ""
-                        }
-                        dropdownRef={
-                          ramDropdownRefs.current[index] ||
-                          (ramDropdownRefs.current[index] = createRef())
-                        }
-                        type="memory"
-                        showSearch={true}
-                      />
+            {expandedSections.images && (
+              <div className={editorSectionBodyClassName}>
+                {formData.images.length > 0 && (
+                  <div className="mb-4">
+                    <div className="flex flex-wrap gap-2">
+                      {formData.images.map((src, idx) => (
+                        <div key={idx} className="relative">
+                          <div className="h-16 w-16 overflow-hidden border border-slate-200 bg-gray-100 sm:h-20 sm:w-20">
+                            <img
+                              src={src}
+                              alt={`img-${idx}`}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                          <button
+                            onClick={() => removeImage(idx)}
+                            className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center border border-rose-200 bg-white text-xs text-rose-600 hover:bg-rose-50"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
                     </div>
-                    <div>
-                      <label className="block text-xs sm:text-sm font-medium text-gray-600 mb-1">
-                        Storage
-                      </label>
-                      <CustomDropdown
-                        value={variant.storage || ""}
-                        placeholder="Select Storage"
-                        isOpen={showStorageDropdown[index] || false}
-                        setIsOpen={(val) =>
-                          setShowStorageDropdown((prev) => ({
-                            ...prev,
-                            [index]: val,
-                          }))
-                        }
-                        searchValue={storageSearch[index] || ""}
-                        setSearchValue={(val) =>
-                          setStorageSearch((prev) => ({
-                            ...prev,
-                            [index]: val,
-                          }))
-                        }
-                        filteredOptions={(memoryOptions.storages || []).filter(
-                          (opt) =>
+                  </div>
+                )}
+
+                <div className="relative">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    title="Upload mobile images"
+                    aria-label="Upload mobile images"
+                    onChange={(e) => {
+                      const files = Array.from(e.target.files || []);
+                      if (files.length) handleImageUpload(files);
+                    }}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  />
+                  <div className="border border-dashed border-slate-300 p-4 text-center transition-colors hover:border-[#345CFF]">
+                    <FaCamera className="text-gray-400 text-lg sm:text-xl mx-auto mb-2" />
+                    <p className="text-xs sm:text-sm text-gray-600">
+                      {uploading ? "Uploading..." : "Click to upload images"}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      PNG, JPG, GIF up to 10MB each
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Variants Section with updated store fields */}
+          <div
+            ref={(node) => {
+              sectionRefs.current.variants = node;
+            }}
+            className={editorCardClassName}
+          >
+            <button
+              onClick={() => toggleSection("variants")}
+              className={editorSectionButtonClassName}
+            >
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                <div className="flex h-8 w-8 items-center justify-center border border-green-200 bg-green-50 flex-shrink-0">
+                  <FaBoxOpen className="text-green-600 text-sm" />
+                </div>
+                <div className="text-left min-w-0">
+                  <h2 className="font-semibold text-sm sm:text-base text-gray-800">
+                    Variants & Stores
+                  </h2>
+                  <p className="text-xs text-gray-600 hidden sm:block">
+                    {formData.variants.length} variants added
+                  </p>
+                </div>
+              </div>
+              {expandedSections.variants ? (
+                <FaChevronDown className="text-sm flex-shrink-0 ml-2" />
+              ) : (
+                <FaChevronRight className="text-sm flex-shrink-0 ml-2" />
+              )}
+            </button>
+
+            {expandedSections.variants && (
+              <div
+                className={`${editorSectionBodyClassName} space-y-3 sm:space-y-4`}
+              >
+                <button
+                  onClick={addVariant}
+                  className="flex items-center gap-2 text-blue-600 hover:text-blue-700 text-sm"
+                >
+                  <FaPlus className="text-sm" />
+                  <span>Add Variant</span>
+                </button>
+
+                {formData.variants.map((variant, index) => (
+                  <div
+                    key={index}
+                    className="border border-slate-200 bg-slate-50 p-3 sm:p-4"
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="font-medium text-gray-800 text-sm sm:text-base">
+                        Variant #{index + 1}
+                      </h3>
+                      <button
+                        onClick={() => removeArrayFieldItem("variants", index)}
+                        className="text-red-500 hover:text-red-700 text-sm"
+                      >
+                        <FaTrash />
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-4">
+                      <div>
+                        <label className="block text-xs sm:text-sm font-medium text-gray-600 mb-1">
+                          RAM
+                        </label>
+                        <CustomDropdown
+                          value={variant.ram || ""}
+                          placeholder="Select RAM"
+                          isOpen={showRamDropdown[index] || false}
+                          setIsOpen={(val) =>
+                            setShowRamDropdown((prev) => ({
+                              ...prev,
+                              [index]: val,
+                            }))
+                          }
+                          searchValue={ramSearch[index] || ""}
+                          setSearchValue={(val) =>
+                            setRamSearch((prev) => ({ ...prev, [index]: val }))
+                          }
+                          filteredOptions={(memoryOptions.rams || []).filter(
+                            (opt) =>
+                              opt.name
+                                .toLowerCase()
+                                .includes(
+                                  (ramSearch[index] || "").toLowerCase(),
+                                ),
+                          )}
+                          onSelect={(opt) => {
+                            handleArrayFieldChange(
+                              "variants",
+                              index,
+                              "ram",
+                              opt.name,
+                            );
+                            setShowRamDropdown((prev) => ({
+                              ...prev,
+                              [index]: false,
+                            }));
+                          }}
+                          selectedLabel={
+                            memoryOptions.rams?.find(
+                              (r) => r.name === variant.ram,
+                            )?.name ||
+                            variant.ram ||
+                            ""
+                          }
+                          dropdownRef={
+                            ramDropdownRefs.current[index] ||
+                            (ramDropdownRefs.current[index] = createRef())
+                          }
+                          type="memory"
+                          showSearch={true}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs sm:text-sm font-medium text-gray-600 mb-1">
+                          Storage
+                        </label>
+                        <CustomDropdown
+                          value={variant.storage || ""}
+                          placeholder="Select Storage"
+                          isOpen={showStorageDropdown[index] || false}
+                          setIsOpen={(val) =>
+                            setShowStorageDropdown((prev) => ({
+                              ...prev,
+                              [index]: val,
+                            }))
+                          }
+                          searchValue={storageSearch[index] || ""}
+                          setSearchValue={(val) =>
+                            setStorageSearch((prev) => ({
+                              ...prev,
+                              [index]: val,
+                            }))
+                          }
+                          filteredOptions={(
+                            memoryOptions.storages || []
+                          ).filter((opt) =>
                             opt.name
                               .toLowerCase()
                               .includes(
                                 (storageSearch[index] || "").toLowerCase(),
                               ),
-                        )}
-                        onSelect={(opt) => {
-                          handleArrayFieldChange(
-                            "variants",
-                            index,
-                            "storage",
-                            opt.name,
-                          );
-                          setShowStorageDropdown((prev) => ({
-                            ...prev,
-                            [index]: false,
-                          }));
-                        }}
-                        selectedLabel={
-                          memoryOptions.storages?.find(
-                            (s) => s.name === variant.storage,
-                          )?.name ||
-                          variant.storage ||
-                          ""
-                        }
-                        dropdownRef={
-                          storageDropdownRefs.current[index] ||
-                          (storageDropdownRefs.current[index] = createRef())
-                        }
-                        type="memory"
-                        showSearch={true}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs sm:text-sm font-medium text-gray-600 mb-1">
-                        Base Price (₹)
-                      </label>
-                      <input
-                        type="number"
-                        value={variant.base_price ?? ""}
-                        onChange={(e) => {
-                          handleArrayFieldChange(
-                            "variants",
-                            index,
-                            "base_price",
-                            e.target.value,
-                          );
-                        }}
-                        placeholder="e.g., 59999"
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="mt-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="text-sm font-medium text-gray-700">
-                        Stores
-                      </h4>
-                      <button
-                        onClick={() => addStoreToVariant(index)}
-                        className="text-xs text-blue-600 hover:text-blue-700 flex items-center gap-1"
-                      >
-                        <FaPlus className="text-xs" />
-                        Add Store
-                      </button>
+                          )}
+                          onSelect={(opt) => {
+                            handleArrayFieldChange(
+                              "variants",
+                              index,
+                              "storage",
+                              opt.name,
+                            );
+                            setShowStorageDropdown((prev) => ({
+                              ...prev,
+                              [index]: false,
+                            }));
+                          }}
+                          selectedLabel={
+                            memoryOptions.storages?.find(
+                              (s) => s.name === variant.storage,
+                            )?.name ||
+                            variant.storage ||
+                            ""
+                          }
+                          dropdownRef={
+                            storageDropdownRefs.current[index] ||
+                            (storageDropdownRefs.current[index] = createRef())
+                          }
+                          type="memory"
+                          showSearch={true}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs sm:text-sm font-medium text-gray-600 mb-1">
+                          Base Price (₹)
+                        </label>
+                        <input
+                          type="number"
+                          value={variant.base_price ?? ""}
+                          onChange={(e) => {
+                            handleArrayFieldChange(
+                              "variants",
+                              index,
+                              "base_price",
+                              e.target.value,
+                            );
+                          }}
+                          placeholder="e.g., 59999"
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        />
+                      </div>
                     </div>
 
-                    {(variant.stores || []).map((store, storeIndex) => (
-                      <div
-                        key={storeIndex}
-                        className="p-3 bg-gray-50 rounded-md mb-3"
-                      >
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
-                          <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">
-                              Store Name
-                            </label>
-                            <CustomDropdown
-                              value={store.store_name || ""}
-                              placeholder="Select Store"
-                              isOpen={
-                                showStoreDropdown[`${index}-${storeIndex}`] ||
-                                false
-                              }
-                              setIsOpen={(val) =>
-                                setShowStoreDropdown((prev) => ({
-                                  ...prev,
-                                  [`${index}-${storeIndex}`]: val,
-                                }))
-                              }
-                              searchValue={
-                                storeSearch[`${index}-${storeIndex}`] || ""
-                              }
-                              setSearchValue={(val) =>
-                                setStoreSearch((prev) => ({
-                                  ...prev,
-                                  [`${index}-${storeIndex}`]: val,
-                                }))
-                              }
-                              filteredOptions={(storesList || []).filter(
-                                (opt) =>
-                                  opt.name
-                                    .toLowerCase()
-                                    .includes(
-                                      (
-                                        storeSearch[`${index}-${storeIndex}`] ||
-                                        ""
-                                      ).toLowerCase(),
-                                    ),
-                              )}
-                              onSelect={(opt) => {
-                                const newVariants = [...formData.variants];
-                                newVariants[index].stores[storeIndex] = {
-                                  ...newVariants[index].stores[storeIndex],
-                                  store_name: opt.name,
-                                };
-                                setFormData((prev) => ({
-                                  ...prev,
-                                  variants: newVariants,
-                                }));
-                                setShowStoreDropdown((prev) => ({
-                                  ...prev,
-                                  [`${index}-${storeIndex}`]: false,
-                                }));
-                              }}
-                              selectedLabel={
-                                storesList?.find(
-                                  (s) => s.name === store.store_name,
-                                )?.name || ""
-                              }
-                              dropdownRef={
-                                storeDropdownRefs.current[
-                                  `${index}-${storeIndex}`
-                                ] ||
-                                (storeDropdownRefs.current[
-                                  `${index}-${storeIndex}`
-                                ] = createRef())
-                              }
-                              type="store"
-                              showSearch={true}
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">
-                              Price (₹)
-                            </label>
-                            <input
-                              type="number"
-                              value={store.price ?? ""}
-                              onChange={(e) => {
-                                const newVariants = [...formData.variants];
-                                newVariants[index].stores[storeIndex] = {
-                                  ...newVariants[index].stores[storeIndex],
-                                  price: e.target.value,
-                                };
-                                setFormData((prev) => ({
-                                  ...prev,
-                                  variants: newVariants,
-                                }));
-                              }}
-                              placeholder="Actual price"
-                              className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-                            />
-                          </div>
-                        </div>
+                    <div className="mt-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="text-sm font-medium text-gray-700">
+                          Stores
+                        </h4>
+                        <button
+                          onClick={() => addStoreToVariant(index)}
+                          className="text-xs text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                        >
+                          <FaPlus className="text-xs" />
+                          Add Store
+                        </button>
+                      </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-3">
-                          <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">
-                              <FaTag className="inline mr-1 text-gray-400" />
-                              Discount (%)
-                            </label>
-                            <input
-                              type="number"
-                              min="0"
-                              max="100"
-                              value={store.discount ?? ""}
-                              onChange={(e) => {
-                                const newVariants = [...formData.variants];
-                                newVariants[index].stores[storeIndex] = {
-                                  ...newVariants[index].stores[storeIndex],
-                                  discount: e.target.value,
-                                };
-                                setFormData((prev) => ({
-                                  ...prev,
-                                  variants: newVariants,
-                                }));
-                              }}
-                              placeholder="e.g., 15"
-                              className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-                            />
-                          </div>
-                          <div className="md:col-span-2">
-                            <label className="block text-xs font-medium text-gray-600 mb-1">
-                              <FaPercent className="inline mr-1 text-gray-400" />
-                              Special Offers
-                            </label>
-                            <input
-                              type="text"
-                              value={store.offers ?? ""}
-                              onChange={(e) => {
-                                const newVariants = [...formData.variants];
-                                newVariants[index].stores[storeIndex] = {
-                                  ...newVariants[index].stores[storeIndex],
-                                  offers: e.target.value,
-                                };
-                                setFormData((prev) => ({
-                                  ...prev,
-                                  variants: newVariants,
-                                }));
-                              }}
-                              placeholder="e.g., Bank Offer, Exchange Bonus"
-                              className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-3">
-                          <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">
-                              Affiliate URL
-                            </label>
-                            <input
-                              type="url"
-                              value={store.url ?? ""}
-                              onChange={(e) => {
-                                const newVariants = [...formData.variants];
-                                newVariants[index].stores[storeIndex] = {
-                                  ...newVariants[index].stores[storeIndex],
-                                  url: e.target.value,
-                                };
-                                setFormData((prev) => ({
-                                  ...prev,
-                                  variants: newVariants,
-                                }));
-                              }}
-                              placeholder="https://affiliate-link.com/product"
-                              className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">
-                              Offer Text
-                            </label>
-                            <div className="flex items-center space-x-2">
+                      {(variant.stores || []).map((store, storeIndex) => (
+                        <div
+                          key={storeIndex}
+                          className="p-3 bg-gray-50 rounded-md mb-3"
+                        >
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
+                            <div>
+                              <label className="block text-xs font-medium text-gray-600 mb-1">
+                                Store Name
+                              </label>
+                              <CustomDropdown
+                                value={store.store_name || ""}
+                                placeholder="Select Store"
+                                isOpen={
+                                  showStoreDropdown[`${index}-${storeIndex}`] ||
+                                  false
+                                }
+                                setIsOpen={(val) =>
+                                  setShowStoreDropdown((prev) => ({
+                                    ...prev,
+                                    [`${index}-${storeIndex}`]: val,
+                                  }))
+                                }
+                                searchValue={
+                                  storeSearch[`${index}-${storeIndex}`] || ""
+                                }
+                                setSearchValue={(val) =>
+                                  setStoreSearch((prev) => ({
+                                    ...prev,
+                                    [`${index}-${storeIndex}`]: val,
+                                  }))
+                                }
+                                filteredOptions={(storesList || []).filter(
+                                  (opt) =>
+                                    opt.name
+                                      .toLowerCase()
+                                      .includes(
+                                        (
+                                          storeSearch[
+                                            `${index}-${storeIndex}`
+                                          ] || ""
+                                        ).toLowerCase(),
+                                      ),
+                                )}
+                                onSelect={(opt) => {
+                                  const newVariants = [...formData.variants];
+                                  newVariants[index].stores[storeIndex] = {
+                                    ...newVariants[index].stores[storeIndex],
+                                    store_name: opt.name,
+                                  };
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    variants: newVariants,
+                                  }));
+                                  setShowStoreDropdown((prev) => ({
+                                    ...prev,
+                                    [`${index}-${storeIndex}`]: false,
+                                  }));
+                                }}
+                                selectedLabel={
+                                  storesList?.find(
+                                    (s) => s.name === store.store_name,
+                                  )?.name || ""
+                                }
+                                dropdownRef={
+                                  storeDropdownRefs.current[
+                                    `${index}-${storeIndex}`
+                                  ] ||
+                                  (storeDropdownRefs.current[
+                                    `${index}-${storeIndex}`
+                                  ] = createRef())
+                                }
+                                type="store"
+                                showSearch={true}
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-600 mb-1">
+                                Price (₹)
+                              </label>
                               <input
-                                type="text"
-                                value={store.offer_text ?? ""}
+                                type="number"
+                                value={store.price ?? ""}
                                 onChange={(e) => {
                                   const newVariants = [...formData.variants];
                                   newVariants[index].stores[storeIndex] = {
                                     ...newVariants[index].stores[storeIndex],
-                                    offer_text: e.target.value,
+                                    price: e.target.value,
                                   };
                                   setFormData((prev) => ({
                                     ...prev,
                                     variants: newVariants,
                                   }));
                                 }}
-                                placeholder="e.g., Limited time offer"
+                                placeholder="Actual price"
                                 className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
                               />
-                              <button
-                                type="button"
-                                onClick={() => {
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-3">
+                            <div>
+                              <label className="block text-xs font-medium text-gray-600 mb-1">
+                                <FaTag className="inline mr-1 text-gray-400" />
+                                Discount (%)
+                              </label>
+                              <input
+                                type="number"
+                                min="0"
+                                max="100"
+                                value={store.discount ?? ""}
+                                onChange={(e) => {
                                   const newVariants = [...formData.variants];
-                                  newVariants[index].stores = newVariants[
-                                    index
-                                  ].stores.filter((_, i) => i !== storeIndex);
+                                  newVariants[index].stores[storeIndex] = {
+                                    ...newVariants[index].stores[storeIndex],
+                                    discount: e.target.value,
+                                  };
                                   setFormData((prev) => ({
                                     ...prev,
                                     variants: newVariants,
                                   }));
                                 }}
-                                className="text-red-500 hover:text-red-700 ml-2"
-                                title="Remove store"
-                              >
-                                <FaTrash />
-                              </button>
+                                placeholder="e.g., 15"
+                                className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                              />
+                            </div>
+                            <div className="md:col-span-2">
+                              <label className="block text-xs font-medium text-gray-600 mb-1">
+                                <FaPercent className="inline mr-1 text-gray-400" />
+                                Special Offers
+                              </label>
+                              <input
+                                type="text"
+                                value={store.offers ?? ""}
+                                onChange={(e) => {
+                                  const newVariants = [...formData.variants];
+                                  newVariants[index].stores[storeIndex] = {
+                                    ...newVariants[index].stores[storeIndex],
+                                    offers: e.target.value,
+                                  };
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    variants: newVariants,
+                                  }));
+                                }}
+                                placeholder="e.g., Bank Offer, Exchange Bonus"
+                                className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                              />
                             </div>
                           </div>
-                          <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">
-                              Sale Start Date
-                            </label>
-                            <StoreSaleDatePicker
-                              value={store.sale_start_date}
-                              onChange={(nextValue) => {
-                                const newVariants = [...formData.variants];
-                                newVariants[index].stores[storeIndex] = {
-                                  ...newVariants[index].stores[storeIndex],
-                                  sale_start_date: nextValue,
-                                };
-                                setFormData((prev) => ({
-                                  ...prev,
-                                  variants: newVariants,
-                                }));
-                              }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
 
-        {/* Specifications Section with updated connectivity fields */}
-        <div
-          ref={(node) => {
-            sectionRefs.current.specs = node;
-          }}
-          className={editorCardClassName}
-        >
-          <button
-            onClick={() => toggleSection("specs")}
-            className={editorSectionButtonClassName}
-          >
-            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-              <div className="flex h-8 w-8 items-center justify-center border border-orange-200 bg-orange-50 flex-shrink-0">
-                <FaMicrochip className="text-orange-600 text-sm" />
-              </div>
-              <div className="text-left min-w-0">
-                <h2 className="font-semibold text-sm sm:text-base text-gray-800">
-                  Technical Specifications
-                </h2>
-                <p className="text-xs text-gray-600 hidden sm:block">
-                  Configure all technical details
-                </p>
-              </div>
-            </div>
-            {expandedSections.specs ? (
-              <FaChevronDown className="text-sm flex-shrink-0 ml-2" />
-            ) : (
-              <FaChevronRight className="text-sm flex-shrink-0 ml-2" />
-            )}
-          </button>
-
-          {expandedSections.specs && (
-            <div className={editorSectionBodyClassName}>
-              {/* Specification Tabs */}
-              <div className="mb-4">
-                <div className="grid grid-cols-2 gap-2 sm:flex sm:overflow-x-auto sm:pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                  {specTabs.map((tab) => {
-                    const Icon = tab.icon;
-                    return (
-                      <button
-                        key={tab.id}
-                        onClick={() => setActiveSpecTab(tab.id)}
-                        className={`flex min-w-0 items-center justify-center space-x-2 border px-3 py-2 text-xs font-medium sm:mx-1 sm:flex-shrink-0 sm:justify-start sm:text-sm ${
-                          activeSpecTab === tab.id
-                            ? "border-[#345CFF] bg-[#345CFF] text-white"
-                            : "border-slate-200 bg-white text-gray-700 hover:bg-slate-50"
-                        }`}
-                      >
-                        <Icon className="text-xs sm:text-sm" />
-                        <span className="truncate">{tab.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Specification Fields */}
-              <div className="space-y-4">
-                {/* Dynamic JSON editor (supports nested objects/arrays like camera_json + ai_features) */}
-                <div className="flex items-center gap-3 mb-2">
-                  <label className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      checked={!!formData.is_foldable}
-                      onChange={(e) => {
-                        const enabled = e.target.checked;
-                        setFormData((prev) => {
-                          const cur = prev || {};
-                          const updated = {
-                            ...cur,
-                            is_foldable: enabled,
-                          };
-                          const existing = cur[activeSpecTab] || {};
-                          if (enabled) {
-                            if (!existing.fold && !existing.flip) {
-                              updated[activeSpecTab] = {
-                                fold: {},
-                                flip: { ...existing },
-                              };
-                            }
-                          } else {
-                            if (existing.flip) {
-                              updated[activeSpecTab] = {
-                                ...(existing.flip || {}),
-                              };
-                            }
-                          }
-                          return { ...updated };
-                        });
-                      }}
-                      title="Enable to edit Fold and Flip specs separately"
-                      aria-label="Foldable device toggle"
-                      className="h-4 w-4"
-                    />
-                    <span className="text-sm text-gray-700">
-                      Foldable device
-                    </span>
-                  </label>
-                </div>
-
-                {activeSpecTab === "network" && (
-                  <div className="mb-3 border border-blue-200 bg-blue-50 p-3">
-                    <div className="flex items-center space-x-2">
-                      <FaSimCard className="text-blue-500" />
-                      <span className="text-sm text-blue-700">
-                        Enter SIM details like SIM type, slots, eSIM support,
-                        etc.
-                      </span>
-                    </div>
-                  </div>
-                )}
-
-                {formData.is_foldable ? (
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    <div>
-                      <h4 className="text-sm font-semibold mb-2">Fold</h4>
-                      <DynamicForm
-                        data={formData[activeSpecTab]?.fold || {}}
-                        onChange={(next) =>
-                          setFoldableSpecSectionSide(activeSpecTab, "fold", next)
-                        }
-                        hiddenKeys={specEditorHiddenKeys}
-                        labelOverrides={specUi.labelOverrides}
-                        helpText={specUi.helpText}
-                        placeholderOverrides={specUi.placeholderOverrides}
-                        arrayItemPlaceholderOverrides={
-                          specUi.arrayItemPlaceholderOverrides
-                        }
-                      />
-                    </div>
-
-                    <div>
-                      <h4 className="text-sm font-semibold mb-2">Flip</h4>
-                      <DynamicForm
-                        data={formData[activeSpecTab]?.flip || {}}
-                        onChange={(next) =>
-                          setFoldableSpecSectionSide(activeSpecTab, "flip", next)
-                        }
-                        hiddenKeys={specEditorHiddenKeys}
-                        labelOverrides={specUi.labelOverrides}
-                        helpText={specUi.helpText}
-                        placeholderOverrides={specUi.placeholderOverrides}
-                        arrayItemPlaceholderOverrides={
-                          specUi.arrayItemPlaceholderOverrides
-                        }
-                      />
-                    </div>
-                  </div>
-                ) : (
-                  <DynamicForm
-                    data={formData[activeSpecTab] || {}}
-                    onChange={(next) => setSpecSection(activeSpecTab, next)}
-                    hiddenKeys={specEditorHiddenKeys}
-                    labelOverrides={specUi.labelOverrides}
-                    helpText={specUi.helpText}
-                    placeholderOverrides={specUi.placeholderOverrides}
-                    arrayItemPlaceholderOverrides={
-                      specUi.arrayItemPlaceholderOverrides
-                    }
-                  />
-                )}
-
-                {/* Legacy editor (disabled) */}
-                {false && (
-                  <>
-                    {/* Special handling for Camera, Audio, and Multimedia tabs */}
-                {activeSpecTab === "camera" && (
-                  <>
-                    <CameraSpecsInput />
-                    <CameraCustomFields />
-                  </>
-                )}
-
-                {activeSpecTab === "audio" && (
-                  <>
-                    <AudioSpecsInput />
-                    <AudioCustomFields />
-                  </>
-                )}
-
-                {activeSpecTab === "multimedia" && (
-                  <>
-                    <MultimediaSpecsInput />
-                    <MultimediaCustomFields />
-                  </>
-                )}
-
-                {activeSpecTab !== "camera" &&
-                  activeSpecTab !== "audio" &&
-                  activeSpecTab !== "multimedia" && (
-                    <>
-                      {/* Foldable toggle */}
-                      <div className="flex items-center gap-3 mb-2">
-                        <label className="flex items-center space-x-2">
-                          <input
-                            type="checkbox"
-                            checked={!!formData.is_foldable}
-                            onChange={(e) => {
-                              const enabled = e.target.checked;
-                              setFormData((prev) => {
-                                const cur = prev || {};
-                                const updated = {
-                                  ...cur,
-                                  is_foldable: enabled,
-                                };
-                                const existing = cur[activeSpecTab] || {};
-                                if (enabled) {
-                                  if (!existing.fold && !existing.flip) {
-                                    updated[activeSpecTab] = {
-                                      fold: {},
-                                      flip: { ...existing },
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-3">
+                            <div>
+                              <label className="block text-xs font-medium text-gray-600 mb-1">
+                                Affiliate URL
+                              </label>
+                              <input
+                                type="url"
+                                value={store.url ?? ""}
+                                onChange={(e) => {
+                                  const newVariants = [...formData.variants];
+                                  newVariants[index].stores[storeIndex] = {
+                                    ...newVariants[index].stores[storeIndex],
+                                    url: e.target.value,
+                                  };
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    variants: newVariants,
+                                  }));
+                                }}
+                                placeholder="https://affiliate-link.com/product"
+                                className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-600 mb-1">
+                                Offer Text
+                              </label>
+                              <div className="flex items-center space-x-2">
+                                <input
+                                  type="text"
+                                  value={store.offer_text ?? ""}
+                                  onChange={(e) => {
+                                    const newVariants = [...formData.variants];
+                                    newVariants[index].stores[storeIndex] = {
+                                      ...newVariants[index].stores[storeIndex],
+                                      offer_text: e.target.value,
                                     };
-                                  }
-                                } else {
-                                  if (existing.flip) {
-                                    updated[activeSpecTab] = {
-                                      ...(existing.flip || {}),
-                                    };
-                                  }
-                                }
-                                return { ...updated };
-                              });
-                            }}
-                            title="Enable to edit Fold and Flip specs separately"
-                            aria-label="Foldable device toggle"
-                            className="h-4 w-4"
-                          />
-                          <span className="text-sm text-gray-700">
-                            Foldable device
-                          </span>
-                        </label>
-                      </div>
-
-                      {activeSpecTab === "network" && (
-                        <div className="mb-3 p-3 bg-blue-50 rounded-md border border-blue-100">
-                          <div className="flex items-center space-x-2">
-                            <FaSimCard className="text-blue-500" />
-                            <span className="text-sm text-blue-700">
-                              Enter SIM details like SIM type, slots, eSIM
-                              support, etc.
-                            </span>
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {formData.is_foldable ? (
-                          <>
-                            <div className="lg:col-span-1">
-                              <h4 className="text-sm font-semibold mb-2">
-                                Fold
-                              </h4>
-                              {getDefaultFieldsArray(activeSpecTab).map(
-                                (field) => (
-                                  <div
-                                    key={"fold-" + field.key}
-                                    className="mb-3"
-                                  >
-                                    <label className="block text-xs font-medium text-gray-600 mb-1 capitalize">
-                                      {field.label}
-                                    </label>
-                                    <input
-                                      type="text"
-                                      value={
-                                        (formData[activeSpecTab] &&
-                                          formData[activeSpecTab].fold &&
-                                          formData[activeSpecTab].fold[
-                                            field.key
-                                          ]) ||
-                                        ""
-                                      }
-                                      onChange={(e) =>
-                                        handleJsonbChange(
-                                          activeSpecTab,
-                                          field.key,
-                                          e.target.value,
-                                          "fold",
-                                        )
-                                      }
-                                      className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
-                                      placeholder={`Enter ${field.label}`}
-                                    />
-                                  </div>
-                                ),
-                              )}
-                            </div>
-
-                            <div className="lg:col-span-1">
-                              <h4 className="text-sm font-semibold mb-2">
-                                Flip
-                              </h4>
-                              {getDefaultFieldsArray(activeSpecTab).map(
-                                (field) => (
-                                  <div
-                                    key={"flip-" + field.key}
-                                    className="mb-3"
-                                  >
-                                    <label className="block text-xs font-medium text-gray-600 mb-1 capitalize">
-                                      {field.label}
-                                    </label>
-                                    <input
-                                      type="text"
-                                      value={
-                                        (formData[activeSpecTab] &&
-                                          formData[activeSpecTab].flip &&
-                                          formData[activeSpecTab].flip[
-                                            field.key
-                                          ]) ||
-                                        ""
-                                      }
-                                      onChange={(e) =>
-                                        handleJsonbChange(
-                                          activeSpecTab,
-                                          field.key,
-                                          e.target.value,
-                                          "flip",
-                                        )
-                                      }
-                                      className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
-                                      placeholder={`Enter ${field.label}`}
-                                    />
-                                  </div>
-                                ),
-                              )}
-                            </div>
-                          </>
-                        ) : (
-                          getDefaultFieldsArray(activeSpecTab).map((field) => {
-                            const rawVal = field.value;
-                            const isObj =
-                              rawVal &&
-                              typeof rawVal === "object" &&
-                              !Array.isArray(rawVal);
-                            return (
-                              <div key={field.key}>
-                                <label className="block text-xs font-medium text-gray-600 mb-1 capitalize">
-                                  {field.label}
-                                </label>
-                                {isObj ? (
-                                  (() => {
-                                    try {
-                                      const obj = rawVal || {};
-                                      const values = Object.values(obj || {});
-                                      const isLabelValueMap =
-                                        values.length > 0 &&
-                                        values.every(
-                                          (v) =>
-                                            v &&
-                                            typeof v === "object" &&
-                                            ("label" in v || "value" in v),
-                                        );
-
-                                      const isPrimitiveMap =
-                                        values.length > 0 &&
-                                        values.every(
-                                          (v) =>
-                                            v === null ||
-                                            (typeof v !== "object" &&
-                                              !Array.isArray(v)),
-                                        );
-
-                                      if (isLabelValueMap) {
-                                        return (
-                                          <div className="space-y-3">
-                                            {Object.keys(obj).map(
-                                              (innerKey) => {
-                                                const innerVal =
-                                                  obj[innerKey] || {};
-                                                return (
-                                                  <div
-                                                    key={innerKey}
-                                                    className="p-2 bg-gray-50 rounded-md"
-                                                  >
-                                                    <div className="text-xs text-gray-600 mb-2 font-medium">
-                                                      {innerKey.replace(
-                                                        /_/g,
-                                                        " ",
-                                                      )}
-                                                    </div>
-                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                                      <div>
-                                                        <label className="block text-xs text-gray-500 mb-1">
-                                                          Label
-                                                        </label>
-                                                        <input
-                                                          type="text"
-                                                          value={
-                                                            innerVal.label || ""
-                                                          }
-                                                          onChange={(e) =>
-                                                            handleNestedObjectFieldChange(
-                                                              activeSpecTab,
-                                                              field.key,
-                                                              innerKey,
-                                                              "label",
-                                                              e.target.value,
-                                                            )
-                                                          }
-                                                          className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
-                                                          placeholder="Label"
-                                                        />
-                                                      </div>
-                                                      <div>
-                                                        <label className="block text-xs text-gray-500 mb-1">
-                                                          Value
-                                                        </label>
-                                                        <input
-                                                          type="text"
-                                                          value={
-                                                            innerVal.value !==
-                                                            undefined
-                                                              ? String(
-                                                                  innerVal.value,
-                                                                )
-                                                              : innerVal.label ||
-                                                                ""
-                                                          }
-                                                          onChange={(e) =>
-                                                            handleNestedObjectFieldChange(
-                                                              activeSpecTab,
-                                                              field.key,
-                                                              innerKey,
-                                                              "value",
-                                                              e.target.value,
-                                                            )
-                                                          }
-                                                          className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
-                                                          placeholder="Value"
-                                                        />
-                                                      </div>
-                                                    </div>
-                                                  </div>
-                                                );
-                                              },
-                                            )}
-                                          </div>
-                                        );
-                                      }
-
-                                      if (isPrimitiveMap) {
-                                        return (
-                                          <div className="space-y-3">
-                                            {Object.keys(obj).map(
-                                              (innerKey) => (
-                                                <div
-                                                  key={innerKey}
-                                                  className="p-2 bg-gray-50 rounded-md"
-                                                >
-                                                  <div className="text-xs text-gray-600 mb-2 font-medium">
-                                                    {innerKey.replace(
-                                                      /_/g,
-                                                      " ",
-                                                    )}
-                                                  </div>
-                                                  <input
-                                                    type="text"
-                                                    value={
-                                                      obj[innerKey] !==
-                                                      undefined
-                                                        ? String(obj[innerKey])
-                                                        : ""
-                                                    }
-                                                    onChange={(e) =>
-                                                      handlePrimitiveNestedChange(
-                                                        activeSpecTab,
-                                                        field.key,
-                                                        innerKey,
-                                                        e.target.value,
-                                                      )
-                                                    }
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
-                                                    placeholder={`Enter ${innerKey.replace(/_/g, " ")}`}
-                                                  />
-                                                </div>
-                                              ),
-                                            )}
-                                          </div>
-                                        );
-                                      }
-
-                                      // Mixed object: render primitive entries as inputs and complex entries as JSON textarea
-                                      const entries = Object.entries(obj || {});
-                                      const primitiveEntries = entries.filter(
-                                        ([k, v]) =>
-                                          v === null ||
-                                          (typeof v !== "object" &&
-                                            !Array.isArray(v)),
-                                      );
-                                      const complexEntries = entries.filter(
-                                        ([k, v]) =>
-                                          v &&
-                                          (typeof v === "object" ||
-                                            Array.isArray(v)),
-                                      );
-
-                                      if (primitiveEntries.length > 0) {
-                                        return (
-                                          <div className="space-y-3">
-                                            {primitiveEntries.map(
-                                              ([innerKey, innerVal]) => (
-                                                <div
-                                                  key={innerKey}
-                                                  className="p-2 bg-gray-50 rounded-md"
-                                                >
-                                                  <div className="text-xs text-gray-600 mb-2 font-medium">
-                                                    {innerKey.replace(
-                                                      /_/g,
-                                                      " ",
-                                                    )}
-                                                  </div>
-                                                  <input
-                                                    type="text"
-                                                    value={
-                                                      innerVal !== undefined
-                                                        ? String(innerVal)
-                                                        : ""
-                                                    }
-                                                    onChange={(e) =>
-                                                      handlePrimitiveNestedChange(
-                                                        activeSpecTab,
-                                                        field.key,
-                                                        innerKey,
-                                                        e.target.value,
-                                                      )
-                                                    }
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
-                                                    placeholder={`Enter ${innerKey.replace(/_/g, " ")}`}
-                                                  />
-                                                </div>
-                                              ),
-                                            )}
-
-                                            {complexEntries.length > 0 && (
-                                              <div>
-                                                <label className="block text-xs text-gray-500 mb-1">
-                                                  Complex / structured keys
-                                                  (JSON)
-                                                </label>
-                                                <textarea
-                                                  value={(() => {
-                                                    try {
-                                                      const complexObj =
-                                                        Object.fromEntries(
-                                                          complexEntries,
-                                                        );
-                                                      return JSON.stringify(
-                                                        complexObj,
-                                                        null,
-                                                        2,
-                                                      );
-                                                    } catch (e) {
-                                                      return "";
-                                                    }
-                                                  })()}
-                                                  onChange={(e) => {
-                                                    const v = e.target.value;
-                                                    try {
-                                                      const parsed =
-                                                        JSON.parse(v);
-                                                      // merge parsed complex keys back into the full object
-                                                      const newObj = {
-                                                        ...obj,
-                                                        ...parsed,
-                                                      };
-                                                      handleJsonbChange(
-                                                        activeSpecTab,
-                                                        field.key,
-                                                        newObj,
-                                                      );
-                                                    } catch (err) {
-                                                      // ignore parse errors for now
-                                                    }
-                                                  }}
-                                                  className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm font-mono"
-                                                  rows={6}
-                                                  placeholder={`Paste JSON here (e.g., {"key": "value"})`}
-                                                />
-                                              </div>
-                                            )}
-                                          </div>
-                                        );
-                                      }
-                                    } catch (e) {
-                                      // fallthrough to textarea fallback
-                                    }
-
-                                    return (
-                                      <textarea
-                                        value={(() => {
-                                          try {
-                                            return JSON.stringify(
-                                              rawVal,
-                                              null,
-                                              2,
-                                            );
-                                          } catch (e) {
-                                            return String(rawVal);
-                                          }
-                                        })()}
-                                        onChange={(e) => {
-                                          const v = e.target.value;
-                                          try {
-                                            const parsed = JSON.parse(v);
-                                            handleJsonbChange(
-                                              activeSpecTab,
-                                              field.key,
-                                              parsed,
-                                            );
-                                          } catch (err) {
-                                            // fallback to raw string when not valid JSON
-                                            handleJsonbChange(
-                                              activeSpecTab,
-                                              field.key,
-                                              v,
-                                            );
-                                          }
-                                        }}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm font-mono"
-                                        rows={4}
-                                        placeholder={`Enter JSON for ${field.label}`}
-                                      />
-                                    );
-                                  })()
-                                ) : (
-                                  <input
-                                    type="text"
-                                    value={rawVal || ""}
-                                    onChange={(e) =>
-                                      handleJsonbChange(
-                                        activeSpecTab,
-                                        field.key,
-                                        e.target.value,
-                                      )
-                                    }
-                                    className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
-                                    placeholder={`Enter ${field.label}`}
-                                  />
-                                )}
-                              </div>
-                            );
-                          })
-                        )}
-
-                        {(customJsonFields[activeSpecTab] || []).map(
-                          (customField) => {
-                            const val = formData[activeSpecTab]?.[customField];
-                            const isObj =
-                              val &&
-                              typeof val === "object" &&
-                              !Array.isArray(val);
-                            return (
-                              <div key={customField} className="relative">
-                                <label className="block text-xs font-medium text-gray-600 mb-1 capitalize">
-                                  {String(customField).replace(/_/g, " ")}
-                                </label>
-                                {isObj ? (
-                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                    <div>
-                                      <label className="block text-xs text-gray-500 mb-1">
-                                        Label
-                                      </label>
-                                      <input
-                                        type="text"
-                                        value={val.label || ""}
-                                        onChange={(e) =>
-                                          handleCustomFieldChange(
-                                            activeSpecTab,
-                                            customField,
-                                            "label",
-                                            e.target.value,
-                                          )
-                                        }
-                                        className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
-                                        placeholder="Label"
-                                      />
-                                    </div>
-                                    <div>
-                                      <label className="block text-xs text-gray-500 mb-1">
-                                        Value
-                                      </label>
-                                      <input
-                                        type="text"
-                                        value={
-                                          val.value !== undefined
-                                            ? String(val.value)
-                                            : ""
-                                        }
-                                        onChange={(e) =>
-                                          handleCustomFieldChange(
-                                            activeSpecTab,
-                                            customField,
-                                            "value",
-                                            e.target.value,
-                                          )
-                                        }
-                                        className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
-                                        placeholder="Value"
-                                      />
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <input
-                                    type="text"
-                                    value={val || ""}
-                                    onChange={(e) =>
-                                      handleJsonbChange(
-                                        activeSpecTab,
-                                        customField,
-                                        e.target.value,
-                                      )
-                                    }
-                                    className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
-                                    placeholder={`Enter ${String(customField).replace(/_/g, " ")}`}
-                                  />
-                                )}
+                                    setFormData((prev) => ({
+                                      ...prev,
+                                      variants: newVariants,
+                                    }));
+                                  }}
+                                  placeholder="e.g., Limited time offer"
+                                  className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                                />
                                 <button
-                                  onClick={() =>
-                                    removeCustomJsonField(
-                                      activeSpecTab,
-                                      customField,
-                                    )
-                                  }
-                                  className="absolute right-2 top-7 text-red-500 hover:text-red-700"
+                                  type="button"
+                                  onClick={() => {
+                                    const newVariants = [...formData.variants];
+                                    newVariants[index].stores = newVariants[
+                                      index
+                                    ].stores.filter((_, i) => i !== storeIndex);
+                                    setFormData((prev) => ({
+                                      ...prev,
+                                      variants: newVariants,
+                                    }));
+                                  }}
+                                  className="text-red-500 hover:text-red-700 ml-2"
+                                  title="Remove store"
                                 >
-                                  <FaTrash className="text-sm" />
+                                  <FaTrash />
                                 </button>
                               </div>
-                            );
-                          },
-                        )}
-
-                        <div className="lg:col-span-1 col-span-full">
-                          <button
-                            onClick={() => addCustomJsonField(activeSpecTab)}
-                            className="flex items-center gap-2 text-blue-600 hover:text-blue-700 text-sm mt-4"
-                          >
-                            <FaPlus className="text-xs" />
-                            <span>Add Custom Field</span>
-                          </button>
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-600 mb-1">
+                                Sale Start Date
+                              </label>
+                              <StoreSaleDatePicker
+                                value={store.sale_start_date}
+                                onChange={(nextValue) => {
+                                  const newVariants = [...formData.variants];
+                                  newVariants[index].stores[storeIndex] = {
+                                    ...newVariants[index].stores[storeIndex],
+                                    sale_start_date: nextValue,
+                                  };
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    variants: newVariants,
+                                  }));
+                                }}
+                              />
+                            </div>
+                          </div>
                         </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Specifications Section with updated connectivity fields */}
+          <div
+            ref={(node) => {
+              sectionRefs.current.specs = node;
+            }}
+            className={editorCardClassName}
+          >
+            <button
+              onClick={() => toggleSection("specs")}
+              className={editorSectionButtonClassName}
+            >
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                <div className="flex h-8 w-8 items-center justify-center border border-orange-200 bg-orange-50 flex-shrink-0">
+                  <FaMicrochip className="text-orange-600 text-sm" />
+                </div>
+                <div className="text-left min-w-0">
+                  <h2 className="font-semibold text-sm sm:text-base text-gray-800">
+                    Technical Specifications
+                  </h2>
+                  <p className="text-xs text-gray-600 hidden sm:block">
+                    Configure all technical details
+                  </p>
+                </div>
+              </div>
+              {expandedSections.specs ? (
+                <FaChevronDown className="text-sm flex-shrink-0 ml-2" />
+              ) : (
+                <FaChevronRight className="text-sm flex-shrink-0 ml-2" />
+              )}
+            </button>
+
+            {expandedSections.specs && (
+              <div className={editorSectionBodyClassName}>
+                {/* Specification Tabs */}
+                <div className="mb-4">
+                  <div className="grid grid-cols-2 gap-2 sm:flex sm:overflow-x-auto sm:pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    {specTabs.map((tab) => {
+                      const Icon = tab.icon;
+                      return (
+                        <button
+                          key={tab.id}
+                          onClick={() => setActiveSpecTab(tab.id)}
+                          className={`flex min-w-0 items-center justify-center space-x-2 border px-3 py-2 text-xs font-medium sm:mx-1 sm:flex-shrink-0 sm:justify-start sm:text-sm ${
+                            activeSpecTab === tab.id
+                              ? "border-[#345CFF] bg-[#345CFF] text-white"
+                              : "border-slate-200 bg-white text-gray-700 hover:bg-slate-50"
+                          }`}
+                        >
+                          <Icon className="text-xs sm:text-sm" />
+                          <span className="truncate">{tab.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Specification Fields */}
+                <div className="space-y-4">
+                  {/* Dynamic JSON editor (supports nested objects/arrays like camera_json + ai_features) */}
+                  <div className="flex items-center gap-3 mb-2">
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={!!formData.is_foldable}
+                        onChange={(e) => {
+                          const enabled = e.target.checked;
+                          setFormData((prev) => {
+                            const cur = prev || {};
+                            const updated = {
+                              ...cur,
+                              is_foldable: enabled,
+                            };
+                            const existing = cur[activeSpecTab] || {};
+                            if (enabled) {
+                              if (!existing.fold && !existing.flip) {
+                                updated[activeSpecTab] = {
+                                  fold: {},
+                                  flip: { ...existing },
+                                };
+                              }
+                            } else {
+                              if (existing.flip) {
+                                updated[activeSpecTab] = {
+                                  ...(existing.flip || {}),
+                                };
+                              }
+                            }
+                            return { ...updated };
+                          });
+                        }}
+                        title="Enable to edit Fold and Flip specs separately"
+                        aria-label="Foldable device toggle"
+                        className="h-4 w-4"
+                      />
+                      <span className="text-sm text-gray-700">
+                        Foldable device
+                      </span>
+                    </label>
+                  </div>
+
+                  {activeSpecTab === "network" && (
+                    <div className="mb-3 border border-blue-200 bg-blue-50 p-3">
+                      <div className="flex items-center space-x-2">
+                        <FaSimCard className="text-blue-500" />
+                        <span className="text-sm text-blue-700">
+                          Enter SIM details like SIM type, slots, eSIM support,
+                          etc.
+                        </span>
                       </div>
+                    </div>
+                  )}
+
+                  {formData.is_foldable ? (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                      <div>
+                        <h4 className="text-sm font-semibold mb-2">Fold</h4>
+                        <DynamicForm
+                          data={formData[activeSpecTab]?.fold || {}}
+                          onChange={(next) =>
+                            setFoldableSpecSectionSide(
+                              activeSpecTab,
+                              "fold",
+                              next,
+                            )
+                          }
+                          hiddenKeys={specEditorHiddenKeys}
+                          labelOverrides={specUi.labelOverrides}
+                          helpText={specUi.helpText}
+                          placeholderOverrides={specUi.placeholderOverrides}
+                          arrayItemPlaceholderOverrides={
+                            specUi.arrayItemPlaceholderOverrides
+                          }
+                        />
+                      </div>
+
+                      <div>
+                        <h4 className="text-sm font-semibold mb-2">Flip</h4>
+                        <DynamicForm
+                          data={formData[activeSpecTab]?.flip || {}}
+                          onChange={(next) =>
+                            setFoldableSpecSectionSide(
+                              activeSpecTab,
+                              "flip",
+                              next,
+                            )
+                          }
+                          hiddenKeys={specEditorHiddenKeys}
+                          labelOverrides={specUi.labelOverrides}
+                          helpText={specUi.helpText}
+                          placeholderOverrides={specUi.placeholderOverrides}
+                          arrayItemPlaceholderOverrides={
+                            specUi.arrayItemPlaceholderOverrides
+                          }
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <DynamicForm
+                      data={formData[activeSpecTab] || {}}
+                      onChange={(next) => setSpecSection(activeSpecTab, next)}
+                      hiddenKeys={specEditorHiddenKeys}
+                      labelOverrides={specUi.labelOverrides}
+                      helpText={specUi.helpText}
+                      placeholderOverrides={specUi.placeholderOverrides}
+                      arrayItemPlaceholderOverrides={
+                        specUi.arrayItemPlaceholderOverrides
+                      }
+                    />
+                  )}
+
+                  {/* Legacy editor (disabled) */}
+                  {false && (
+                    <>
+                      {/* Special handling for Camera, Audio, and Multimedia tabs */}
+                      {activeSpecTab === "camera" && (
+                        <>
+                          <CameraSpecsInput />
+                          <CameraCustomFields />
+                        </>
+                      )}
+
+                      {activeSpecTab === "audio" && (
+                        <>
+                          <AudioSpecsInput />
+                          <AudioCustomFields />
+                        </>
+                      )}
+
+                      {activeSpecTab === "multimedia" && (
+                        <>
+                          <MultimediaSpecsInput />
+                          <MultimediaCustomFields />
+                        </>
+                      )}
+
+                      {activeSpecTab !== "camera" &&
+                        activeSpecTab !== "audio" &&
+                        activeSpecTab !== "multimedia" && (
+                          <>
+                            {/* Foldable toggle */}
+                            <div className="flex items-center gap-3 mb-2">
+                              <label className="flex items-center space-x-2">
+                                <input
+                                  type="checkbox"
+                                  checked={!!formData.is_foldable}
+                                  onChange={(e) => {
+                                    const enabled = e.target.checked;
+                                    setFormData((prev) => {
+                                      const cur = prev || {};
+                                      const updated = {
+                                        ...cur,
+                                        is_foldable: enabled,
+                                      };
+                                      const existing = cur[activeSpecTab] || {};
+                                      if (enabled) {
+                                        if (!existing.fold && !existing.flip) {
+                                          updated[activeSpecTab] = {
+                                            fold: {},
+                                            flip: { ...existing },
+                                          };
+                                        }
+                                      } else {
+                                        if (existing.flip) {
+                                          updated[activeSpecTab] = {
+                                            ...(existing.flip || {}),
+                                          };
+                                        }
+                                      }
+                                      return { ...updated };
+                                    });
+                                  }}
+                                  title="Enable to edit Fold and Flip specs separately"
+                                  aria-label="Foldable device toggle"
+                                  className="h-4 w-4"
+                                />
+                                <span className="text-sm text-gray-700">
+                                  Foldable device
+                                </span>
+                              </label>
+                            </div>
+
+                            {activeSpecTab === "network" && (
+                              <div className="mb-3 p-3 bg-blue-50 rounded-md border border-blue-100">
+                                <div className="flex items-center space-x-2">
+                                  <FaSimCard className="text-blue-500" />
+                                  <span className="text-sm text-blue-700">
+                                    Enter SIM details like SIM type, slots, eSIM
+                                    support, etc.
+                                  </span>
+                                </div>
+                              </div>
+                            )}
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                              {formData.is_foldable ? (
+                                <>
+                                  <div className="lg:col-span-1">
+                                    <h4 className="text-sm font-semibold mb-2">
+                                      Fold
+                                    </h4>
+                                    {getDefaultFieldsArray(activeSpecTab).map(
+                                      (field) => (
+                                        <div
+                                          key={"fold-" + field.key}
+                                          className="mb-3"
+                                        >
+                                          <label className="block text-xs font-medium text-gray-600 mb-1 capitalize">
+                                            {field.label}
+                                          </label>
+                                          <input
+                                            type="text"
+                                            value={
+                                              (formData[activeSpecTab] &&
+                                                formData[activeSpecTab].fold &&
+                                                formData[activeSpecTab].fold[
+                                                  field.key
+                                                ]) ||
+                                              ""
+                                            }
+                                            onChange={(e) =>
+                                              handleJsonbChange(
+                                                activeSpecTab,
+                                                field.key,
+                                                e.target.value,
+                                                "fold",
+                                              )
+                                            }
+                                            className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
+                                            placeholder={`Enter ${field.label}`}
+                                          />
+                                        </div>
+                                      ),
+                                    )}
+                                  </div>
+
+                                  <div className="lg:col-span-1">
+                                    <h4 className="text-sm font-semibold mb-2">
+                                      Flip
+                                    </h4>
+                                    {getDefaultFieldsArray(activeSpecTab).map(
+                                      (field) => (
+                                        <div
+                                          key={"flip-" + field.key}
+                                          className="mb-3"
+                                        >
+                                          <label className="block text-xs font-medium text-gray-600 mb-1 capitalize">
+                                            {field.label}
+                                          </label>
+                                          <input
+                                            type="text"
+                                            value={
+                                              (formData[activeSpecTab] &&
+                                                formData[activeSpecTab].flip &&
+                                                formData[activeSpecTab].flip[
+                                                  field.key
+                                                ]) ||
+                                              ""
+                                            }
+                                            onChange={(e) =>
+                                              handleJsonbChange(
+                                                activeSpecTab,
+                                                field.key,
+                                                e.target.value,
+                                                "flip",
+                                              )
+                                            }
+                                            className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
+                                            placeholder={`Enter ${field.label}`}
+                                          />
+                                        </div>
+                                      ),
+                                    )}
+                                  </div>
+                                </>
+                              ) : (
+                                getDefaultFieldsArray(activeSpecTab).map(
+                                  (field) => {
+                                    const rawVal = field.value;
+                                    const isObj =
+                                      rawVal &&
+                                      typeof rawVal === "object" &&
+                                      !Array.isArray(rawVal);
+                                    return (
+                                      <div key={field.key}>
+                                        <label className="block text-xs font-medium text-gray-600 mb-1 capitalize">
+                                          {field.label}
+                                        </label>
+                                        {isObj ? (
+                                          (() => {
+                                            try {
+                                              const obj = rawVal || {};
+                                              const values = Object.values(
+                                                obj || {},
+                                              );
+                                              const isLabelValueMap =
+                                                values.length > 0 &&
+                                                values.every(
+                                                  (v) =>
+                                                    v &&
+                                                    typeof v === "object" &&
+                                                    ("label" in v ||
+                                                      "value" in v),
+                                                );
+
+                                              const isPrimitiveMap =
+                                                values.length > 0 &&
+                                                values.every(
+                                                  (v) =>
+                                                    v === null ||
+                                                    (typeof v !== "object" &&
+                                                      !Array.isArray(v)),
+                                                );
+
+                                              if (isLabelValueMap) {
+                                                return (
+                                                  <div className="space-y-3">
+                                                    {Object.keys(obj).map(
+                                                      (innerKey) => {
+                                                        const innerVal =
+                                                          obj[innerKey] || {};
+                                                        return (
+                                                          <div
+                                                            key={innerKey}
+                                                            className="p-2 bg-gray-50 rounded-md"
+                                                          >
+                                                            <div className="text-xs text-gray-600 mb-2 font-medium">
+                                                              {innerKey.replace(
+                                                                /_/g,
+                                                                " ",
+                                                              )}
+                                                            </div>
+                                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                              <div>
+                                                                <label className="block text-xs text-gray-500 mb-1">
+                                                                  Label
+                                                                </label>
+                                                                <input
+                                                                  type="text"
+                                                                  value={
+                                                                    innerVal.label ||
+                                                                    ""
+                                                                  }
+                                                                  onChange={(
+                                                                    e,
+                                                                  ) =>
+                                                                    handleNestedObjectFieldChange(
+                                                                      activeSpecTab,
+                                                                      field.key,
+                                                                      innerKey,
+                                                                      "label",
+                                                                      e.target
+                                                                        .value,
+                                                                    )
+                                                                  }
+                                                                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                                                                  placeholder="Label"
+                                                                />
+                                                              </div>
+                                                              <div>
+                                                                <label className="block text-xs text-gray-500 mb-1">
+                                                                  Value
+                                                                </label>
+                                                                <input
+                                                                  type="text"
+                                                                  value={
+                                                                    innerVal.value !==
+                                                                    undefined
+                                                                      ? String(
+                                                                          innerVal.value,
+                                                                        )
+                                                                      : innerVal.label ||
+                                                                        ""
+                                                                  }
+                                                                  onChange={(
+                                                                    e,
+                                                                  ) =>
+                                                                    handleNestedObjectFieldChange(
+                                                                      activeSpecTab,
+                                                                      field.key,
+                                                                      innerKey,
+                                                                      "value",
+                                                                      e.target
+                                                                        .value,
+                                                                    )
+                                                                  }
+                                                                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                                                                  placeholder="Value"
+                                                                />
+                                                              </div>
+                                                            </div>
+                                                          </div>
+                                                        );
+                                                      },
+                                                    )}
+                                                  </div>
+                                                );
+                                              }
+
+                                              if (isPrimitiveMap) {
+                                                return (
+                                                  <div className="space-y-3">
+                                                    {Object.keys(obj).map(
+                                                      (innerKey) => (
+                                                        <div
+                                                          key={innerKey}
+                                                          className="p-2 bg-gray-50 rounded-md"
+                                                        >
+                                                          <div className="text-xs text-gray-600 mb-2 font-medium">
+                                                            {innerKey.replace(
+                                                              /_/g,
+                                                              " ",
+                                                            )}
+                                                          </div>
+                                                          <input
+                                                            type="text"
+                                                            value={
+                                                              obj[innerKey] !==
+                                                              undefined
+                                                                ? String(
+                                                                    obj[
+                                                                      innerKey
+                                                                    ],
+                                                                  )
+                                                                : ""
+                                                            }
+                                                            onChange={(e) =>
+                                                              handlePrimitiveNestedChange(
+                                                                activeSpecTab,
+                                                                field.key,
+                                                                innerKey,
+                                                                e.target.value,
+                                                              )
+                                                            }
+                                                            className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                                                            placeholder={`Enter ${innerKey.replace(/_/g, " ")}`}
+                                                          />
+                                                        </div>
+                                                      ),
+                                                    )}
+                                                  </div>
+                                                );
+                                              }
+
+                                              // Mixed object: render primitive entries as inputs and complex entries as JSON textarea
+                                              const entries = Object.entries(
+                                                obj || {},
+                                              );
+                                              const primitiveEntries =
+                                                entries.filter(
+                                                  ([k, v]) =>
+                                                    v === null ||
+                                                    (typeof v !== "object" &&
+                                                      !Array.isArray(v)),
+                                                );
+                                              const complexEntries =
+                                                entries.filter(
+                                                  ([k, v]) =>
+                                                    v &&
+                                                    (typeof v === "object" ||
+                                                      Array.isArray(v)),
+                                                );
+
+                                              if (primitiveEntries.length > 0) {
+                                                return (
+                                                  <div className="space-y-3">
+                                                    {primitiveEntries.map(
+                                                      ([
+                                                        innerKey,
+                                                        innerVal,
+                                                      ]) => (
+                                                        <div
+                                                          key={innerKey}
+                                                          className="p-2 bg-gray-50 rounded-md"
+                                                        >
+                                                          <div className="text-xs text-gray-600 mb-2 font-medium">
+                                                            {innerKey.replace(
+                                                              /_/g,
+                                                              " ",
+                                                            )}
+                                                          </div>
+                                                          <input
+                                                            type="text"
+                                                            value={
+                                                              innerVal !==
+                                                              undefined
+                                                                ? String(
+                                                                    innerVal,
+                                                                  )
+                                                                : ""
+                                                            }
+                                                            onChange={(e) =>
+                                                              handlePrimitiveNestedChange(
+                                                                activeSpecTab,
+                                                                field.key,
+                                                                innerKey,
+                                                                e.target.value,
+                                                              )
+                                                            }
+                                                            className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                                                            placeholder={`Enter ${innerKey.replace(/_/g, " ")}`}
+                                                          />
+                                                        </div>
+                                                      ),
+                                                    )}
+
+                                                    {complexEntries.length >
+                                                      0 && (
+                                                      <div>
+                                                        <label className="block text-xs text-gray-500 mb-1">
+                                                          Complex / structured
+                                                          keys (JSON)
+                                                        </label>
+                                                        <textarea
+                                                          value={(() => {
+                                                            try {
+                                                              const complexObj =
+                                                                Object.fromEntries(
+                                                                  complexEntries,
+                                                                );
+                                                              return JSON.stringify(
+                                                                complexObj,
+                                                                null,
+                                                                2,
+                                                              );
+                                                            } catch (e) {
+                                                              return "";
+                                                            }
+                                                          })()}
+                                                          onChange={(e) => {
+                                                            const v =
+                                                              e.target.value;
+                                                            try {
+                                                              const parsed =
+                                                                JSON.parse(v);
+                                                              // merge parsed complex keys back into the full object
+                                                              const newObj = {
+                                                                ...obj,
+                                                                ...parsed,
+                                                              };
+                                                              handleJsonbChange(
+                                                                activeSpecTab,
+                                                                field.key,
+                                                                newObj,
+                                                              );
+                                                            } catch (err) {
+                                                              // ignore parse errors for now
+                                                            }
+                                                          }}
+                                                          className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm font-mono"
+                                                          rows={6}
+                                                          placeholder={`Paste JSON here (e.g., {"key": "value"})`}
+                                                        />
+                                                      </div>
+                                                    )}
+                                                  </div>
+                                                );
+                                              }
+                                            } catch (e) {
+                                              // fallthrough to textarea fallback
+                                            }
+
+                                            return (
+                                              <textarea
+                                                value={(() => {
+                                                  try {
+                                                    return JSON.stringify(
+                                                      rawVal,
+                                                      null,
+                                                      2,
+                                                    );
+                                                  } catch (e) {
+                                                    return String(rawVal);
+                                                  }
+                                                })()}
+                                                onChange={(e) => {
+                                                  const v = e.target.value;
+                                                  try {
+                                                    const parsed =
+                                                      JSON.parse(v);
+                                                    handleJsonbChange(
+                                                      activeSpecTab,
+                                                      field.key,
+                                                      parsed,
+                                                    );
+                                                  } catch (err) {
+                                                    // fallback to raw string when not valid JSON
+                                                    handleJsonbChange(
+                                                      activeSpecTab,
+                                                      field.key,
+                                                      v,
+                                                    );
+                                                  }
+                                                }}
+                                                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm font-mono"
+                                                rows={4}
+                                                placeholder={`Enter JSON for ${field.label}`}
+                                              />
+                                            );
+                                          })()
+                                        ) : (
+                                          <input
+                                            type="text"
+                                            value={rawVal || ""}
+                                            onChange={(e) =>
+                                              handleJsonbChange(
+                                                activeSpecTab,
+                                                field.key,
+                                                e.target.value,
+                                              )
+                                            }
+                                            className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
+                                            placeholder={`Enter ${field.label}`}
+                                          />
+                                        )}
+                                      </div>
+                                    );
+                                  },
+                                )
+                              )}
+
+                              {(customJsonFields[activeSpecTab] || []).map(
+                                (customField) => {
+                                  const val =
+                                    formData[activeSpecTab]?.[customField];
+                                  const isObj =
+                                    val &&
+                                    typeof val === "object" &&
+                                    !Array.isArray(val);
+                                  return (
+                                    <div key={customField} className="relative">
+                                      <label className="block text-xs font-medium text-gray-600 mb-1 capitalize">
+                                        {String(customField).replace(/_/g, " ")}
+                                      </label>
+                                      {isObj ? (
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                          <div>
+                                            <label className="block text-xs text-gray-500 mb-1">
+                                              Label
+                                            </label>
+                                            <input
+                                              type="text"
+                                              value={val.label || ""}
+                                              onChange={(e) =>
+                                                handleCustomFieldChange(
+                                                  activeSpecTab,
+                                                  customField,
+                                                  "label",
+                                                  e.target.value,
+                                                )
+                                              }
+                                              className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                                              placeholder="Label"
+                                            />
+                                          </div>
+                                          <div>
+                                            <label className="block text-xs text-gray-500 mb-1">
+                                              Value
+                                            </label>
+                                            <input
+                                              type="text"
+                                              value={
+                                                val.value !== undefined
+                                                  ? String(val.value)
+                                                  : ""
+                                              }
+                                              onChange={(e) =>
+                                                handleCustomFieldChange(
+                                                  activeSpecTab,
+                                                  customField,
+                                                  "value",
+                                                  e.target.value,
+                                                )
+                                              }
+                                              className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                                              placeholder="Value"
+                                            />
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <input
+                                          type="text"
+                                          value={val || ""}
+                                          onChange={(e) =>
+                                            handleJsonbChange(
+                                              activeSpecTab,
+                                              customField,
+                                              e.target.value,
+                                            )
+                                          }
+                                          className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
+                                          placeholder={`Enter ${String(customField).replace(/_/g, " ")}`}
+                                        />
+                                      )}
+                                      <button
+                                        onClick={() =>
+                                          removeCustomJsonField(
+                                            activeSpecTab,
+                                            customField,
+                                          )
+                                        }
+                                        className="absolute right-2 top-7 text-red-500 hover:text-red-700"
+                                      >
+                                        <FaTrash className="text-sm" />
+                                      </button>
+                                    </div>
+                                  );
+                                },
+                              )}
+
+                              <div className="lg:col-span-1 col-span-full">
+                                <button
+                                  onClick={() =>
+                                    addCustomJsonField(activeSpecTab)
+                                  }
+                                  className="flex items-center gap-2 text-blue-600 hover:text-blue-700 text-sm mt-4"
+                                >
+                                  <FaPlus className="text-xs" />
+                                  <span>Add Custom Field</span>
+                                </button>
+                              </div>
+                            </div>
+                          </>
+                        )}
                     </>
                   )}
-                  </>
-                )}
+                </div>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
 
-        {/* Sensors Section */}
-        <div
-          ref={(node) => {
-            sectionRefs.current.sensors = node;
-          }}
-          className={editorCardClassName}
-        >
-          <button
-            onClick={() => toggleSection("sensors")}
-            className={editorSectionButtonClassName}
+          {/* Sensors Section */}
+          <div
+            ref={(node) => {
+              sectionRefs.current.sensors = node;
+            }}
+            className={editorCardClassName}
           >
-            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-              <div className="flex h-8 w-8 items-center justify-center border border-red-200 bg-red-50 flex-shrink-0">
-                <FaMicrochip className="text-red-600 text-sm" />
+            <button
+              onClick={() => toggleSection("sensors")}
+              className={editorSectionButtonClassName}
+            >
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                <div className="flex h-8 w-8 items-center justify-center border border-red-200 bg-red-50 flex-shrink-0">
+                  <FaMicrochip className="text-red-600 text-sm" />
+                </div>
+                <div className="text-left min-w-0">
+                  <h2 className="font-semibold text-sm sm:text-base text-gray-800">
+                    Sensors
+                  </h2>
+                  <p className="text-xs text-gray-600 hidden sm:block">
+                    Add sensor information
+                  </p>
+                </div>
               </div>
-              <div className="text-left min-w-0">
-                <h2 className="font-semibold text-sm sm:text-base text-gray-800">
-                  Sensors
-                </h2>
-                <p className="text-xs text-gray-600 hidden sm:block">
-                  Add sensor information
+              {expandedSections.sensors ? (
+                <FaChevronDown className="text-sm flex-shrink-0 ml-2" />
+              ) : (
+                <FaChevronRight className="text-sm flex-shrink-0 ml-2" />
+              )}
+            </button>
+
+            {expandedSections.sensors && (
+              <div className={editorSectionBodyClassName}>
+                <textarea
+                  name="sensors"
+                  value={formData.sensors || ""}
+                  onChange={handleChange}
+                  placeholder="Enter sensors (comma-separated or JSON array)..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 h-32 text-sm"
+                  rows="4"
+                />
+                <p className="text-xs text-gray-500 mt-2">
+                  Example: Fingerprint, Accelerometer, Gyroscope, Compass
                 </p>
               </div>
-            </div>
-            {expandedSections.sensors ? (
-              <FaChevronDown className="text-sm flex-shrink-0 ml-2" />
-            ) : (
-              <FaChevronRight className="text-sm flex-shrink-0 ml-2" />
             )}
-          </button>
+          </div>
 
-          {expandedSections.sensors && (
-            <div className={editorSectionBodyClassName}>
-              <textarea
-                name="sensors"
-                value={formData.sensors || ""}
-                onChange={handleChange}
-                placeholder="Enter sensors (comma-separated or JSON array)..."
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 h-32 text-sm"
-                rows="4"
-              />
-              <p className="text-xs text-gray-500 mt-2">
-                Example: Fingerprint, Accelerometer, Gyroscope, Compass
-              </p>
-            </div>
-          )}
-        </div>
+          <ProductNewsAssignments
+            productId={formData?.product_id || formData?.productId || id}
+            productLabel="mobile"
+          />
 
-        <ProductNewsAssignments
-          productId={formData?.product_id || formData?.productId || id}
-          productLabel="mobile"
-        />
-
-        <div className="border border-slate-200 bg-white p-3 xl:hidden">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="min-w-0 space-y-2">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold text-slate-900">
-                  Publish Status
-                </span>
-                <EditorStatusChip
-                  label={publishEnabled ? "Published" : "Draft"}
-                  tone={publishEnabled ? "success" : "warning"}
-                />
+          <div className="border border-slate-200 bg-white p-3 xl:hidden">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0 space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold text-slate-900">
+                    Publish Status
+                  </span>
+                  <EditorStatusChip
+                    label={publishEnabled ? "Published" : "Draft"}
+                    tone={publishEnabled ? "success" : "warning"}
+                  />
+                </div>
+                <div className="grid grid-cols-1 gap-2 text-sm text-slate-600 sm:grid-cols-3">
+                  <span>
+                    Launch:{" "}
+                    {formatLaunchStageLabel(effectiveLaunchStatus) || "Not set"}
+                  </span>
+                  <span>
+                    Sale: {formatSaleStageLabel(saleStage) || "Sale Date TBA"}
+                  </span>
+                  <span>
+                    Store:{" "}
+                    {formatStoreStageLabel(storeStage) || "No Store Listing"}
+                  </span>
+                </div>
               </div>
-              <div className="grid grid-cols-1 gap-2 text-sm text-slate-600 sm:grid-cols-3">
+              <button
+                type="button"
+                onClick={() => setPublishEnabled((prev) => !prev)}
+                disabled={isSaving}
+                className={`w-full justify-center sm:w-auto sm:min-w-[180px] ${
+                  publishEnabled
+                    ? editorDangerButtonClassName
+                    : editorPrimaryButtonClassName
+                }`}
+              >
                 <span>
-                  Launch: {formatLaunchStageLabel(effectiveLaunchStatus) || "Not set"}
+                  {publishEnabled ? "Move to Draft" : "Enable Publish"}
                 </span>
-                <span>
-                  Sale: {formatSaleStageLabel(saleStage) || "Sale Date TBA"}
-                </span>
-                <span>
-                  Store: {formatStoreStageLabel(storeStage) || "No Store Listing"}
-                </span>
-              </div>
+                <FaStar className="text-sm" />
+              </button>
             </div>
+          </div>
+
+          {/* Form Actions */}
+          <div className="flex flex-col gap-3 border-t border-slate-200 pt-4 sm:flex-row">
             <button
-              type="button"
-              onClick={() => setPublishEnabled((prev) => !prev)}
+              onClick={handleSubmit}
               disabled={isSaving}
-              className={`w-full justify-center sm:w-auto sm:min-w-[180px] ${
-                publishEnabled
-                  ? editorDangerButtonClassName
-                  : editorPrimaryButtonClassName
-              }`}
+              className={`${editorPrimaryButtonClassName} flex-1`}
             >
-              <span>{publishEnabled ? "Move to Draft" : "Enable Publish"}</span>
-              <FaStar className="text-sm" />
+              {isSaving ? (
+                <>
+                  <FaSpinner className="animate-spin" />
+                  <span>Updating...</span>
+                </>
+              ) : (
+                <>
+                  <FaSave />
+                  <span>Update Mobile</span>
+                </>
+              )}
+            </button>
+
+            <button
+              onClick={handlePreview}
+              disabled={isSaving}
+              className={`${editorGhostButtonClassName} flex-1`}
+            >
+              <FaEye />
+              <span>Preview</span>
+            </button>
+
+            <button
+              onClick={() => navigate(-1)}
+              className={editorGhostButtonClassName}
+            >
+              Cancel
             </button>
           </div>
-        </div>
-
-        {/* Form Actions */}
-        <div className="flex flex-col gap-3 border-t border-slate-200 pt-4 sm:flex-row">
-          <button
-            onClick={handleSubmit}
-            disabled={isSaving}
-            className={`${editorPrimaryButtonClassName} flex-1`}
-          >
-            {isSaving ? (
-              <>
-                <FaSpinner className="animate-spin" />
-                <span>Updating...</span>
-              </>
-            ) : (
-              <>
-                <FaSave />
-                <span>Update Mobile</span>
-              </>
-            )}
-          </button>
-
-          <button
-            onClick={handlePreview}
-            disabled={isSaving}
-            className={`${editorGhostButtonClassName} flex-1`}
-          >
-            <FaEye />
-            <span>Preview</span>
-          </button>
-
-          <button
-            onClick={() => navigate(-1)}
-            className={editorGhostButtonClassName}
-          >
-            Cancel
-          </button>
-        </div>
-
         </div>
 
         <aside className="hidden self-start space-y-4 xl:sticky xl:top-4 xl:block">
@@ -5017,7 +5115,10 @@ const EditMobile = () => {
             />
             <EditorSidebarRow
               label="Last Updated"
-              value={formatEditorDate(formData.updated_at || formData.updatedAt, true)}
+              value={formatEditorDate(
+                formData.updated_at || formData.updatedAt,
+                true,
+              )}
             />
             <EditorSidebarRow label="Images" value={formData.images.length} />
             <EditorSidebarRow
@@ -5085,7 +5186,9 @@ const EditMobile = () => {
                     : editorPrimaryButtonClassName
                 }`}
               >
-                <span>{publishEnabled ? "Move to Draft" : "Enable Publish"}</span>
+                <span>
+                  {publishEnabled ? "Move to Draft" : "Enable Publish"}
+                </span>
                 <FaStar className="text-sm" />
               </button>
               <button
@@ -5105,7 +5208,3 @@ const EditMobile = () => {
 };
 
 export default EditMobile;
-
-
-
-

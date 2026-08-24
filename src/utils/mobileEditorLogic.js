@@ -140,7 +140,9 @@ export const cleanMobilePayload = (input) => {
       return trimmed === "" ? undefined : trimmed;
     }
     if (Array.isArray(value)) {
-      const cleanedArray = value.map(clean).filter((item) => item !== undefined);
+      const cleanedArray = value
+        .map(clean)
+        .filter((item) => item !== undefined);
       return cleanedArray.length ? cleanedArray : undefined;
     }
     if (typeof value === "object") {
@@ -245,7 +247,10 @@ const normalizeEditMobileEditorData = (formData) => {
       "",
     brandId: formData?.brand_id || product.brand_id || "",
     segment:
-      formData?.segment || formData?.category || smartphone.segment || "Smart Phone",
+      formData?.segment ||
+      formData?.category ||
+      smartphone.segment ||
+      "Smart Phone",
     brand:
       formData?.brand ||
       formData?.brand_name ||
@@ -325,7 +330,9 @@ const normalizeStore = (store, variant, variantIndex) => {
     variant_id: variantId,
     variant_index: variantId ? undefined : variantIndex,
     store: trimOrNull(store?.store || store?.store_name || store?.storeName),
-    store_name: trimOrNull(store?.store_name || store?.store || store?.storeName),
+    store_name: trimOrNull(
+      store?.store_name || store?.store || store?.storeName,
+    ),
     price: toNumberOrNull(store?.price),
     currency: store?.currency || undefined,
     availability: store?.availability || undefined,
@@ -368,7 +375,8 @@ const toVariantStorePriceRows = (variants) =>
     toArray(variant.stores).map((store) => ({
       id: store.id,
       variant_id: variant.id || variant.variant_id || null,
-      variant_index: variant.id || variant.variant_id ? undefined : variantIndex,
+      variant_index:
+        variant.id || variant.variant_id ? undefined : variantIndex,
       store_name: store.store_name,
       price: store.price,
       url: store.url,
