@@ -645,6 +645,7 @@ const ViewMobiles = ({
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
   const [bulkUpdating, setBulkUpdating] = useState(false);
+  const [aiGeneratingIds, setAiGeneratingIds] = useState(() => new Set());
 
   useEffect(() => {
     const seededSearch = location.state?.searchTerm;
@@ -812,6 +813,7 @@ const ViewMobiles = ({
             ),
             freshness: toScore(mobile.freshness),
             aiSummaryStatus: mobile.ai_summary_status || "not_created",
+            aiSummaryError: mobile.ai_summary_error || "",
             published,
             launch_date: firstFilledValue(
               mobile.launch_date,
@@ -924,6 +926,7 @@ const ViewMobiles = ({
               trend_velocity: row.trend_velocity,
               freshness: row.freshness,
               aiSummaryStatus: row.aiSummaryStatus,
+              aiSummaryError: row.aiSummaryError,
               raw: row.raw || {},
               created_at:
                 row.raw?.created_at ||
@@ -1016,6 +1019,8 @@ const ViewMobiles = ({
           buyer_intent: grouped.buyer_intent,
           trend_velocity: grouped.trend_velocity,
           freshness: grouped.freshness,
+          aiSummaryStatus: grouped.aiSummaryStatus,
+          aiSummaryError: grouped.aiSummaryError || "",
           raw: grouped.raw || {},
           created_at: grouped.created_at,
         }));
@@ -1360,9 +1365,7 @@ const ViewMobiles = ({
   );
   const selectedMobiles = useMemo(
     () =>
-      filteredMobiles.filter((mobile) =>
-        selectedRowKeySet.has(mobile.rowKey),
-      ),
+      filteredMobiles.filter((mobile) => selectedRowKeySet.has(mobile.rowKey)),
     [filteredMobiles, selectedRowKeySet],
   );
   const selectedProductIds = useMemo(
@@ -1376,8 +1379,8 @@ const ViewMobiles = ({
       ),
     [selectedMobiles],
   );
-  const selectedPublishedCount = selectedMobiles.filter(
-    (mobile) => Boolean(mobile.published),
+  const selectedPublishedCount = selectedMobiles.filter((mobile) =>
+    Boolean(mobile.published),
   ).length;
   const selectedDraftCount = Math.max(
     0,
@@ -1865,7 +1868,8 @@ const ViewMobiles = ({
         body: JSON.stringify({ limit: 1000 }),
       });
       const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload?.message || `HTTP ${response.status}`);
+      if (!response.ok)
+        throw new Error(payload?.message || `HTTP ${response.status}`);
       showToast(
         "AI Queue Started",
         `${payload.queued || 0} product summaries queued for background generation`,
@@ -1878,6 +1882,87 @@ const ViewMobiles = ({
         queueError.message || "Unable to queue AI summaries",
         "error",
       );
+    }
+  };
+
+  const generateAiSummary = async (mobile) => {
+    const productId = resolveProductId(mobile);
+    if (!productId) {
+      showToast("AI Summary Failed", "Missing product id", "error");
+      return;
+    }
+
+    setAiGeneratingIds((previous) => new Set(previous).add(String(productId)));
+    setMobiles((previous) =>
+      previous.map((candidate) =>
+        String(resolveProductId(candidate)) === String(productId)
+          ? { ...candidate, aiSummaryStatus: "generating", aiSummaryError: "" }
+          : candidate,
+      ),
+    );
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), 60_000);
+    try {
+      const response = await fetch(
+        buildUrl(
+          `/api/admin/ai/products/${encodeURIComponent(productId)}/summary`,
+        ),
+        {
+          method: "POST",
+          headers: getAuthHeaders(),
+          body: JSON.stringify({ force: true }),
+          signal: controller.signal,
+        },
+      );
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(
+          payload?.error || payload?.message || `HTTP ${response.status}`,
+        );
+      }
+      showToast(
+        "AI Summary Ready",
+        payload?.cached
+          ? `${mobile.name} summary already exists`
+          : `${mobile.name} summary generated`,
+        "success",
+      );
+      setMobiles((previous) =>
+        previous.map((candidate) =>
+          String(resolveProductId(candidate)) === String(productId)
+            ? {
+                ...candidate,
+                aiSummaryStatus: "generated",
+                aiSummaryError: "",
+              }
+            : candidate,
+        ),
+      );
+      setReloadKey((previous) => previous + 1);
+    } catch (summaryError) {
+      const message =
+        summaryError.name === "AbortError"
+          ? "Request timed out after 60 seconds. Check the server logs."
+          : summaryError.message || "Unable to generate AI summary";
+      setMobiles((previous) =>
+        previous.map((candidate) =>
+          String(resolveProductId(candidate)) === String(productId)
+            ? {
+                ...candidate,
+                aiSummaryStatus: "failed",
+                aiSummaryError: message,
+              }
+            : candidate,
+        ),
+      );
+      showToast("AI Summary Failed", message, "error");
+    } finally {
+      window.clearTimeout(timeoutId);
+      setAiGeneratingIds((previous) => {
+        const next = new Set(previous);
+        next.delete(String(productId));
+        return next;
+      });
     }
   };
 
@@ -2466,29 +2551,38 @@ const ViewMobiles = ({
                       </td>
 
                       <td className="px-3 py-3">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold ${
-                          mobile.aiSummaryStatus === "generated"
-                            ? "border border-emerald-200 bg-emerald-50 text-emerald-700"
-                            : mobile.aiSummaryStatus === "failed"
-                              ? "border border-rose-200 bg-rose-50 text-rose-700"
-                              : mobile.aiSummaryStatus === "disabled"
-                                ? "border border-slate-200 bg-slate-50 text-slate-500"
-                                : "border border-amber-200 bg-amber-50 text-amber-700"
-                        }`}>
+                        <span
+                          className={`inline-flex px-2 py-1 text-xs font-semibold ${
+                            mobile.aiSummaryStatus === "generated"
+                              ? "border border-emerald-200 bg-emerald-50 text-emerald-700"
+                              : mobile.aiSummaryStatus === "failed"
+                                ? "border border-rose-200 bg-rose-50 text-rose-700"
+                                : mobile.aiSummaryStatus === "disabled"
+                                  ? "border border-slate-200 bg-slate-50 text-slate-500"
+                                  : "border border-amber-200 bg-amber-50 text-amber-700"
+                          }`}
+                        >
                           {mobile.aiSummaryStatus === "generated"
                             ? "Complete"
                             : mobile.aiSummaryStatus === "generating"
                               ? "Generating"
                               : mobile.aiSummaryStatus === "pending"
                                 ? "Queued"
-                                  : mobile.aiSummaryStatus === "failed"
-                                    ? "Failed"
-                                    : mobile.aiSummaryStatus === "waiting_for_data"
-                                      ? "Waiting for data"
-                                      : mobile.aiSummaryStatus === "disabled"
-                                        ? "Disabled"
-                                        : "Not created"}
+                                : mobile.aiSummaryStatus === "failed"
+                                  ? "Failed"
+                                  : mobile.aiSummaryStatus ===
+                                      "waiting_for_data"
+                                    ? "Waiting for data"
+                                    : mobile.aiSummaryStatus === "disabled"
+                                      ? "Disabled"
+                                      : "Not created"}
                         </span>
+                        {mobile.aiSummaryStatus === "failed" &&
+                        mobile.aiSummaryError ? (
+                          <p className="mt-1 max-w-xs text-xs leading-4 text-rose-600">
+                            {mobile.aiSummaryError}
+                          </p>
+                        ) : null}
                       </td>
 
                       <td className="px-3 py-3">
@@ -2514,6 +2608,19 @@ const ViewMobiles = ({
 
                       <td className="px-3 py-3 text-right xl:px-4">
                         <div className="flex items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => generateAiSummary(mobile)}
+                            disabled={aiGeneratingIds.has(String(resolvedId))}
+                            className={`${rowActionButtonClassName} disabled:cursor-wait disabled:opacity-50`}
+                            title="Generate AI summary"
+                          >
+                            {aiGeneratingIds.has(String(resolvedId)) ? (
+                              <FaSpinner className="animate-spin text-sm" />
+                            ) : (
+                              <FaRobot className="text-sm" />
+                            )}
+                          </button>
                           <button
                             type="button"
                             onClick={() => openPreview(mobile)}
@@ -2758,7 +2865,21 @@ const ViewMobiles = ({
                             />
                           </div>
 
-                          <div className="grid grid-cols-3 gap-px border border-slate-200 bg-slate-200">
+                          <div className="grid grid-cols-4 gap-px border border-slate-200 bg-slate-200">
+                            <button
+                              type="button"
+                              onClick={() => generateAiSummary(mobile)}
+                              disabled={aiGeneratingIds.has(String(resolvedId))}
+                              className={`${mobileActionButtonClassName} disabled:cursor-wait disabled:opacity-50`}
+                              title="Generate AI summary"
+                            >
+                              {aiGeneratingIds.has(String(resolvedId)) ? (
+                                <FaSpinner className="animate-spin text-sm" />
+                              ) : (
+                                <FaRobot className="text-sm" />
+                              )}
+                              AI Summary
+                            </button>
                             <button
                               type="button"
                               onClick={() => openPreview(mobile)}
