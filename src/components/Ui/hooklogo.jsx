@@ -1,108 +1,30 @@
 import React, { useId } from "react";
 
-export default function HookLogo({
+export default function MobileXLogo({
   className,
-  title = "HOOKS",
-  "aria-label": ariaLabel = "HOOKS",
-  brandName = "HOOKS",
+  title = "MobileX",
+  "aria-label": ariaLabel = "MobileX",
   showText = true,
-  textFill = "#111",
+  darkBackground = true,
 }) {
   const reactId = useId();
-  const gradientId = `device-gradient-${reactId.replace(/:/g, "")}`;
-
-  if (showText) {
-    return (
-      <svg
-        viewBox="0 0 520 120"
-        preserveAspectRatio="xMinYMid meet"
-        role="img"
-        aria-label={ariaLabel}
-        className={className}
-      >
-        {title ? <title>{title}</title> : null}
-
-        <defs>
-          <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#3B82F6" />
-            <stop offset="100%" stopColor="#8B5CF6" />
-          </linearGradient>
-        </defs>
-
-        <rect
-          x="20"
-          y="30"
-          width="28"
-          height="60"
-          rx="8"
-          stroke={`url(#${gradientId})`}
-          strokeWidth="4"
-          fill="none"
-        />
-        <rect
-          x="60"
-          y="30"
-          width="28"
-          height="60"
-          rx="8"
-          stroke={`url(#${gradientId})`}
-          strokeWidth="4"
-          fill="none"
-        />
-
-        <text
-          x="110"
-          y="60"
-          dominantBaseline="middle"
-          fontFamily="Poppins, Inter, Arial, sans-serif"
-          fontSize="50"
-          fontWeight="800"
-          letterSpacing="2"
-          fill={textFill}
-        >
-          {brandName}
-        </text>
-      </svg>
-    );
-  }
+  const titleId = `mobilex-logo-title-${reactId.replace(/:/g, "")}`;
+  const primaryColor = darkBackground ? "#FFFFFF" : "#111318";
 
   return (
     <svg
-      viewBox="0 0 120 120"
-      preserveAspectRatio="xMinYMid meet"
+      className={className}
+      viewBox="0 0 874 420"
+      xmlns="http://www.w3.org/2000/svg"
       role="img"
       aria-label={ariaLabel}
-      className={className}
+      aria-labelledby={title ? titleId : undefined}
     >
-      {title ? <title>{title}</title> : null}
-
-      <defs>
-        <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#3B82F6" />
-          <stop offset="100%" stopColor="#8B5CF6" />
-        </linearGradient>
-      </defs>
-
-      <rect
-        x="20"
-        y="30"
-        width="28"
-        height="60"
-        rx="8"
-        stroke={`url(#${gradientId})`}
-        strokeWidth="4"
-        fill="none"
-      />
-      <rect
-        x="60"
-        y="30"
-        width="28"
-        height="60"
-        rx="8"
-        stroke={`url(#${gradientId})`}
-        strokeWidth="4"
-        fill="none"
-      />
+      {title ? <title id={titleId}>{title}</title> : null}
+      <path fill={primaryColor} d="M0 419h99l2-277 187 185 183-182-71-70-112 110L101 0H0z" />
+      <path fill={primaryColor} d="M365 0l203 202-211 217h119l213-217L488 0z" />
+      <path fill="#2563EB" d="M868 0H746L639 117l61 62z" />
+      <path fill="#2563EB" d="M631 298l115 122h128L694 235z" />
     </svg>
   );
 }

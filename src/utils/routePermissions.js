@@ -256,6 +256,12 @@ export const ROUTE_ACCESS_RULES = [
     title: "Spec score algorithm access required",
   },
   {
+    pattern: "/settings/gemini",
+    allowedRoles: ["admin"],
+    title: "Gemini settings restricted",
+    message: "Only administrators can manage the Gemini provider configuration.",
+  },
+  {
     pattern: "/api-tester",
     requiredAnyPermissions: ["settings.api_tester.view", "settings.manage", "settings.view"],
     title: "API tester access required",
