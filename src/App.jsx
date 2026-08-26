@@ -52,6 +52,7 @@ import AffiliatePlacementManager from "./components/AffiliatePlacementManager";
 import EditLaptop from "./components/EditLaptop";
 import EditHomeAppliance from "./components/EditAppliance";
 import CompareScoring from "./components/Settings/CompareScoring";
+import GeminiSettings from "./components/Settings/GeminiSettings";
 import SpecScoreAlgorithms from "./components/Settings/SpecScoreAlgorithms";
 import ComparePages from "./components/Settings/ComparePages";
 import BlogEditor from "./components/Content/BlogEditor";
@@ -900,6 +901,18 @@ function App() {
                 message="You need settings access to open this page."
               >
                 <ComparePages />
+              </RouteAccessGate>
+            }
+          />
+          <Route
+            path="settings/gemini"
+            element={
+              <RouteAccessGate
+                path="/settings/gemini"
+                title="Gemini settings restricted"
+                message="Only administrators can manage the Gemini provider configuration."
+              >
+                <GeminiSettings />
               </RouteAccessGate>
             }
           />

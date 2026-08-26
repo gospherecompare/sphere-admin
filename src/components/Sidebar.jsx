@@ -37,8 +37,7 @@ import {
   getCurrentRole,
 } from "../utils/access";
 import { getRouteAccessConfig } from "../utils/routePermissions";
-
-const HOOK_LOGO_URL = "/hook-logo.png";
+import MobileXLogo from "./Ui/hooklogo";
 
 const DESKTOP_SECTIONS = [
   {
@@ -314,6 +313,13 @@ const DESKTOP_SECTIONS = [
         path: "/permission-management",
         prefixes: ["/permission-management"],
       },
+      {
+        label: "Gemini AI Settings",
+        icon: FaRobot,
+        path: "/settings/gemini",
+        prefixes: ["/settings/gemini"],
+        allowedRoles: ["admin"],
+      },
     ],
   },
   {
@@ -513,14 +519,12 @@ const DesktopSidebar = ({ collapsed, location, sections }) => (
           to="/dashboard"
           className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/6 ring-1 ring-white/10"
         >
-          <img src={HOOK_LOGO_URL} className="h-8 w-8" showText={false} />
+          <MobileXLogo className="h-8 w-8" showText={false} />
         </Link>
       ) : (
         <Link to="/dashboard" className="flex min-w-0 items-center gap-3">
           <div className="min-w-0">
-            <p className="hooks-admin-brand-title truncate text-[1.9rem] font-bold leading-none tracking-tight text-white uppercase">
-              hooks
-            </p>
+            <MobileXLogo className="h-9 w-[7.5rem]" showText={false} />
             <p className="mt-1 text-[10px] uppercase tracking-[0.24em] text-slate-400">
               Gadget Intelligence
             </p>
@@ -731,12 +735,17 @@ const MobileDrawer = ({
             onClick={() => setMobileOpen(false)}
             className="min-w-0"
           >
-            <p className="hooks-admin-brand-title truncate text-[1.9rem] font-bold leading-none tracking-tight text-white uppercase">
-              hooks
-            </p>
-            <p className="mt-1 text-[10px] uppercase tracking-[0.24em] text-slate-400">
-              Gadget Intelligence
-            </p>
+            <div className="flex items-center gap-3">
+              <MobileXLogo className="h-9 w-9 shrink-0" showText={false} />
+              <div className="min-w-0">
+                <p className="truncate text-[1.35rem] font-bold leading-none tracking-tight text-white">
+                  MobileX
+                </p>
+                <p className="mt-1 text-[10px] uppercase tracking-[0.2em] text-slate-400">
+                  Gadget Intelligence
+                </p>
+              </div>
+            </div>
           </Link>
 
           <button

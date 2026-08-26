@@ -15,6 +15,7 @@ import {
 } from "react-icons/hi2";
 import { buildUrl } from "../api";
 import { useToast } from "./Ui/ToastProvider";
+import MobileXLogo from "./Ui/hooklogo";
 
 const AUTH_NOTICE_STORAGE_KEY = "hooksAdminAuthNotice";
 const POST_LOGIN_REDIRECT_KEY = "hooksAdminPostLoginRedirect";
@@ -87,12 +88,16 @@ const pinPadLayout = [
 
 const HeroBrand = ({ dark = true, compact = false }) => (
   <div className="flex items-center gap-3">
+    <MobileXLogo
+      className={`${compact ? "h-9 w-[7.5rem]" : "h-11 w-[9rem]"} shrink-0`}
+      showText={false}
+      darkBackground={!dark}
+    />
     <div>
       <div
-        className={`${compact ? "text-[2rem]" : "text-[2.35rem]"} font-semibold leading-none tracking-[-0.01em] "
-        } uppercase`}
+        className={`${compact ? "text-[2rem]" : "text-[2.35rem]"} font-semibold leading-none tracking-[-0.01em]`}
       >
-        HOOKS
+        MobileX
       </div>
       <div
         className={`mt-1 text-[10px] uppercase tracking-[0.24em] ${

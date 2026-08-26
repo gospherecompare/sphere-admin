@@ -77,6 +77,9 @@ const SpecScoreAlgorithms = lazy(
   () => import("../components/Settings/SpecScoreAlgorithms"),
 );
 const ComparePages = lazy(() => import("../components/Settings/ComparePages"));
+const GeminiSettings = lazy(
+  () => import("../components/Settings/GeminiSettings"),
+);
 const BlogEditor = lazy(() => import("../components/Content/BlogEditor"));
 const GlobalSearchResults = lazy(
   () => import("../components/GlobalSearchResults"),
@@ -255,6 +258,11 @@ export const ROUTE_CONFIG = {
     path: "/settings/compare-pages",
     component: ComparePages,
     label: "Compare Pages",
+  },
+  geminiSettings: {
+    path: "/settings/gemini",
+    component: GeminiSettings,
+    label: "Gemini AI Settings",
   },
 
   // Content
