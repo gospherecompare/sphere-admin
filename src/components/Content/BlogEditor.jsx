@@ -258,6 +258,59 @@ const LISTING_STATUS_BADGES = {
   trash: "border-rose-200 bg-rose-50 text-rose-700",
 };
 
+const getAiSummaryStatusMeta = (value = "not_created") => {
+  const normalized = String(value || "not_created")
+    .trim()
+    .toLowerCase();
+
+  if (normalized === "generated") {
+    return {
+      label: "Ready",
+      className: "border border-emerald-200 bg-emerald-50 text-emerald-700",
+    };
+  }
+
+  if (normalized === "generating") {
+    return {
+      label: "Generating",
+      className: "border border-amber-200 bg-amber-50 text-amber-700",
+    };
+  }
+
+  if (normalized === "pending") {
+    return {
+      label: "Queued",
+      className: "border border-amber-200 bg-amber-50 text-amber-700",
+    };
+  }
+
+  if (normalized === "waiting_for_data") {
+    return {
+      label: "Waiting",
+      className: "border border-sky-200 bg-sky-50 text-sky-700",
+    };
+  }
+
+  if (normalized === "failed") {
+    return {
+      label: "Failed",
+      className: "border border-rose-200 bg-rose-50 text-rose-700",
+    };
+  }
+
+  if (normalized === "disabled") {
+    return {
+      label: "Disabled",
+      className: "border border-slate-200 bg-slate-50 text-slate-500",
+    };
+  }
+
+  return {
+    label: "Not created",
+    className: "border border-slate-200 bg-slate-50 text-slate-500",
+  };
+};
+
 const getAuthorInitials = (value) => {
   const parts = String(value || "")
     .trim()
@@ -3234,6 +3287,7 @@ const BlogEditor = () => {
                     <th className="min-w-[560px] px-4 py-4">Title</th>
                     <th className="w-[180px] px-4 py-4">Author</th>
                     <th className="w-[200px] px-4 py-4">Category</th>
+                    <th className="w-[140px] px-4 py-4">AI Summary</th>
                     <th className="w-[130px] px-4 py-4">Status</th>
                     <th className="w-[220px] min-w-[220px] whitespace-nowrap px-4 py-4">
                       Published On
@@ -3274,6 +3328,9 @@ const BlogEditor = () => {
                       const rowStatus = getListingStatusKey(row);
                       const publishedDate = formatDateParts(row.published_at);
                       const updatedDate = formatDateParts(row.updated_at);
+                      const aiSummaryStatus = getAiSummaryStatusMeta(
+                        row.ai_summary_status,
+                      );
 
                       return (
                         <tr
@@ -3359,6 +3416,19 @@ const BlogEditor = () => {
                                 {getCategoryLabel(rowCategory)}
                               </span>
                             </div>
+                          </td>
+
+                          <td className="px-4 py-4">
+                            <span
+                              className={`inline-flex border px-2.5 py-1 text-[11px] font-semibold ${aiSummaryStatus.className}`}
+                            >
+                              {aiSummaryStatus.label}
+                            </span>
+                            {row.ai_summary_status === "failed" && row.ai_summary_error ? (
+                              <div className="mt-1 max-w-[180px] break-words text-[10px] leading-4 text-rose-600">
+                                {row.ai_summary_error}
+                              </div>
+                            ) : null}
                           </td>
 
                           <td className="px-4 py-4">
@@ -3577,6 +3647,21 @@ const BlogEditor = () => {
                             <div className="mt-1 text-sm font-medium text-slate-700">
                               {getCategoryLabel(rowCategory)}
                             </div>
+                          </div>
+                          <div>
+                            <div className="uppercase tracking-[0.08em] text-slate-400">
+                              AI Summary
+                            </div>
+                            <span
+                              className={`mt-1 inline-flex border px-2 py-1 text-[11px] font-semibold ${getAiSummaryStatusMeta(row.ai_summary_status).className}`}
+                            >
+                              {getAiSummaryStatusMeta(row.ai_summary_status).label}
+                            </span>
+                            {row.ai_summary_status === "failed" && row.ai_summary_error ? (
+                              <div className="mt-1 break-words text-[10px] leading-4 text-rose-600">
+                                {row.ai_summary_error}
+                              </div>
+                            ) : null}
                           </div>
                           <div>
                             <div className="uppercase tracking-[0.08em] text-slate-400">

@@ -53,6 +53,10 @@ import EditLaptop from "./components/EditLaptop";
 import EditHomeAppliance from "./components/EditAppliance";
 import CompareScoring from "./components/Settings/CompareScoring";
 import GeminiSettings from "./components/Settings/GeminiSettings";
+import GeminiGenerationList from "./components/Settings/GeminiGenerationList";
+import GeminiGenerationCreate from "./components/Settings/GeminiGenerationCreate";
+import GeminiGenerationEdit from "./components/Settings/GeminiGenerationEdit";
+import GeminiProviderSettings from "./components/Settings/GeminiProviderSettings";
 import SpecScoreAlgorithms from "./components/Settings/SpecScoreAlgorithms";
 import ComparePages from "./components/Settings/ComparePages";
 import BlogEditor from "./components/Content/BlogEditor";
@@ -910,9 +914,57 @@ function App() {
               <RouteAccessGate
                 path="/settings/gemini"
                 title="Gemini settings restricted"
-                message="Only administrators can manage the Gemini provider configuration."
+                message="Only administrators can manage Gemini generation history."
               >
-                <GeminiSettings />
+                <GeminiGenerationList />
+              </RouteAccessGate>
+            }
+          />
+          <Route
+            path="settings/gemini/create"
+            element={
+              <RouteAccessGate
+                path="/settings/gemini/create"
+                title="Gemini generation creation restricted"
+                message="Only administrators can create Gemini summaries."
+              >
+                <GeminiGenerationCreate />
+              </RouteAccessGate>
+            }
+          />
+          <Route
+            path="settings/gemini/generations/:id"
+            element={
+              <RouteAccessGate
+                path="/settings/gemini/generations/:id"
+                title="Gemini generation access restricted"
+                message="Only administrators can access Gemini generation details."
+              >
+                <GeminiGenerationEdit />
+              </RouteAccessGate>
+            }
+          />
+          <Route
+            path="settings/gemini/generations/:id/edit"
+            element={
+              <RouteAccessGate
+                path="/settings/gemini/generations/:id/edit"
+                title="Gemini generation edit restricted"
+                message="Only administrators can edit Gemini generations."
+              >
+                <GeminiGenerationEdit />
+              </RouteAccessGate>
+            }
+          />
+          <Route
+            path="settings/gemini/config"
+            element={
+              <RouteAccessGate
+                path="/settings/gemini/config"
+                title="Gemini provider configuration restricted"
+                message="Only administrators can manage the Gemini provider connection."
+              >
+                <GeminiProviderSettings />
               </RouteAccessGate>
             }
           />
