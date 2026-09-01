@@ -81,6 +81,8 @@ import {
 const LAUNCH_STATUS_OPTIONS = [
   { value: "rumored", label: "Rumored" },
   { value: "announced", label: "Announced" },
+  { value: "upcoming", label: "Upcoming" },
+  { value: "available", label: "Available" },
   { value: "released", label: "Released" },
 ];
 

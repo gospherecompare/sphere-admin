@@ -353,10 +353,10 @@ const getSmartphoneRenderState = ({
     };
   }
 
-  if (launch === "released") {
+  if (launch === "available" || launch === "released") {
     return {
-      renderType: "upcoming",
-      displayStatus: "Upcoming",
+      renderType: "available",
+      displayStatus: "Available now",
     };
   }
 
@@ -374,10 +374,16 @@ const getSmartphoneRenderState = ({
     };
   }
 
+  if (launch === "upcoming") {
+    return {
+      renderType: "upcoming",
+      displayStatus: "Upcoming",
+    };
+  }
+
   return {
-    renderType: "upcoming",
-    displayStatus:
-      launch === "upcoming" ? "Upcoming" : formatLaunchStageLabel(launch) || "Upcoming",
+    renderType: "available",
+    displayStatus: formatLaunchStageLabel(launch) || "Available now",
   };
 };
 
