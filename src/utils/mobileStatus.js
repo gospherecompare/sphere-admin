@@ -60,6 +60,19 @@ const collectStatusText = (mobile) => {
 
 const getMobileLifecycleState = (mobile) => {
   const raw = mobile?.raw || {};
+  const canonical = mobile?.lifecycle || raw.lifecycle;
+  if (canonical?.launch && canonical?.sale && canonical?.store) {
+    return {
+      launchStage: canonical.launch.stage,
+      saleStage: canonical.sale.stage,
+      storeStage: canonical.store.stage,
+      launchDate: canonical.launch.date || null,
+      saleStartDate: canonical.sale.start_date || null,
+      hasPrebookingStores: canonical.store.stage === "prebooking",
+      hasLiveStores: canonical.store.stage === "live",
+      hasStoreSignals: canonical.store.stage !== "none",
+    };
+  }
 
   return getSmartphoneLifecycle({
     launchDate: firstText(
