@@ -23,7 +23,9 @@ const normalizeLifecycleStatus = (value) => {
 };
 
 const normalizeSaleStage = (value) => {
-  const text = normalizeText(value).toLowerCase().replace(/[\s-]+/g, "_");
+  const text = normalizeText(value)
+    .toLowerCase()
+    .replace(/[\s-]+/g, "_");
   if (!text) return null;
   if (/out_?of_?stock|sold_?out/.test(text)) return "out_of_stock";
   if (/pre_?order|pre_?book|prebooking|presale/.test(text)) return "preorder";
@@ -38,7 +40,9 @@ const normalizeSaleStage = (value) => {
 };
 
 const normalizeStoreStage = (value) => {
-  const text = normalizeText(value).toLowerCase().replace(/[\s-]+/g, "_");
+  const text = normalizeText(value)
+    .toLowerCase()
+    .replace(/[\s-]+/g, "_");
   if (!text) return null;
   if (/pre_?order|pre_?book|prebooking|presale/.test(text)) {
     return "prebooking";
@@ -204,11 +208,11 @@ const hasLiveStoreSignal = (store) => {
         store?.offer_price ??
         store?.base_price,
     ) ||
-      normalizeText(store?.url) ||
-      normalizeText(store?.affiliate_link) ||
-      normalizeText(store?.store) ||
-      normalizeText(store?.store_name) ||
-      normalizeText(store?.storeName),
+    normalizeText(store?.url) ||
+    normalizeText(store?.affiliate_link) ||
+    normalizeText(store?.store) ||
+    normalizeText(store?.store_name) ||
+    normalizeText(store?.storeName),
   );
 };
 
@@ -226,9 +230,9 @@ const getSmartphoneLifecycle = ({
   const directSaleStage = normalizeSaleStage(saleStage);
   const directStoreStage = normalizeStoreStage(storeStage);
 
-  if (directLaunchStage || directSaleStage || directStoreStage) {
+  if (directLaunchStage) {
     return {
-      launchStage: directLaunchStage || "released",
+      launchStage: directLaunchStage,
       saleStage:
         directSaleStage ||
         (directLaunchStage === "available"
@@ -261,21 +265,14 @@ const getSmartphoneLifecycle = ({
   const hasLiveStores = storeRows.some(hasLiveStoreSignal);
   const hasStoreSignals = storeRows.length > 0;
 
-  let launchStage = "released";
+  let launchStage = "upcoming";
 
   if (normalizedStatus === "rumored" || normalizedStatus === "announced") {
     launchStage = normalizedStatus;
   } else if (normalizedStatus === "upcoming") {
     launchStage = "upcoming";
-  } else if (
-    normalizedStatus === "released" ||
-    normalizedStatus === "available"
-  ) {
-    launchStage = normalizedStatus;
-  } else if (hasPrebookingStores) {
-    launchStage = "upcoming";
-  } else if (hasLiveStores) {
-    launchStage = "available";
+  } else if (normalizedStatus === "released") {
+    launchStage = "released";
   }
 
   let resolvedSaleStage = "sale_tbd";
@@ -318,72 +315,27 @@ const getSmartphoneRenderState = ({
   saleStage,
   storeStage,
 } = {}) => {
-  const launch = normalizeLifecycleStatus(launchStage) || "unknown";
+  const launch = normalizeLifecycleStatus(launchStage) || "upcoming";
   const sale = normalizeSaleStage(saleStage) || "sale_tbd";
   const store = normalizeStoreStage(storeStage) || "none";
 
-  const isLive =
-    store === "live" || sale === "on_sale" || sale === "sale_live";
-
-  if (isLive) {
-    return {
-      renderType: "available",
-      displayStatus: "Available now",
-    };
-  }
-
-  if (sale === "out_of_stock") {
-    return {
-      renderType: "available",
-      displayStatus: "Out of stock",
-    };
-  }
-
-  if (sale === "preorder" || store === "prebooking") {
+  if (["rumored", "announced", "upcoming"].includes(launch)) {
     return {
       renderType: "upcoming",
-      displayStatus: "Upcoming",
+      displayStatus: formatLaunchStageLabel(launch) || "Upcoming",
     };
   }
 
-  if (sale === "sale_scheduled") {
+  if (["released", "available"].includes(launch)) {
     return {
-      renderType: "upcoming",
-      displayStatus: "Upcoming",
-    };
-  }
-
-  if (launch === "available" || launch === "released") {
-    return {
-      renderType: "available",
-      displayStatus: "Available now",
-    };
-  }
-
-  if (launch === "announced") {
-    return {
-      renderType: "upcoming",
-      displayStatus: "Announced",
-    };
-  }
-
-  if (launch === "rumored") {
-    return {
-      renderType: "upcoming",
-      displayStatus: "Rumored",
-    };
-  }
-
-  if (launch === "upcoming") {
-    return {
-      renderType: "upcoming",
-      displayStatus: "Upcoming",
+      renderType: "released",
+      displayStatus: "Released",
     };
   }
 
   return {
-    renderType: "available",
-    displayStatus: formatLaunchStageLabel(launch) || "Available now",
+    renderType: "released",
+    displayStatus: "Released",
   };
 };
 

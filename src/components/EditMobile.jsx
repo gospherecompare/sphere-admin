@@ -82,7 +82,6 @@ const LAUNCH_STATUS_OPTIONS = [
   { value: "rumored", label: "Rumored" },
   { value: "announced", label: "Announced" },
   { value: "upcoming", label: "Upcoming" },
-  { value: "available", label: "Available" },
   { value: "released", label: "Released" },
 ];
 
@@ -191,7 +190,7 @@ const EditMobile = () => {
     brand: "",
     model: "",
     launch_date: "",
-    launch_status_override: "released",
+    launch_status_override: "upcoming",
     sale_status_override: "sale_tbd",
     store_stage_override: "none",
     launch_date_type: "confirmed",
@@ -1068,7 +1067,7 @@ const EditMobile = () => {
             apiData?.launchStatusOverride ||
             apiData?.launch_status ||
             apiData?.launchStatus ||
-            "released",
+            "upcoming",
           sale_status_override:
             apiData?.sale_status_override ||
             apiData?.saleStatusOverride ||

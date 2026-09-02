@@ -19,6 +19,7 @@ import {
   FaRedo,
   FaSearch,
   FaSpinner,
+  FaTag,
   FaTimes,
   FaTrash,
   FaUpload,
@@ -645,6 +646,7 @@ const ViewMobiles = ({
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
   const [bulkUpdating, setBulkUpdating] = useState(false);
+  const [bulkLaunchStatus, setBulkLaunchStatus] = useState("upcoming");
   const [aiGeneratingIds, setAiGeneratingIds] = useState(() => new Set());
 
   useEffect(() => {
@@ -1544,6 +1546,67 @@ const ViewMobiles = ({
     }
   };
 
+  const bulkUpdateLaunchStatus = async () => {
+    if (!selectedProductIds.length) {
+      showToast("No Selection", "Select mobiles first", "error");
+      return;
+    }
+
+    setBulkUpdating(true);
+    setError("");
+    try {
+      const response = await fetch(buildUrl("/api/admin/smartphones/bulk"), {
+        method: "PATCH",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          ids: selectedProductIds,
+          launch_status_override: bulkLaunchStatus,
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data?.message || `HTTP ${response.status}`);
+      }
+
+      const updatedIds = new Set(
+        (data?.updated_ids || selectedProductIds).map((id) => Number(id)),
+      );
+      setMobiles((previous) =>
+        previous.map((candidate) => {
+          if (!updatedIds.has(Number(resolveProductId(candidate)))) {
+            return candidate;
+          }
+          return {
+            ...candidate,
+            launchStage: bulkLaunchStatus,
+            launch_status: bulkLaunchStatus,
+            raw: candidate.raw
+              ? {
+                  ...candidate.raw,
+                  launchStage: bulkLaunchStatus,
+                  launch_status: bulkLaunchStatus,
+                  launch_status_override: bulkLaunchStatus,
+                }
+              : candidate.raw,
+          };
+        }),
+      );
+      setSelectedRowKeys([]);
+      showToast(
+        "Launch Status Updated",
+        `${updatedIds.size} mobile${updatedIds.size === 1 ? "" : "s"} marked ${bulkLaunchStatus}`,
+        "success",
+      );
+    } catch (bulkError) {
+      console.error("Bulk launch status update failed:", bulkError);
+      const message = bulkError.message || "Unable to update launch status";
+      setError(message);
+      showToast("Bulk Update Failed", message, "error");
+    } finally {
+      setBulkUpdating(false);
+    }
+  };
+
   const bulkDeleteSelectedMobiles = async () => {
     if (!selectedProductIds.length) {
       showToast("No Selection", "Select mobiles first", "error");
@@ -1619,6 +1682,15 @@ const ViewMobiles = ({
   };
 
   const handleDelete = async (mobile) => {
+    if (mobile?.published || mobile?.is_published) {
+      showToast(
+        "Delete Blocked",
+        "Unpublish this smartphone before deleting it.",
+        "error",
+      );
+      return;
+    }
+
     const deleteApproval = requestDeleteApproval({
       itemName: mobile.name,
       itemLabel: "mobile",
@@ -2306,6 +2378,27 @@ const ViewMobiles = ({
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
+                <select
+                  value={bulkLaunchStatus}
+                  onChange={(event) => setBulkLaunchStatus(event.target.value)}
+                  disabled={bulkUpdating || !selectedProductIds.length}
+                  className="h-9 border border-slate-200 bg-white px-2 text-xs font-semibold text-slate-700 disabled:opacity-60"
+                  aria-label="Bulk launch status"
+                >
+                  <option value="rumored">Rumored</option>
+                  <option value="announced">Announced</option>
+                  <option value="upcoming">Upcoming</option>
+                  <option value="released">Released</option>
+                </select>
+                <button
+                  type="button"
+                  onClick={bulkUpdateLaunchStatus}
+                  disabled={bulkUpdating || !selectedProductIds.length}
+                  className="inline-flex h-9 items-center justify-center gap-2 border border-blue-200 bg-white px-3 text-xs font-semibold text-blue-700 transition hover:bg-blue-50 disabled:opacity-60"
+                >
+                  <FaTag className="text-xs" />
+                  Set Launch Status
+                </button>
                 <button
                   type="button"
                   onClick={() => bulkUpdatePublishStatus(true)}
@@ -2652,8 +2745,15 @@ const ViewMobiles = ({
                           <button
                             type="button"
                             onClick={() => handleDelete(mobile)}
-                            className={`${rowActionButtonClassName} hover:border-rose-200 hover:text-rose-600`}
-                            title="Delete"
+                            disabled={Boolean(
+                              mobile.published || mobile.is_published,
+                            )}
+                            className={`${rowActionButtonClassName} hover:border-rose-200 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-slate-200 disabled:hover:text-slate-500`}
+                            title={
+                              mobile.published || mobile.is_published
+                                ? "Unpublish before deleting"
+                                : "Delete"
+                            }
                             aria-label={`Delete ${mobile.name}`}
                           >
                             <FaTrash className="text-sm" />
@@ -2913,8 +3013,15 @@ const ViewMobiles = ({
                             <button
                               type="button"
                               onClick={() => handleDelete(mobile)}
-                              className={`${mobileActionButtonClassName} text-rose-600 hover:bg-rose-50`}
-                              title="Delete"
+                              disabled={Boolean(
+                                mobile.published || mobile.is_published,
+                              )}
+                              className={`${mobileActionButtonClassName} text-rose-600 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent`}
+                              title={
+                                mobile.published || mobile.is_published
+                                  ? "Unpublish before deleting"
+                                  : "Delete"
+                              }
                               aria-label={`Delete ${mobile.name}`}
                             >
                               <FaTrash className="text-sm" />
