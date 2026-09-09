@@ -376,7 +376,7 @@ const TiptapStoryEditor = forwardRef(function TiptapStoryEditor(
         ),
       toggleBold: () =>
         runWithSavedSelection((activeEditor) =>
-          activeEditor.chain().toggleBold().run(),
+          activeEditor.chain().focus().toggleBold().run(),
         ),
       toggleBulletList: () => toggleListWithSelectionSupport("bullet"),
       toggleCodeBlock: () =>
@@ -392,7 +392,7 @@ const TiptapStoryEditor = forwardRef(function TiptapStoryEditor(
         ),
       toggleItalic: () =>
         runWithSavedSelection((activeEditor) =>
-          activeEditor.chain().toggleItalic().run(),
+          activeEditor.chain().focus().toggleItalic().run(),
         ),
       toggleOrderedList: () => toggleListWithSelectionSupport("ordered"),
       toggleStrike: () =>
