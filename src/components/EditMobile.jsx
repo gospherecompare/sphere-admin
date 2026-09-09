@@ -98,6 +98,7 @@ const STORE_STAGE_OPTIONS = [
   { value: "listed", label: "Store Pending" },
   { value: "prebooking", label: "Pre-booking" },
   { value: "live", label: "Live" },
+  { value: "unavailable", label: "Unavailable" },
 ];
 
 const LAUNCH_DATE_TYPE_OPTIONS = [
@@ -190,6 +191,7 @@ const EditMobile = () => {
     brand: "",
     model: "",
     launch_date: "",
+    sale_start_date: "",
     launch_status_override: "upcoming",
     sale_status_override: "sale_tbd",
     store_stage_override: "none",
@@ -228,6 +230,7 @@ const EditMobile = () => {
 
   const autoLifecycleState = getSmartphoneLifecycle({
     launchDate: formData.launch_date,
+    saleStartDate: formData.sale_start_date,
     launchStatus: formData.launch_status_override,
     saleStage: formData.sale_status_override,
     storeStage: formData.store_stage_override,
@@ -1061,6 +1064,12 @@ const EditMobile = () => {
             apiData?.launchDate,
             apiData?.created_at,
             apiData?.createdAt,
+          ),
+          sale_start_date: pickFirstValidDateInput(
+            apiData?.sale_start_date,
+            apiData?.saleStartDate,
+            apiData?.sale_date,
+            apiData?.saleDate,
           ),
           launch_status_override:
             apiData?.launch_status_override ||
@@ -3500,6 +3509,22 @@ const EditMobile = () => {
                         )}
                       </p>
                     )}
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                      Sale Start Date
+                    </label>
+                    <input
+                      type="date"
+                      name="sale_start_date"
+                      value={formData.sale_start_date || ""}
+                      onChange={handleChange}
+                      className={editorFieldClassName}
+                    />
+                    <p className="mt-1 text-xs text-slate-500">
+                      Used when the product has no store listing yet.
+                    </p>
                   </div>
 
                   <div className="sm:col-span-2">

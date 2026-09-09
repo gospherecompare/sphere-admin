@@ -46,6 +46,21 @@ test("explicit released status is the only launch transition", () => {
   assert.equal(result.launchStage, "released");
 });
 
+test("product sale date drives lifecycle even when no store exists", () => {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const saleStartDate = tomorrow.toISOString().slice(0, 10);
+  const result = getSmartphoneLifecycle({
+    saleStartDate,
+    launchStatus: "released",
+    variants: [],
+  });
+
+  assert.equal(result.launchStage, "upcoming");
+  assert.equal(result.saleStage, "sale_scheduled");
+  assert.equal(result.storeStage, "none");
+});
+
 test("missing launch status defaults to upcoming", () => {
   const result = getSmartphoneLifecycle({
     launchDate: "2026-09-01",
@@ -61,6 +76,7 @@ test("create and edit payloads use the same editorial status field", () => {
       smartphone: {
         model: "Test Phone",
         launch_date: "2026-09-02",
+        sale_start_date: "2026-09-10",
         launch_status_override: "upcoming",
       },
       variants: [],
@@ -74,6 +90,7 @@ test("create and edit payloads use the same editorial status field", () => {
       brand_id: "1",
       model: "Test Phone",
       launch_date: "2026-09-02",
+      sale_start_date: "2026-09-10",
       launch_status_override: "upcoming",
       variants: [],
       images: [],
@@ -86,4 +103,6 @@ test("create and edit payloads use the same editorial status field", () => {
   assert.equal(editPayload.launch_status_override, "upcoming");
   assert.equal(createPayload.smartphone.launch_status_override, "upcoming");
   assert.equal(editPayload.smartphone.launch_status_override, "upcoming");
+  assert.equal(createPayload.sale_start_date, "2026-09-10");
+  assert.equal(editPayload.smartphone.sale_start_date, "2026-09-10");
 });

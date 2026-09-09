@@ -565,12 +565,12 @@ const applyInlineBoldMarkers = (value) =>
 
           return part
             .replace(/\*\*([\s\S]*?)\*\*/g, (full, inner) => {
-              const text = String(inner || "").trim();
-              return text ? `<strong>${text}</strong>` : full;
+              const text = String(inner || "");
+              return text.trim() ? `<strong>${text}</strong>` : full;
             })
             .replace(/__([\s\S]*?)__/g, (full, inner) => {
-              const text = String(inner || "").trim();
-              return text ? `<strong>${text}</strong>` : full;
+              const text = String(inner || "");
+              return text.trim() ? `<strong>${text}</strong>` : full;
             });
         })
         .join("");

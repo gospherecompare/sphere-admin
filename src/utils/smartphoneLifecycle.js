@@ -48,6 +48,7 @@ const normalizeStoreStage = (value) => {
     return "prebooking";
   }
   if (/live|available|in_?stock/.test(text)) return "live";
+  if (/unavailable|out_?of_?stock|sold_?out/.test(text)) return "unavailable";
   if (/pending|listed|store_?pending/.test(text)) return "listed";
   if (/none|no_?store|tbd|unknown/.test(text)) return "none";
   return text;
@@ -229,34 +230,44 @@ const getSmartphoneLifecycle = ({
   const directLaunchStage = normalizeLifecycleStatus(launchStatus);
   const directSaleStage = normalizeSaleStage(saleStage);
   const directStoreStage = normalizeStoreStage(storeStage);
-
-  if (directLaunchStage) {
-    return {
-      launchStage: directLaunchStage,
-      saleStage:
-        directSaleStage ||
-        (directLaunchStage === "available"
-          ? "on_sale"
-          : directLaunchStage === "upcoming"
-            ? "preorder"
-            : directLaunchStage === "announced"
-              ? "sale_scheduled"
-              : "sale_tbd"),
-      storeStage: directStoreStage || "none",
-      launchDate: toDateOnly(launchDate),
-      saleStartDate: toDateOnly(saleStartDate),
-      hasPrebookingStores: false,
-      hasLiveStores: false,
-      hasStoreSignals: false,
-    };
-  }
-
   const today = getTodayDateOnly();
   const earliestSaleStart = getEarliestSaleStartDate({
     saleStartDate,
     variants,
     additionalStoreRows,
   });
+
+  if (directLaunchStage) {
+    const launchDateOnly = toDateOnly(launchDate);
+    const dateDrivenLaunchStage = launchDateOnly
+      ? launchDateOnly > today
+        ? "upcoming"
+        : "released"
+      : directLaunchStage;
+    return {
+      launchStage: dateDrivenLaunchStage,
+      saleStage:
+        earliestSaleStart
+          ? earliestSaleStart > today
+            ? "sale_scheduled"
+            : "on_sale"
+          : directSaleStage ||
+            (directLaunchStage === "available"
+          ? "on_sale"
+              : directLaunchStage === "upcoming"
+                ? "preorder"
+                : directLaunchStage === "announced"
+                  ? "sale_scheduled"
+                  : "sale_tbd"),
+      storeStage: directStoreStage || "none",
+      launchDate: toDateOnly(launchDate),
+      saleStartDate: earliestSaleStart || toDateOnly(saleStartDate),
+      hasPrebookingStores: false,
+      hasLiveStores: false,
+      hasStoreSignals: false,
+    };
+  }
+
   const normalizedStatus =
     normalizeLifecycleStatus(launchStatus) ||
     normalizeLifecycleStatus(statusText);
@@ -390,6 +401,8 @@ const formatStoreStageLabel = (value) => {
       return "Pre-booking Stores";
     case "listed":
       return "Store Listing Pending";
+    case "unavailable":
+      return "Unavailable";
     case "none":
       return "No Store Listing";
     default:
