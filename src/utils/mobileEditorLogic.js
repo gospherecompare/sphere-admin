@@ -216,6 +216,7 @@ const normalizeCreateMobileEditorData = (formData) => {
     brand: smartphone.brand || "",
     model: smartphone.model || "",
     launchDate: smartphone.launch_date || "",
+    saleStartDate: smartphone.sale_start_date || smartphone.saleDate || "",
     launchStatusOverride: smartphone.launch_status_override || "",
     saleStatusOverride: smartphone.sale_status_override || "",
     storeStageOverride: smartphone.store_stage_override || "",
@@ -261,6 +262,14 @@ const normalizeEditMobileEditorData = (formData) => {
       "",
     model: formData?.model || smartphone.model || "",
     launchDate: formData?.launch_date || smartphone.launch_date || "",
+    saleStartDate:
+      formData?.sale_start_date ||
+      formData?.saleStartDate ||
+      smartphone.sale_start_date ||
+      smartphone.saleStartDate ||
+      smartphone.sale_date ||
+      smartphone.saleDate ||
+      "",
     launchStatusOverride:
       formData?.launch_status_override ||
       formData?.launchStatusOverride ||
@@ -433,6 +442,8 @@ export const buildMobileSubmitPayload = ({
   const variantStorePrices = toVariantStorePriceRows(variants);
   const brandId = toNumberOrNull(normalized.brandId);
   const launchDate = normalizeDateInputValue(normalized.launchDate) || null;
+  const saleStartDate =
+    normalizeDateInputValue(normalized.saleStartDate) || null;
   const launchStatusOverride = normalizeLifecycleOption(
     normalized.launchStatusOverride,
   );
@@ -462,6 +473,7 @@ export const buildMobileSubmitPayload = ({
     brand_name: normalized.brand,
     model: normalized.model,
     launch_date: launchDate,
+    sale_start_date: saleStartDate,
     launch_status_override: launchStatusOverride,
     sale_status_override: saleStatusOverride,
     store_stage_override: storeStageOverride,
@@ -491,6 +503,7 @@ export const buildMobileSubmitPayload = ({
     brand_name: normalized.brand,
     model: normalized.model,
     launch_date: launchDate,
+    sale_start_date: saleStartDate,
     launch_status_override: launchStatusOverride,
     sale_status_override: saleStatusOverride,
     store_stage_override: storeStageOverride,

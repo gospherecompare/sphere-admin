@@ -501,6 +501,9 @@ const toDateTimeLocalValue = (value) => {
   return `${year}-${month}-${day}T${hours}:${minutes}`;
 };
 
+const getCurrentDateTimeLocalValue = () =>
+  toDateTimeLocalValue(new Date());
+
 const escapeHtml = (value) =>
   String(value || "")
     .replace(/&/g, "&amp;")
@@ -565,12 +568,12 @@ const applyInlineBoldMarkers = (value) =>
 
           return part
             .replace(/\*\*([\s\S]*?)\*\*/g, (full, inner) => {
-              const text = String(inner || "").trim();
-              return text ? `<strong>${text}</strong>` : full;
+              const text = String(inner || "");
+              return text.trim() ? `<strong>${text}</strong>` : full;
             })
             .replace(/__([\s\S]*?)__/g, (full, inner) => {
-              const text = String(inner || "").trim();
-              return text ? `<strong>${text}</strong>` : full;
+              const text = String(inner || "");
+              return text.trim() ? `<strong>${text}</strong>` : full;
             });
         })
         .join("");
@@ -2208,7 +2211,9 @@ const BlogEditor = () => {
           pinned,
           is_published: nextIsPublished,
           status: nextStatus,
-          published_at: publishedAt || null,
+          published_at: nextIsPublished
+            ? publishedAt || getCurrentDateTimeLocalValue()
+            : null,
           content_template: contentForSave,
           token_map: tokenMap,
         }),
@@ -2387,7 +2392,12 @@ const BlogEditor = () => {
         {
           method: "PATCH",
           headers: authHeaders,
-          body: JSON.stringify({ is_published: nextIsPublished }),
+          body: JSON.stringify({
+            is_published: nextIsPublished,
+            published_at: nextIsPublished
+              ? getCurrentDateTimeLocalValue()
+              : null,
+          }),
         },
       );
       const data = await response.json().catch(() => ({}));

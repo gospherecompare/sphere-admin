@@ -215,6 +215,7 @@ const STORE_STAGE_OPTIONS = [
   { value: "listed", label: "Store Pending" },
   { value: "prebooking", label: "Pre-booking" },
   { value: "live", label: "Live" },
+  { value: "unavailable", label: "Unavailable" },
 ];
 
 const LAUNCH_DATE_TYPE_OPTIONS = [
