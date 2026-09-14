@@ -273,7 +273,7 @@ const DESKTOP_SECTIONS = [
         prefixes: ["/reports/search-popularity"],
       },
       {
-        label: "Hook Score",
+        label: "MobilesX Score",
         icon: FaRobot,
         path: "/reports/hook-score",
         prefixes: ["/reports/hook-score"],
@@ -525,9 +525,6 @@ const DesktopSidebar = ({ collapsed, location, sections }) => (
         <Link to="/dashboard" className="flex min-w-0 items-center gap-3">
           <div className="min-w-0">
             <MobileXLogo className="h-9 w-[7.5rem]" showText={false} />
-            <p className="mt-1 text-[10px] uppercase tracking-[0.24em] text-slate-400">
-              Gadget Intelligence
-            </p>
           </div>
         </Link>
       )}
@@ -740,9 +737,6 @@ const MobileDrawer = ({
               <div className="min-w-0">
                 <p className="truncate text-[1.35rem] font-bold leading-none tracking-tight text-white">
                   MobileX
-                </p>
-                <p className="mt-1 text-[10px] uppercase tracking-[0.2em] text-slate-400">
-                  Gadget Intelligence
                 </p>
               </div>
             </div>
