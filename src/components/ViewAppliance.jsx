@@ -46,6 +46,12 @@ const ViewTVs = () => {
   const [sortBy, setSortBy] = useState("newest");
   const [currentPage, setCurrentPage] = useState(1);
   const [toasts, setToasts] = useState([]);
+  const [importFile, setImportFile] = useState(null);
+  const [importPreview, setImportPreview] = useState(null);
+  const [importModalOpen, setImportModalOpen] = useState(false);
+  const [importLoading, setImportLoading] = useState(false);
+  const [selectedTvIds, setSelectedTvIds] = useState(() => new Set());
+  const [bulkActionLoading, setBulkActionLoading] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const itemsPerPage = 10;
@@ -477,6 +483,108 @@ const ViewTVs = () => {
     startIndex,
     startIndex + itemsPerPage,
   );
+  const paginatedTvIds = paginatedAppliances
+    .map((appliance) => resolveTvId(appliance))
+    .filter(Boolean);
+  const selectedTvCount = selectedTvIds.size;
+  const allVisibleSelected =
+    paginatedTvIds.length > 0 &&
+    paginatedTvIds.every((id) => selectedTvIds.has(id));
+
+  const toggleTvSelection = (id) => {
+    if (!id) return;
+    setSelectedTvIds((previous) => {
+      const next = new Set(previous);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleVisibleSelection = () => {
+    setSelectedTvIds((previous) => {
+      const next = new Set(previous);
+      if (allVisibleSelected) paginatedTvIds.forEach((id) => next.delete(id));
+      else paginatedTvIds.forEach((id) => next.add(id));
+      return next;
+    });
+  };
+
+  const runBulkPublish = async (published) => {
+    const ids = Array.from(selectedTvIds);
+    if (!ids.length) return;
+    setBulkActionLoading(true);
+    try {
+      const token = Cookies.get("authToken");
+      const results = await Promise.all(
+        ids.map((id) =>
+          fetch(buildUrl(`/api/products/${id}/publish`), {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: token ? `Bearer ${token}` : "",
+            },
+            body: JSON.stringify({ id, is_published: published }),
+          }).then(async (response) => {
+            if (!response.ok) throw new Error(`Failed to update TV ${id}`);
+            return response;
+          }),
+        ),
+      );
+      void results;
+      setAppliances((previous) =>
+        previous.map((appliance) =>
+          selectedTvIds.has(resolveTvId(appliance))
+            ? { ...appliance, published }
+            : appliance,
+        ),
+      );
+      setSelectedTvIds(new Set());
+      showToast("Status updated", `${ids.length} TV${ids.length === 1 ? "" : "s"} ${published ? "published" : "unpublished"}.`, "success");
+    } catch (actionError) {
+      showToast("Bulk action failed", actionError.message, "error");
+    } finally {
+      setBulkActionLoading(false);
+    }
+  };
+
+  const runBulkDelete = async () => {
+    const selected = appliances.filter((appliance) => selectedTvIds.has(resolveTvId(appliance)));
+    if (!selected.length) return;
+    const deleteApproval = requestDeleteApproval({
+      itemName: `${selected.length} selected TV${selected.length === 1 ? "" : "s"}`,
+      itemLabel: "TVs",
+    });
+    if (!deleteApproval) return;
+    if (deleteApproval.error) {
+      showToast("Delete blocked", deleteApproval.error, "error");
+      return;
+    }
+    setBulkActionLoading(true);
+    try {
+      const token = Cookies.get("authToken");
+      for (const appliance of selected) {
+        const id = resolveTvId(appliance);
+        const response = await fetch(buildUrl(`/api/tvs/${id}`), {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: token ? `Bearer ${token}` : "",
+          },
+          body: JSON.stringify(deleteApproval),
+        });
+        if (!response.ok) throw new Error(`Failed to delete ${appliance.name}`);
+      }
+      const deletedIds = new Set(selected.map((appliance) => resolveTvId(appliance)));
+      setAppliances((previous) => previous.filter((appliance) => !deletedIds.has(resolveTvId(appliance))));
+      setSelectedTvIds(new Set());
+      showToast("TVs deleted", `${selected.length} TV${selected.length === 1 ? "" : "s"} deleted successfully.`, "success");
+    } catch (actionError) {
+      showToast("Bulk delete failed", actionError.message, "error");
+    } finally {
+      setBulkActionLoading(false);
+    }
+  };
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -669,15 +777,21 @@ const ViewTVs = () => {
   };
 
   // Import function
-  const handleImport = async (file) => {
+  const handleImportPreview = async (file) => {
     if (!file) return;
+    if (!file.name.toLowerCase().endsWith(".xlsx")) {
+      showToast("Invalid file", "TV imports require an .xlsx workbook.", "error");
+      return;
+    }
 
     try {
+      setImportLoading(true);
+      setImportFile(file);
       const token = Cookies.get("authToken");
       const formData = new FormData();
       formData.append("file", file);
 
-      const res = await fetch(buildUrl("/api/home-appliances/import"), {
+      const res = await fetch(buildUrl("/api/import/tvs?preview=true"), {
         method: "POST",
         headers: {
           Authorization: token ? `Bearer ${token}` : "",
@@ -685,19 +799,39 @@ const ViewTVs = () => {
         body: formData,
       });
 
-      if (!res.ok) throw new Error("Import failed");
-
-      showToast(
-        "Import Successful",
-        "TVs imported successfully",
-        "success",
-      );
-
-      // Reload the data
-      window.location.reload();
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.message || body.error || "Preview failed");
+      setImportPreview(body);
+      setImportModalOpen(true);
     } catch (error) {
       console.error("Import error:", error);
-      showToast("Import Failed", "Failed to import TVs", "error");
+      showToast("Preview Failed", error.message || "Failed to preview TVs", "error");
+    } finally {
+      setImportLoading(false);
+    }
+  };
+
+  const confirmImport = async () => {
+    if (!importFile) return;
+    try {
+      setImportLoading(true);
+      const formData = new FormData();
+      formData.append("file", importFile);
+      const token = Cookies.get("authToken");
+      const res = await fetch(buildUrl("/api/import/tvs"), {
+        method: "POST",
+        headers: { Authorization: token ? `Bearer ${token}` : "" },
+        body: formData,
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.message || body.error || "Import failed");
+      setImportModalOpen(false);
+      showToast("Import Complete", `${body.summary?.ready || 0} TVs imported`, "success");
+      window.location.reload();
+    } catch (error) {
+      showToast("Import Failed", error.message || "Failed to import TVs", "error");
+    } finally {
+      setImportLoading(false);
     }
   };
 
@@ -709,11 +843,11 @@ const ViewTVs = () => {
   return (
     <div className="mx-auto w-full max-w-[1720px] flex flex-col gap-6 py-2 sm:py-3">
       {/* Toast Container */}
-      <div className="fixed top-4 right-4 z-50 space-y-2">
+      <div className="fixed top-24 right-4 z-[9999] flex w-[calc(100vw-2rem)] max-w-sm flex-col gap-2 sm:right-6">
         {toasts.map((toast) => (
           <div
             key={toast.id}
-            className={`bg-white rounded-lg shadow-lg border p-4 max-w-sm w-full flex items-start space-x-3 ${
+            className={`flex w-full items-start gap-3 rounded-lg border bg-white p-4 shadow-xl ${
               toast.type === "success"
                 ? "border-green-200 bg-green-50"
                 : toast.type === "error"
@@ -740,6 +874,65 @@ const ViewTVs = () => {
           </div>
         ))}
       </div>
+
+      {importModalOpen && importPreview && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/50 p-3 sm:p-6">
+          <div className="flex max-h-[92vh] w-full max-w-[1400px] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b px-5 py-4">
+              <div>
+                <h2 className="text-lg font-semibold text-slate-900">Import TV Excel</h2>
+                <p className="text-sm text-slate-500">TVs, Variants, and StorePrices were previewed.</p>
+              </div>
+              <button type="button" onClick={() => setImportModalOpen(false)} className="text-slate-400 hover:text-slate-700" title="Close preview">
+                <FaTimes />
+              </button>
+            </div>
+            <div className="grid shrink-0 grid-cols-2 gap-3 border-b bg-slate-50 px-5 py-4 sm:grid-cols-4 lg:grid-cols-7">
+              {[["Total", importPreview.summary?.total_rows], ["New", importPreview.summary?.new], ["Duplicate", importPreview.summary?.duplicate], ["Conflict", importPreview.summary?.model_match_date_conflict], ["Possible", importPreview.summary?.possible_duplicate], ["Invalid", importPreview.summary?.invalid], ["Unknown prices", importPreview.rows?.reduce((total, row) => total + (row.unknown_store_prices || 0), 0)]].map(([label, value]) => (
+                <div key={label} className="rounded-lg bg-white p-3 text-center shadow-sm">
+                  <div className="text-xs uppercase text-slate-500">{label}</div>
+                  <div className="text-xl font-semibold text-slate-900">{value || 0}</div>
+                </div>
+              ))}
+            </div>
+            <div className="min-h-0 flex-1 overflow-auto px-3 py-3 sm:px-5 sm:py-4">
+              <table className="min-w-[1250px] border-separate border-spacing-0 text-left text-sm">
+                <thead className="sticky top-0 z-10 bg-slate-100 text-[11px] uppercase tracking-wide text-slate-600">
+                  <tr>
+                    {["Row", "Brand", "Product", "Model", "Manufacturer model", "Category", "Launch date", "Variants", "Store prices", "Images", "Result", "Reason"].map((heading) => (
+                      <th key={heading} className="whitespace-nowrap border-b border-slate-200 px-3 py-3 font-semibold">{heading}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {(importPreview.rows || []).map((row) => (
+                    <tr key={row.row} className="odd:bg-white even:bg-slate-50/60">
+                      <td className="whitespace-nowrap border-b border-slate-100 px-3 py-3 text-slate-500">{row.row}</td>
+                      <td className="whitespace-nowrap border-b border-slate-100 px-3 py-3">{row.brand_name || "-"}</td>
+                      <td className="max-w-[220px] border-b border-slate-100 px-3 py-3 font-medium text-slate-900">{row.product_name || "-"}</td>
+                      <td className="whitespace-nowrap border-b border-slate-100 px-3 py-3">{row.model || "-"}</td>
+                      <td className="whitespace-nowrap border-b border-slate-100 px-3 py-3">{row.manufacturer_model || "-"}</td>
+                      <td className="whitespace-nowrap border-b border-slate-100 px-3 py-3">{row.category || "-"}</td>
+                      <td className="whitespace-nowrap border-b border-slate-100 px-3 py-3">{row.launch_date || "-"}</td>
+                      <td className="border-b border-slate-100 px-3 py-3 text-center">{row.variants ?? "-"}</td>
+                      <td className="border-b border-slate-100 px-3 py-3 text-center">{row.store_prices ?? "-"}{row.unknown_store_prices ? <span className="ml-1 text-xs text-amber-600">({row.unknown_store_prices} unknown)</span> : null}</td>
+                      <td className="border-b border-slate-100 px-3 py-3 text-center">{row.images ?? "-"}</td>
+                      <td className="border-b border-slate-100 px-3 py-3">
+                        <span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${row.status === "NEW" ? "bg-emerald-100 text-emerald-700" : row.status === "INVALID" ? "bg-red-100 text-red-700" : row.status.includes("CONFLICT") ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-700"}`}>{row.status}</span>
+                      </td>
+                      <td className="max-w-[280px] border-b border-slate-100 px-3 py-3 text-slate-500">{row.reason || "Ready"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="flex justify-end gap-2 border-t px-5 py-4">
+              <button type="button" onClick={() => setImportModalOpen(false)} className="rounded-md border px-4 py-2 text-sm text-slate-700">Cancel</button>
+              <button type="button" onClick={confirmImport} disabled={importLoading || !(importPreview.summary?.new > 0)} className="rounded-md bg-purple-600 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">{importLoading ? "Importing..." : `Import ${importPreview.summary?.new || 0} New TVs`}</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Header */}
       <div className="mb-6">
@@ -926,6 +1119,41 @@ const ViewTVs = () => {
                 ) : null}
               </div>
 
+              {selectedTvCount > 0 && (
+                <div className="flex flex-wrap items-center gap-2 rounded-md border border-blue-200 bg-blue-50 px-2 py-1">
+                  <span className="px-2 text-xs font-semibold text-blue-800">
+                    {selectedTvCount} selected
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => runBulkPublish(true)}
+                    disabled={bulkActionLoading}
+                    className="inline-flex items-center gap-1 rounded-md bg-green-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-green-700 disabled:opacity-50"
+                    title="Publish selected TVs"
+                  >
+                    <FaEye /> Publish
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => runBulkPublish(false)}
+                    disabled={bulkActionLoading}
+                    className="inline-flex items-center gap-1 rounded-md bg-slate-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-slate-700 disabled:opacity-50"
+                    title="Unpublish selected TVs"
+                  >
+                    <FaEyeSlash /> Unpublish
+                  </button>
+                  <button
+                    type="button"
+                    onClick={runBulkDelete}
+                    disabled={bulkActionLoading}
+                    className="inline-flex items-center gap-1 rounded-md bg-red-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+                    title="Delete selected TVs"
+                  >
+                    <FaTrash /> Delete
+                  </button>
+                </div>
+              )}
+
               {/* Export/Import */}
               <div className="flex space-x-2">
                 <button
@@ -939,14 +1167,14 @@ const ViewTVs = () => {
                 <div className="relative">
                   <input
                     type="file"
-                    accept=".json,.csv,.xlsx,.xls"
-                    onChange={(e) => handleImport(e.target.files[0])}
+                    accept=".xlsx"
+                    onChange={(e) => handleImportPreview(e.target.files[0])}
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                     id="import-file"
                   />
-                  <button className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-md text-sm">
+                  <button className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-md text-sm" disabled={importLoading}>
                     <FaUpload className="text-sm" />
-                    <span>Import</span>
+                    <span>{importLoading ? "Checking..." : "Import TVs"}</span>
                   </button>
                 </div>
               </div>
@@ -959,6 +1187,15 @@ const ViewTVs = () => {
           <table className="text-sm text-slate-700 min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
+                <th scope="col" className="w-12 px-4 py-3 text-center">
+                  <input
+                    type="checkbox"
+                    checked={allVisibleSelected}
+                    onChange={toggleVisibleSelection}
+                    aria-label="Select visible TVs"
+                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                </th>
                 <th
                   scope="col"
                   className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
@@ -1006,7 +1243,7 @@ const ViewTVs = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {loading ? (
                 <tr>
-                  <td colSpan="7" className="px-4 py-8 text-center">
+                  <td colSpan="8" className="px-4 py-8 text-center">
                     <div className="flex justify-center">
                       <FaSpinner className="animate-spin text-2xl text-blue-600" />
                     </div>
@@ -1018,6 +1255,15 @@ const ViewTVs = () => {
                     key={appliance.id || `appliance-${startIndex + idx}`}
                     className="hover:bg-gray-50"
                   >
+                    <td className="px-4 py-3 text-center">
+                      <input
+                        type="checkbox"
+                        checked={selectedTvIds.has(resolveTvId(appliance))}
+                        onChange={() => toggleTvSelection(resolveTvId(appliance))}
+                        aria-label={`Select ${appliance.name}`}
+                        className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                    </td>
                     {/* Television Info */}
                     <td className="px-4 py-3">
                       <div className="flex items-center">

@@ -52,6 +52,8 @@ const EditHomeAppliance = () => {
     home_appliance: {
       appliance_type: "television",
       model_number: "",
+      manufacturer_model: "",
+      launch_date: "",
       release_year: new Date().getFullYear(),
       country_of_origin: "",
       key_specs_json: {},
@@ -89,7 +91,7 @@ const EditHomeAppliance = () => {
     draftKey: `hooks-admin:edit-tv:${id}`,
     value: formData,
     setValue: setFormData,
-    enabled: Boolean(id) && !isFetching,
+    enabled: false,
   });
   const [activeSpecTab, setActiveSpecTab] = useState("key_specs_json");
   const [customJsonFields, setCustomJsonFields] = useState({});
@@ -539,6 +541,8 @@ const EditHomeAppliance = () => {
               ha.model ||
               ha.basic_info_json?.model_number ||
               "",
+            manufacturer_model: ha.manufacturer_model || "",
+            launch_date: ha.launch_date ? String(ha.launch_date).slice(0, 10) : "",
             release_year:
               ha.release_year ||
               ha.releaseYear ||
@@ -1633,6 +1637,8 @@ const EditHomeAppliance = () => {
         brand_id: brandId,
         category: "television",
         model: formData.home_appliance.model_number,
+        manufacturer_model: formData.home_appliance.manufacturer_model,
+        launch_date: formData.home_appliance.launch_date || null,
         publish: Boolean(formData.published),
         key_specs_json: {
           ...toObject(tvSource.key_specs_json),
@@ -2088,6 +2094,33 @@ const EditHomeAppliance = () => {
                     required
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="e.g., FHM1207"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Manufacturer Model / SKU
+                  </label>
+                  <input
+                    type="text"
+                    name="manufacturer_model"
+                    value={formData.home_appliance.manufacturer_model}
+                    onChange={handleApplianceChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Official manufacturer model"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Launch Date
+                  </label>
+                  <input
+                    type="date"
+                    name="launch_date"
+                    value={formData.home_appliance.launch_date}
+                    onChange={handleApplianceChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
 
@@ -2716,7 +2749,14 @@ const EditHomeAppliance = () => {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {getDefaultFields(activeSpecTab).map((field) => (
+                  {Array.from(
+                    new Set([
+                      ...getDefaultFields(activeSpecTab),
+                      ...Object.keys(
+                        toObject(formData.home_appliance[activeSpecTab]),
+                      ),
+                    ]),
+                  ).map((field) => (
                     <div key={field}>
                       <label className="block text-xs font-medium text-gray-600 mb-1 capitalize">
                         {field.replace(/_/g, " ")}
@@ -2739,43 +2779,6 @@ const EditHomeAppliance = () => {
                     </div>
                   ))}
 
-                  {(customJsonFields[activeSpecTab] || []).map(
-                    (customField) => (
-                      <div key={customField} className="relative">
-                        <label className="block text-xs font-medium text-gray-600 mb-1 capitalize">
-                          {customField.replace(/_/g, " ")}
-                        </label>
-                        <input
-                          type="text"
-                          value={
-                            formData.home_appliance[activeSpecTab]?.[
-                              customField
-                            ] || ""
-                          }
-                          onChange={(e) =>
-                            handleJsonbChange(
-                              activeSpecTab,
-                              customField,
-                              e.target.value,
-                            )
-                          }
-                          className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
-                          placeholder={`Enter ${customField.replace(
-                            /_/g,
-                            " ",
-                          )}`}
-                        />
-                        <button
-                          onClick={() =>
-                            removeCustomJsonField(activeSpecTab, customField)
-                          }
-                          className="absolute right-2 top-7 text-red-500 hover:text-red-700"
-                        >
-                          <FaTrash className="text-sm" />
-                        </button>
-                      </div>
-                    ),
-                  )}
                 </div>
 
                 <button
