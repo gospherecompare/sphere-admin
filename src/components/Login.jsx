@@ -1471,7 +1471,7 @@ const Login = ({ onLogin }) => {
               <p className="mt-2 px-2 text-center text-[13px] text-white/48 sm:mt-3 sm:text-[14px]">
                 &copy; 2024{" "}
                 <span className="font-semibold text-[#3458ff]">MobilesX</span>.
-                All rights reserved.
+                {new Date().getFullYear()} All rights reserved.
               </p>
             </div>
           </section>

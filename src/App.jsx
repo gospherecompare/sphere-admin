@@ -472,7 +472,7 @@ const MainLayout = ({
               <Outlet />
             </div>
             <footer className="mt-8 border-t border-slate-200 py-4 text-center text-sm text-gray-500">
-              &copy; {new Date().getFullYear()} Hook. All rights reserved.
+              &copy; {new Date().getFullYear()} MobilesX. All rights reserved.
             </footer>
           </div>
         </main>
