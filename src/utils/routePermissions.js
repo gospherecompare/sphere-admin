@@ -4,7 +4,8 @@ const normalizePath = (value = "") => {
   return `/${path.replace(/^\/+/, "")}`.replace(/\/+$/, "") || "/";
 };
 
-const defaultMessage = "Your account does not have permission to open this section.";
+const defaultMessage =
+  "Your account does not have permission to open this section.";
 
 export const ROUTE_ACCESS_RULES = [
   {
@@ -19,12 +20,20 @@ export const ROUTE_ACCESS_RULES = [
   },
   {
     pattern: "/products/smartphones/create",
-    requiredAnyPermissions: ["products.smartphones.create", "products.create", "products.manage"],
+    requiredAnyPermissions: [
+      "products.smartphones.create",
+      "products.create",
+      "products.manage",
+    ],
     title: "Smartphone create access required",
   },
   {
     pattern: "/edit-mobile/:id",
-    requiredAnyPermissions: ["products.smartphones.edit", "products.edit", "products.manage"],
+    requiredAnyPermissions: [
+      "products.smartphones.edit",
+      "products.edit",
+      "products.manage",
+    ],
     title: "Smartphone edit access required",
   },
   {
@@ -49,17 +58,29 @@ export const ROUTE_ACCESS_RULES = [
   },
   {
     pattern: "/smartphonesrating",
-    requiredAnyPermissions: ["products.smartphones.view", "products.view", "products.manage"],
+    requiredAnyPermissions: [
+      "products.smartphones.view",
+      "products.view",
+      "products.manage",
+    ],
     title: "Smartphone rating access required",
   },
   {
     pattern: "/products/laptops/create",
-    requiredAnyPermissions: ["products.laptops.create", "products.create", "products.manage"],
+    requiredAnyPermissions: [
+      "products.laptops.create",
+      "products.create",
+      "products.manage",
+    ],
     title: "Laptop create access required",
   },
   {
     pattern: "/products/laptops/:id/edit",
-    requiredAnyPermissions: ["products.laptops.edit", "products.edit", "products.manage"],
+    requiredAnyPermissions: [
+      "products.laptops.edit",
+      "products.edit",
+      "products.manage",
+    ],
     title: "Laptop edit access required",
   },
   {
@@ -69,27 +90,56 @@ export const ROUTE_ACCESS_RULES = [
   },
   {
     pattern: "/products/tvs/create",
-    requiredAnyPermissions: ["products.tvs.create", "products.create", "products.manage"],
+    requiredAnyPermissions: [
+      "products.tvs.create",
+      "products.create",
+      "products.manage",
+    ],
     title: "TV create access required",
   },
   {
+    pattern: "/products/tvs/import",
+    requiredAnyPermissions: [
+      "products.tvs.create",
+      "products.create",
+      "products.manage",
+    ],
+    title: "TV import access required",
+  },
+  {
     pattern: "/products/appliances/create",
-    requiredAnyPermissions: ["products.tvs.create", "products.create", "products.manage"],
+    requiredAnyPermissions: [
+      "products.tvs.create",
+      "products.create",
+      "products.manage",
+    ],
     title: "Appliance create access required",
   },
   {
     pattern: "/create-home-appliance",
-    requiredAnyPermissions: ["products.tvs.create", "products.create", "products.manage"],
+    requiredAnyPermissions: [
+      "products.tvs.create",
+      "products.create",
+      "products.manage",
+    ],
     title: "Appliance create access required",
   },
   {
     pattern: "/products/tvs/:id/edit",
-    requiredAnyPermissions: ["products.tvs.edit", "products.edit", "products.manage"],
+    requiredAnyPermissions: [
+      "products.tvs.edit",
+      "products.edit",
+      "products.manage",
+    ],
     title: "TV edit access required",
   },
   {
     pattern: "/products/homeappliances/:id/edit",
-    requiredAnyPermissions: ["products.tvs.edit", "products.edit", "products.manage"],
+    requiredAnyPermissions: [
+      "products.tvs.edit",
+      "products.edit",
+      "products.manage",
+    ],
     title: "Appliance edit access required",
   },
   {
@@ -114,42 +164,80 @@ export const ROUTE_ACCESS_RULES = [
   },
   {
     pattern: "/permission-management",
-    requiredAnyPermissions: ["roles.manage", "permissions.manage", "roles.view", "permissions.view"],
+    requiredAnyPermissions: [
+      "roles.manage",
+      "permissions.manage",
+      "roles.view",
+      "permissions.view",
+    ],
     title: "Permission management is restricted",
   },
   {
     pattern: "/specifications-manager",
-    requiredAnyPermissions: ["specifications.view", "specifications.manage", "settings.view", "products.view"],
+    requiredAnyPermissions: [
+      "specifications.view",
+      "specifications.manage",
+      "settings.view",
+      "products.view",
+    ],
     title: "Specifications access required",
   },
   {
     pattern: "/specifications/categories/create",
-    requiredAnyPermissions: ["specifications.categories.create", "specifications.create", "specifications.manage"],
+    requiredAnyPermissions: [
+      "specifications.categories.create",
+      "specifications.create",
+      "specifications.manage",
+    ],
     title: "Category create access required",
   },
   {
     pattern: "/specifications/categories/edit/:categoryId",
-    requiredAnyPermissions: ["specifications.categories.edit", "specifications.edit", "specifications.manage"],
+    requiredAnyPermissions: [
+      "specifications.categories.edit",
+      "specifications.edit",
+      "specifications.manage",
+    ],
     title: "Category edit access required",
   },
   {
     pattern: "/specifications/categories",
-    requiredAnyPermissions: ["specifications.categories.view", "specifications.view", "settings.view", "products.view"],
+    requiredAnyPermissions: [
+      "specifications.categories.view",
+      "specifications.view",
+      "settings.view",
+      "products.view",
+    ],
     title: "Category management access required",
   },
   {
     pattern: "/specifications/brands",
-    requiredAnyPermissions: ["specifications.brands.view", "specifications.view", "settings.view", "products.view"],
+    requiredAnyPermissions: [
+      "specifications.brands.view",
+      "specifications.view",
+      "settings.view",
+      "products.view",
+    ],
     title: "Brand management access required",
   },
   {
     pattern: "/specifications/store",
-    requiredAnyPermissions: ["specifications.stores.view", "specifications.view", "settings.view", "products.view"],
+    requiredAnyPermissions: [
+      "specifications.stores.view",
+      "specifications.view",
+      "settings.view",
+      "products.view",
+    ],
     title: "Store management access required",
   },
   {
     pattern: "/specifications/memory-storage/configurations",
-    requiredAnyPermissions: ["specifications.memory_storage.view", "specifications.view", "settings.view", "products.view"],
+    requiredAnyPermissions: [
+      "specifications.memory_storage.view",
+      "specifications.view",
+      "settings.view",
+      "products.view",
+    ],
     title: "Memory and storage access required",
   },
   {
@@ -168,16 +256,25 @@ export const ROUTE_ACCESS_RULES = [
       "content.news.manage",
     ],
     title: "News & Articles access required",
-    message: "This news studio is available to roles with News & Articles permissions.",
+    message:
+      "This news studio is available to roles with News & Articles permissions.",
   },
   {
     pattern: "/marketing/banners",
-    requiredAnyPermissions: ["marketing.banners.view", "marketing.view", "marketing.manage"],
+    requiredAnyPermissions: [
+      "marketing.banners.view",
+      "marketing.view",
+      "marketing.manage",
+    ],
     title: "Banner access required",
   },
   {
     pattern: "/marketing/affiliate-links",
-    requiredAnyPermissions: ["marketing.affiliate_links.view", "marketing.view", "marketing.manage"],
+    requiredAnyPermissions: [
+      "marketing.affiliate_links.view",
+      "marketing.view",
+      "marketing.manage",
+    ],
     title: "Affiliate link access required",
   },
   {
@@ -187,7 +284,10 @@ export const ROUTE_ACCESS_RULES = [
   },
   {
     pattern: "/reports/productpublishstatus",
-    requiredAnyPermissions: ["reports.product_publish_status.view", "reports.view"],
+    requiredAnyPermissions: [
+      "reports.product_publish_status.view",
+      "reports.view",
+    ],
     title: "Product publish report access required",
   },
   {
@@ -202,7 +302,11 @@ export const ROUTE_ACCESS_RULES = [
   },
   {
     pattern: "/reports/recentactivity",
-    requiredAnyPermissions: ["reports.recent_activity.view", "activity.view", "reports.view"],
+    requiredAnyPermissions: [
+      "reports.recent_activity.view",
+      "activity.view",
+      "reports.view",
+    ],
     title: "Recent activity access required",
   },
   {
@@ -232,12 +336,18 @@ export const ROUTE_ACCESS_RULES = [
   },
   {
     pattern: "/reports/career-applications",
-    requiredAnyPermissions: ["reports.career_applications.view", "reports.view"],
+    requiredAnyPermissions: [
+      "reports.career_applications.view",
+      "reports.view",
+    ],
     title: "Career applications access required",
   },
   {
     pattern: "/reports/contact-submissions",
-    requiredAnyPermissions: ["reports.contact_submissions.view", "reports.view"],
+    requiredAnyPermissions: [
+      "reports.contact_submissions.view",
+      "reports.view",
+    ],
     title: "Contact inbox access required",
   },
   {
@@ -252,18 +362,26 @@ export const ROUTE_ACCESS_RULES = [
   },
   {
     pattern: "/settings/spec-score-algorithms",
-    requiredAnyPermissions: ["settings.spec_score_algorithms.view", "settings.view"],
+    requiredAnyPermissions: [
+      "settings.spec_score_algorithms.view",
+      "settings.view",
+    ],
     title: "Spec score algorithm access required",
   },
   {
     pattern: "/settings/gemini",
     allowedRoles: ["admin"],
     title: "Gemini settings restricted",
-    message: "Only administrators can manage the Gemini provider configuration.",
+    message:
+      "Only administrators can manage the Gemini provider configuration.",
   },
   {
     pattern: "/api-tester",
-    requiredAnyPermissions: ["settings.api_tester.view", "settings.manage", "settings.view"],
+    requiredAnyPermissions: [
+      "settings.api_tester.view",
+      "settings.manage",
+      "settings.view",
+    ],
     title: "API tester access required",
   },
   {

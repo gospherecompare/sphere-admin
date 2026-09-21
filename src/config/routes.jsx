@@ -27,6 +27,7 @@ const CreateLaptop = lazy(() => import("../components/CreateLaptop"));
 const CreateHomeAppliance = lazy(() => import("../components/CreateAppliance"));
 const ViewLaptops = lazy(() => import("../components/ViewLaptop"));
 const ViewTVs = lazy(() => import("../components/ViewAppliance"));
+const ImportTvExcel = lazy(() => import("../components/ImportTvExcel"));
 const RamStorageConfig = lazy(() => import("../components/Ramstorage"));
 const Brand = lazy(() => import("../components/Brand"));
 const CategoryManagement = lazy(() => import("../components/Category"));
@@ -178,6 +179,11 @@ export const ROUTE_CONFIG = {
     path: "/products/tvs/inventory",
     component: ViewTVs,
     label: "Television Inventory",
+  },
+  tvImport: {
+    path: "/products/tvs/import",
+    component: ImportTvExcel,
+    label: "Import TVs from Excel",
   },
   editAppliance: {
     path: "/products/homeappliances/:id/edit",

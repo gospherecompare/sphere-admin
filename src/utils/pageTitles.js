@@ -10,81 +10,290 @@ const routeMeta = (path, page, workspace) => ({
 
 const TITLE_ROUTES = [
   routeMeta("/login", "Secure Sign-In Workspace", "Identity Access Cloud"),
-  routeMeta("/dashboard", "Executive Operations Dashboard", "Enterprise Control Center"),
-  routeMeta("/search", "Global Discovery Workspace", "Catalog Intelligence Cloud"),
+  routeMeta(
+    "/dashboard",
+    "Executive Operations Dashboard",
+    "Enterprise Control Center",
+  ),
+  routeMeta(
+    "/search",
+    "Global Discovery Workspace",
+    "Catalog Intelligence Cloud",
+  ),
 
   routeMeta("/products", "Mobile Inventory Workspace", "Product Catalog Hub"),
-  routeMeta("/products/smartphones/create", "Smartphone Creation Studio", "Product Catalog Hub"),
-  routeMeta("/products/smartphones/preview/:slug", "Smartphone Preview Console", "Product Experience Suite"),
-  routeMeta("/products/smartphones/preview", "Smartphone Preview Console", "Product Experience Suite"),
-  routeMeta("/products/smartphones/inventory", "Mobile Inventory Workspace", "Product Catalog Hub"),
-  routeMeta("/products/smartphones/upcoming", "Upcoming Launch Pipeline", "Launch Intelligence Desk"),
-  routeMeta("/edit-mobile/:id", "Smartphone Editing Studio", "Product Experience Suite"),
+  routeMeta(
+    "/products/smartphones/create",
+    "Smartphone Creation Studio",
+    "Product Catalog Hub",
+  ),
+  routeMeta(
+    "/products/smartphones/preview/:slug",
+    "Smartphone Preview Console",
+    "Product Experience Suite",
+  ),
+  routeMeta(
+    "/products/smartphones/preview",
+    "Smartphone Preview Console",
+    "Product Experience Suite",
+  ),
+  routeMeta(
+    "/products/smartphones/inventory",
+    "Mobile Inventory Workspace",
+    "Product Catalog Hub",
+  ),
+  routeMeta(
+    "/products/smartphones/upcoming",
+    "Upcoming Launch Pipeline",
+    "Launch Intelligence Desk",
+  ),
+  routeMeta(
+    "/edit-mobile/:id",
+    "Smartphone Editing Studio",
+    "Product Experience Suite",
+  ),
 
-  routeMeta("/products/laptops/create", "Laptop Creation Studio", "Product Catalog Hub"),
-  routeMeta("/products/laptops/inventory", "Laptop Inventory Workspace", "Product Catalog Hub"),
-  routeMeta("/products/laptops/:id/edit", "Laptop Editing Studio", "Product Experience Suite"),
+  routeMeta(
+    "/products/laptops/create",
+    "Laptop Creation Studio",
+    "Product Catalog Hub",
+  ),
+  routeMeta(
+    "/products/laptops/inventory",
+    "Laptop Inventory Workspace",
+    "Product Catalog Hub",
+  ),
+  routeMeta(
+    "/products/laptops/:id/edit",
+    "Laptop Editing Studio",
+    "Product Experience Suite",
+  ),
 
-  routeMeta("/products/appliances/create", "Television Creation Studio", "Product Catalog Hub"),
-  routeMeta("/create-home-appliance", "Television Creation Studio", "Product Catalog Hub"),
-  routeMeta("/products/tvs/create", "Television Creation Studio", "Product Catalog Hub"),
-  routeMeta("/products/homeappliances/inventory", "Television Inventory Workspace", "Product Catalog Hub"),
-  routeMeta("/products/tvs/inventory", "Television Inventory Workspace", "Product Catalog Hub"),
-  routeMeta("/products/homeappliances/:id/edit", "Television Editing Studio", "Product Experience Suite"),
-  routeMeta("/products/tvs/:id/edit", "Television Editing Studio", "Product Experience Suite"),
+  routeMeta(
+    "/products/appliances/create",
+    "Television Creation Studio",
+    "Product Catalog Hub",
+  ),
+  routeMeta(
+    "/create-home-appliance",
+    "Television Creation Studio",
+    "Product Catalog Hub",
+  ),
+  routeMeta(
+    "/products/tvs/create",
+    "Television Creation Studio",
+    "Product Catalog Hub",
+  ),
+  routeMeta(
+    "/products/tvs/import",
+    "TV Excel Import Workspace",
+    "Product Catalog Hub",
+  ),
+  routeMeta(
+    "/products/homeappliances/inventory",
+    "Television Inventory Workspace",
+    "Product Catalog Hub",
+  ),
+  routeMeta(
+    "/products/tvs/inventory",
+    "Television Inventory Workspace",
+    "Product Catalog Hub",
+  ),
+  routeMeta(
+    "/products/homeappliances/:id/edit",
+    "Television Editing Studio",
+    "Product Experience Suite",
+  ),
+  routeMeta(
+    "/products/tvs/:id/edit",
+    "Television Editing Studio",
+    "Product Experience Suite",
+  ),
 
   routeMeta("/users", "User Management Workspace", "Identity Governance"),
   routeMeta("/roles", "Role Management Workspace", "Identity Governance"),
-  routeMeta("/user-management", "User Management Workspace", "Identity Governance"),
-  routeMeta("/account-management", "Account Settings Workspace", "System Administration"),
-  routeMeta("/change-password", "Credential Security Settings", "System Administration"),
-  routeMeta("/permission-management", "Roles and Permissions Matrix", "Identity Governance"),
+  routeMeta(
+    "/user-management",
+    "User Management Workspace",
+    "Identity Governance",
+  ),
+  routeMeta(
+    "/account-management",
+    "Account Settings Workspace",
+    "System Administration",
+  ),
+  routeMeta(
+    "/change-password",
+    "Credential Security Settings",
+    "System Administration",
+  ),
+  routeMeta(
+    "/permission-management",
+    "Roles and Permissions Matrix",
+    "Identity Governance",
+  ),
 
-  routeMeta("/specifications", "Brand Master Workspace", "Master Data Operations"),
-  routeMeta("/specifications-manager", "Specifications Governance Console", "Master Data Operations"),
+  routeMeta(
+    "/specifications",
+    "Brand Master Workspace",
+    "Master Data Operations",
+  ),
+  routeMeta(
+    "/specifications-manager",
+    "Specifications Governance Console",
+    "Master Data Operations",
+  ),
   routeMeta(
     "/specifications/memory-storage/configurations",
     "RAM and Storage Configuration Hub",
     "Master Data Operations",
   ),
-  routeMeta("/specifications/categories", "Category Registry Workspace", "Master Data Operations"),
-  routeMeta("/specifications/categories/create", "Category Creation Workspace", "Master Data Operations"),
-  routeMeta("/specifications/categories/edit/:categoryId", "Category Editing Workspace", "Master Data Operations"),
-  routeMeta("/specifications/brands", "Brand Master Workspace", "Master Data Operations"),
-  routeMeta("/specifications/store", "Store Management Workspace", "Master Data Operations"),
-  routeMeta("/smartphonesrating", "Ratings Intelligence Console", "Engagement Analytics Desk"),
+  routeMeta(
+    "/specifications/categories",
+    "Category Registry Workspace",
+    "Master Data Operations",
+  ),
+  routeMeta(
+    "/specifications/categories/create",
+    "Category Creation Workspace",
+    "Master Data Operations",
+  ),
+  routeMeta(
+    "/specifications/categories/edit/:categoryId",
+    "Category Editing Workspace",
+    "Master Data Operations",
+  ),
+  routeMeta(
+    "/specifications/brands",
+    "Brand Master Workspace",
+    "Master Data Operations",
+  ),
+  routeMeta(
+    "/specifications/store",
+    "Store Management Workspace",
+    "Master Data Operations",
+  ),
+  routeMeta(
+    "/smartphonesrating",
+    "Ratings Intelligence Console",
+    "Engagement Analytics Desk",
+  ),
 
   routeMeta("/settings", "Compare Pages Studio", "Compare Intelligence Engine"),
-  routeMeta("/settings/compare-pages", "Compare Pages Studio", "Compare Intelligence Engine"),
-  routeMeta("/settings/compare-scoring", "Compare Scoring Studio", "Compare Intelligence Engine"),
-  routeMeta("/settings/spec-score-algorithms", "Spec Score Algorithms", "Compare Intelligence Engine"),
+  routeMeta(
+    "/settings/compare-pages",
+    "Compare Pages Studio",
+    "Compare Intelligence Engine",
+  ),
+  routeMeta(
+    "/settings/compare-scoring",
+    "Compare Scoring Studio",
+    "Compare Intelligence Engine",
+  ),
+  routeMeta(
+    "/settings/spec-score-algorithms",
+    "Spec Score Algorithms",
+    "Compare Intelligence Engine",
+  ),
 
   routeMeta("/content", "News Publishing Studio", "Content Operations Cloud"),
-  routeMeta("/content/news-articles", "News Publishing Studio", "Content Operations Cloud"),
-  routeMeta("/content/blogs", "News Publishing Studio", "Content Operations Cloud"),
+  routeMeta(
+    "/content/news-articles",
+    "News Publishing Studio",
+    "Content Operations Cloud",
+  ),
+  routeMeta(
+    "/content/blogs",
+    "News Publishing Studio",
+    "Content Operations Cloud",
+  ),
 
-  routeMeta("/marketing", "Banner Campaign Studio", "Marketing Operations Cloud"),
-  routeMeta("/marketing/banners", "Banner Campaign Studio", "Marketing Operations Cloud"),
+  routeMeta(
+    "/marketing",
+    "Banner Campaign Studio",
+    "Marketing Operations Cloud",
+  ),
+  routeMeta(
+    "/marketing/banners",
+    "Banner Campaign Studio",
+    "Marketing Operations Cloud",
+  ),
   routeMeta(
     "/marketing/affiliate-links",
     "Affiliate Link Command Center",
     "Marketing Operations Cloud",
   ),
 
-  routeMeta("/reports", "Reporting Command Center", "Analytics Operations Cloud"),
-  routeMeta("/analytics", "Publishing by User Analytics", "Analytics Operations Cloud"),
-  routeMeta("/reports/productcategories", "Product Category Insights", "Analytics Operations Cloud"),
-  routeMeta("/reports/productpublishstatus", "Product Publish Status", "Analytics Operations Cloud"),
-  routeMeta("/reports/launch-timing", "Launch Timing Intelligence", "Analytics Operations Cloud"),
-  routeMeta("/reports/useractivity", "Publishing by User Analytics", "Analytics Operations Cloud"),
-  routeMeta("/reports/recentactivity", "Recent Publish Activity Monitor", "Analytics Operations Cloud"),
-  routeMeta("/reports/trending", "Trending Command Center", "Trend Intelligence Cloud"),
-  routeMeta("/reports/hook-score", "Hook Score Analytics", "Analytics Operations Cloud"),
-  routeMeta("/reports/feature-clicks", "Feature Clicks Analytics", "Analytics Operations Cloud"),
-  routeMeta("/reports/search-popularity", "Search Popularity Analytics", "Analytics Operations Cloud"),
-  routeMeta("/reports/compare-analytics", "User Compare Manager", "Analytics Operations Cloud"),
-  routeMeta("/reports/career-applications", "Career Applications Console", "Analytics Operations Cloud"),
-  routeMeta("/reports/contact-submissions", "Contact Inbox Console", "Analytics Operations Cloud"),
+  routeMeta(
+    "/reports",
+    "Reporting Command Center",
+    "Analytics Operations Cloud",
+  ),
+  routeMeta(
+    "/analytics",
+    "Publishing by User Analytics",
+    "Analytics Operations Cloud",
+  ),
+  routeMeta(
+    "/reports/productcategories",
+    "Product Category Insights",
+    "Analytics Operations Cloud",
+  ),
+  routeMeta(
+    "/reports/productpublishstatus",
+    "Product Publish Status",
+    "Analytics Operations Cloud",
+  ),
+  routeMeta(
+    "/reports/launch-timing",
+    "Launch Timing Intelligence",
+    "Analytics Operations Cloud",
+  ),
+  routeMeta(
+    "/reports/useractivity",
+    "Publishing by User Analytics",
+    "Analytics Operations Cloud",
+  ),
+  routeMeta(
+    "/reports/recentactivity",
+    "Recent Publish Activity Monitor",
+    "Analytics Operations Cloud",
+  ),
+  routeMeta(
+    "/reports/trending",
+    "Trending Command Center",
+    "Trend Intelligence Cloud",
+  ),
+  routeMeta(
+    "/reports/hook-score",
+    "Hook Score Analytics",
+    "Analytics Operations Cloud",
+  ),
+  routeMeta(
+    "/reports/feature-clicks",
+    "Feature Clicks Analytics",
+    "Analytics Operations Cloud",
+  ),
+  routeMeta(
+    "/reports/search-popularity",
+    "Search Popularity Analytics",
+    "Analytics Operations Cloud",
+  ),
+  routeMeta(
+    "/reports/compare-analytics",
+    "User Compare Manager",
+    "Analytics Operations Cloud",
+  ),
+  routeMeta(
+    "/reports/career-applications",
+    "Career Applications Console",
+    "Analytics Operations Cloud",
+  ),
+  routeMeta(
+    "/reports/contact-submissions",
+    "Contact Inbox Console",
+    "Analytics Operations Cloud",
+  ),
 
   routeMeta("/api-tester", "API Testing Console", "Developer Operations Cloud"),
 ];
@@ -127,23 +336,31 @@ const inferPageFromPath = (pathname = "") => {
 };
 
 const inferWorkspaceFromPath = (pathname = "") => {
-  const segments = String(pathname || "/").split("/").filter(Boolean);
+  const segments = String(pathname || "/")
+    .split("/")
+    .filter(Boolean);
   const firstSegment = segments[0] || "";
 
   if (pathname.startsWith("/edit-mobile/")) return "Product Experience Suite";
   if (pathname.startsWith("/user-management")) return "Identity Governance";
-  if (pathname.startsWith("/permission-management")) return "Identity Governance";
-  if (pathname.startsWith("/account-management")) return "System Administration";
+  if (pathname.startsWith("/permission-management"))
+    return "Identity Governance";
+  if (pathname.startsWith("/account-management"))
+    return "System Administration";
   if (pathname.startsWith("/change-password")) return "System Administration";
-  if (pathname.startsWith("/smartphonesrating")) return "Engagement Analytics Desk";
-  if (pathname.startsWith("/create-home-appliance")) return "Product Catalog Hub";
+  if (pathname.startsWith("/smartphonesrating"))
+    return "Engagement Analytics Desk";
+  if (pathname.startsWith("/create-home-appliance"))
+    return "Product Catalog Hub";
 
   return ROOT_WORKSPACES[firstSegment] || "Enterprise SaaS Workspace";
 };
 
 const resolveTrendingMeta = (search = "") => {
   const params = new URLSearchParams(search || "");
-  const section = String(params.get("section") || "").trim().toLowerCase();
+  const section = String(params.get("section") || "")
+    .trim()
+    .toLowerCase();
 
   if (section === "rules") {
     return {
