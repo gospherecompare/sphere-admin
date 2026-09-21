@@ -811,6 +811,28 @@ const ViewTVs = () => {
     }
   };
 
+  const downloadImportTemplate = async () => {
+    try {
+      const token = Cookies.get("authToken");
+      const res = await fetch(buildUrl("/api/import/tvs/template"), {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) throw new Error("Template download failed");
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = "MobilesX_TV_Import_Template.xlsx";
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Template download error:", error);
+      showToast("Template Download Failed", error.message, "error");
+    }
+  };
+
   const confirmImport = async () => {
     if (!importFile) return;
     try {
@@ -925,6 +947,23 @@ const ViewTVs = () => {
                   ))}
                 </tbody>
               </table>
+
+              <div className="mt-6 grid gap-6 xl:grid-cols-2">
+                <section>
+                  <h3 className="mb-2 text-sm font-semibold text-slate-900">Variants ({importPreview.sheets?.variants?.length || 0})</h3>
+                  <table className="min-w-full text-left text-xs">
+                    <thead className="bg-slate-100 text-slate-600"><tr>{["Row", "Brand", "Product", "Model", "Variant", "Base price"].map((heading) => <th key={heading} className="border-b px-2 py-2 font-semibold">{heading}</th>)}</tr></thead>
+                    <tbody>{(importPreview.sheets?.variants || []).map((row) => <tr key={`variant-${row.rowNumber}`} className="odd:bg-white even:bg-slate-50/60"><td className="border-b px-2 py-2">{row.rowNumber}</td><td className="border-b px-2 py-2">{row.brandName || "-"}</td><td className="border-b px-2 py-2">{row.productName || "-"}</td><td className="border-b px-2 py-2">{row.model || "-"}</td><td className="border-b px-2 py-2">{row.variantKey || "-"}</td><td className="border-b px-2 py-2">{row.basePrice ?? "-"}</td></tr>)}</tbody>
+                  </table>
+                </section>
+                <section>
+                  <h3 className="mb-2 text-sm font-semibold text-slate-900">StorePrices ({importPreview.sheets?.store_prices?.length || 0})</h3>
+                  <table className="min-w-full text-left text-xs">
+                    <thead className="bg-slate-100 text-slate-600"><tr>{["Row", "Brand", "Product", "Variant", "Store", "Price", "Status"].map((heading) => <th key={heading} className="border-b px-2 py-2 font-semibold">{heading}</th>)}</tr></thead>
+                    <tbody>{(importPreview.sheets?.store_prices || []).map((row) => <tr key={`price-${row.rowNumber}`} className="odd:bg-white even:bg-slate-50/60"><td className="border-b px-2 py-2">{row.rowNumber}</td><td className="border-b px-2 py-2">{row.brandName || "-"}</td><td className="border-b px-2 py-2">{row.productName || "-"}</td><td className="border-b px-2 py-2">{row.variantKey || "-"}</td><td className="border-b px-2 py-2">{row.storeName || "-"}</td><td className="border-b px-2 py-2">{row.price ?? "-"}</td><td className="border-b px-2 py-2">{row.priceStatus}</td></tr>)}</tbody>
+                  </table>
+                </section>
+              </div>
             </div>
             <div className="flex justify-end gap-2 border-t px-5 py-4">
               <button type="button" onClick={() => setImportModalOpen(false)} className="rounded-md border px-4 py-2 text-sm text-slate-700">Cancel</button>
@@ -1162,6 +1201,16 @@ const ViewTVs = () => {
                 >
                   <FaDownload className="text-sm" />
                   <span>Export</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={downloadImportTemplate}
+                  className="flex items-center gap-2 rounded-md bg-slate-600 px-3 py-2 text-sm text-white hover:bg-slate-700"
+                  title="Download TV import template"
+                >
+                  <FaDownload className="text-sm" />
+                  <span>Template</span>
                 </button>
 
                 <div className="relative">

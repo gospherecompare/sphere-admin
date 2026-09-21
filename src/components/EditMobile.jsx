@@ -362,7 +362,7 @@ const EditMobile = () => {
     const selectedCategory = categoriesList.find(
       (cat) => cat.value === formData?.segment,
     );
-    return selectedCategory ? selectedCategory.label : "";
+    return selectedCategory?.label || formData?.segment || "";
   };
 
   // Handle date selection
@@ -1057,6 +1057,8 @@ const EditMobile = () => {
           official_preorder_url:
             apiData?.official_preorder_url ||
             apiData?.officialPreorderUrl ||
+            apiData?.official_product_url ||
+            apiData?.officialProductUrl ||
             "",
           // rating removed
           launch_date: pickFirstValidDateInput(
