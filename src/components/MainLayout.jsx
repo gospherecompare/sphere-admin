@@ -195,6 +195,10 @@ const MainLayout = ({
                   element={<ROUTE_CONFIG.tvInventory.component />}
                 />
                 <Route
+                  path="/products/tvs/import"
+                  element={<ROUTE_CONFIG.tvImport.component />}
+                />
+                <Route
                   path="/products/homeappliances/:id/edit"
                   element={<ROUTE_CONFIG.editAppliance.component />}
                 />
@@ -332,9 +336,7 @@ const MainLayout = ({
                 />
                 <Route
                   path="/analytics"
-                  element={
-                    <Navigate to="/reports/useractivity" replace />
-                  }
+                  element={<Navigate to="/reports/useractivity" replace />}
                 />
                 <Route
                   path="/reports/useractivity"

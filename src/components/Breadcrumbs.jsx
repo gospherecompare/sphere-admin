@@ -112,6 +112,14 @@ const ROUTE_TRAILS = [
     ],
   },
   {
+    path: "/products/tvs/import",
+    label: "Import TVs",
+    breadcrumbs: [
+      { label: "TVs", to: "/products/tvs/inventory" },
+      { label: "Import TVs", to: "/products/tvs/import" },
+    ],
+  },
+  {
     path: "/products/tvs/create",
     trail: [
       DASHBOARD_CRUMB,
@@ -402,9 +410,7 @@ const Breadcrumbs = () => {
       const params = new URLSearchParams(location.search || "");
       const section = params.get("section") || "manager";
       const sectionLabel =
-        section === "rules"
-          ? "Trending Rules"
-          : "Trending Manager";
+        section === "rules" ? "Trending Rules" : "Trending Manager";
 
       return [
         DASHBOARD_CRUMB,
@@ -459,4 +465,3 @@ const Breadcrumbs = () => {
 };
 
 export default Breadcrumbs;
-

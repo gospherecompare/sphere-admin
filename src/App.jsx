@@ -30,6 +30,7 @@ import CreateLaptop from "./components/CreateLaptop";
 import CreateHomeAppliance from "./components/CreateAppliance";
 import ViewLaptops from "./components/ViewLaptop";
 import ViewTVs from "./components/ViewAppliance";
+import ImportTvExcel from "./components/ImportTvExcel";
 import RamStorageConfig from "./components/Ramstorage";
 import Brand from "./components/Brand";
 import CategoryManagement from "./components/Category";
@@ -717,6 +718,14 @@ function App() {
             element={
               <RouteAccessGate path="/products/tvs/inventory">
                 <ViewTVs />
+              </RouteAccessGate>
+            }
+          />
+          <Route
+            path="products/tvs/import"
+            element={
+              <RouteAccessGate path="/products/tvs/import">
+                <ImportTvExcel />
               </RouteAccessGate>
             }
           />
