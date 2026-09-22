@@ -180,6 +180,7 @@ const ViewTVs = () => {
                 variant.variant_key ||
                 variant.screen_size ||
                 `tv_variant_${index + 1}`,
+              attributes: asObject(variant.attributes),
               screen_size:
                 variant.screen_size || variant.size || variant.variant_key || "",
               base_price:
@@ -265,9 +266,12 @@ const ViewTVs = () => {
           const waterConsumption =
             audio.output_power || keySpecs.audio_output || "N/A";
 
-          const width = physicalDetails.width || "";
-          const height = physicalDetails.height || "";
-          const depth = physicalDetails.depth || "";
+          const width =
+            physicalDetails.width || physicalDetails.width_without_stand || "";
+          const height =
+            physicalDetails.height || physicalDetails.height_without_stand || "";
+          const depth =
+            physicalDetails.depth || physicalDetails.depth_without_stand || "";
           const dimensions =
             width || height || depth
               ? `${width || "-"} × ${height || "-"} × ${depth || "-"}`
@@ -299,7 +303,9 @@ const ViewTVs = () => {
             energyRating: formatScalar(energyRating),
             waterConsumption: formatScalar(waterConsumption),
             dimensions: formatScalar(dimensions),
-            weight: formatScalar(physicalDetails.weight),
+            weight: formatScalar(
+              physicalDetails.weight || physicalDetails.weight_without_stand,
+            ),
             motorWarranty: formatScalar(
               warranty.panel_warranty || warranty.panel || warranty.installation,
             ),
