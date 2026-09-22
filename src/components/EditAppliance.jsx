@@ -286,12 +286,16 @@ const EditHomeAppliance = () => {
     return String(value);
   };
 
-  const sectionToFormInputs = (section) => {
-    const normalized = {};
+  const sectionToFormInputs = (section, prefix = "", output = {}) => {
     Object.entries(toObject(section)).forEach(([key, value]) => {
-      normalized[key] = normalizeFormScalar(value);
+      const path = prefix ? `${prefix}.${key}` : key;
+      if (value && typeof value === "object" && !Array.isArray(value)) {
+        sectionToFormInputs(value, path, output);
+      } else {
+        output[path] = normalizeFormScalar(value);
+      }
     });
-    return normalized;
+    return output;
   };
 
   const parseMaybeJsonValue = (value) => {
@@ -320,11 +324,26 @@ const EditHomeAppliance = () => {
     Object.entries(toObject(section)).forEach(([key, value]) => {
       const parsed = parseMaybeJsonValue(value);
       if (parsed !== null && parsed !== undefined && parsed !== "") {
-        normalized[key] = parsed;
+        const path = key.split(".");
+        let target = normalized;
+        path.forEach((part, index) => {
+          if (index === path.length - 1) {
+            target[part] = parsed;
+          } else {
+            target[part] = target[part] || {};
+            target = target[part];
+          }
+        });
       }
     });
     return normalized;
   };
+
+  const formatFieldLabel = (field) =>
+    field
+      .split(".")
+      .map((part) => part.replace(/_/g, " "))
+      .join(" / ");
 
   // Fetch appliance data by ID
   useEffect(() => {
@@ -2765,13 +2784,11 @@ const EditHomeAppliance = () => {
                   ).map((field) => (
                     <div key={field}>
                       <label className="block text-xs font-medium text-gray-600 mb-1 capitalize">
-                        {field.replace(/_/g, " ")}
+                        {formatFieldLabel(field)}
                       </label>
                       <input
                         type="text"
-                        value={
-                          formData.home_appliance[activeSpecTab]?.[field] || ""
-                        }
+                        value={formData.home_appliance[activeSpecTab]?.[field] ?? ""}
                         onChange={(e) =>
                           handleJsonbChange(
                             activeSpecTab,
@@ -2780,7 +2797,7 @@ const EditHomeAppliance = () => {
                           )
                         }
                         className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
-                        placeholder={`Enter ${field.replace(/_/g, " ")}`}
+                        placeholder={`Enter ${formatFieldLabel(field)}`}
                       />
                     </div>
                   ))}
