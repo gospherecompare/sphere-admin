@@ -72,6 +72,7 @@ const EditHomeAppliance = () => {
       product_details_json: {},
       in_the_box_json: {},
       warranty_json: {},
+      storage_json: {},
       rating_json: {},
       specifications: {},
       features: [],
@@ -166,6 +167,7 @@ const EditHomeAppliance = () => {
     "product_details_json",
     "in_the_box_json",
     "warranty_json",
+    "storage_json",
     "rating_json",
   ];
 
@@ -443,6 +445,7 @@ const EditHomeAppliance = () => {
             ...sourceWarranty,
             ...toObject(ha.warranty),
           }),
+          storage_json: sectionToFormInputs(toObject(ha.storage_json)),
           rating_json: sectionToFormInputs(rawRating),
         };
 
@@ -492,6 +495,7 @@ const EditHomeAppliance = () => {
             variant_key:
               row.variant_key || row.screen_size || `tv_variant_${index + 1}`,
             screen_size: row.screen_size || row.size || row.variant_key || "",
+            attributes: toObject(row.attributes),
             base_price:
               row.base_price !== undefined && row.base_price !== null
                 ? String(row.base_price)
@@ -1621,6 +1625,7 @@ const EditHomeAppliance = () => {
           return {
             variant_key: variantKey,
             screen_size: screenSize || null,
+            attributes: toObject(variant?.attributes),
             base_price: Number.isFinite(basePrice) ? basePrice : null,
             images,
             store_prices: normalizeTvStores(stores),
@@ -1680,6 +1685,7 @@ const EditHomeAppliance = () => {
         warranty_json: {
           ...mergedWarrantyJson,
         },
+        storage_json: parsedSections.storage_json || {},
         dimensions_json: dimensions,
         design_json: design,
         rating_json: rating,

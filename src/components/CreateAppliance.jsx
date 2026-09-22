@@ -889,6 +889,7 @@ const CreateHomeAppliance = () => {
           return {
             variant_key: variantKey,
             screen_size: screenSize || null,
+            attributes: variant?.attributes || {},
             base_price: Number.isFinite(basePrice) ? basePrice : null,
             images,
             store_prices: storePrices,
