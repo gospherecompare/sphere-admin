@@ -176,13 +176,15 @@ const EditHomeAppliance = () => {
       id: "key_specs_json",
       label: "Key Specs",
       icon: FaBox,
-      helpText: "Primary highlights like screen size, resolution, HDR, and smart support.",
+      helpText:
+        "Primary highlights like screen size, resolution, HDR, and smart support.",
     },
     {
       id: "display_json",
       label: "Display",
       icon: FaTv,
-      helpText: "Panel, refresh rate, brightness, contrast, color and motion details.",
+      helpText:
+        "Panel, refresh rate, brightness, contrast, color and motion details.",
     },
     {
       id: "audio_json",
@@ -200,31 +202,36 @@ const EditHomeAppliance = () => {
       id: "connectivity_json",
       label: "Connectivity",
       icon: FaIndustry,
-      helpText: "Wi-Fi, Bluetooth, Ethernet, casting, and platform connectivity.",
+      helpText:
+        "Wi-Fi, Bluetooth, Ethernet, casting, and platform connectivity.",
     },
     {
       id: "ports_json",
       label: "Ports",
       icon: FaTag,
-      helpText: "HDMI, USB, optical, ARC/eARC, RF input, and physical I/O details.",
+      helpText:
+        "HDMI, USB, optical, ARC/eARC, RF input, and physical I/O details.",
     },
     {
       id: "power_json",
       label: "Power",
       icon: FaBolt,
-      helpText: "Power consumption, eco mode, supply details, and standby usage.",
+      helpText:
+        "Power consumption, eco mode, supply details, and standby usage.",
     },
     {
       id: "gaming_json",
       label: "Gaming",
       icon: FaBolt,
-      helpText: "ALLM, VRR, HDMI 2.1, input lag, and gaming readiness settings.",
+      helpText:
+        "ALLM, VRR, HDMI 2.1, input lag, and gaming readiness settings.",
     },
     {
       id: "dimensions_json",
       label: "Dimensions",
       icon: FaRuler,
-      helpText: "Width, height, depth, weight, mount support, and stand information.",
+      helpText:
+        "Width, height, depth, weight, mount support, and stand information.",
     },
     {
       id: "design_json",
@@ -254,7 +261,8 @@ const EditHomeAppliance = () => {
       id: "video_engine_json",
       label: "Video Engine",
       icon: FaBolt,
-      helpText: "Image processor and upscaling/video processing related settings.",
+      helpText:
+        "Image processor and upscaling/video processing related settings.",
     },
     {
       id: "physical_json",
@@ -266,7 +274,8 @@ const EditHomeAppliance = () => {
       id: "product_details_json",
       label: "Product Details",
       icon: FaCalendar,
-      helpText: "Additional product details like launch timeline and origin metadata.",
+      helpText:
+        "Additional product details like launch timeline and origin metadata.",
     },
     {
       id: "in_the_box_json",
@@ -451,7 +460,9 @@ const EditHomeAppliance = () => {
           }),
           audio_json: sectionToFormInputs(toObject(ha.audio_json)),
           smart_tv_json: sectionToFormInputs(toObject(ha.smart_tv_json)),
-          connectivity_json: sectionToFormInputs(toObject(ha.connectivity_json)),
+          connectivity_json: sectionToFormInputs(
+            toObject(ha.connectivity_json),
+          ),
           ports_json: sectionToFormInputs(toObject(ha.ports_json)),
           power_json: sectionToFormInputs(toObject(ha.power_json)),
           gaming_json: sectionToFormInputs(toObject(ha.gaming_json)),
@@ -565,7 +576,9 @@ const EditHomeAppliance = () => {
               ha.basic_info_json?.model_number ||
               "",
             manufacturer_model: ha.manufacturer_model || "",
-            launch_date: ha.launch_date ? String(ha.launch_date).slice(0, 10) : "",
+            launch_date: ha.launch_date
+              ? String(ha.launch_date).slice(0, 10)
+              : "",
             release_year:
               ha.release_year ||
               ha.releaseYear ||
@@ -848,11 +861,11 @@ const EditHomeAppliance = () => {
   const handleBrandSelect = (brand) => {
     const brandId =
       brand && typeof brand === "object"
-        ? brand.id ?? brand._id ?? brand.value ?? brand.name ?? ""
-        : brand ?? "";
+        ? (brand.id ?? brand._id ?? brand.value ?? brand.name ?? "")
+        : (brand ?? "");
     const brandName =
       brand && typeof brand === "object"
-        ? brand.name ?? brand.label ?? brand.value ?? String(brandId)
+        ? (brand.name ?? brand.label ?? brand.value ?? String(brandId))
         : String(brandId || "");
 
     setFormData((prev) => ({
@@ -874,8 +887,8 @@ const EditHomeAppliance = () => {
   const handleApplianceSelect = (appliance) => {
     const applianceValue =
       appliance && typeof appliance === "object"
-        ? appliance.value ?? appliance.id ?? appliance.name ?? ""
-        : appliance ?? "";
+        ? (appliance.value ?? appliance.id ?? appliance.name ?? "")
+        : (appliance ?? "");
 
     setFormData((prev) => ({
       ...prev,
@@ -932,7 +945,9 @@ const EditHomeAppliance = () => {
       setFormData((prev) => {
         const updatedVariants = [...(prev.variants || [])];
         const target = updatedVariants[variantIndex] || {};
-        const existingImages = Array.isArray(target.images) ? target.images : [];
+        const existingImages = Array.isArray(target.images)
+          ? target.images
+          : [];
         updatedVariants[variantIndex] = {
           ...target,
           images: [...existingImages, ...uploadedImages],
@@ -1183,13 +1198,7 @@ const EditHomeAppliance = () => {
         "eco_mode",
         "power_supply",
       ],
-      gaming_json: [
-        "gaming_mode",
-        "vr_r",
-        "allm",
-        "input_lag",
-        "hdmi_2_1",
-      ],
+      gaming_json: ["gaming_mode", "vr_r", "allm", "input_lag", "hdmi_2_1"],
       dimensions_json: [
         "width",
         "height",
@@ -1205,7 +1214,13 @@ const EditHomeAppliance = () => {
         "build_material",
         "stand_color",
       ],
-      physical_json: ["width", "height", "depth", "weight", "installation_type"],
+      physical_json: [
+        "width",
+        "height",
+        "depth",
+        "weight",
+        "installation_type",
+      ],
       product_details_json: ["launch_year", "country_of_origin"],
       in_the_box_json: ["in_the_box"],
       warranty_json: [
@@ -1596,7 +1611,9 @@ const EditHomeAppliance = () => {
           const prevPrice =
             typeof previous.price === "number" ? previous.price : null;
           const nextPrice =
-            typeof normalizedRow.price === "number" ? normalizedRow.price : null;
+            typeof normalizedRow.price === "number"
+              ? normalizedRow.price
+              : null;
           const shouldReplace =
             (nextPrice !== null && prevPrice === null) ||
             (nextPrice !== null && prevPrice !== null && nextPrice < prevPrice);
@@ -2497,13 +2514,15 @@ const EditHomeAppliance = () => {
                           className="hidden"
                           onChange={(e) => {
                             const files = Array.from(e.target.files || []);
-                            if (files.length) handleVariantImageUpload(index, files);
+                            if (files.length)
+                              handleVariantImageUpload(index, files);
                             e.target.value = "";
                           }}
                         />
                       </label>
                     </div>
-                    {Array.isArray(variant.images) && variant.images.length > 0 ? (
+                    {Array.isArray(variant.images) &&
+                    variant.images.length > 0 ? (
                       <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
                         {variant.images.map((img, imageIndex) => (
                           <div
@@ -2517,7 +2536,9 @@ const EditHomeAppliance = () => {
                             />
                             <button
                               type="button"
-                              onClick={() => removeVariantImage(index, imageIndex)}
+                              onClick={() =>
+                                removeVariantImage(index, imageIndex)
+                              }
                               className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 text-white text-[10px] flex items-center justify-center"
                               title="Remove image"
                             >
@@ -2690,9 +2711,9 @@ const EditHomeAppliance = () => {
                             type="button"
                             onClick={() => {
                               const newVariants = [...formData.variants];
-                              newVariants[index].stores = (newVariants[index].stores || []).filter(
-                                (_, idx) => idx !== storeIndex,
-                              );
+                              newVariants[index].stores = (
+                                newVariants[index].stores || []
+                              ).filter((_, idx) => idx !== storeIndex);
                               setFormData((prev) => ({
                                 ...prev,
                                 variants: newVariants,
@@ -2788,7 +2809,9 @@ const EditHomeAppliance = () => {
                       </label>
                       <input
                         type="text"
-                        value={formData.home_appliance[activeSpecTab]?.[field] ?? ""}
+                        value={
+                          formData.home_appliance[activeSpecTab]?.[field] ?? ""
+                        }
                         onChange={(e) =>
                           handleJsonbChange(
                             activeSpecTab,
@@ -2801,7 +2824,6 @@ const EditHomeAppliance = () => {
                       />
                     </div>
                   ))}
-
                 </div>
 
                 <button
@@ -2901,6 +2923,3 @@ const EditHomeAppliance = () => {
 };
 
 export default EditHomeAppliance;
-
-
-

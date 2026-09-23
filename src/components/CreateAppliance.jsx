@@ -519,7 +519,9 @@ const CreateHomeAppliance = () => {
       setFormData((prev) => {
         const updatedVariants = [...(prev.variants || [])];
         const target = updatedVariants[variantIndex] || {};
-        const existingImages = Array.isArray(target.images) ? target.images : [];
+        const existingImages = Array.isArray(target.images)
+          ? target.images
+          : [];
         updatedVariants[variantIndex] = {
           ...target,
           images: [...existingImages, ...uploadedImages],
@@ -839,7 +841,9 @@ const CreateHomeAppliance = () => {
           const prevPrice =
             typeof previous.price === "number" ? previous.price : null;
           const nextPrice =
-            typeof normalizedRow.price === "number" ? normalizedRow.price : null;
+            typeof normalizedRow.price === "number"
+              ? normalizedRow.price
+              : null;
           const shouldReplace =
             (nextPrice !== null && prevPrice === null) ||
             (nextPrice !== null && prevPrice !== null && nextPrice < prevPrice);
@@ -920,7 +924,9 @@ const CreateHomeAppliance = () => {
         },
         warranty_json: formData.home_appliance.warranty || {},
         smart_tv_json: {
-          smart_features: (formData.home_appliance.features || []).filter(Boolean),
+          smart_features: (formData.home_appliance.features || []).filter(
+            Boolean,
+          ),
         },
         images_json: formData.images,
         variants_json: tvVariants,
@@ -1906,13 +1912,15 @@ const CreateHomeAppliance = () => {
                           className="hidden"
                           onChange={(e) => {
                             const files = Array.from(e.target.files || []);
-                            if (files.length) handleVariantImageUpload(index, files);
+                            if (files.length)
+                              handleVariantImageUpload(index, files);
                             e.target.value = "";
                           }}
                         />
                       </label>
                     </div>
-                    {Array.isArray(variant.images) && variant.images.length > 0 ? (
+                    {Array.isArray(variant.images) &&
+                    variant.images.length > 0 ? (
                       <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
                         {variant.images.map((img, imageIndex) => (
                           <div
@@ -1926,7 +1934,9 @@ const CreateHomeAppliance = () => {
                             />
                             <button
                               type="button"
-                              onClick={() => removeVariantImage(index, imageIndex)}
+                              onClick={() =>
+                                removeVariantImage(index, imageIndex)
+                              }
                               className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 text-white text-[10px] flex items-center justify-center"
                               title="Remove image"
                             >
@@ -2099,9 +2109,9 @@ const CreateHomeAppliance = () => {
                             type="button"
                             onClick={() => {
                               const newVariants = [...formData.variants];
-                              newVariants[index].stores = (newVariants[index].stores || []).filter(
-                                (_, idx) => idx !== storeIndex,
-                              );
+                              newVariants[index].stores = (
+                                newVariants[index].stores || []
+                              ).filter((_, idx) => idx !== storeIndex);
                               setFormData((prev) => ({
                                 ...prev,
                                 variants: newVariants,
@@ -2340,6 +2350,3 @@ const CreateHomeAppliance = () => {
 };
 
 export default CreateHomeAppliance;
-
-
-
