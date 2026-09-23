@@ -67,7 +67,9 @@ const INITIAL_HEADERS = [
   { key: "Accept", value: "application/json", enabled: true },
 ];
 
-const INITIAL_QUERY_PARAMS = [{ key: "", value: "", enabled: true, description: "" }];
+const INITIAL_QUERY_PARAMS = [
+  { key: "", value: "", enabled: true, description: "" },
+];
 
 const STORAGE_KEYS = {
   presets: "apiTester.presets",
@@ -232,9 +234,7 @@ const normalizeDisplayUrl = (value) => {
 };
 
 const normalizeComparableUrl = (value) =>
-  normalizeDisplayUrl(value)
-    .replace(/\/+$/, "")
-    .toLowerCase();
+  normalizeDisplayUrl(value).replace(/\/+$/, "").toLowerCase();
 
 const toTitleCase = (value) =>
   String(value || "")
@@ -277,7 +277,11 @@ const deriveCollectionId = (item) => {
   if (value.includes("compare") || value.includes("feature-click")) {
     return "compare";
   }
-  if (value.includes("blog") || value.includes("article") || value.includes("content")) {
+  if (
+    value.includes("blog") ||
+    value.includes("article") ||
+    value.includes("content")
+  ) {
     return "blog";
   }
   if (value.includes("search") || value.includes("popular-features")) {
@@ -296,9 +300,10 @@ const deriveCollectionId = (item) => {
 };
 
 const buildRequestTitle = (method, url, knownItems = []) => {
-  const exact = knownItems.find((item) =>
-    item.method === method &&
-    normalizeComparableUrl(item.url) === normalizeComparableUrl(url),
+  const exact = knownItems.find(
+    (item) =>
+      item.method === method &&
+      normalizeComparableUrl(item.url) === normalizeComparableUrl(url),
   );
   if (exact?.name) return exact.name;
 
@@ -306,8 +311,12 @@ const buildRequestTitle = (method, url, knownItems = []) => {
     .replace(/^https?:\/\/[^/]+/i, "")
     .replace(/^\/api\/?/i, "");
   const parts = normalized.split("?")[0].split("/").filter(Boolean);
-  const filtered = parts.filter((part) => part !== ":id" && !/^\d+$/.test(part));
-  const resource = toTitleCase(filtered[filtered.length - 1] || filtered[0] || "Request");
+  const filtered = parts.filter(
+    (part) => part !== ":id" && !/^\d+$/.test(part),
+  );
+  const resource = toTitleCase(
+    filtered[filtered.length - 1] || filtered[0] || "Request",
+  );
   const action =
     {
       GET: "Fetch",
@@ -491,7 +500,9 @@ export default function ApiTester() {
   const [response, setResponse] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [history, setHistory] = useState(() => readStoredArray(STORAGE_KEYS.history));
+  const [history, setHistory] = useState(() =>
+    readStoredArray(STORAGE_KEYS.history),
+  );
   const [activeTab, setActiveTab] = useState("body");
   const [bodyFormat, setBodyFormat] = useState("json");
   const [bodyMode, setBodyMode] = useState("raw");
@@ -505,7 +516,9 @@ export default function ApiTester() {
   const [showImportPanel, setShowImportPanel] = useState(false);
   const [, setResponseTime] = useState(0);
   const [copied, setCopied] = useState(false);
-  const [postResponsePath, setPostResponsePath] = useState("/api/smartphones/req");
+  const [postResponsePath, setPostResponsePath] = useState(
+    "/api/smartphones/req",
+  );
   const [postResponseLoading, setPostResponseLoading] = useState(false);
   const [smartphoneOptions, setSmartphoneOptions] = useState([]);
   const [smartphoneLoading, setSmartphoneLoading] = useState(false);
@@ -545,7 +558,9 @@ export default function ApiTester() {
         const query = smartphoneQuery.trim().toLowerCase();
         return (
           option.name.toLowerCase().includes(query) ||
-          String(option.model || "").toLowerCase().includes(query)
+          String(option.model || "")
+            .toLowerCase()
+            .includes(query)
         );
       })
     : smartphoneOptions;
@@ -608,10 +623,12 @@ export default function ApiTester() {
       }));
     }
     if (payload && typeof payload === "object") {
-      return Object.entries(payload).slice(0, 10).map(([key, value]) => ({
-        key,
-        value,
-      }));
+      return Object.entries(payload)
+        .slice(0, 10)
+        .map(([key, value]) => ({
+          key,
+          value,
+        }));
     }
     return [{ key: "Value", value: payload }];
   }, [response]);
@@ -1007,7 +1024,11 @@ export default function ApiTester() {
           basicInfo.model_name ||
           null,
         brand_name:
-          row.brand_name || row.brand || product.brand || row.brand_name || null,
+          row.brand_name ||
+          row.brand ||
+          product.brand ||
+          row.brand_name ||
+          null,
         product_name:
           row.product_name ||
           row.name ||
@@ -1115,7 +1136,8 @@ export default function ApiTester() {
           payloadSource.key_specs_json ?? row.key_specs_json ?? undefined,
         basic_info_json:
           payloadSource.basic_info_json ?? row.basic_info_json ?? undefined,
-        display_json: payloadSource.display_json ?? row.display_json ?? undefined,
+        display_json:
+          payloadSource.display_json ?? row.display_json ?? undefined,
         video_engine_json:
           payloadSource.video_engine_json ?? row.video_engine_json ?? undefined,
         audio_json: payloadSource.audio_json ?? row.audio_json ?? undefined,
@@ -1314,9 +1336,25 @@ export default function ApiTester() {
     if (bodyFormat === "json") {
       try {
         const parsed = JSON.parse(rawBody);
+
+        // /api/tvs accepts a JSON object. Do not transform nested TV sections;
+        // stringify the parsed object exactly as entered in the editor.
+        const requestPath = String(url || "")
+          .trim()
+          .replace(/[?#].*$/, "")
+          .replace(/\/+$/, "")
+          .toLowerCase();
+
+        if (
+          (requestPath === "/api/tvs" || requestPath.endsWith("/api/tvs")) &&
+          (!parsed || typeof parsed !== "object" || Array.isArray(parsed))
+        ) {
+          throw new Error("TV POST body must be a JSON object.");
+        }
+
         return { body: JSON.stringify(parsed), headersObject };
-      } catch {
-        throw new Error("Invalid JSON body.");
+      } catch (error) {
+        throw new Error(error?.message || "Invalid JSON body.");
       }
     }
 
@@ -1547,13 +1585,15 @@ export default function ApiTester() {
   };
 
   const createCollectionFromCurrentRequest = () => {
-    setCollections((prev) => [
-      {
-        name: `Collection ${prev.length + 1}`,
-        requests: [captureCurrentRequest()],
-      },
-      ...prev,
-    ].slice(0, 15));
+    setCollections((prev) =>
+      [
+        {
+          name: `Collection ${prev.length + 1}`,
+          requests: [captureCurrentRequest()],
+        },
+        ...prev,
+      ].slice(0, 15),
+    );
   };
 
   const deletePreset = (index) => {
@@ -1995,7 +2035,9 @@ export default function ApiTester() {
 
   const renderResponsePanel = () => (
     <section className={PANEL_CLASS}>
-      <div className={`${PANEL_HEADER_CLASS} flex items-center justify-between`}>
+      <div
+        className={`${PANEL_HEADER_CLASS} flex items-center justify-between`}
+      >
         <h2 className="text-lg font-semibold text-slate-950">Response</h2>
         <div className="flex items-center gap-2">
           <button
@@ -2196,12 +2238,13 @@ export default function ApiTester() {
 
   const renderHistoryPanel = () => (
     <section ref={historyPanelRef} className={PANEL_CLASS}>
-      <div className={`${PANEL_HEADER_CLASS} flex items-center justify-between`}>
-        <h2 className="text-lg font-semibold text-slate-950">Request History</h2>
-        <button
-          type="button"
-          className="text-sm font-semibold text-[#4C35F2]"
-        >
+      <div
+        className={`${PANEL_HEADER_CLASS} flex items-center justify-between`}
+      >
+        <h2 className="text-lg font-semibold text-slate-950">
+          Request History
+        </h2>
+        <button type="button" className="text-sm font-semibold text-[#4C35F2]">
           View All History
         </button>
       </div>
@@ -2348,7 +2391,11 @@ export default function ApiTester() {
                     <FaChevronDown className="text-xs text-slate-400" />
                   </div>
 
-                  <button type="button" onClick={openDocs} className={GHOST_BUTTON_CLASS}>
+                  <button
+                    type="button"
+                    onClick={openDocs}
+                    className={GHOST_BUTTON_CLASS}
+                  >
                     <FaBook className="text-sm" />
                     <span>Docs</span>
                   </button>
@@ -2428,7 +2475,9 @@ export default function ApiTester() {
                   ) : null}
 
                   <section className={PANEL_CLASS}>
-                    <div className={`${PANEL_HEADER_CLASS} flex flex-col gap-4`}>
+                    <div
+                      className={`${PANEL_HEADER_CLASS} flex flex-col gap-4`}
+                    >
                       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                         <div className="flex min-w-0 items-center gap-3">
                           <span
@@ -2525,7 +2574,10 @@ export default function ApiTester() {
                           </button>
                         </div>
 
-                        <div className="relative mt-3" ref={smartphoneDropdownRef}>
+                        <div
+                          className="relative mt-3"
+                          ref={smartphoneDropdownRef}
+                        >
                           <button
                             type="button"
                             onClick={() =>
@@ -2533,7 +2585,9 @@ export default function ApiTester() {
                             }
                             className="flex h-11 w-full items-center justify-between rounded-md border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700"
                           >
-                            <span className="truncate">{selectedSmartphoneLabel}</span>
+                            <span className="truncate">
+                              {selectedSmartphoneLabel}
+                            </span>
                             <FaChevronDown
                               className={`text-xs text-slate-400 transition ${
                                 smartphoneDropdownOpen ? "rotate-180" : ""
@@ -2723,7 +2777,9 @@ export default function ApiTester() {
                               <input
                                 type="text"
                                 value={token}
-                                onChange={(event) => setToken(event.target.value)}
+                                onChange={(event) =>
+                                  setToken(event.target.value)
+                                }
                                 placeholder="Bearer token"
                                 className={INPUT_CLASS}
                               />
@@ -2746,8 +2802,8 @@ export default function ApiTester() {
                             Response checks
                           </h3>
                           <p className="mt-2 text-sm text-slate-500">
-                            Use the response panel to validate status, payload shape,
-                            and headers after each send.
+                            Use the response panel to validate status, payload
+                            shape, and headers after each send.
                           </p>
                         </div>
                       ) : null}
@@ -2791,7 +2847,8 @@ export default function ApiTester() {
                               Reuse response JSON
                             </h3>
                             <p className="mt-2 text-sm text-slate-500">
-                              Post the latest response body directly into another endpoint.
+                              Post the latest response body directly into
+                              another endpoint.
                             </p>
                             <div className="mt-3 flex flex-col gap-3">
                               <input
@@ -2843,7 +2900,9 @@ export default function ApiTester() {
                   ) : null}
 
                   <section ref={paramsSectionRef} className={PANEL_CLASS}>
-                    <div className={`${PANEL_HEADER_CLASS} flex items-center justify-between`}>
+                    <div
+                      className={`${PANEL_HEADER_CLASS} flex items-center justify-between`}
+                    >
                       <div className="flex items-center gap-2">
                         <FaChevronDown className="text-xs text-slate-400" />
                         <h2 className="text-sm font-semibold text-slate-900">
@@ -2956,7 +3015,9 @@ export default function ApiTester() {
                   </section>
 
                   <section ref={headersSectionRef} className={PANEL_CLASS}>
-                    <div className={`${PANEL_HEADER_CLASS} flex items-center justify-between`}>
+                    <div
+                      className={`${PANEL_HEADER_CLASS} flex items-center justify-between`}
+                    >
                       <div className="flex items-center gap-2">
                         <FaChevronDown className="text-xs text-slate-400" />
                         <h2 className="text-sm font-semibold text-slate-900">
