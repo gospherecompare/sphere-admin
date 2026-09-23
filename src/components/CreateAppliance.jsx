@@ -142,6 +142,65 @@ const CreateHomeAppliance = () => {
 
   const yearsList = generateYears();
 
+  const tvSectionKeys = [
+    "key_specs_json",
+    "basic_info_json",
+    "display_json",
+    "video_engine_json",
+    "audio_json",
+    "smart_tv_json",
+    "connectivity_json",
+    "ports_json",
+    "power_json",
+    "gaming_json",
+    "physical_json",
+    "product_details_json",
+    "in_the_box_json",
+    "warranty_json",
+    "storage_json",
+  ];
+
+  const parseMaybeJsonValue = (value) => {
+    if (value === null || value === undefined) return null;
+    if (typeof value !== "string") return value;
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    if (trimmed === "true") return true;
+    if (trimmed === "false") return false;
+    if (/^-?\d+(\.\d+)?$/.test(trimmed)) return Number(trimmed);
+    const isJsonLike =
+      (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
+      (trimmed.startsWith("[") && trimmed.endsWith("]"));
+    if (isJsonLike) {
+      try {
+        return JSON.parse(trimmed);
+      } catch {
+        return value;
+      }
+    }
+    return value;
+  };
+
+  const sectionFromFormInputs = (section = {}) => {
+    const normalized = {};
+    Object.entries(section || {}).forEach(([key, value]) => {
+      const parsed = parseMaybeJsonValue(value);
+      if (parsed !== null && parsed !== undefined && parsed !== "") {
+        const path = key.split(".");
+        let target = normalized;
+        path.forEach((part, index) => {
+          if (index === path.length - 1) {
+            target[part] = parsed;
+          } else {
+            target[part] = target[part] || {};
+            target = target[part];
+          }
+        });
+      }
+    });
+    return normalized;
+  };
+
   // Helper function to get days in month
   const getDaysInMonth = (year, month) => {
     return new Date(year, month + 1, 0).getDate();
@@ -901,6 +960,35 @@ const CreateHomeAppliance = () => {
         })
         .filter(Boolean);
 
+      const parsedSections = tvSectionKeys.reduce((acc, sectionKey) => {
+        const rawSection = formData.home_appliance[sectionKey] || {};
+        acc[sectionKey] = sectionFromFormInputs(rawSection);
+        return acc;
+      }, {});
+
+      const keySpecs = parsedSections.key_specs_json || {};
+      const display = parsedSections.display_json || {};
+      const videoEngine = parsedSections.video_engine_json || {};
+      const audio = parsedSections.audio_json || {};
+      const smartTv = parsedSections.smart_tv_json || {};
+      const connectivity = parsedSections.connectivity_json || {};
+      const ports = parsedSections.ports_json || {};
+      const power = parsedSections.power_json || {};
+      const gaming = parsedSections.gaming_json || {};
+      const physical = parsedSections.physical_json || {};
+      const productDetails = parsedSections.product_details_json || {};
+      const inTheBox = parsedSections.in_the_box_json || {};
+      const warrantyJson = parsedSections.warranty_json || {};
+      const storage = parsedSections.storage_json || {};
+      const features = (formData.home_appliance.features || [])
+        .map((feature) => String(feature || "").trim())
+        .filter(Boolean);
+
+      const mergedSmartTvJson = {
+        ...smartTv,
+        ...(features.length ? { smart_features: features } : {}),
+      };
+
       const submitData = {
         product: {
           name: formData.product.name,
@@ -910,24 +998,31 @@ const CreateHomeAppliance = () => {
         brand_id: Number(formData.product.brand_id),
         category: "television",
         model: formData.home_appliance.model_number,
+        manufacturer_model: formData.home_appliance.model_number || null,
+        launch_date: formData.home_appliance.release_year || null,
         publish: Boolean(publishEnabled),
-        key_specs_json: formData.home_appliance.specifications || {},
+        key_specs_json: keySpecs,
         basic_info_json: {
           model_number: formData.home_appliance.model_number || null,
           launch_year: releaseYear || null,
         },
-        video_engine_json: formData.home_appliance.performance || {},
-        physical_json: formData.home_appliance.physical_details || {},
+        display_json: display,
+        video_engine_json: videoEngine,
+        audio_json: audio,
+        smart_tv_json: mergedSmartTvJson,
+        gaming_json: gaming,
+        ports_json: ports,
+        connectivity_json: connectivity,
+        power_json: power,
+        physical_json: physical,
         product_details_json: {
+          ...productDetails,
           country_of_origin: countryOfOrigin,
           launch_year: releaseYear || null,
         },
-        warranty_json: formData.home_appliance.warranty || {},
-        smart_tv_json: {
-          smart_features: (formData.home_appliance.features || []).filter(
-            Boolean,
-          ),
-        },
+        in_the_box_json: inTheBox,
+        warranty_json: warrantyJson,
+        storage_json: storage,
         images_json: formData.images,
         variants_json: tvVariants,
         home_appliance: {
@@ -935,11 +1030,21 @@ const CreateHomeAppliance = () => {
           model_number: formData.home_appliance.model_number,
           release_year: releaseYear,
           country_of_origin: countryOfOrigin,
-          specifications: formData.home_appliance.specifications,
-          features: formData.home_appliance.features.filter(Boolean),
-          performance: formData.home_appliance.performance,
-          physical_details: formData.home_appliance.physical_details,
-          warranty: formData.home_appliance.warranty,
+          specifications: keySpecs,
+          features,
+          performance: {
+            ...videoEngine,
+            ...audio,
+            ...connectivity,
+            ...ports,
+            ...power,
+            ...gaming,
+          },
+          physical_details: {
+            ...physical,
+            ...display,
+          },
+          warranty: warrantyJson,
         },
         images: formData.images,
         variants: tvVariants.map((v) => ({
