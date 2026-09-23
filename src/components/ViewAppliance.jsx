@@ -93,11 +93,7 @@ const ViewTVs = () => {
     if (typeof value === "string") return value.trim();
     const image = asObject(value);
     return String(
-      image.image_url ||
-        image.url ||
-        image.secure_url ||
-        image.src ||
-        "",
+      image.image_url || image.url || image.secure_url || image.src || "",
     ).trim();
   };
 
@@ -182,7 +178,10 @@ const ViewTVs = () => {
                 `tv_variant_${index + 1}`,
               attributes: asObject(variant.attributes),
               screen_size:
-                variant.screen_size || variant.size || variant.variant_key || "",
+                variant.screen_size ||
+                variant.size ||
+                variant.variant_key ||
+                "",
               base_price:
                 variant.base_price !== undefined && variant.base_price !== null
                   ? Number(variant.base_price)
@@ -247,8 +246,7 @@ const ViewTVs = () => {
             keySpecs.resolution ||
             display.resolution ||
             "N/A";
-          const panelType =
-            keySpecs.panel_type || display.panel_type || "N/A";
+          const panelType = keySpecs.panel_type || display.panel_type || "N/A";
           const capacity =
             keySpecs.screen_size ||
             display.screen_size ||
@@ -269,7 +267,9 @@ const ViewTVs = () => {
           const width =
             physicalDetails.width || physicalDetails.width_without_stand || "";
           const height =
-            physicalDetails.height || physicalDetails.height_without_stand || "";
+            physicalDetails.height ||
+            physicalDetails.height_without_stand ||
+            "";
           const depth =
             physicalDetails.depth || physicalDetails.depth_without_stand || "";
           const dimensions =
@@ -307,7 +307,9 @@ const ViewTVs = () => {
               physicalDetails.weight || physicalDetails.weight_without_stand,
             ),
             motorWarranty: formatScalar(
-              warranty.panel_warranty || warranty.panel || warranty.installation,
+              warranty.panel_warranty ||
+                warranty.panel ||
+                warranty.installation,
             ),
             productWarranty: formatScalar(
               warranty.product_warranty || warranty.product,
@@ -324,7 +326,9 @@ const ViewTVs = () => {
             ),
             features: rawFeatures,
             published: Boolean(
-              appliance.is_published ?? appliance.published ?? appliance.publish,
+              appliance.is_published ??
+              appliance.published ??
+              appliance.publish,
             ),
             launch_date: appliance.created_at || appliance.updated_at || null,
             variants: normalizedVariants,
@@ -546,7 +550,11 @@ const ViewTVs = () => {
         ),
       );
       setSelectedTvIds(new Set());
-      showToast("Status updated", `${ids.length} TV${ids.length === 1 ? "" : "s"} ${published ? "published" : "unpublished"}.`, "success");
+      showToast(
+        "Status updated",
+        `${ids.length} TV${ids.length === 1 ? "" : "s"} ${published ? "published" : "unpublished"}.`,
+        "success",
+      );
     } catch (actionError) {
       showToast("Bulk action failed", actionError.message, "error");
     } finally {
@@ -555,7 +563,9 @@ const ViewTVs = () => {
   };
 
   const runBulkDelete = async () => {
-    const selected = appliances.filter((appliance) => selectedTvIds.has(resolveTvId(appliance)));
+    const selected = appliances.filter((appliance) =>
+      selectedTvIds.has(resolveTvId(appliance)),
+    );
     if (!selected.length) return;
     const deleteApproval = requestDeleteApproval({
       itemName: `${selected.length} selected TV${selected.length === 1 ? "" : "s"}`,
@@ -581,10 +591,18 @@ const ViewTVs = () => {
         });
         if (!response.ok) throw new Error(`Failed to delete ${appliance.name}`);
       }
-      const deletedIds = new Set(selected.map((appliance) => resolveTvId(appliance)));
-      setAppliances((previous) => previous.filter((appliance) => !deletedIds.has(resolveTvId(appliance))));
+      const deletedIds = new Set(
+        selected.map((appliance) => resolveTvId(appliance)),
+      );
+      setAppliances((previous) =>
+        previous.filter((appliance) => !deletedIds.has(resolveTvId(appliance))),
+      );
       setSelectedTvIds(new Set());
-      showToast("TVs deleted", `${selected.length} TV${selected.length === 1 ? "" : "s"} deleted successfully.`, "success");
+      showToast(
+        "TVs deleted",
+        `${selected.length} TV${selected.length === 1 ? "" : "s"} deleted successfully.`,
+        "success",
+      );
     } catch (actionError) {
       showToast("Bulk delete failed", actionError.message, "error");
     } finally {
@@ -628,7 +646,9 @@ const ViewTVs = () => {
 
       if (!res.ok) {
         const errorBody = await res.json().catch(() => ({}));
-        throw new Error(errorBody.message || errorBody.error || "Delete failed");
+        throw new Error(
+          errorBody.message || errorBody.error || "Delete failed",
+        );
       }
 
       setAppliances(appliances.filter((appliance) => appliance.id !== id));
@@ -786,7 +806,11 @@ const ViewTVs = () => {
   const handleImportPreview = async (file) => {
     if (!file) return;
     if (!file.name.toLowerCase().endsWith(".xlsx")) {
-      showToast("Invalid file", "TV imports require an .xlsx workbook.", "error");
+      showToast(
+        "Invalid file",
+        "TV imports require an .xlsx workbook.",
+        "error",
+      );
       return;
     }
 
@@ -806,12 +830,17 @@ const ViewTVs = () => {
       });
 
       const body = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(body.message || body.error || "Preview failed");
+      if (!res.ok)
+        throw new Error(body.message || body.error || "Preview failed");
       setImportPreview(body);
       setImportModalOpen(true);
     } catch (error) {
       console.error("Import error:", error);
-      showToast("Preview Failed", error.message || "Failed to preview TVs", "error");
+      showToast(
+        "Preview Failed",
+        error.message || "Failed to preview TVs",
+        "error",
+      );
     } finally {
       setImportLoading(false);
     }
@@ -852,12 +881,21 @@ const ViewTVs = () => {
         body: formData,
       });
       const body = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(body.message || body.error || "Import failed");
+      if (!res.ok)
+        throw new Error(body.message || body.error || "Import failed");
       setImportModalOpen(false);
-      showToast("Import Complete", `${body.summary?.ready || 0} TVs imported`, "success");
+      showToast(
+        "Import Complete",
+        `${body.summary?.ready || 0} TVs imported`,
+        "success",
+      );
       window.location.reload();
     } catch (error) {
-      showToast("Import Failed", error.message || "Failed to import TVs", "error");
+      showToast(
+        "Import Failed",
+        error.message || "Failed to import TVs",
+        "error",
+      );
     } finally {
       setImportLoading(false);
     }
@@ -908,18 +946,48 @@ const ViewTVs = () => {
           <div className="flex max-h-[92vh] w-full max-w-[1400px] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
             <div className="flex items-center justify-between border-b px-5 py-4">
               <div>
-                <h2 className="text-lg font-semibold text-slate-900">Import TV Excel</h2>
-                <p className="text-sm text-slate-500">TVs, Variants, and StorePrices were previewed.</p>
+                <h2 className="text-lg font-semibold text-slate-900">
+                  Import TV Excel
+                </h2>
+                <p className="text-sm text-slate-500">
+                  TVs, Variants, and StorePrices were previewed.
+                </p>
               </div>
-              <button type="button" onClick={() => setImportModalOpen(false)} className="text-slate-400 hover:text-slate-700" title="Close preview">
+              <button
+                type="button"
+                onClick={() => setImportModalOpen(false)}
+                className="text-slate-400 hover:text-slate-700"
+                title="Close preview"
+              >
                 <FaTimes />
               </button>
             </div>
             <div className="grid shrink-0 grid-cols-2 gap-3 border-b bg-slate-50 px-5 py-4 sm:grid-cols-4 lg:grid-cols-7">
-              {[["Total", importPreview.summary?.total_rows], ["New", importPreview.summary?.new], ["Duplicate", importPreview.summary?.duplicate], ["Conflict", importPreview.summary?.model_match_date_conflict], ["Possible", importPreview.summary?.possible_duplicate], ["Invalid", importPreview.summary?.invalid], ["Unknown prices", importPreview.rows?.reduce((total, row) => total + (row.unknown_store_prices || 0), 0)]].map(([label, value]) => (
-                <div key={label} className="rounded-lg bg-white p-3 text-center shadow-sm">
-                  <div className="text-xs uppercase text-slate-500">{label}</div>
-                  <div className="text-xl font-semibold text-slate-900">{value || 0}</div>
+              {[
+                ["Total", importPreview.summary?.total_rows],
+                ["New", importPreview.summary?.new],
+                ["Duplicate", importPreview.summary?.duplicate],
+                ["Conflict", importPreview.summary?.model_match_date_conflict],
+                ["Possible", importPreview.summary?.possible_duplicate],
+                ["Invalid", importPreview.summary?.invalid],
+                [
+                  "Unknown prices",
+                  importPreview.rows?.reduce(
+                    (total, row) => total + (row.unknown_store_prices || 0),
+                    0,
+                  ),
+                ],
+              ].map(([label, value]) => (
+                <div
+                  key={label}
+                  className="rounded-lg bg-white p-3 text-center shadow-sm"
+                >
+                  <div className="text-xs uppercase text-slate-500">
+                    {label}
+                  </div>
+                  <div className="text-xl font-semibold text-slate-900">
+                    {value || 0}
+                  </div>
                 </div>
               ))}
             </div>
@@ -927,28 +995,80 @@ const ViewTVs = () => {
               <table className="min-w-[1250px] border-separate border-spacing-0 text-left text-sm">
                 <thead className="sticky top-0 z-10 bg-slate-100 text-[11px] uppercase tracking-wide text-slate-600">
                   <tr>
-                    {["Row", "Brand", "Product", "Model", "Manufacturer model", "Category", "Launch date", "Variants", "Store prices", "Images", "Result", "Reason"].map((heading) => (
-                      <th key={heading} className="whitespace-nowrap border-b border-slate-200 px-3 py-3 font-semibold">{heading}</th>
+                    {[
+                      "Row",
+                      "Brand",
+                      "Product",
+                      "Model",
+                      "Manufacturer model",
+                      "Category",
+                      "Launch date",
+                      "Variants",
+                      "Store prices",
+                      "Images",
+                      "Result",
+                      "Reason",
+                    ].map((heading) => (
+                      <th
+                        key={heading}
+                        className="whitespace-nowrap border-b border-slate-200 px-3 py-3 font-semibold"
+                      >
+                        {heading}
+                      </th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {(importPreview.rows || []).map((row) => (
-                    <tr key={row.row} className="odd:bg-white even:bg-slate-50/60">
-                      <td className="whitespace-nowrap border-b border-slate-100 px-3 py-3 text-slate-500">{row.row}</td>
-                      <td className="whitespace-nowrap border-b border-slate-100 px-3 py-3">{row.brand_name || "-"}</td>
-                      <td className="max-w-[220px] border-b border-slate-100 px-3 py-3 font-medium text-slate-900">{row.product_name || "-"}</td>
-                      <td className="whitespace-nowrap border-b border-slate-100 px-3 py-3">{row.model || "-"}</td>
-                      <td className="whitespace-nowrap border-b border-slate-100 px-3 py-3">{row.manufacturer_model || "-"}</td>
-                      <td className="whitespace-nowrap border-b border-slate-100 px-3 py-3">{row.category || "-"}</td>
-                      <td className="whitespace-nowrap border-b border-slate-100 px-3 py-3">{row.launch_date || "-"}</td>
-                      <td className="border-b border-slate-100 px-3 py-3 text-center">{row.variants ?? "-"}</td>
-                      <td className="border-b border-slate-100 px-3 py-3 text-center">{row.store_prices ?? "-"}{row.unknown_store_prices ? <span className="ml-1 text-xs text-amber-600">({row.unknown_store_prices} unknown)</span> : null}</td>
-                      <td className="border-b border-slate-100 px-3 py-3 text-center">{row.images ?? "-"}</td>
-                      <td className="border-b border-slate-100 px-3 py-3">
-                        <span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${row.status === "NEW" ? "bg-emerald-100 text-emerald-700" : row.status === "INVALID" ? "bg-red-100 text-red-700" : row.status.includes("CONFLICT") ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-700"}`}>{row.status}</span>
+                    <tr
+                      key={row.row}
+                      className="odd:bg-white even:bg-slate-50/60"
+                    >
+                      <td className="whitespace-nowrap border-b border-slate-100 px-3 py-3 text-slate-500">
+                        {row.row}
                       </td>
-                      <td className="max-w-[280px] border-b border-slate-100 px-3 py-3 text-slate-500">{row.reason || "Ready"}</td>
+                      <td className="whitespace-nowrap border-b border-slate-100 px-3 py-3">
+                        {row.brand_name || "-"}
+                      </td>
+                      <td className="max-w-[220px] border-b border-slate-100 px-3 py-3 font-medium text-slate-900">
+                        {row.product_name || "-"}
+                      </td>
+                      <td className="whitespace-nowrap border-b border-slate-100 px-3 py-3">
+                        {row.model || "-"}
+                      </td>
+                      <td className="whitespace-nowrap border-b border-slate-100 px-3 py-3">
+                        {row.manufacturer_model || "-"}
+                      </td>
+                      <td className="whitespace-nowrap border-b border-slate-100 px-3 py-3">
+                        {row.category || "-"}
+                      </td>
+                      <td className="whitespace-nowrap border-b border-slate-100 px-3 py-3">
+                        {row.launch_date || "-"}
+                      </td>
+                      <td className="border-b border-slate-100 px-3 py-3 text-center">
+                        {row.variants ?? "-"}
+                      </td>
+                      <td className="border-b border-slate-100 px-3 py-3 text-center">
+                        {row.store_prices ?? "-"}
+                        {row.unknown_store_prices ? (
+                          <span className="ml-1 text-xs text-amber-600">
+                            ({row.unknown_store_prices} unknown)
+                          </span>
+                        ) : null}
+                      </td>
+                      <td className="border-b border-slate-100 px-3 py-3 text-center">
+                        {row.images ?? "-"}
+                      </td>
+                      <td className="border-b border-slate-100 px-3 py-3">
+                        <span
+                          className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${row.status === "NEW" ? "bg-emerald-100 text-emerald-700" : row.status === "INVALID" ? "bg-red-100 text-red-700" : row.status.includes("CONFLICT") ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-700"}`}
+                        >
+                          {row.status}
+                        </span>
+                      </td>
+                      <td className="max-w-[280px] border-b border-slate-100 px-3 py-3 text-slate-500">
+                        {row.reason || "Ready"}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -956,24 +1076,136 @@ const ViewTVs = () => {
 
               <div className="mt-6 grid gap-6 xl:grid-cols-2">
                 <section>
-                  <h3 className="mb-2 text-sm font-semibold text-slate-900">Variants ({importPreview.sheets?.variants?.length || 0})</h3>
+                  <h3 className="mb-2 text-sm font-semibold text-slate-900">
+                    Variants ({importPreview.sheets?.variants?.length || 0})
+                  </h3>
                   <table className="min-w-full text-left text-xs">
-                    <thead className="bg-slate-100 text-slate-600"><tr>{["Row", "Brand", "Product", "Model", "Variant", "Base price"].map((heading) => <th key={heading} className="border-b px-2 py-2 font-semibold">{heading}</th>)}</tr></thead>
-                    <tbody>{(importPreview.sheets?.variants || []).map((row) => <tr key={`variant-${row.rowNumber}`} className="odd:bg-white even:bg-slate-50/60"><td className="border-b px-2 py-2">{row.rowNumber}</td><td className="border-b px-2 py-2">{row.brandName || "-"}</td><td className="border-b px-2 py-2">{row.productName || "-"}</td><td className="border-b px-2 py-2">{row.model || "-"}</td><td className="border-b px-2 py-2">{row.variantKey || "-"}</td><td className="border-b px-2 py-2">{row.basePrice ?? "-"}</td></tr>)}</tbody>
+                    <thead className="bg-slate-100 text-slate-600">
+                      <tr>
+                        {[
+                          "Row",
+                          "Brand",
+                          "Product",
+                          "Model",
+                          "Variant",
+                          "Base price",
+                        ].map((heading) => (
+                          <th
+                            key={heading}
+                            className="border-b px-2 py-2 font-semibold"
+                          >
+                            {heading}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(importPreview.sheets?.variants || []).map((row) => (
+                        <tr
+                          key={`variant-${row.rowNumber}`}
+                          className="odd:bg-white even:bg-slate-50/60"
+                        >
+                          <td className="border-b px-2 py-2">
+                            {row.rowNumber}
+                          </td>
+                          <td className="border-b px-2 py-2">
+                            {row.brandName || "-"}
+                          </td>
+                          <td className="border-b px-2 py-2">
+                            {row.productName || "-"}
+                          </td>
+                          <td className="border-b px-2 py-2">
+                            {row.model || "-"}
+                          </td>
+                          <td className="border-b px-2 py-2">
+                            {row.variantKey || "-"}
+                          </td>
+                          <td className="border-b px-2 py-2">
+                            {row.basePrice ?? "-"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
                   </table>
                 </section>
                 <section>
-                  <h3 className="mb-2 text-sm font-semibold text-slate-900">StorePrices ({importPreview.sheets?.store_prices?.length || 0})</h3>
+                  <h3 className="mb-2 text-sm font-semibold text-slate-900">
+                    StorePrices (
+                    {importPreview.sheets?.store_prices?.length || 0})
+                  </h3>
                   <table className="min-w-full text-left text-xs">
-                    <thead className="bg-slate-100 text-slate-600"><tr>{["Row", "Brand", "Product", "Variant", "Store", "Price", "Status"].map((heading) => <th key={heading} className="border-b px-2 py-2 font-semibold">{heading}</th>)}</tr></thead>
-                    <tbody>{(importPreview.sheets?.store_prices || []).map((row) => <tr key={`price-${row.rowNumber}`} className="odd:bg-white even:bg-slate-50/60"><td className="border-b px-2 py-2">{row.rowNumber}</td><td className="border-b px-2 py-2">{row.brandName || "-"}</td><td className="border-b px-2 py-2">{row.productName || "-"}</td><td className="border-b px-2 py-2">{row.variantKey || "-"}</td><td className="border-b px-2 py-2">{row.storeName || "-"}</td><td className="border-b px-2 py-2">{row.price ?? "-"}</td><td className="border-b px-2 py-2">{row.priceStatus}</td></tr>)}</tbody>
+                    <thead className="bg-slate-100 text-slate-600">
+                      <tr>
+                        {[
+                          "Row",
+                          "Brand",
+                          "Product",
+                          "Variant",
+                          "Store",
+                          "Price",
+                          "Status",
+                        ].map((heading) => (
+                          <th
+                            key={heading}
+                            className="border-b px-2 py-2 font-semibold"
+                          >
+                            {heading}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(importPreview.sheets?.store_prices || []).map((row) => (
+                        <tr
+                          key={`price-${row.rowNumber}`}
+                          className="odd:bg-white even:bg-slate-50/60"
+                        >
+                          <td className="border-b px-2 py-2">
+                            {row.rowNumber}
+                          </td>
+                          <td className="border-b px-2 py-2">
+                            {row.brandName || "-"}
+                          </td>
+                          <td className="border-b px-2 py-2">
+                            {row.productName || "-"}
+                          </td>
+                          <td className="border-b px-2 py-2">
+                            {row.variantKey || "-"}
+                          </td>
+                          <td className="border-b px-2 py-2">
+                            {row.storeName || "-"}
+                          </td>
+                          <td className="border-b px-2 py-2">
+                            {row.price ?? "-"}
+                          </td>
+                          <td className="border-b px-2 py-2">
+                            {row.priceStatus}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
                   </table>
                 </section>
               </div>
             </div>
             <div className="flex justify-end gap-2 border-t px-5 py-4">
-              <button type="button" onClick={() => setImportModalOpen(false)} className="rounded-md border px-4 py-2 text-sm text-slate-700">Cancel</button>
-              <button type="button" onClick={confirmImport} disabled={importLoading || !(importPreview.summary?.new > 0)} className="rounded-md bg-purple-600 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">{importLoading ? "Importing..." : `Import ${importPreview.summary?.new || 0} New TVs`}</button>
+              <button
+                type="button"
+                onClick={() => setImportModalOpen(false)}
+                className="rounded-md border px-4 py-2 text-sm text-slate-700"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmImport}
+                disabled={importLoading || !(importPreview.summary?.new > 0)}
+                className="rounded-md bg-purple-600 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {importLoading
+                  ? "Importing..."
+                  : `Import ${importPreview.summary?.new || 0} New TVs`}
+              </button>
             </div>
           </div>
         </div>
@@ -1227,7 +1459,10 @@ const ViewTVs = () => {
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                     id="import-file"
                   />
-                  <button className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-md text-sm" disabled={importLoading}>
+                  <button
+                    className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-md text-sm"
+                    disabled={importLoading}
+                  >
                     <FaUpload className="text-sm" />
                     <span>{importLoading ? "Checking..." : "Import TVs"}</span>
                   </button>
@@ -1314,7 +1549,9 @@ const ViewTVs = () => {
                       <input
                         type="checkbox"
                         checked={selectedTvIds.has(resolveTvId(appliance))}
-                        onChange={() => toggleTvSelection(resolveTvId(appliance))}
+                        onChange={() =>
+                          toggleTvSelection(resolveTvId(appliance))
+                        }
                         aria-label={`Select ${appliance.name}`}
                         className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                       />
@@ -1366,7 +1603,8 @@ const ViewTVs = () => {
                           </div>
                           {appliance.minPrice ? (
                             <div className="text-xs text-emerald-600 mt-1 font-semibold">
-                              Starts at ₹{Number(appliance.minPrice).toLocaleString()}
+                              Starts at ₹
+                              {Number(appliance.minPrice).toLocaleString()}
                             </div>
                           ) : null}
                         </div>
@@ -1425,14 +1663,16 @@ const ViewTVs = () => {
                               Features:
                             </div>
                             <div className="flex flex-wrap gap-1">
-                              {appliance.features.slice(0, 3).map((feature, idx) => (
-                                <span
-                                  key={idx}
-                                  className="inline-block bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded"
-                                >
-                                  {feature}
-                                </span>
-                              ))}
+                              {appliance.features
+                                .slice(0, 3)
+                                .map((feature, idx) => (
+                                  <span
+                                    key={idx}
+                                    className="inline-block bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded"
+                                  >
+                                    {feature}
+                                  </span>
+                                ))}
                               {appliance.features.length > 3 && (
                                 <span className="inline-block bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded">
                                   +{appliance.features.length - 3} more
@@ -1680,11 +1920,3 @@ const ViewTVs = () => {
 };
 
 export default ViewTVs;
-
-
-
-
-
-
-
-
