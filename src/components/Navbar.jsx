@@ -31,12 +31,14 @@ import {
 } from "react-icons/fa";
 import { buildUrl, getAuthToken } from "../api";
 import { getSearchNavigationTarget } from "../utils/searchNavigation";
-import {
-  EMPTY_SUMMARY,
-  createMobileReminderSummary,
-} from "../utils/mobileReminders";
+
+const EMPTY_SUMMARY = { total: 0, items: [] };
 
 const MOBILE_ROUTE_TITLES = [
+  {
+    match: (pathname) => pathname === "/admin/notifications",
+    title: "Notification Center",
+  },
   {
     match: (pathname) => pathname === "/reports/productpublishstatus",
     title: "Product Publish Status",
@@ -54,13 +56,6 @@ const MOBILE_ROUTE_TITLES = [
     title: "Hook Score Report",
   },
 ];
-
-const extractSmartphoneRows = (payload) => {
-  if (Array.isArray(payload)) return payload;
-  if (payload && Array.isArray(payload.smartphones)) return payload.smartphones;
-  if (payload && Array.isArray(payload.data)) return payload.data;
-  return [];
-};
 
 const getUserInitials = (value) =>
   String(value || "JD")
@@ -222,7 +217,15 @@ const getNotificationVisual = (item = {}) => {
   };
 };
 
-const NotificationPanel = ({ summary, loading, error, onSelect, isMobile }) => {
+const NotificationPanel = ({
+  summary,
+  loading,
+  error,
+  onSelect,
+  onMarkAllRead,
+  onViewAll,
+  isMobile,
+}) => {
   const items = summary?.items || [];
   const visibleItems = items.slice(0, isMobile ? 4 : 6);
 
@@ -243,6 +246,7 @@ const NotificationPanel = ({ summary, loading, error, onSelect, isMobile }) => {
         </h3>
         <button
           type="button"
+          onClick={onMarkAllRead}
           className="pt-2 text-sm font-semibold text-[#315EFB] transition hover:text-[#2249D8] sm:pt-0"
         >
           Mark all as read
@@ -300,7 +304,9 @@ const NotificationPanel = ({ summary, loading, error, onSelect, isMobile }) => {
                 key={item.id}
                 type="button"
                 onClick={() => onSelect(item)}
-                className="flex w-full items-start gap-3 border-b border-slate-100 px-4 py-4 text-left transition hover:bg-slate-50/80 sm:gap-4 sm:px-5 sm:py-5"
+                className={`flex w-full items-start gap-3 border-b border-slate-100 px-4 py-4 text-left transition hover:bg-slate-50/80 sm:gap-4 sm:px-5 sm:py-5 ${
+                  item.is_read ? "bg-white" : "bg-blue-50/40"
+                }`}
               >
                 <div
                   className={`mt-0.5 flex h-14 w-14 shrink-0 items-center justify-center rounded-[18px] ${visual.frameClassName}`}
@@ -320,9 +326,11 @@ const NotificationPanel = ({ summary, loading, error, onSelect, isMobile }) => {
                     {item.description}
                   </p>
                 </div>
-                <div className="flex min-h-[3.5rem] shrink-0 items-center pl-1">
-                  <span className="h-2.5 w-2.5 rounded-full bg-[#2F63FF]" />
-                </div>
+                {!item.is_read ? (
+                  <div className="flex min-h-[3.5rem] shrink-0 items-center pl-1">
+                    <span className="h-2.5 w-2.5 rounded-full bg-[#2F63FF]" />
+                  </div>
+                ) : null}
               </button>
               );
             })}
@@ -330,6 +338,7 @@ const NotificationPanel = ({ summary, loading, error, onSelect, isMobile }) => {
           <div className="border-t border-slate-200 px-4 py-4 text-center sm:px-5 sm:py-5">
             <button
               type="button"
+              onClick={onViewAll}
               className="inline-flex items-center gap-2 text-base font-semibold text-[#315EFB] transition hover:text-[#2249D8]"
             >
               View all notifications
@@ -405,7 +414,7 @@ const UserMenu = ({ userName, role, onNavigate, onLogout }) => (
   </div>
 );
 
-const Navbar = ({ isMobile, sidebarOpen, onToggleSidebar, onLogout }) => {
+const Navbar = ({ isMobile, onToggleSidebar, onLogout }) => {
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -441,7 +450,7 @@ const Navbar = ({ isMobile, sidebarOpen, onToggleSidebar, onLogout }) => {
   }, [location.pathname]);
 
   const notificationCountLabel = useMemo(() => {
-    if (notificationSummary.total <= 0) return "12";
+    if (notificationSummary.total <= 0) return "";
     return notificationSummary.total > 99
       ? "99+"
       : String(notificationSummary.total);
@@ -505,7 +514,7 @@ const Navbar = ({ isMobile, sidebarOpen, onToggleSidebar, onLogout }) => {
 
     try {
       const token = getAuthToken();
-      const res = await fetch(buildUrl("/api/smartphone"), {
+      const res = await fetch(buildUrl("/api/admin/notifications/summary"), {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
 
@@ -514,9 +523,16 @@ const Navbar = ({ isMobile, sidebarOpen, onToggleSidebar, onLogout }) => {
       }
 
       const data = await res.json();
-      setNotificationSummary(
-        createMobileReminderSummary(extractSmartphoneRows(data)),
-      );
+      setNotificationSummary({
+        total: Number(data?.unread_count) || 0,
+        items: (Array.isArray(data?.items) ? data.items : []).map((item) => ({
+          ...item,
+          description: item.message || "",
+          whenLabel: item.created_at
+            ? new Date(item.created_at).toLocaleString()
+            : "Now",
+        })),
+      });
       setNotificationsLoadedAt(new Date());
     } catch (error) {
       console.error("Notification error:", error);
@@ -525,6 +541,23 @@ const Navbar = ({ isMobile, sidebarOpen, onToggleSidebar, onLogout }) => {
       setNotificationsLoading(false);
     }
   }, []);
+
+  const markAllNotificationsRead = useCallback(async () => {
+    try {
+      const token = getAuthToken();
+      const res = await fetch(
+        buildUrl("/api/admin/notifications/events/read-all"),
+        {
+          method: "PATCH",
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        },
+      );
+      if (!res.ok) throw new Error(`Request failed with status ${res.status}`);
+      await loadNotifications();
+    } catch (error) {
+      setNotificationError(error.message || "Could not mark notifications read");
+    }
+  }, [loadNotifications]);
 
   useEffect(() => {
     const timer = window.setInterval(loadNotifications, 5 * 60 * 1000);
@@ -658,19 +691,39 @@ const Navbar = ({ isMobile, sidebarOpen, onToggleSidebar, onLogout }) => {
     setShowSuggestions(false);
   }, []);
 
-  const handleReminderSelect = useCallback(
-    (item) => {
-      setShowNotifications(false);
-      if (item?.productId) {
-        navigate(`/edit-mobile/${item.productId}`);
-        return;
-      }
+  const viewAllNotifications = useCallback(() => {
+    setShowNotifications(false);
+    navigate("/admin/notifications");
+  }, [navigate]);
 
-      navigate("/products/smartphones/inventory", {
-        state: { searchTerm: item?.productName || "" },
-      });
+  const handleReminderSelect = useCallback(
+    async (item) => {
+      setShowNotifications(false);
+      try {
+        const token = getAuthToken();
+        const res = await fetch(
+          buildUrl(`/api/admin/notifications/events/${item.id}/read`),
+          {
+            method: "PATCH",
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+          },
+        );
+        if (!res.ok) {
+          throw new Error(`Request failed with status ${res.status}`);
+        }
+      } catch (error) {
+        console.error("Notification read state update failed:", error);
+      }
+      loadNotifications();
+      if (item?.entity_type === "smartphone" && item?.entity_id) {
+        navigate(`/edit-mobile/${item.entity_id}`);
+      } else if (item?.entity_type === "news") {
+        navigate("/content/news-articles");
+      } else {
+        navigate("/admin/notifications");
+      }
     },
-    [navigate],
+    [loadNotifications, navigate],
   );
 
   const renderSearchBar = (mobile = false) => (
@@ -785,9 +838,11 @@ const Navbar = ({ isMobile, sidebarOpen, onToggleSidebar, onLogout }) => {
                   className={actionButtonBase}
                 >
                   <FaBell className="text-sm" />
-                  <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-bold text-white">
-                    {notificationCountLabel}
-                  </span>
+                  {notificationCountLabel ? (
+                    <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-bold text-white">
+                      {notificationCountLabel}
+                    </span>
+                  ) : null}
                 </button>
                 {showNotifications ? (
                   <NotificationPanel
@@ -795,6 +850,8 @@ const Navbar = ({ isMobile, sidebarOpen, onToggleSidebar, onLogout }) => {
                     loading={notificationsLoading}
                     error={notificationError}
                     onSelect={handleReminderSelect}
+                    onMarkAllRead={markAllNotificationsRead}
+                    onViewAll={viewAllNotifications}
                     isMobile
                   />
                 ) : null}
@@ -857,9 +914,11 @@ const Navbar = ({ isMobile, sidebarOpen, onToggleSidebar, onLogout }) => {
               className={actionButtonBase}
             >
               <FaBell className="text-sm" />
-              <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-bold text-white">
-                {notificationCountLabel}
-              </span>
+              {notificationCountLabel ? (
+                <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-bold text-white">
+                  {notificationCountLabel}
+                </span>
+              ) : null}
             </button>
             {showNotifications ? (
               <NotificationPanel
@@ -867,6 +926,8 @@ const Navbar = ({ isMobile, sidebarOpen, onToggleSidebar, onLogout }) => {
                 loading={notificationsLoading}
                 error={notificationError}
                 onSelect={handleReminderSelect}
+                onMarkAllRead={markAllNotificationsRead}
+                onViewAll={viewAllNotifications}
                 isMobile={false}
               />
             ) : null}

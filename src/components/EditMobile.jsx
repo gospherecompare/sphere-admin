@@ -1,5 +1,5 @@
 // components/EditMobile.js - Updated with CreateMobile UI and dropdown logic
-import React, { useState, useEffect, useRef, createRef } from "react";
+import React, { useState, useEffect, useMemo, useRef, createRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Cookies from "js-cookie";
 import { buildUrl } from "../api";
@@ -119,6 +119,11 @@ const SPEC_CONFIDENCE_OPTIONS = [
   { value: "confirmed", label: "Confirmed" },
 ];
 
+const priceTrackingFieldClassName =
+  "h-11 w-full !rounded-none border !border-slate-300 bg-white px-3 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:!border-[#345CFF] focus:bg-white focus:ring-1 focus:ring-[#345CFF]/15";
+const priceTrackingTextareaClassName =
+  "w-full resize-y !rounded-none border !border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:!border-[#345CFF] focus:bg-white focus:ring-1 focus:ring-[#345CFF]/15";
+
 const EditMobile = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -178,10 +183,41 @@ const EditMobile = () => {
     basic: true,
     images: true,
     variants: true,
+    price_tracking: true,
     specs: true,
     sensors: true,
   });
-
+  const [priceHistoryVariantId, setPriceHistoryVariantId] = useState("");
+  const [priceHistory, setPriceHistory] = useState([]);
+  const [priceHistoryChartHistory, setPriceHistoryChartHistory] = useState([]);
+  const [priceHistoryStatusFilter, setPriceHistoryStatusFilter] = useState("all");
+  const [priceHistoryIncludeDeleted, setPriceHistoryIncludeDeleted] = useState(false);
+  const [priceHistoryRefreshKey, setPriceHistoryRefreshKey] = useState(0);
+  const [priceHistorySummary, setPriceHistorySummary] = useState({
+    current_price: null,
+    lowest_price: null,
+    highest_price: null,
+    average_price: null,
+    previous_price: null,
+    change_amount: null,
+    change_percent: null,
+  });
+  const [priceHistoryLoading, setPriceHistoryLoading] = useState(false);
+  const [priceHistoryMode, setPriceHistoryMode] = useState("current");
+  const [priceHistoryIsPublished, setPriceHistoryIsPublished] = useState(false);
+  const [priceHistorySourceType, setPriceHistorySourceType] = useState("mobilesx");
+  const [priceHistoryStoreName, setPriceHistoryStoreName] = useState("");
+  const [priceHistoryRange, setPriceHistoryRange] = useState("all");
+  const [priceHistoryLivePriceOverride, setPriceHistoryLivePriceOverride] = useState(null);
+  const [priceHistoryFetchedCurrentPrice, setPriceHistoryFetchedCurrentPrice] = useState(null);
+  const [priceHistoryForm, setPriceHistoryForm] = useState({
+    price: "",
+    priceSourceType: "mobilesx",
+    storeName: "",
+    sourceUrl: "",
+    notes: "",
+    recordedAt: "",
+  });
   // Default form structure
   const defaultFormData = {
     id: "",
@@ -221,6 +257,109 @@ const EditMobile = () => {
   };
 
   const [formData, setFormData] = useState(defaultFormData);
+  const selectedPriceHistoryVariant = (Array.isArray(formData.variants) ? formData.variants : []).find(
+    (variant) => String(variant.id) === String(priceHistoryVariantId),
+  );
+  const selectedPriceHistoryStoreRows = useMemo(
+    () => [
+      ...(selectedPriceHistoryVariant?.stores || []),
+      ...(selectedPriceHistoryVariant?.store_prices || []),
+    ],
+    [selectedPriceHistoryVariant],
+  );
+  const priceHistoryStoreOptions = useMemo(
+    () => {
+      const seen = new Set();
+      return selectedPriceHistoryStoreRows.reduce((options, store) => {
+        const storeName = String(store?.store_name || store?.store || "").trim();
+        const key = storeName.toLowerCase();
+        if (storeName && !seen.has(key)) {
+          seen.add(key);
+          options.push(storeName);
+        }
+        return options;
+      }, []);
+    },
+    [selectedPriceHistoryStoreRows],
+  );
+  const selectedPriceHistoryStorePrice = selectedPriceHistoryStoreRows.find(
+    (store) =>
+      String(store?.store_name || store?.store || "").trim().toLowerCase() ===
+      String(priceHistoryForm.storeName || "").trim().toLowerCase(),
+  )?.price;
+  const fetchedPriceMatchesSelection =
+    priceHistoryFetchedCurrentPrice &&
+    String(priceHistoryFetchedCurrentPrice.variantId) === String(priceHistoryVariantId) &&
+    priceHistoryFetchedCurrentPrice.sourceType === priceHistoryForm.priceSourceType &&
+    (priceHistoryForm.priceSourceType !== "store" ||
+      String(priceHistoryFetchedCurrentPrice.storeName).toLowerCase() ===
+        String(priceHistoryForm.storeName || "").trim().toLowerCase());
+  const priceHistoryCurrentPrice =
+    priceHistoryLivePriceOverride &&
+    String(priceHistoryLivePriceOverride.variantId) === String(priceHistoryVariantId) &&
+    priceHistoryLivePriceOverride.sourceType === priceHistoryForm.priceSourceType &&
+    (priceHistoryForm.priceSourceType !== "store" ||
+      String(priceHistoryLivePriceOverride.storeName).toLowerCase() ===
+        String(priceHistoryForm.storeName || "").trim().toLowerCase())
+      ? Number(priceHistoryLivePriceOverride.price)
+      : fetchedPriceMatchesSelection
+        ? priceHistoryFetchedCurrentPrice.price
+        : priceHistoryForm.priceSourceType === "store"
+          ? selectedPriceHistoryStorePrice != null && selectedPriceHistoryStorePrice !== ""
+            ? Number(String(selectedPriceHistoryStorePrice).replace(/[^0-9.]/g, ""))
+            : null
+          : selectedPriceHistoryVariant?.base_price != null && selectedPriceHistoryVariant.base_price !== ""
+            ? Number(String(selectedPriceHistoryVariant.base_price).replace(/[^0-9.]/g, ""))
+            : null;
+  const priceHistoryEnteredPrice = Number(priceHistoryForm.price);
+  const priceHistoryChange =
+    priceHistoryForm.price &&
+    Number.isFinite(priceHistoryEnteredPrice) &&
+    priceHistoryCurrentPrice !== null &&
+    Number.isFinite(priceHistoryCurrentPrice)
+      ? priceHistoryEnteredPrice - priceHistoryCurrentPrice
+      : null;
+  const priceHistoryChangePercent =
+    priceHistoryChange !== null && priceHistoryCurrentPrice !== 0
+      ? (priceHistoryChange / priceHistoryCurrentPrice) * 100
+      : null;
+  const formatSignedPriceChange = (change) => {
+    if (change === null) return "—";
+    if (change === 0) return formatInr(0);
+    return `${change > 0 ? "+" : "−"}${formatInr(Math.abs(change))}`;
+  };
+
+  useEffect(() => {
+    if (priceHistoryForm.priceSourceType !== "store") return;
+
+    const selectedStore = selectedPriceHistoryStoreRows.find(
+      (store) =>
+        String(store?.store_name || store?.store || "").trim().toLowerCase() ===
+        String(priceHistoryForm.storeName || "").trim().toLowerCase(),
+    );
+    if (selectedStore) return;
+
+    const onlyStoreName = priceHistoryStoreOptions.length === 1 ? priceHistoryStoreOptions[0] : "";
+    const onlyStore = onlyStoreName
+      ? selectedPriceHistoryStoreRows.find(
+          (store) =>
+            String(store?.store_name || store?.store || "").trim().toLowerCase() ===
+            onlyStoreName.toLowerCase(),
+        )
+      : null;
+
+    setPriceHistoryForm((prev) => ({
+      ...prev,
+      storeName: onlyStoreName,
+      price: onlyStore?.price != null ? String(onlyStore.price) : "",
+      sourceUrl: onlyStore?.url || "",
+    }));
+  }, [
+    priceHistoryForm.priceSourceType,
+    priceHistoryForm.storeName,
+    priceHistoryStoreOptions,
+    selectedPriceHistoryStoreRows,
+  ]);
   const { clearDraft } = useFormDraft({
     draftKey: `hooks-admin:edit-mobile:${id}`,
     value: formData,
@@ -322,6 +461,24 @@ const EditMobile = () => {
       if (normalized) return normalized;
     }
     return "";
+  };
+
+  const formatInr = (value) => {
+    if (value === null || value === undefined || value === "") return "—";
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) return "—";
+    return new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: "INR",
+      maximumFractionDigits: 0,
+    }).format(numeric);
+  };
+
+  const getPriceHistoryVariantLabel = (variant) => {
+    if (!variant) return "Select variant";
+    const ram = variant.ram || "RAM";
+    const storage = variant.storage || "Storage";
+    return `${ram} / ${storage}`;
   };
 
   // Generate years for dropdown
@@ -437,6 +594,7 @@ const EditMobile = () => {
     { id: "basic", label: "Basic Information", icon: FaMobile },
     { id: "images", label: "Images & Media", icon: FaCamera },
     { id: "variants", label: "Pricing & Variants", icon: FaBoxOpen },
+    { id: "price_tracking", label: "Price Tracking", icon: FaTag },
     { id: "specs", label: "Specifications", icon: FaMicrochip },
     { id: "sensors", label: "Sensors", icon: FaSimCard },
   ];
@@ -936,7 +1094,9 @@ const EditMobile = () => {
         const variants = rawVariants.map((v) => {
           const parsedStorePrices = Array.isArray(v?.store_prices)
             ? v.store_prices
-            : safeParse(v?.store_prices, []);
+            : Array.isArray(v?.stores)
+              ? v.stores
+              : safeParse(v?.store_prices ?? v?.stores, []);
 
           const stores = (parsedStorePrices || []).map((sp) => ({
             id: sp?.id,
@@ -1336,6 +1496,154 @@ const EditMobile = () => {
     fetchAuxiliary();
   }, [id]);
 
+  useEffect(() => {
+    const variantId = Number(priceHistoryVariantId);
+    const sourceType = priceHistoryForm.priceSourceType || "mobilesx";
+    const storeName = sourceType === "store" ? priceHistoryForm.storeName.trim() : "";
+    if (!Number.isInteger(variantId) || variantId <= 0 || (sourceType === "store" && !storeName)) {
+      setPriceHistoryFetchedCurrentPrice(null);
+      return;
+    }
+
+    let active = true;
+    const controller = new AbortController();
+    const loadLivePrice = async () => {
+      try {
+        const requestUrl = `/api/public/smartphone/${id}/price-history?variant_id=${encodeURIComponent(variantId)}&store=${encodeURIComponent(sourceType === "store" ? storeName : "mobilesx")}&range=all`;
+        const response = await fetch(buildUrl(requestUrl), { signal: controller.signal });
+        if (!response.ok) throw new Error(`Failed to load current source price (${response.status})`);
+        const payload = await response.json();
+        if (!active) return;
+        setPriceHistoryFetchedCurrentPrice({
+          variantId,
+          sourceType,
+          storeName,
+          price: payload?.live_current_price == null ? null : Number(payload.live_current_price),
+        });
+      } catch (error) {
+        if (error?.name === "AbortError") return;
+        if (active) {
+          setPriceHistoryFetchedCurrentPrice({ variantId, sourceType, storeName, price: null });
+        }
+      }
+    };
+
+    loadLivePrice();
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [id, priceHistoryVariantId, priceHistoryForm.priceSourceType, priceHistoryForm.storeName, priceHistoryRefreshKey]);
+
+  useEffect(() => {
+    const variants = Array.isArray(formData?.variants) ? formData.variants : [];
+    if (!variants.length) {
+      setPriceHistory([]);
+      setPriceHistoryChartHistory([]);
+      setPriceHistorySummary({
+        current_price: null,
+        lowest_price: null,
+        highest_price: null,
+        average_price: null,
+        previous_price: null,
+        change_amount: null,
+        change_percent: null,
+      });
+      setPriceHistoryVariantId("");
+      return;
+    }
+
+    const preferredVariant = variants.find(
+      (variant) => String(variant.id) === String(priceHistoryVariantId),
+    );
+    const fallbackVariant = variants.find((variant) => variant.id) || variants[0];
+    const nextVariantId = preferredVariant?.id ?? fallbackVariant?.id ?? "";
+
+    if (nextVariantId && String(priceHistoryVariantId) !== String(nextVariantId)) {
+      setPriceHistoryVariantId(String(nextVariantId));
+      return;
+    }
+
+    if (!nextVariantId) {
+      setPriceHistory([]);
+      setPriceHistoryChartHistory([]);
+      return;
+    }
+
+    const fetchPriceHistory = async () => {
+      setPriceHistoryLoading(true);
+      try {
+        const token = Cookies.get("authToken");
+        const headers = {
+          Authorization: token ? `Bearer ${token}` : "",
+          "Content-Type": "application/json",
+        };
+        const adminUrl = `/api/smartphone/${id}/price-history/admin?variant_id=${encodeURIComponent(nextVariantId)}&status=${encodeURIComponent(priceHistoryStatusFilter)}&include_deleted=${priceHistoryIncludeDeleted}`;
+        const adminResponse = await fetch(buildUrl(adminUrl), { headers });
+        if (!adminResponse.ok) throw new Error("Failed to load admin price history");
+
+        const adminPayload = await adminResponse.json();
+        setPriceHistory(Array.isArray(adminPayload?.history) ? adminPayload.history : []);
+
+        if (priceHistorySourceType === "store" && !priceHistoryStoreName.trim()) {
+          setPriceHistoryChartHistory([]);
+          setPriceHistorySummary({
+            current_price: null,
+            lowest_price: null,
+            highest_price: null,
+            average_price: null,
+            previous_price: null,
+            change_amount: null,
+            change_percent: null,
+          });
+          return;
+        }
+
+        const publicUrl = `/api/public/smartphone/${id}/price-history?variant_id=${encodeURIComponent(nextVariantId)}&store=${encodeURIComponent(priceHistorySourceType === "store" ? priceHistoryStoreName : "mobilesx")}&range=${encodeURIComponent(priceHistoryRange)}`;
+        const publicResponse = await fetch(buildUrl(publicUrl), { headers });
+        if (!publicResponse.ok) throw new Error("Failed to load published price history");
+        const publicPayload = await publicResponse.json();
+        setPriceHistoryChartHistory(Array.isArray(publicPayload?.history) ? publicPayload.history : []);
+        setPriceHistorySummary(publicPayload?.summary || {
+          current_price: null,
+          lowest_price: null,
+          highest_price: null,
+          average_price: null,
+          previous_price: null,
+          change_amount: null,
+          change_percent: null,
+        });
+      } catch (error) {
+        console.error("Price history load failed:", error);
+        setPriceHistory([]);
+        setPriceHistoryChartHistory([]);
+        setPriceHistorySummary({
+          current_price: null,
+          lowest_price: null,
+          highest_price: null,
+          average_price: null,
+          previous_price: null,
+          change_amount: null,
+          change_percent: null,
+        });
+      } finally {
+        setPriceHistoryLoading(false);
+      }
+    };
+
+    fetchPriceHistory();
+  }, [
+    id,
+    formData.variants,
+    priceHistoryVariantId,
+    priceHistorySourceType,
+    priceHistoryStoreName,
+    priceHistoryRange,
+    priceHistoryStatusFilter,
+    priceHistoryIncludeDeleted,
+    priceHistoryRefreshKey,
+  ]);
+
   // Handle basic input changes
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -1352,6 +1660,211 @@ const EditMobile = () => {
       ...prev,
       [name]: value,
     }));
+  };
+
+  const handlePriceHistoryInputChange = (field, value) => {
+    setPriceHistoryForm((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const handlePriceHistorySourceChange = (sourceType) => {
+    setPriceHistoryForm((prev) => ({
+      ...prev,
+      priceSourceType: sourceType,
+      storeName: sourceType === "store" ? prev.storeName : "",
+      sourceUrl: sourceType === "store" ? prev.sourceUrl : "",
+    }));
+  };
+
+  const handlePriceHistoryStoreChange = (storeName) => {
+    const selectedStore = selectedPriceHistoryStoreRows.find(
+      (store) =>
+        String(store?.store_name || store?.store || "").trim().toLowerCase() ===
+        storeName.trim().toLowerCase(),
+    );
+    setPriceHistoryForm((prev) => ({
+      ...prev,
+      storeName,
+      price: selectedStore?.price != null ? String(selectedStore.price) : "",
+      sourceUrl: selectedStore?.url || "",
+    }));
+  };
+
+  const changePriceHistoryPublication = async (entry, isPublished) => {
+    const priceText = formatInr(entry.price);
+    const sourceText = entry.store_name || "MobilesX reference";
+    if (
+      isPublished &&
+      !window.confirm(
+        `Publish ${priceText} ${sourceText} price? ${entry.price_type === "current" ? "It will appear publicly and become the current live price." : "It will appear in the public history only; the current live price will not change."}`,
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const token = Cookies.get("authToken");
+      const action = isPublished ? "publish" : "unpublish";
+      const response = await fetch(
+        buildUrl(`/api/smartphone/${id}/price-history/${entry.id}/${action}`),
+        {
+          method: "PATCH",
+          headers: { Authorization: token ? `Bearer ${token}` : "" },
+        },
+      );
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || `Failed to ${action} price record`);
+      }
+      setPriceHistoryRefreshKey((previous) => previous + 1);
+      showToast("Price history", isPublished ? "Price published" : "Price unpublished", "success");
+    } catch (error) {
+      showToast("Price history", error.message || "Failed to update publication status", "error");
+    }
+  };
+
+  const deletePriceHistoryEntry = async (entry) => {
+    if (!window.confirm(`Delete ${formatInr(entry.price)} ${entry.store_name || "MobilesX"} price record?`)) {
+      return;
+    }
+    const reason = window.prompt("Reason for deleting this record:", "Wrong price entered");
+    if (reason === null) return;
+
+    try {
+      const token = Cookies.get("authToken");
+      const response = await fetch(
+        buildUrl(`/api/smartphone/${id}/price-history/${entry.id}`),
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: token ? `Bearer ${token}` : "",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ reason }),
+        },
+      );
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || "Failed to delete price record");
+      }
+      setPriceHistoryRefreshKey((previous) => previous + 1);
+      showToast("Price history", "Price record deleted", "success");
+    } catch (error) {
+      showToast("Price history", error.message || "Failed to delete price record", "error");
+    }
+  };
+
+  const submitPriceHistoryEntry = async () => {
+    const token = Cookies.get("authToken");
+    const variantId = Number(priceHistoryVariantId);
+    const priceValue = Number(priceHistoryForm.price);
+    const currentVariantPrice = priceHistoryCurrentPrice;
+
+    if (!variantId || Number.isNaN(variantId)) {
+      showToast("Price history", "Select a variant first", "error");
+      return;
+    }
+
+    if (!priceHistoryForm.price || Number.isNaN(priceValue) || priceValue <= 0) {
+      showToast("Price history", "Enter a valid price before saving", "error");
+      return;
+    }
+
+    if (priceHistoryMode === "historical" && !priceHistoryForm.recordedAt) {
+      showToast("Price history", "Choose a recorded date for historical entries", "error");
+      return;
+    }
+
+    if (
+      priceHistoryForm.priceSourceType === "store" &&
+      !priceHistoryStoreOptions.some(
+        (storeName) => storeName.toLowerCase() === priceHistoryForm.storeName.trim().toLowerCase(),
+      )
+    ) {
+      showToast("Price history", "Select a store configured for this variant", "error");
+      return;
+    }
+
+    if (
+      priceHistoryIsPublished &&
+      priceHistoryMode === "current" &&
+      currentVariantPrice !== null &&
+      currentVariantPrice > 0 &&
+      Math.abs(priceValue - currentVariantPrice) >= 5000
+    ) {
+      const direction = priceValue > currentVariantPrice ? "increase" : "decrease";
+      const delta = Math.abs(priceValue - currentVariantPrice);
+      const confirmed = window.confirm(
+        `${direction === "increase" ? "Increase" : "Decrease"} of ${formatInr(delta)} from ${formatInr(currentVariantPrice)} to ${formatInr(priceValue)}. Confirm this manual price update?`,
+      );
+      if (!confirmed) {
+        return;
+      }
+    }
+
+    try {
+      const isHistoricalBackfill = priceHistoryMode === "historical";
+      const payload = {
+        variant_id: variantId,
+        price: priceValue,
+        price_source_type: priceHistoryForm.priceSourceType || "mobilesx",
+        store_name:
+          priceHistoryForm.priceSourceType === "store"
+            ? priceHistoryForm.storeName.trim()
+            : null,
+        source_url: priceHistoryForm.sourceUrl || null,
+        notes: priceHistoryForm.notes || `Manual ${priceHistoryForm.priceSourceType || "mobilesx"} price entry`,
+        recorded_at: isHistoricalBackfill ? priceHistoryForm.recordedAt || null : null,
+        mode: isHistoricalBackfill ? "historical" : "current",
+        is_published: priceHistoryIsPublished,
+      };
+
+      const response = await fetch(buildUrl(`/api/smartphone/${id}/price-history`), {
+        method: "POST",
+        headers: {
+          Authorization: token ? `Bearer ${token}` : "",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || "Failed to save price history entry");
+      }
+
+      if (!isHistoricalBackfill && priceHistoryIsPublished) {
+        setPriceHistoryLivePriceOverride({
+          variantId,
+          sourceType: priceHistoryForm.priceSourceType || "mobilesx",
+          storeName: priceHistoryForm.storeName || "",
+          price: priceValue,
+        });
+      }
+
+      setPriceHistoryForm({
+        price: "",
+        priceSourceType: "mobilesx",
+        storeName: "",
+        sourceUrl: "",
+        notes: "",
+        recordedAt: "",
+      });
+      setPriceHistoryMode("current");
+      setPriceHistoryIsPublished(false);
+      setPriceHistoryRefreshKey((previous) => previous + 1);
+
+      showToast(
+        "Price history updated",
+        priceHistoryIsPublished ? "Price saved and published" : "Price saved as unpublished",
+        "success",
+      );
+    } catch (error) {
+      console.error("Failed to save price history entry:", error);
+      showToast("Price history", error.message || "Failed to save price history", "error");
+    }
   };
 
   const setSpecSection = (specKey, nextValue) => {
@@ -3377,11 +3890,13 @@ const EditMobile = () => {
         </div>
       </div>
 
-      <EditorTabBar
-        tabs={editorTabs}
-        activeTab={activeEditTab}
-        onSelect={openEditorSection}
-      />
+      <div className="sticky top-0 z-30 -mx-2 bg-white/95 px-2 backdrop-blur sm:-mx-3 sm:px-3 md:-mx-4 md:px-4">
+        <EditorTabBar
+          tabs={editorTabs}
+          activeTab={activeEditTab}
+          onSelect={openEditorSection}
+        />
+      </div>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
         <div className="min-w-0 space-y-4">
@@ -3390,7 +3905,7 @@ const EditMobile = () => {
             ref={(node) => {
               sectionRefs.current.basic = node;
             }}
-            className={editorCardClassName}
+            className={`${editorCardClassName} scroll-mt-16`}
           >
             <button
               onClick={() => toggleSection("basic")}
@@ -3660,7 +4175,7 @@ const EditMobile = () => {
             ref={(node) => {
               sectionRefs.current.images = node;
             }}
-            className={editorCardClassName}
+            className={`${editorCardClassName} scroll-mt-16`}
           >
             <button
               onClick={() => toggleSection("images")}
@@ -3744,7 +4259,7 @@ const EditMobile = () => {
             ref={(node) => {
               sectionRefs.current.variants = node;
             }}
-            className={editorCardClassName}
+            className={`${editorCardClassName} scroll-mt-16`}
           >
             <button
               onClick={() => toggleSection("variants")}
@@ -4189,12 +4704,527 @@ const EditMobile = () => {
             )}
           </div>
 
+          {/* Price Tracking Section */}
+          <div
+            ref={(node) => {
+              sectionRefs.current.price_tracking = node;
+            }}
+            className={`${editorCardClassName} scroll-mt-16`}
+          >
+            <button
+              onClick={() => toggleSection("price_tracking")}
+              className={editorSectionButtonClassName}
+            >
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                <div className="flex h-8 w-8 items-center justify-center border border-amber-200 bg-amber-50 flex-shrink-0">
+                  <FaTag className="text-amber-600 text-sm" />
+                </div>
+                <div className="text-left min-w-0">
+                  <h2 className="font-semibold text-sm sm:text-base text-gray-800">
+                    Price Tracking
+                  </h2>
+                  <p className="text-xs text-gray-600 hidden sm:block">
+                    {priceHistory.length} price records
+                  </p>
+                </div>
+              </div>
+              {expandedSections.price_tracking ? (
+                <FaChevronDown className="text-sm flex-shrink-0 ml-2" />
+              ) : (
+                <FaChevronRight className="text-sm flex-shrink-0 ml-2" />
+              )}
+            </button>
+
+            {expandedSections.price_tracking && (
+              <div className={`${editorSectionBodyClassName} space-y-5`}>
+                <div className="grid grid-cols-1 items-end gap-5 lg:grid-cols-[minmax(280px,0.9fr)_minmax(0,2.1fr)]">
+                  <label className="block">
+                    <span className="block text-xs font-medium text-gray-700 mb-1">
+                      Variant
+                    </span>
+                    <select
+                      value={priceHistoryVariantId || ""}
+                      onChange={(event) => {
+                        setPriceHistoryVariantId(event.target.value);
+                        setPriceHistoryForm((prev) => ({
+                          ...prev,
+                          storeName: "",
+                          price: "",
+                          sourceUrl: "",
+                        }));
+                      }}
+                      className={editorSelectClassName}
+                    >
+                      {formData.variants.map((variant, index) => (
+                        <option key={variant.id || `variant-${index}`} value={variant.id || ""}>
+                          {getPriceHistoryVariantLabel(variant)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-5">
+                    {[
+                      { label: "Current", value: formatInr(priceHistorySummary.current_price) },
+                      { label: "Previous", value: formatInr(priceHistorySummary.previous_price) },
+                      { label: "Low", value: formatInr(priceHistorySummary.lowest_price) },
+                      { label: "High", value: formatInr(priceHistorySummary.highest_price) },
+                      {
+                        label: "Change",
+                        value:
+                          priceHistorySummary.change_percent == null
+                            ? "—"
+                            : `${Number(priceHistorySummary.change_percent).toFixed(2)}%`,
+                      },
+                    ].map((metric) => (
+                      <div key={metric.label} className="min-w-0">
+                        <span className="block text-[11px] font-medium text-slate-500">
+                          {metric.label}
+                        </span>
+                        <strong className="mt-1 block truncate text-sm font-semibold tabular-nums text-slate-900 sm:text-base">
+                          {metric.value}
+                        </strong>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="border-t border-slate-200 pt-4">
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                    <h3 className="text-sm font-semibold text-slate-900">Recent entries</h3>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <div className="inline-flex items-center gap-0.5 bg-slate-100 p-1">
+                        {[
+                          ["all", "All"],
+                          ["published", "Published"],
+                          ["unpublished", "Unpublished"],
+                        ].map(([filter, label]) => (
+                          <button
+                            key={filter}
+                            type="button"
+                            aria-pressed={priceHistoryStatusFilter === filter}
+                            onClick={() => setPriceHistoryStatusFilter(filter)}
+                            className={`px-2.5 py-1.5 text-xs font-semibold transition ${priceHistoryStatusFilter === filter ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                      <label className="inline-flex items-center gap-1.5 text-xs text-slate-600">
+                        <input
+                          type="checkbox"
+                          checked={priceHistoryIncludeDeleted}
+                          onChange={(event) => setPriceHistoryIncludeDeleted(event.target.checked)}
+                          className="h-3.5 w-3.5 accent-[#345CFF]"
+                        />
+                        Show deleted
+                      </label>
+                      <span className="text-xs text-slate-500">
+                        {priceHistoryLoading ? "Loading..." : `${priceHistory.length} items`}
+                      </span>
+                    </div>
+                  </div>
+
+                  {priceHistory.length ? (
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full text-left text-xs">
+                        <thead>
+                          <tr className="border-b border-slate-200 text-slate-500">
+                            <th className="py-2 pr-4 font-medium">Observed</th>
+                            <th className="py-2 pr-4 font-medium">Entered</th>
+                            <th className="py-2 pr-4 font-medium">Source</th>
+                            <th className="py-2 pr-4 font-medium">Store</th>
+                            <th className="py-2 pr-4 font-medium">Type</th>
+                            <th className="py-2 pr-4 text-right font-medium">Price</th>
+                            <th className="py-2 pr-4 font-medium">Status</th>
+                            <th className="py-2 pr-4 font-medium">Entered by</th>
+                            <th className="py-2 pr-4 font-medium">Notes</th>
+                            <th className="py-2 text-right font-medium">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {priceHistory.slice().reverse().map((entry) => (
+                            <tr
+                              key={entry.id}
+                              className={`border-b border-slate-100 last:border-0 ${
+                                entry.is_current_live
+                                  ? "bg-sky-50"
+                                  : entry.deleted_at
+                                    ? "opacity-60"
+                                    : ""
+                              }`}
+                            >
+                              <td className="whitespace-nowrap py-2.5 pr-4 text-slate-600">
+                                {entry.recorded_at
+                                  ? new Date(entry.recorded_at).toLocaleDateString("en-IN", {
+                                      day: "2-digit",
+                                      month: "short",
+                                      year: "numeric",
+                                    })
+                                  : "—"}
+                              </td>
+                              <td className="whitespace-nowrap py-2.5 pr-4 text-slate-500">
+                                {entry.created_at
+                                  ? new Date(entry.created_at).toLocaleString("en-IN", {
+                                      day: "2-digit",
+                                      month: "short",
+                                      year: "numeric",
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    })
+                                  : "—"}
+                              </td>
+                              <td className="py-2.5 pr-4 text-slate-600">{entry.price_source_type || "mobilesx"}</td>
+                              <td className="py-2.5 pr-4 text-slate-600">{entry.store_name || "Reference"}</td>
+                              <td className="py-2.5 pr-4 capitalize text-slate-600">{entry.price_type || "current"}</td>
+                              <td className="whitespace-nowrap py-2.5 pr-4 text-right font-semibold tabular-nums text-slate-900">
+                                {formatInr(entry.price)}
+                              </td>
+                              <td className="py-2.5 pr-4">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span className={`inline-flex items-center gap-1.5 whitespace-nowrap font-medium ${entry.deleted_at ? "text-rose-700" : entry.is_published ? "text-emerald-700" : "text-slate-500"}`}>
+                                    <span className={`h-1.5 w-1.5 rounded-full ${entry.deleted_at ? "bg-rose-500" : entry.is_published ? "bg-emerald-500" : "bg-slate-400"}`} />
+                                    {entry.deleted_at ? "Deleted" : entry.is_published ? "Published" : "Unpublished"}
+                                  </span>
+                                  {entry.is_current_live && (
+                                    <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-sky-800">
+                                      Current Live
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="max-w-[160px] truncate py-2.5 pr-4 text-slate-500">{entry.recorded_by || "—"}</td>
+                              <td className="max-w-[200px] truncate py-2.5 pr-4 text-slate-500" title={entry.delete_reason || entry.notes || ""}>
+                                {entry.deleted_at ? entry.delete_reason || entry.notes || "—" : entry.notes || "—"}
+                              </td>
+                              <td className="whitespace-nowrap py-2.5 text-right">
+                                {!entry.deleted_at && (
+                                  <div className="inline-flex items-center gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => changePriceHistoryPublication(entry, !entry.is_published)}
+                                      className="font-semibold text-[#345CFF] hover:text-blue-800"
+                                    >
+                                      {entry.is_published ? "Unpublish" : "Publish"}
+                                    </button>
+                                    {entry.can_delete !== false && !entry.is_current_live && (
+                                      <button
+                                        type="button"
+                                        onClick={() => deletePriceHistoryEntry(entry)}
+                                        className="font-semibold text-rose-600 hover:text-rose-800"
+                                      >
+                                        Delete
+                                      </button>
+                                    )}
+                                  </div>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <p className="py-2 text-sm text-slate-500">
+                      {priceHistoryLoading
+                        ? "Loading price history..."
+                        : "No price records match this filter."}
+                    </p>
+                  )}
+                </div>
+
+                <div className="border-t border-slate-200 pt-4">
+                  <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                    <h3 className="text-sm font-semibold text-slate-900">Add manual price record</h3>
+                    <div className="inline-flex items-center gap-1 rounded-full bg-slate-100 p-1">
+                      {[
+                        { key: "current", label: "Current live price" },
+                        { key: "historical", label: "Historical backfill" },
+                      ].map((option) => (
+                        <button
+                          key={option.key}
+                          type="button"
+                          onClick={() => setPriceHistoryMode(option.key)}
+                          className={`rounded-full px-3 py-1.5 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#345CFF] focus-visible:ring-offset-2 ${
+                            priceHistoryMode === option.key
+                              ? "bg-[#345CFF] text-white shadow-sm"
+                              : "text-slate-500 hover:text-slate-800"
+                          }`}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="mb-4 flex flex-wrap items-center gap-3">
+                    <span className="text-xs font-medium text-slate-700">Publication</span>
+                    <div className="inline-flex items-center gap-0.5 bg-slate-100 p-1">
+                      {[
+                        { value: false, label: "Save as unpublished" },
+                        { value: true, label: "Publish immediately" },
+                      ].map((option) => (
+                        <button
+                          key={String(option.value)}
+                          type="button"
+                          aria-pressed={priceHistoryIsPublished === option.value}
+                          onClick={() => setPriceHistoryIsPublished(option.value)}
+                          className={`px-2.5 py-1.5 text-xs font-semibold transition ${priceHistoryIsPublished === option.value ? option.value ? "bg-[#345CFF] text-white shadow-sm" : "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
+                    <label className="block">
+                      <span className="mb-1 block text-xs font-medium text-slate-700">Price</span>
+                      <input
+                        type="number"
+                        min="0"
+                        value={priceHistoryForm.price}
+                        onChange={(event) => handlePriceHistoryInputChange("price", event.target.value)}
+                        className={priceTrackingFieldClassName}
+                        placeholder="e.g. 49999"
+                      />
+                    </label>
+
+                    <div className="grid grid-cols-3 gap-3 border-y border-slate-200 py-3 sm:col-span-2 sm:grid-cols-3">
+                      <div className="min-w-0">
+                        <span className="block text-[11px] font-medium text-slate-500">
+                          {priceHistoryMode === "historical" ? "Current live" : "Current"}
+                        </span>
+                        <strong className="mt-1 block truncate text-sm font-semibold tabular-nums text-slate-900">
+                          {priceHistoryCurrentPrice == null ? "—" : formatInr(priceHistoryCurrentPrice)}
+                        </strong>
+                      </div>
+                      <div className="min-w-0">
+                        <span className="block text-[11px] font-medium text-slate-500">
+                          {priceHistoryMode === "historical" ? "Backfill price" : "New price"}
+                        </span>
+                        <strong className="mt-1 block truncate text-sm font-semibold tabular-nums text-slate-900">
+                          {priceHistoryForm.price && Number.isFinite(priceHistoryEnteredPrice) && priceHistoryEnteredPrice > 0
+                            ? formatInr(priceHistoryEnteredPrice)
+                            : "—"}
+                        </strong>
+                      </div>
+                      <div className="min-w-0">
+                        <span className="block text-[11px] font-medium text-slate-500">
+                          {priceHistoryMode === "historical" ? "Difference vs live" : "Change"}
+                        </span>
+                        <strong className={`mt-1 block truncate text-sm font-semibold tabular-nums ${priceHistoryChange == null ? "text-slate-900" : priceHistoryChange > 0 ? "text-rose-700" : priceHistoryChange < 0 ? "text-emerald-700" : "text-slate-900"}`}>
+                          {priceHistoryChange == null
+                            ? "—"
+                            : `${formatSignedPriceChange(priceHistoryChange)}${priceHistoryChangePercent == null ? "" : ` (${priceHistoryChange > 0 ? "+" : ""}${priceHistoryChangePercent.toFixed(2)}%)`}`}
+                        </strong>
+                      </div>
+                    </div>
+
+                    <label className="block">
+                      <span className="mb-1 block text-xs font-medium text-slate-700">Source</span>
+                      <select
+                        value={priceHistoryForm.priceSourceType}
+                        onChange={(event) => handlePriceHistorySourceChange(event.target.value)}
+                        className={priceTrackingFieldClassName}
+                      >
+                        <option value="mobilesx">MobilesX reference</option>
+                        <option value="store">Store</option>
+                      </select>
+                    </label>
+
+                    {priceHistoryForm.priceSourceType === "store" && (
+                      <label className="block">
+                        <span className="mb-1 block text-xs font-medium text-slate-700">Store</span>
+                        <select
+                          value={priceHistoryForm.storeName}
+                          onChange={(event) => handlePriceHistoryStoreChange(event.target.value)}
+                          className={priceTrackingFieldClassName}
+                          required
+                          disabled={!priceHistoryStoreOptions.length}
+                        >
+                          <option value="">Select store</option>
+                          {priceHistoryStoreOptions.map((storeName) => (
+                            <option key={storeName} value={storeName}>{storeName}</option>
+                          ))}
+                        </select>
+                        {!priceHistoryStoreOptions.length && (
+                          <span className="mt-1 block text-[11px] text-amber-700">
+                            This variant has no configured stores.
+                          </span>
+                        )}
+                      </label>
+                    )}
+
+                    {priceHistoryMode === "historical" && (
+                      <label className="block">
+                        <span className="mb-1 block text-xs font-medium text-slate-700">Recorded date</span>
+                        <input
+                          type="date"
+                          value={priceHistoryForm.recordedAt ? toDateInputValue(priceHistoryForm.recordedAt) : ""}
+                          onChange={(event) => handlePriceHistoryInputChange("recordedAt", event.target.value)}
+                          className={priceTrackingFieldClassName}
+                        />
+                      </label>
+                    )}
+
+                    <label className="block sm:col-span-2">
+                      <span className="mb-1 block text-xs font-medium text-slate-700">Source URL</span>
+                      <input
+                        type="url"
+                        value={priceHistoryForm.sourceUrl}
+                        onChange={(event) => handlePriceHistoryInputChange("sourceUrl", event.target.value)}
+                        className={priceTrackingFieldClassName}
+                        placeholder="https://..."
+                      />
+                    </label>
+
+                    <label className="block sm:col-span-2">
+                      <span className="mb-1 block text-xs font-medium text-slate-700">Notes</span>
+                      <textarea
+                        rows={2}
+                        value={priceHistoryForm.notes}
+                        onChange={(event) => handlePriceHistoryInputChange("notes", event.target.value)}
+                        className={priceTrackingTextareaClassName}
+                        placeholder="Add notes for this pricing event"
+                      />
+                    </label>
+                  </div>
+
+                  <div className="mt-4 flex flex-col-reverse gap-3 border-t border-slate-100 pt-3 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-xs leading-5 text-slate-500">
+                      {priceHistoryMode === "historical"
+                        ? "Historical entries are added to the timeline only and do not overwrite the live current price."
+                        : "Current entries update the live price and record a new history observation."}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={submitPriceHistoryEntry}
+                      className={`${editorPrimaryButtonClassName} shrink-0`}
+                    >
+                      {priceHistoryIsPublished ? "Save & publish" : "Save as unpublished"}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="border-t border-slate-200 pt-4">
+                  <div className="mb-4 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+                    <h3 className="text-sm font-semibold text-slate-900">Price trend</h3>
+                    <div className="flex flex-wrap items-end gap-3 sm:gap-4">
+                      <label className="block w-full sm:w-40">
+                        <span className="mb-1 block text-xs font-medium text-slate-600">Source</span>
+                        <select
+                          value={priceHistorySourceType}
+                          onChange={(event) => setPriceHistorySourceType(event.target.value)}
+                          className={priceTrackingFieldClassName}
+                        >
+                          <option value="mobilesx">MobilesX</option>
+                          <option value="store">Store</option>
+                        </select>
+                      </label>
+                      {priceHistorySourceType === "store" && (
+                        <label className="block w-full sm:w-40">
+                          <span className="mb-1 block text-xs font-medium text-slate-600">Store</span>
+                          <select
+                            value={priceHistoryStoreName}
+                            onChange={(event) => setPriceHistoryStoreName(event.target.value)}
+                            className={priceTrackingFieldClassName}
+                            disabled={!priceHistoryStoreOptions.length}
+                          >
+                            <option value="">Select store</option>
+                            {priceHistoryStoreOptions.map((storeName) => (
+                              <option key={storeName} value={storeName}>{storeName}</option>
+                            ))}
+                          </select>
+                        </label>
+                      )}
+                      <div>
+                        <span className="mb-1 block text-xs font-medium text-slate-600">Range</span>
+                        <div className="inline-flex h-11 items-center gap-0.5 bg-slate-100 p-1">
+                          {[
+                            ["7d", "7D"],
+                            ["30d", "30D"],
+                            ["3m", "3M"],
+                            ["6m", "6M"],
+                            ["1y", "1Y"],
+                            ["all", "ALL"],
+                          ].map(([range, label]) => (
+                            <button
+                              key={range}
+                              type="button"
+                              onClick={() => setPriceHistoryRange(range)}
+                              aria-pressed={priceHistoryRange === range}
+                              className={`h-9 min-w-9 px-2 text-[11px] font-semibold transition ${priceHistoryRange === range ? "bg-[#345CFF] text-white" : "text-slate-600 hover:bg-white hover:text-slate-950"}`}
+                            >
+                              {label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  {priceHistoryLoading ? (
+                    <div className="flex min-h-36 items-center justify-center text-sm text-slate-500">
+                      Loading price history...
+                    </div>
+                  ) : priceHistoryChartHistory.length ? (
+                    <div className="h-48 w-full">
+                      <svg viewBox="0 0 720 220" className="h-full w-full" role="img" aria-label="Price trend chart">
+                        <defs>
+                          <linearGradient id="priceTrendFill" x1="0" x2="0" y1="0" y2="1">
+                            <stop offset="0%" stopColor="#345CFF" stopOpacity="0.24" />
+                            <stop offset="100%" stopColor="#345CFF" stopOpacity="0.02" />
+                          </linearGradient>
+                        </defs>
+                        {[0, 1, 2, 3].map((step) => (
+                          <line key={step} x1="0" y1={20 + step * 45} x2="720" y2={20 + step * 45} stroke="#e2e8f0" strokeDasharray="4 6" />
+                        ))}
+                        {(() => {
+                          const ordered = [...priceHistoryChartHistory].slice().sort((a, b) => new Date(a.recorded_at) - new Date(b.recorded_at));
+                          const values = ordered.map((entry) => Number(entry.price)).filter((value) => Number.isFinite(value));
+                          const min = Math.min(...values);
+                          const max = Math.max(...values);
+                          const range = max - min || 1;
+                          const points = ordered.map((entry, index) => {
+                            const x = 20 + (index / Math.max(ordered.length - 1, 1)) * 680;
+                            const price = Number(entry.price);
+                            const y = 190 - ((price - min) / range) * 150;
+                            return `${x},${y}`;
+                          });
+                          return (
+                            <>
+                              <polyline fill="none" stroke="#345CFF" strokeWidth="3" points={points.join(" ")} />
+                              <polygon points={`20,190 ${points.join(" ")} 700,190`} fill="url(#priceTrendFill)" opacity="0.8" />
+                              {ordered.map((entry, index) => {
+                                const price = Number(entry.price);
+                                const x = 20 + (index / Math.max(ordered.length - 1, 1)) * 680;
+                                const minValue = Math.min(...values);
+                                const maxValue = Math.max(...values);
+                                const rangeValue = maxValue - minValue || 1;
+                                const y = 190 - ((price - minValue) / rangeValue) * 150;
+                                return <circle key={entry.id || index} cx={x} cy={y} r="3" fill="#345CFF" />;
+                              })}
+                            </>
+                          );
+                        })()}
+                      </svg>
+                    </div>
+                  ) : (
+                    <div className="flex min-h-36 items-center justify-center bg-slate-50/70 px-4 text-center text-sm text-slate-500">
+                      No observations for this source and range yet.
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Specifications Section with updated connectivity fields */}
           <div
             ref={(node) => {
               sectionRefs.current.specs = node;
             }}
-            className={editorCardClassName}
+            className={`${editorCardClassName} scroll-mt-16`}
           >
             <button
               onClick={() => toggleSection("specs")}
@@ -4984,7 +6014,7 @@ const EditMobile = () => {
             ref={(node) => {
               sectionRefs.current.sensors = node;
             }}
-            className={editorCardClassName}
+            className={`${editorCardClassName} scroll-mt-16`}
           >
             <button
               onClick={() => toggleSection("sensors")}

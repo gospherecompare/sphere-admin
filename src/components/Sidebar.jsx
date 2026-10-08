@@ -3,6 +3,7 @@ import Drawer from "@mui/material/Drawer";
 import { Link, useLocation } from "react-router-dom";
 import {
   FaArrowRight,
+  FaBell,
   FaBolt,
   FaChartBar,
   FaChartLine,
@@ -325,6 +326,13 @@ const DESKTOP_SECTIONS = [
         icon: FaRobot,
         path: "/settings/gemini",
         prefixes: ["/settings/gemini"],
+        allowedRoles: ["admin"],
+      },
+      {
+        label: "Notification Center",
+        icon: FaBell,
+        path: "/admin/notifications",
+        prefixes: ["/admin/notifications"],
         allowedRoles: ["admin"],
       },
     ],
