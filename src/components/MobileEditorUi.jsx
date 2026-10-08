@@ -113,8 +113,8 @@ export function EditorStatusChip({ label, tone = "neutral", className = "" }) {
 
 export function EditorTabBar({ tabs, activeTab, onSelect }) {
   return (
-    <div className="border border-slate-200 bg-white">
-      <div className="grid grid-cols-2 gap-px bg-slate-200 sm:flex sm:overflow-x-auto sm:bg-transparent [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+    <div className="min-w-0 bg-transparent">
+      <div className="flex min-w-0 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
         {tabs.map((tab) => {
           const active = activeTab === tab.id;
           const Icon = tab.icon;
@@ -123,10 +123,10 @@ export function EditorTabBar({ tabs, activeTab, onSelect }) {
               key={tab.id}
               type="button"
               onClick={() => onSelect(tab.id)}
-              className={`inline-flex min-w-0 items-center justify-center gap-2 bg-white px-3 py-3 text-center text-sm font-semibold transition sm:min-w-max sm:justify-start sm:border-r sm:border-slate-200 sm:last:border-r-0 ${
+              className={`inline-flex min-h-12 shrink-0 items-center justify-center gap-2 border-b-2 px-3 py-3 text-center text-sm font-semibold transition ${
                 active
-                  ? "bg-[#F4F7FF] text-[#345CFF]"
-                  : "bg-white text-slate-600 hover:bg-slate-50"
+                  ? "border-[#345CFF] text-[#345CFF]"
+                  : "border-transparent text-slate-600 hover:text-slate-950"
               }`}
             >
               {Icon ? <Icon className="text-sm" /> : null}

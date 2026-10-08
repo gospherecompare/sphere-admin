@@ -69,6 +69,7 @@ import { buildUrl, getAuthToken } from "./api";
 import { createMobileReminderItems } from "./utils/mobileReminders";
 import { buildDocumentTitle } from "./utils/pageTitles";
 import WorkspacePageHeader from "./components/Ui/WorkspacePageHeader";
+import AdminNotifications from "./components/AdminNotifications";
 
 const AUTH_NOTICE_STORAGE_KEY = "hooksAdminAuthNotice";
 const POST_LOGIN_REDIRECT_KEY = "hooksAdminPostLoginRedirect";
@@ -902,6 +903,18 @@ function App() {
                 message="You need settings access to open the API tester."
               >
                 <ApiTester />
+              </RouteAccessGate>
+            }
+          />
+          <Route
+            path="admin/notifications"
+            element={
+              <RouteAccessGate
+                path="/admin/notifications"
+                title="Notification center restricted"
+                message="Only administrators can manage notification delivery and subscriber broadcasts."
+              >
+                <AdminNotifications />
               </RouteAccessGate>
             }
           />

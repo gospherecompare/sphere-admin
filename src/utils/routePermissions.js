@@ -376,6 +376,12 @@ export const ROUTE_ACCESS_RULES = [
       "Only administrators can manage the Gemini provider configuration.",
   },
   {
+    pattern: "/admin/notifications",
+    allowedRoles: ["admin"],
+    title: "Notification center restricted",
+    message: "Only administrators can manage notifications and subscriber broadcasts.",
+  },
+  {
     pattern: "/api-tester",
     requiredAnyPermissions: [
       "settings.api_tester.view",

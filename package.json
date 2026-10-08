@@ -26,6 +26,7 @@
     "@tiptap/react": "^3.23.4",
     "@tiptap/starter-kit": "^3.23.4",
     "axios": "^1.13.2",
+    "firebase": "^12.19.0",
     "js-cookie": "^3.0.5",
     "react": "^19.2.0",
     "react-countup": "^6.5.3",
