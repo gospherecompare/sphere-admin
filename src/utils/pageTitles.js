@@ -285,8 +285,8 @@ const TITLE_ROUTES = [
     "Analytics Operations Cloud",
   ),
   routeMeta(
-    "/reports/career-applications",
-    "Career Applications Console",
+    "/reports/career-submissions",
+    "Career Submissions Console",
     "Analytics Operations Cloud",
   ),
   routeMeta(

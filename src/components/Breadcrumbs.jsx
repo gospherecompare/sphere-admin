@@ -359,11 +359,11 @@ const ROUTE_TRAILS = [
     ],
   },
   {
-    path: "/reports/career-applications",
+    path: "/reports/career-submissions",
     trail: [
       DASHBOARD_CRUMB,
       { label: "Reports", to: "/reports/useractivity" },
-      { label: "Career Applications" },
+      { label: "Career Submissions" },
     ],
   },
   {

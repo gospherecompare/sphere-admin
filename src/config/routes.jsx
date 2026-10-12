@@ -62,8 +62,8 @@ const SearchPopularityReport = lazy(
 const CompareAnalytics = lazy(
   () => import("../components/Reports/CompareAnalytics"),
 );
-const CareerApplications = lazy(
-  () => import("../components/Reports/CareerApplications"),
+const CareerSubmissions = lazy(
+  () => import("../components/Reports/CareerSubmissions"),
 );
 const ContactSubmissions = lazy(
   () => import("../components/Reports/ContactSubmissions"),
@@ -344,10 +344,10 @@ export const ROUTE_CONFIG = {
     component: CompareAnalytics,
     label: "User Compare Manager",
   },
-  careerApplicationsReport: {
-    path: "/reports/career-applications",
-    component: CareerApplications,
-    label: "Career Applications Report",
+  careerSubmissionsReport: {
+    path: "/reports/career-submissions",
+    component: CareerSubmissions,
+    label: "Career Submissions Report",
   },
   contactSubmissionsReport: {
     path: "/reports/contact-submissions",

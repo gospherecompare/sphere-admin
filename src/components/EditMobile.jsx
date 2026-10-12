@@ -208,6 +208,9 @@ const EditMobile = () => {
   const [priceHistorySourceType, setPriceHistorySourceType] = useState("mobilesx");
   const [priceHistoryStoreName, setPriceHistoryStoreName] = useState("");
   const [priceHistoryRange, setPriceHistoryRange] = useState("all");
+  const [priceHistoryBaselineDate, setPriceHistoryBaselineDate] = useState(
+    new Date().toISOString().slice(0, 10),
+  );
   const [priceHistoryLivePriceOverride, setPriceHistoryLivePriceOverride] = useState(null);
   const [priceHistoryFetchedCurrentPrice, setPriceHistoryFetchedCurrentPrice] = useState(null);
   const [priceHistoryForm, setPriceHistoryForm] = useState({
@@ -311,6 +314,9 @@ const EditMobile = () => {
           : selectedPriceHistoryVariant?.base_price != null && selectedPriceHistoryVariant.base_price !== ""
             ? Number(String(selectedPriceHistoryVariant.base_price).replace(/[^0-9.]/g, ""))
             : null;
+  const hasPublishedSelectedSourceHistory = priceHistoryChartHistory.some(
+    (entry) => entry?.id != null,
+  );
   const priceHistoryEnteredPrice = Number(priceHistoryForm.price);
   const priceHistoryChange =
     priceHistoryForm.price &&
@@ -1690,6 +1696,67 @@ const EditMobile = () => {
       price: selectedStore?.price != null ? String(selectedStore.price) : "",
       sourceUrl: selectedStore?.url || "",
     }));
+  };
+
+  const initializePriceHistoryBaseline = async () => {
+    const variantId = Number(priceHistoryVariantId);
+    const sourceType = priceHistorySourceType || "mobilesx";
+    const storeName = sourceType === "store" ? priceHistoryStoreName.trim() : "";
+    const baselinePrice = Number(priceHistorySummary.current_price);
+    if (!Number.isInteger(variantId) || variantId <= 0) {
+      showToast("Price history", "Select a variant first", "error");
+      return;
+    }
+    if (!priceHistoryBaselineDate) {
+      showToast("Price history", "Choose the date for the assumed baseline", "error");
+      return;
+    }
+    if (sourceType === "store" && !storeName) {
+      showToast("Price history", "Select a store first", "error");
+      return;
+    }
+    if (!Number.isFinite(baselinePrice) || baselinePrice <= 0) {
+      showToast("Price history", "No live price is available for this source", "error");
+      return;
+    }
+
+    const sourceLabel = sourceType === "store" ? storeName : "MobilesX";
+    const confirmed = window.confirm(
+      `Create an estimated ${sourceLabel} baseline of ${formatInr(baselinePrice)} and assume it was unchanged since ${priceHistoryBaselineDate}? This will not change the live price.`,
+    );
+    if (!confirmed) return;
+
+    try {
+      const token = Cookies.get("authToken");
+      const response = await fetch(
+        buildUrl(`/api/smartphone/${id}/price-history/initialize-baseline`),
+        {
+          method: "POST",
+          headers: {
+            Authorization: token ? `Bearer ${token}` : "",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            variant_id: variantId,
+            price_source_type: sourceType,
+            store_name: storeName || null,
+            recorded_at: priceHistoryBaselineDate,
+          }),
+        },
+      );
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || "Failed to initialize price baseline");
+      }
+      setPriceHistoryRefreshKey((previous) => previous + 1);
+      showToast("Price history", "Estimated baseline initialized", "success");
+    } catch (error) {
+      showToast(
+        "Price history",
+        error.message || "Failed to initialize price baseline",
+        "error",
+      );
+    }
   };
 
   const changePriceHistoryPublication = async (entry, isPublished) => {
@@ -4835,6 +4902,7 @@ const EditMobile = () => {
                             <th className="py-2 pr-4 font-medium">Source</th>
                             <th className="py-2 pr-4 font-medium">Store</th>
                             <th className="py-2 pr-4 font-medium">Type</th>
+                            <th className="py-2 pr-4 font-medium">Origin</th>
                             <th className="py-2 pr-4 text-right font-medium">Price</th>
                             <th className="py-2 pr-4 font-medium">Status</th>
                             <th className="py-2 pr-4 font-medium">Entered by</th>
@@ -4877,6 +4945,11 @@ const EditMobile = () => {
                               <td className="py-2.5 pr-4 text-slate-600">{entry.price_source_type || "mobilesx"}</td>
                               <td className="py-2.5 pr-4 text-slate-600">{entry.store_name || "Reference"}</td>
                               <td className="py-2.5 pr-4 capitalize text-slate-600">{entry.price_type || "current"}</td>
+                              <td className="py-2.5 pr-4 text-slate-600">
+                                {entry.entry_origin === "initial_baseline"
+                                  ? "Estimated baseline"
+                                  : String(entry.entry_origin || "observed").replaceAll("_", " ")}
+                              </td>
                               <td className="whitespace-nowrap py-2.5 pr-4 text-right font-semibold tabular-nums text-slate-900">
                                 {formatInr(entry.price)}
                               </td>
@@ -5163,6 +5236,43 @@ const EditMobile = () => {
                       </div>
                     </div>
                   </div>
+                  {!priceHistoryLoading &&
+                    !hasPublishedSelectedSourceHistory &&
+                    Number(priceHistorySummary.current_price) > 0 && (
+                      <div className="mt-4 flex flex-col gap-3 border border-amber-200 bg-amber-50 p-3 sm:flex-row sm:items-end sm:justify-between">
+                        <div>
+                          <p className="text-sm font-semibold text-amber-900">
+                            No published history for this source
+                          </p>
+                          <p className="mt-1 max-w-2xl text-xs leading-5 text-amber-800">
+                            Initialize an explicitly estimated baseline from the live price. This does not modify the live price or send price alerts.
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap items-end gap-3">
+                          <label className="block">
+                            <span className="mb-1 block text-xs font-medium text-amber-900">
+                              Assume unchanged since
+                            </span>
+                            <input
+                              type="date"
+                              value={priceHistoryBaselineDate}
+                              max={new Date().toISOString().slice(0, 10)}
+                              onChange={(event) =>
+                                setPriceHistoryBaselineDate(event.target.value)
+                              }
+                              className={priceTrackingFieldClassName}
+                            />
+                          </label>
+                          <button
+                            type="button"
+                            onClick={initializePriceHistoryBaseline}
+                            className={editorPrimaryButtonClassName}
+                          >
+                            Initialize estimated baseline
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   {priceHistoryLoading ? (
                     <div className="flex min-h-36 items-center justify-center text-sm text-slate-500">
                       Loading price history...
@@ -5189,20 +5299,29 @@ const EditMobile = () => {
                             const x = 20 + (index / Math.max(ordered.length - 1, 1)) * 680;
                             const price = Number(entry.price);
                             const y = 190 - ((price - min) / range) * 150;
-                            return `${x},${y}`;
+                            return { x, y, entry };
                           });
+                          const linePath = points
+                            .map((point, index) =>
+                              index === 0
+                                ? `M ${point.x} ${point.y}`
+                                : `H ${point.x} V ${point.y}`,
+                            )
+                            .join(" ");
                           return (
                             <>
-                              <polyline fill="none" stroke="#345CFF" strokeWidth="3" points={points.join(" ")} />
-                              <polygon points={`20,190 ${points.join(" ")} 700,190`} fill="url(#priceTrendFill)" opacity="0.8" />
-                              {ordered.map((entry, index) => {
-                                const price = Number(entry.price);
-                                const x = 20 + (index / Math.max(ordered.length - 1, 1)) * 680;
-                                const minValue = Math.min(...values);
-                                const maxValue = Math.max(...values);
-                                const rangeValue = maxValue - minValue || 1;
-                                const y = 190 - ((price - minValue) / rangeValue) * 150;
-                                return <circle key={entry.id || index} cx={x} cy={y} r="3" fill="#345CFF" />;
+                              <path d={`${linePath} L 700 190 L 20 190 Z`} fill="url(#priceTrendFill)" opacity="0.8" />
+                              <path d={linePath} fill="none" stroke="#345CFF" strokeWidth="3" />
+                              {points.map(({ x, y, entry }, index) => {
+                                return (
+                                  <circle
+                                    key={entry.id || `${entry.recorded_at}-${index}`}
+                                    cx={x}
+                                    cy={y}
+                                    r={entry.entry_origin === "initial_baseline" ? "4" : "3"}
+                                    fill={entry.entry_origin === "initial_baseline" ? "#d97706" : "#345CFF"}
+                                  />
+                                );
                               })}
                             </>
                           );

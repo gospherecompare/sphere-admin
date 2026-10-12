@@ -155,7 +155,7 @@ export const RBAC_MODULES = [
   { key: "reports.feature_clicks", label: "Feature Clicks Report", actions: ["view", "export"] },
   { key: "reports.search_popularity", label: "Search Popularity Report", actions: ["view", "export"] },
   { key: "reports.compare_analytics", label: "User Compare Manager", actions: ["view", "export"] },
-  { key: "reports.career_applications", label: "Career Applications", actions: ["view", "edit", "export"] },
+  { key: "reports.career_submissions", label: "Career Submissions", actions: ["view", "export"] },
   { key: "reports.contact_submissions", label: "Contact Inbox", actions: ["view", "edit", "export"] },
   {
     key: "users",

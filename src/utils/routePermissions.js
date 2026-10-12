@@ -335,12 +335,12 @@ export const ROUTE_ACCESS_RULES = [
     title: "User compare manager access required",
   },
   {
-    pattern: "/reports/career-applications",
+    pattern: "/reports/career-submissions",
     requiredAnyPermissions: [
-      "reports.career_applications.view",
+      "reports.career_submissions.view",
       "reports.view",
     ],
-    title: "Career applications access required",
+    title: "Career submissions access required",
   },
   {
     pattern: "/reports/contact-submissions",

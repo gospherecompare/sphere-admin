@@ -103,8 +103,32 @@ const formatUpdatedAt = (value) => {
   }).format(new Date(timestamp));
 };
 
+const formatScheduleAt = (value) => {
+  if (!value) return "Not scheduled";
+  const timestamp = new Date(value);
+  if (!Number.isFinite(timestamp.getTime())) return String(value);
+  return `${new Intl.DateTimeFormat("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Asia/Kolkata",
+  }).format(timestamp)} IST`;
+};
+
+const toDateTimeLocal = (value) => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return "";
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+    .toISOString()
+    .slice(0, 16);
+};
+
 const normalizeTrendingRow = (row, index) => {
-  const manualBoost = Boolean(row?.manual_boost);
+  const manualBoostConfigured = Boolean(row?.manual_boost);
+  const manualBoost = Boolean(row?.manual_boost_active);
   const manualPriority = Math.max(0, Math.floor(toFiniteNumber(row?.manual_priority, 0)));
   const trendingScore = toFiniteNumber(row?.trending_score, 0);
   const views7d = toFiniteNumber(row?.views_7d, 0);
@@ -135,11 +159,18 @@ const normalizeTrendingRow = (row, index) => {
     ctr: `${ctr.toFixed(1)}%`,
     boostStatus: manualBoost ? "Manual" : "Auto",
     boostType: manualBoost ? "Manual Boost" : "Auto Ranking",
-    boostUntil: manualBoost ? `Priority ${manualPriority}` : "Auto ranked",
+    boostUntil: manualBoost
+      ? `Priority ${manualPriority} · until ${formatUpdatedAt(row?.manual_ends_at)}`
+      : manualBoostConfigured
+        ? "Expired boost"
+        : "Auto ranked",
     boostMeta: manualBoost
-      ? displayBadge || "Manual boost active"
+      ? [displayBadge || "Manual boost active", row?.manual_reason]
+          .filter(Boolean)
+          .join(" · ")
       : displayBadge || `${formatCompactNumber(compares7d)} compares in 7d`,
     manualBoost,
+    manualBoostConfigured,
     manualPriority,
     manualBadge,
     autoBadge,
@@ -147,6 +178,12 @@ const normalizeTrendingRow = (row, index) => {
     views7d,
     viewsPrev7d,
     compares7d,
+    searchSelections7d: toFiniteNumber(row?.search_selections_7d, 0),
+    automaticRank: Math.max(0, Math.floor(toFiniteNumber(row?.ranking_position, 0))),
+    calculatedRank: Math.max(0, Math.floor(toFiniteNumber(row?.automatic_rank, 0))),
+    manualStartsAt: row?.manual_starts_at || "",
+    manualEndsAt: row?.manual_ends_at || "",
+    manualReason: row?.manual_reason || "",
     viewsTotal: toFiniteNumber(row?.views_total, 0),
     comparesTotal: toFiniteNumber(row?.compares_total, 0),
     calculatedAt: row?.calculated_at || null,
@@ -163,7 +200,7 @@ const SelectField = ({ value, onChange, children, className = "" }) => (
   </select>
 );
 
-const SummaryCard = ({ icon: Icon, iconClassName, label, value, delta }) => (
+const SummaryCard = ({ icon, iconClassName, label, value, delta }) => (
   <article className="bg-white px-4 py-4 lg:px-5">
     <div className="flex items-start justify-between gap-4">
       <div>
@@ -177,7 +214,7 @@ const SummaryCard = ({ icon: Icon, iconClassName, label, value, delta }) => (
         </p>
       </div>
       <div className={`flex h-10 w-10 shrink-0 items-center justify-center ${iconClassName}`}>
-        <Icon className="text-lg" />
+        {React.createElement(icon, { className: "text-lg" })}
       </div>
     </div>
   </article>
@@ -284,6 +321,8 @@ const TrendingManager = () => {
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [apiRows, setApiRows] = useState([]);
   const [updatedAt, setUpdatedAt] = useState(null);
+  const [refreshStatus, setRefreshStatus] = useState(null);
+  const [refreshStatusError, setRefreshStatusError] = useState("");
   const [loading, setLoading] = useState(true);
   const [savingBoost, setSavingBoost] = useState(false);
   const [error, setError] = useState("");
@@ -313,7 +352,18 @@ const TrendingManager = () => {
       const payload = await response.json();
       setApiRows(Array.isArray(payload?.results) ? payload.results : []);
       setUpdatedAt(payload?.updated_at || null);
-    } catch (requestError) {
+      try {
+        const statusResponse = await fetch(buildUrl("/api/admin/trending/status"), {
+          method: "GET",
+          headers: authHeaders(),
+        });
+        if (!statusResponse.ok) throw new Error(`HTTP ${statusResponse.status}`);
+        setRefreshStatus(await statusResponse.json());
+        setRefreshStatusError("");
+      } catch {
+        setRefreshStatusError("Could not load automatic refresh status.");
+      }
+    } catch {
       setError("Failed to load live trending data from server.");
     } finally {
       setLoading(false);
@@ -330,7 +380,7 @@ const TrendingManager = () => {
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       await fetchTrendingRows();
-    } catch (requestError) {
+    } catch {
       setError("Failed to recompute trending scores.");
       setLoading(false);
     }
@@ -338,6 +388,8 @@ const TrendingManager = () => {
 
   const openBoostEditor = useCallback((row = null) => {
     const manualBadge = row?.manualBadge || "";
+    const defaultStartsAt = new Date();
+    const defaultEndsAt = new Date(defaultStartsAt.getTime() + 24 * 60 * 60 * 1000);
     setBadgeDropdownOpen(false);
     setBoostDraft({
       productId: row?.productId ? String(row.productId) : "",
@@ -350,6 +402,9 @@ const TrendingManager = () => {
           ? manualBadge
           : CUSTOM_BADGE_VALUE
         : "",
+      manualStartsAt: toDateTimeLocal(row?.manualStartsAt) || toDateTimeLocal(defaultStartsAt),
+      manualEndsAt: toDateTimeLocal(row?.manualEndsAt) || toDateTimeLocal(defaultEndsAt),
+      manualReason: row?.manualReason || "",
     });
   }, []);
 
@@ -358,6 +413,20 @@ const TrendingManager = () => {
     const productId = Number(boostDraft.productId);
     if (!Number.isInteger(productId) || productId <= 0) {
       setError("Enter a valid product id before saving boost.");
+      return;
+    }
+    const startDate = new Date(boostDraft.manualStartsAt);
+    const endDate = new Date(boostDraft.manualEndsAt);
+    if (
+      boostDraft.manualBoost &&
+      (!boostDraft.manualStartsAt ||
+        !boostDraft.manualEndsAt ||
+        !Number.isFinite(startDate.getTime()) ||
+        !Number.isFinite(endDate.getTime()) ||
+        endDate <= startDate ||
+        !String(boostDraft.manualReason || "").trim())
+    ) {
+      setError("An enabled boost needs a valid start, later end, and reason.");
       return;
     }
 
@@ -373,13 +442,16 @@ const TrendingManager = () => {
           manual_boost: manualBoost,
           manual_priority: manualBoost ? Number(boostDraft.manualPriority) || 0 : 0,
           manual_badge: manualBoost ? boostDraft.manualBadge || null : null,
+          manual_starts_at: manualBoost ? startDate.toISOString() : null,
+          manual_ends_at: manualBoost ? endDate.toISOString() : null,
+          manual_reason: manualBoost ? String(boostDraft.manualReason).trim() : null,
         }),
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       setBadgeDropdownOpen(false);
       setBoostDraft(null);
       await fetchTrendingRows();
-    } catch (requestError) {
+    } catch {
       setError("Failed to save manual boost.");
     } finally {
       setSavingBoost(false);
@@ -404,7 +476,7 @@ const TrendingManager = () => {
         });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         await fetchTrendingRows();
-      } catch (requestError) {
+      } catch {
         setError("Failed to clear manual boost.");
       } finally {
         setSavingBoost(false);
@@ -626,6 +698,36 @@ const TrendingManager = () => {
           </div>
         ) : null}
 
+        <section className={`${SURFACE_CLASS} flex flex-col gap-3 px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between`}>
+          <div>
+            <p className="text-sm font-semibold text-slate-900">
+              Automatic refresh · {refreshStatus?.schedule_timezone || "Asia/Kolkata"}
+            </p>
+            <p className="mt-1 text-xs text-slate-500">
+              Daily at {(refreshStatus?.schedule_times || ["06:00", "14:00", "22:00"]).join(", ")}
+              {refreshStatus?.next_run_at
+                ? ` · next ${formatScheduleAt(refreshStatus.next_run_at)}`
+                : " · scheduler disabled"}
+            </p>
+          </div>
+          <div className="text-xs text-slate-600">
+            {refreshStatusError ? (
+              <span className="font-medium text-rose-600">{refreshStatusError}</span>
+            ) : (
+              <>
+                <span>
+                  Last successful refresh: {formatScheduleAt(refreshStatus?.last_success_at)}
+                </span>
+                {refreshStatus?.last_error ? (
+                  <span className="ml-2 font-medium text-rose-600">
+                    Error: {refreshStatus.last_error}
+                  </span>
+                ) : null}
+              </>
+            )}
+          </div>
+        </section>
+
         <section className={`${SURFACE_CLASS} px-2 py-3 sm:px-3 lg:px-4`}>
           <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-3">
             {tabItems.map((tab) => (
@@ -810,7 +912,10 @@ const TrendingManager = () => {
                         <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
                           Rank
                         </p>
-                        <p className="mt-1 font-semibold text-slate-900">#{row.rank}</p>
+                        <p className="mt-1 font-semibold text-slate-900">Final #{row.rank}</p>
+                        <p className="mt-1 text-xs text-slate-500">
+                          Auto #{row.automaticRank || row.calculatedRank || "—"}
+                        </p>
                       </div>
                       <div>
                         <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
@@ -823,6 +928,14 @@ const TrendingManager = () => {
                           Views
                         </p>
                         <p className="mt-1 font-medium text-slate-700">{row.impressions}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+                          Search picks
+                        </p>
+                        <p className="mt-1 font-medium text-slate-700">
+                          {formatCompactNumber(row.searchSelections7d)}
+                        </p>
                       </div>
                       <div>
                         <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
@@ -844,7 +957,7 @@ const TrendingManager = () => {
                       <button
                         type="button"
                         onClick={() => clearManualBoost(row)}
-                        disabled={!row.manualBoost || savingBoost}
+                        disabled={!row.manualBoostConfigured || savingBoost}
                         className="inline-flex h-9 items-center justify-center gap-2 border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         <FaEllipsisH className="text-xs" />
@@ -884,6 +997,7 @@ const TrendingManager = () => {
                       <th className="px-4 py-3 text-left">Hook</th>
                       <th className="px-4 py-3 text-left">Trending</th>
                       <th className="px-4 py-3 text-left">Views</th>
+                      <th className="px-4 py-3 text-left">Search picks</th>
                       <th className="px-4 py-3 text-left">CTR</th>
                       <th className="px-4 py-3 text-left">Status</th>
                       <th className="px-4 py-3 text-left">Boost</th>
@@ -897,8 +1011,11 @@ const TrendingManager = () => {
                         key={`${row.productId}-${row.rank}`}
                         className="transition hover:bg-slate-50"
                       >
-                        <td className="px-4 py-4 align-top font-semibold text-slate-700 lg:px-5">
-                          #{row.rank}
+                        <td className="px-4 py-4 align-top lg:px-5">
+                          <p className="font-semibold text-slate-700">Final #{row.rank}</p>
+                          <p className="mt-1 text-xs text-slate-500">
+                            Auto #{row.automaticRank || row.calculatedRank || "—"}
+                          </p>
                         </td>
                         <td className="px-4 py-4 align-top">
                           <div className="min-w-0">
@@ -930,6 +1047,9 @@ const TrendingManager = () => {
                           {row.impressions}
                         </td>
                         <td className="px-4 py-4 align-top text-sm text-slate-700">
+                          {formatCompactNumber(row.searchSelections7d)}
+                        </td>
+                        <td className="px-4 py-4 align-top text-sm text-slate-700">
                           {row.ctr}
                         </td>
                         <td className="px-4 py-4 align-top">
@@ -954,7 +1074,7 @@ const TrendingManager = () => {
                             <button
                               type="button"
                               onClick={() => clearManualBoost(row)}
-                              disabled={!row.manualBoost || savingBoost}
+                              disabled={!row.manualBoostConfigured || savingBoost}
                               className="flex h-8 w-8 items-center justify-center border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-40"
                               title="Clear manual boost"
                             >
@@ -1189,6 +1309,69 @@ const TrendingManager = () => {
                   ) : null}
                 </label>
               </div>
+
+              {boostDraft.manualBoost ? (
+                <>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <label className="block">
+                      <span className="text-sm font-semibold text-slate-700">
+                        Starts at
+                      </span>
+                      <input
+                        type="datetime-local"
+                        required
+                        value={boostDraft.manualStartsAt}
+                        onChange={(event) =>
+                          setBoostDraft((previous) => ({
+                            ...previous,
+                            manualStartsAt: event.target.value,
+                          }))
+                        }
+                        className="mt-1 h-11 w-full border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-[#5A49FF] focus:ring-4 focus:ring-[#5A49FF]/10"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="text-sm font-semibold text-slate-700">
+                        Ends at
+                      </span>
+                      <input
+                        type="datetime-local"
+                        required
+                        value={boostDraft.manualEndsAt}
+                        onChange={(event) =>
+                          setBoostDraft((previous) => ({
+                            ...previous,
+                            manualEndsAt: event.target.value,
+                          }))
+                        }
+                        className="mt-1 h-11 w-full border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-[#5A49FF] focus:ring-4 focus:ring-[#5A49FF]/10"
+                      />
+                    </label>
+                  </div>
+                  <label className="block">
+                    <span className="text-sm font-semibold text-slate-700">
+                      Reason
+                    </span>
+                    <textarea
+                      required
+                      maxLength={240}
+                      rows={3}
+                      value={boostDraft.manualReason}
+                      onChange={(event) =>
+                        setBoostDraft((previous) => ({
+                          ...previous,
+                          manualReason: event.target.value,
+                        }))
+                      }
+                      className="mt-1 w-full resize-y border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none focus:border-[#5A49FF] focus:ring-4 focus:ring-[#5A49FF]/10"
+                      placeholder="Why should this product receive an editorial boost?"
+                    />
+                    <span className="mt-1 block text-right text-xs text-slate-400">
+                      {String(boostDraft.manualReason || "").length}/240
+                    </span>
+                  </label>
+                </>
+              ) : null}
             </div>
 
             <div className="flex flex-col gap-3 border-t border-slate-200 px-5 py-4 sm:flex-row sm:justify-end">
