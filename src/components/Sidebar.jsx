@@ -287,10 +287,10 @@ const DESKTOP_SECTIONS = [
         prefixes: ["/reports/hook-score"],
       },
       {
-        label: "Career Applications",
+        label: "Career Submissions",
         icon: FaHeartbeat,
-        path: "/reports/career-applications",
-        prefixes: ["/reports/career-applications"],
+        path: "/reports/career-submissions",
+        prefixes: ["/reports/career-submissions"],
       },
       {
         label: "Contact Inbox",

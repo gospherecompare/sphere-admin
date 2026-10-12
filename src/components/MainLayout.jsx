@@ -362,8 +362,8 @@ const MainLayout = ({
                   element={<ROUTE_CONFIG.searchPopularityReport.component />}
                 />
                 <Route
-                  path="/reports/career-applications"
-                  element={<ROUTE_CONFIG.careerApplicationsReport.component />}
+                  path="/reports/career-submissions"
+                  element={<ROUTE_CONFIG.careerSubmissionsReport.component />}
                 />
 
                 {/* Utilities */}

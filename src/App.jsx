@@ -46,7 +46,7 @@ import HookScoreReport from "./components/Reports/HookScoreReport";
 import FeatureClicksReport from "./components/Reports/FeatureClicksReport";
 import SearchPopularityReport from "./components/Reports/SearchPopularityReport";
 import CompareAnalytics from "./components/Reports/CompareAnalytics";
-import CareerApplications from "./components/Reports/CareerApplications";
+import CareerSubmissions from "./components/Reports/CareerSubmissions";
 import ContactSubmissions from "./components/Reports/ContactSubmissions";
 import BannerManager from "./components/BannerManager";
 import AffiliatePlacementManager from "./components/AffiliatePlacementManager";
@@ -1191,14 +1191,14 @@ function App() {
             }
           />
           <Route
-            path="reports/career-applications"
+            path="reports/career-submissions"
             element={
               <RouteAccessGate
-                path="/reports/career-applications"
+                path="/reports/career-submissions"
                 title="Reports access required"
                 message="You need report access to open this page."
               >
-                <CareerApplications />
+                <CareerSubmissions />
               </RouteAccessGate>
             }
           />

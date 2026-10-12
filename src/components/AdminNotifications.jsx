@@ -1,10 +1,17 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { getApps, initializeApp } from "firebase/app";
 import { getMessaging, getToken, isSupported } from "firebase/messaging";
-import { FaBell, FaBullhorn, FaHeartbeat, FaUsers } from "react-icons/fa";
+import {
+  FaBell,
+  FaBullhorn,
+  FaCheckCircle,
+  FaExclamationTriangle,
+  FaHeartbeat,
+  FaUsers,
+} from "react-icons/fa";
 import { buildUrl, getAuthToken } from "../api";
 
-const TABS = ["Overview", "Send", "Subscribers", "History", "Health"];
+const TABS = ["Overview", "Send", "Subscribers", "History", "Health", "Diagnostics"];
 const FIREBASE_CONFIG = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -15,24 +22,213 @@ const FIREBASE_CONFIG = {
 };
 
 const apiRequest = async (path, options = {}) => {
+  const startedAt = performance.now();
   const token = getAuthToken();
-  const response = await fetch(buildUrl(`/api/admin/notifications${path}`), {
-    ...options,
-    headers: {
-      ...(options.body ? { "Content-Type": "application/json" } : {}),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...options.headers,
-    },
-  });
+  let response;
+  try {
+    response = await fetch(buildUrl(`/api/admin/notifications${path}`), {
+      ...options,
+      headers: {
+        ...(options.body ? { "Content-Type": "application/json" } : {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...options.headers,
+      },
+    });
+  } catch (error) {
+    const connectionError = new Error(
+      `Notification API connection failed. Check the configured API URL, server availability, CORS, and network connection. ${error?.message || ""}`.trim(),
+    );
+    connectionError.api_latency_ms = Math.round(performance.now() - startedAt);
+    throw connectionError;
+  }
   const body = await response.json().catch(() => ({}));
   if (!response.ok) {
     const error = new Error(
       body.message || `Request failed with status ${response.status}`,
     );
     error.status = response.status;
+    error.payload = body;
+    error.api_latency_ms = Math.round(performance.now() - startedAt);
     throw error;
   }
   return body;
+};
+
+const inspectBrowserNotifications = async () => {
+  if (typeof window === "undefined") {
+    return { checks: [], project_id: null };
+  }
+
+  const checks = [];
+  const addCheck = (name, status, detail) =>
+    checks.push({ name, status, detail });
+  const requiredFirebaseFields = [
+    "apiKey",
+    "authDomain",
+    "projectId",
+    "storageBucket",
+    "messagingSenderId",
+    "appId",
+  ];
+  const missingFields = requiredFirebaseFields.filter(
+    (field) => !FIREBASE_CONFIG[field],
+  );
+  const permission =
+    "Notification" in window ? Notification.permission : "unsupported";
+
+  addCheck(
+    "Browser network",
+    navigator.onLine ? "ok" : "error",
+    navigator.onLine
+      ? "Browser reports an active network connection."
+      : "Browser is offline. Check the device network connection.",
+  );
+  addCheck(
+    "Secure context",
+    window.isSecureContext ? "ok" : "error",
+    window.isSecureContext
+      ? "Push APIs are available in this secure context."
+      : "Push notifications require HTTPS or localhost.",
+  );
+  addCheck(
+    "Notification permission",
+    permission === "granted"
+      ? "ok"
+      : permission === "denied"
+        ? "error"
+        : "warning",
+    permission === "granted"
+      ? "Browser permission is granted."
+      : permission === "denied"
+        ? "Permission is blocked in browser/site settings."
+        : permission === "default"
+          ? "Permission has not been requested for this browser."
+          : "This browser does not expose the Notifications API.",
+  );
+  addCheck(
+    "Web Firebase configuration",
+    missingFields.length ? "error" : "ok",
+    missingFields.length
+      ? `Missing frontend settings: ${missingFields.join(", ")}.`
+      : `All required settings are present. Project: ${FIREBASE_CONFIG.projectId}.`,
+  );
+  addCheck(
+    "VAPID key",
+    import.meta.env.VITE_FIREBASE_VAPID_KEY ? "ok" : "error",
+    import.meta.env.VITE_FIREBASE_VAPID_KEY
+      ? "A VAPID key is configured (key value is hidden)."
+      : "VITE_FIREBASE_VAPID_KEY is missing from the frontend build configuration.",
+  );
+
+  let messagingSupported = false;
+  try {
+    messagingSupported = await isSupported();
+  } catch {
+    messagingSupported = false;
+  }
+  addCheck(
+    "Firebase messaging support",
+    messagingSupported ? "ok" : "error",
+    messagingSupported
+      ? "Firebase Messaging APIs are supported by this browser."
+      : "Firebase Messaging is unavailable; check browser support and privacy settings.",
+  );
+
+  let serviceWorker;
+  if (!("serviceWorker" in navigator)) {
+    addCheck(
+      "Push service worker",
+      "error",
+      "This browser does not support service workers.",
+    );
+  } else {
+    try {
+      const response = await fetch("/firebase-messaging-sw.js", {
+        method: "HEAD",
+        cache: "no-store",
+      });
+      addCheck(
+        "Service worker asset",
+        response.ok ? "ok" : "error",
+        response.ok
+          ? "The production service-worker script is reachable."
+          : `Service-worker script returned HTTP ${response.status}.`,
+      );
+      serviceWorker = await navigator.serviceWorker.getRegistration("/");
+      const activeWorker = serviceWorker?.active;
+      addCheck(
+        "Service worker registration",
+        activeWorker ? "ok" : "warning",
+        activeWorker
+          ? `Active worker: ${new URL(activeWorker.scriptURL).pathname}.`
+          : "No active push service worker is registered for this site. Enable push to register it.",
+      );
+    } catch (error) {
+      addCheck(
+        "Service worker registration",
+        "error",
+        error?.message || "Could not inspect the service worker.",
+      );
+    }
+  }
+
+  let serviceWorkerProjectId = null;
+  const workerScriptUrl = serviceWorker?.active?.scriptURL;
+  if (workerScriptUrl) {
+    try {
+      const configParameter = new URL(workerScriptUrl).searchParams.get("config");
+      if (configParameter) {
+        serviceWorkerProjectId = JSON.parse(configParameter).projectId || null;
+      }
+    } catch {
+      serviceWorkerProjectId = null;
+    }
+  }
+
+  if (serviceWorkerProjectId && FIREBASE_CONFIG.projectId) {
+    const matches = serviceWorkerProjectId === FIREBASE_CONFIG.projectId;
+    addCheck(
+      "Service worker Firebase project",
+      matches ? "ok" : "error",
+      matches
+        ? `Service worker and page both use ${FIREBASE_CONFIG.projectId}.`
+        : `Service worker uses ${serviceWorkerProjectId}, but page uses ${FIREBASE_CONFIG.projectId}. Re-enable push to refresh its configuration.`,
+    );
+  }
+
+  return {
+    checks,
+    project_id: FIREBASE_CONFIG.projectId || null,
+    permission,
+  };
+};
+
+const CheckRow = ({ name, status, detail }) => {
+  const normalizedStatus = String(status || "").toLowerCase();
+  const isError = ["error", "failed", "offline", "stopped", "missing", "file_missing", "file_unreadable", "invalid", "incomplete"].includes(
+    normalizedStatus,
+  );
+  const isWarning = ["warning", "unknown", "not_seen", "firebase_missing", "degraded"].includes(
+    normalizedStatus,
+  );
+  const Icon = isError || isWarning ? FaExclamationTriangle : FaCheckCircle;
+  const colorClass = isError
+    ? "text-rose-600"
+    : isWarning
+      ? "text-amber-600"
+      : "text-emerald-600";
+
+  return (
+    <div className="flex gap-3 border-b border-slate-100 py-3 last:border-b-0">
+      <Icon className={`mt-0.5 shrink-0 ${colorClass}`} aria-hidden="true" />
+      <div className="min-w-0">
+        <p className="text-sm font-semibold text-slate-800">{name}</p>
+        <p className="mt-0.5 break-words text-xs leading-5 text-slate-500">
+          {detail}
+        </p>
+      </div>
+    </div>
+  );
 };
 
 const StatusCard = ({ label, value, detail, icon: Icon }) => (
@@ -77,6 +273,8 @@ const AdminNotifications = () => {
   const [events, setEvents] = useState([]);
   const [subscriberData, setSubscriberData] = useState(null);
   const [audience, setAudience] = useState(null);
+  const [diagnostics, setDiagnostics] = useState(null);
+  const [browserDiagnostics, setBrowserDiagnostics] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -102,9 +300,38 @@ const AdminNotifications = () => {
         setSubscriberData(data);
       } else if (selectedTab === "Send") {
         setAudience(await apiRequest("/audience"));
+      } else if (selectedTab === "Diagnostics") {
+        const diagnosticsStartedAt = performance.now();
+        const [result, browserData] = await Promise.all([
+          apiRequest("/diagnostics").then((data) => ({
+            data,
+            api_latency_ms: Math.round(performance.now() - diagnosticsStartedAt),
+          })),
+          inspectBrowserNotifications(),
+        ]);
+        setDiagnostics({
+          ...result.data,
+          api_latency_ms: result.api_latency_ms,
+        });
+        setBrowserDiagnostics(browserData);
       }
     } catch (requestError) {
       setError(requestError.message || "Could not load notification data.");
+      if (selectedTab === "Diagnostics") {
+        setDiagnostics(
+          requestError.payload
+            ? {
+                ...requestError.payload,
+                api_latency_ms: requestError.api_latency_ms,
+              }
+            : null,
+        );
+        try {
+          setBrowserDiagnostics(await inspectBrowserNotifications());
+        } catch {
+          setBrowserDiagnostics(null);
+        }
+      }
     } finally {
       setLoading(false);
     }
@@ -151,7 +378,12 @@ const AdminNotifications = () => {
     setMessage("");
     try {
       const result = await apiRequest("/test", { method: "POST" });
-      setMessage(`Test push sent to ${result.sent} device(s); ${result.failed} failed.`);
+      const failures = Object.entries(result.failure_codes || {})
+        .map(([code, count]) => `${code} (${count})`)
+        .join(", ");
+      setMessage(
+        `FCM accepted ${result.sent} test push(es); ${result.failed} failed.${failures ? ` Failure codes: ${failures}` : ""}`,
+      );
     } catch (requestError) {
       setError(requestError.message || "Push test failed.");
     }
@@ -325,6 +557,178 @@ const AdminNotifications = () => {
               <h2 className="font-semibold text-slate-950">Queue counts</h2>
               <pre className="mt-4 overflow-auto rounded-xl bg-slate-950 p-4 text-xs leading-6 text-emerald-200">{JSON.stringify(health?.queue || {}, null, 2)}</pre>
               <p className="mt-3 text-xs leading-5 text-slate-500">Health data reports service status only; credentials and tokens are never returned.</p>
+            </section>
+          </div>
+        ) : null}
+
+        {!loading && tab === "Diagnostics" ? (
+          <div className="mt-6 space-y-5">
+            <section className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-lg font-semibold text-slate-950">End-to-end notification diagnostics</h2>
+                  <p className="mt-1 text-sm leading-6 text-slate-500">
+                    Opening this page only reads status; it does not send a notification. FCM acceptance confirms
+                    provider handoff, not that a device displayed the notification.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" onClick={enablePush} className="rounded-lg bg-indigo-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-indigo-700">
+                    {pushState === "enabled" ? "Re-register this browser" : "Register this browser"}
+                  </button>
+                  <button type="button" onClick={testPush} className="rounded-lg border border-slate-200 px-3.5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+                    Send explicit test
+                  </button>
+                  <button type="button" onClick={disablePush} className="rounded-lg border border-slate-200 px-3.5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+                    Disable admin devices
+                  </button>
+                </div>
+              </div>
+              <p className="mt-4 text-xs text-slate-400">
+                Server checked {diagnostics?.checked_at ? new Date(diagnostics.checked_at).toLocaleString() : "—"}
+                {" · "}API round trip {diagnostics?.api_latency_ms ?? "—"} ms
+              </p>
+            </section>
+
+            <div className="grid gap-5 lg:grid-cols-2">
+              <section className="rounded-2xl border border-slate-200 bg-white p-5">
+                <h2 className="font-semibold text-slate-950">Server and provider</h2>
+                <div className="mt-2">
+                  <CheckRow
+                    name="Database"
+                    status={diagnostics?.database?.status || "unknown"}
+                    detail={diagnostics?.database?.reason || `${diagnostics?.database?.latency_ms ?? "—"} ms query latency`}
+                  />
+                  <CheckRow
+                    name="Firebase Admin credentials"
+                    status={diagnostics?.firebase_admin?.status || "unknown"}
+                    detail={[
+                      diagnostics?.firebase_admin?.reason,
+                      diagnostics?.firebase_admin?.missing_fields?.length
+                        ? `Missing: ${diagnostics.firebase_admin.missing_fields.join(", ")}.`
+                        : null,
+                      diagnostics?.firebase_admin?.project_id
+                        ? `Server project: ${diagnostics.firebase_admin.project_id}.`
+                        : null,
+                    ].filter(Boolean).join(" ") || "Credential values are intentionally not shown."}
+                  />
+                  <CheckRow
+                    name="Notification worker"
+                    status={diagnostics?.worker?.status || "unknown"}
+                    detail={[
+                      diagnostics?.worker?.last_heartbeat_at
+                        ? `Heartbeat ${diagnostics.worker.heartbeat_age_seconds}s ago (${new Date(diagnostics.worker.last_heartbeat_at).toLocaleString()}).`
+                        : `No heartbeat received. Start the separate worker with: ${diagnostics?.runtime?.worker_command || "npm run worker:notifications"}.`,
+                      `Processed ${diagnostics?.worker?.processed_count ?? 0} deliveries.`,
+                      diagnostics?.worker?.last_error ? `Last error: ${diagnostics.worker.last_error}` : null,
+                    ].filter(Boolean).join(" ")}
+                  />
+                  <CheckRow
+                    name="Runtime environment"
+                    status={diagnostics?.runtime?.environment === "production" ? "ok" : "warning"}
+                    detail={`${diagnostics?.runtime?.environment || "unknown"} · Node ${diagnostics?.runtime?.node_version || "unknown"} · uptime ${diagnostics?.runtime?.uptime_seconds ?? "—"}s`}
+                  />
+                  <CheckRow
+                    name="Firebase project alignment"
+                    status={
+                      diagnostics?.firebase_admin?.project_id && browserDiagnostics?.project_id
+                        ? diagnostics.firebase_admin.project_id === browserDiagnostics.project_id ? "ok" : "error"
+                        : "warning"
+                    }
+                    detail={
+                      diagnostics?.firebase_admin?.project_id && browserDiagnostics?.project_id
+                        ? `Server: ${diagnostics.firebase_admin.project_id}; browser: ${browserDiagnostics.project_id}.`
+                        : "Project comparison is unavailable until both Firebase configurations expose a project ID."
+                    }
+                  />
+                </div>
+              </section>
+
+              <section className="rounded-2xl border border-slate-200 bg-white p-5">
+                <h2 className="font-semibold text-slate-950">Browser and service worker</h2>
+                <div className="mt-2">
+                  {browserDiagnostics?.checks?.length
+                    ? browserDiagnostics.checks.map((check) => <CheckRow key={check.name} {...check} />)
+                    : <p className="py-4 text-sm text-slate-500">Browser diagnostics are unavailable.</p>}
+                </div>
+              </section>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <StatusCard label="Active customer devices" value={diagnostics?.subscribers?.active_devices} icon={FaBell} />
+              <StatusCard label="Active customers" value={diagnostics?.subscribers?.active_customers} icon={FaUsers} />
+              <StatusCard label="Active price alerts" value={diagnostics?.subscribers?.active_price_alerts} icon={FaBullhorn} />
+              <StatusCard label="Your admin test devices" value={diagnostics?.subscribers?.active_admin_test_devices} icon={FaHeartbeat} />
+            </div>
+
+            <div className="grid gap-5 lg:grid-cols-2">
+              <section className="rounded-2xl border border-slate-200 bg-white p-5">
+                <h2 className="font-semibold text-slate-950">Push delivery queue</h2>
+                <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  {Object.entries(diagnostics?.queue?.by_status || {}).map(([status, count]) => (
+                    <div key={status} className="rounded-xl bg-slate-50 p-3">
+                      <p className="text-xs capitalize text-slate-500">{status.replaceAll("_", " ")}</p>
+                      <p className="mt-1 text-xl font-semibold text-slate-900">{count}</p>
+                    </div>
+                  ))}
+                  {!Object.keys(diagnostics?.queue?.by_status || {}).length ? (
+                    <p className="col-span-full py-3 text-sm text-slate-500">No push delivery records.</p>
+                  ) : null}
+                </div>
+                <p className="mt-4 text-xs text-slate-500">
+                  Oldest queued/processing delivery: {diagnostics?.queue?.oldest_pending_at
+                    ? new Date(diagnostics.queue.oldest_pending_at).toLocaleString()
+                    : "none"}
+                </p>
+              </section>
+              <section className="rounded-2xl border border-slate-200 bg-white p-5">
+                <h2 className="font-semibold text-slate-950">Delivery by event type</h2>
+                <div className="mt-3 overflow-x-auto">
+                  <table className="w-full min-w-[420px] text-left text-sm">
+                    <thead className="text-xs uppercase tracking-wide text-slate-500">
+                      <tr><th className="py-2 pr-3">Event</th><th className="py-2 pr-3">Status</th><th className="py-2 text-right">Count</th></tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {(diagnostics?.queue?.by_event_type || []).map((row, index) => (
+                        <tr key={`${row.event_type}-${row.status}-${index}`}>
+                          <td className="py-2 pr-3 text-slate-700">{row.event_type}</td>
+                          <td className="py-2 pr-3 capitalize text-slate-500">{row.status.replaceAll("_", " ")}</td>
+                          <td className="py-2 text-right font-medium text-slate-800">{row.count}</td>
+                        </tr>
+                      ))}
+                      {!diagnostics?.queue?.by_event_type?.length ? (
+                        <tr><td className="py-3 text-slate-500" colSpan={3}>No event delivery data.</td></tr>
+                      ) : null}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            </div>
+
+            <section className="rounded-2xl border border-slate-200 bg-white px-5 py-2 sm:px-6">
+              <h2 className="pt-4 text-lg font-semibold text-slate-950">Recent failed, skipped, or errored deliveries</h2>
+              <div className="mt-2 overflow-x-auto">
+                <table className="w-full min-w-[800px] text-left text-sm">
+                  <thead className="text-xs uppercase tracking-wide text-slate-500">
+                    <tr><th className="py-3 pr-3">Event</th><th className="py-3 pr-3">Title</th><th className="py-3 pr-3">Status</th><th className="py-3 pr-3">Attempts</th><th className="py-3 pr-3">Error</th><th className="py-3">Created</th></tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {(diagnostics?.recent_failures || []).map((failure) => (
+                      <tr key={failure.delivery_id}>
+                        <td className="py-3 pr-3 text-slate-700">{failure.event_type}</td>
+                        <td className="max-w-[220px] truncate py-3 pr-3 text-slate-700" title={failure.title}>{failure.title}</td>
+                        <td className="py-3 pr-3 capitalize text-rose-700">{failure.status}</td>
+                        <td className="py-3 pr-3 text-slate-600">{failure.attempts}</td>
+                        <td className="max-w-[340px] whitespace-normal py-3 pr-3 text-xs text-slate-500">{failure.error_message || "—"}</td>
+                        <td className="py-3 text-xs text-slate-500">{new Date(failure.created_at).toLocaleString()}</td>
+                      </tr>
+                    ))}
+                    {!diagnostics?.recent_failures?.length ? (
+                      <tr><td className="py-6 text-center text-slate-500" colSpan={6}>No recent failed, skipped, or errored deliveries.</td></tr>
+                    ) : null}
+                  </tbody>
+                </table>
+              </div>
             </section>
           </div>
         ) : null}
