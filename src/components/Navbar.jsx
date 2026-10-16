@@ -8,37 +8,23 @@ import React, {
 import { useLocation, useNavigate } from "react-router-dom";
 import Cookies from "js-cookie";
 import {
-  FaArrowRight,
   FaBars,
-  FaBell,
-  FaBoxOpen,
-  FaCalendarCheck,
   FaCheckCircle,
   FaChevronDown,
   FaCog,
   FaDatabase,
-  FaExclamationTriangle,
-  FaFileAlt,
   FaHeadset,
   FaRobot,
   FaSearch,
   FaSignOutAlt,
   FaSpinner,
-  FaShieldAlt,
   FaTimes,
   FaUser,
-  FaChartLine,
 } from "react-icons/fa";
 import { buildUrl, getAuthToken } from "../api";
 import { getSearchNavigationTarget } from "../utils/searchNavigation";
 
-const EMPTY_SUMMARY = { total: 0, items: [] };
-
 const MOBILE_ROUTE_TITLES = [
-  {
-    match: (pathname) => pathname === "/admin/notifications",
-    title: "Notification Center",
-  },
   {
     match: (pathname) => pathname === "/reports/productpublishstatus",
     title: "Product Publish Status",
@@ -165,192 +151,6 @@ const SearchSuggestions = ({
   );
 };
 
-const getNotificationVisual = (item = {}) => {
-  const kind = String(item?.kind || "").trim().toLowerCase();
-  const group = String(item?.group || "").trim().toLowerCase();
-
-  if (
-    kind === "launch_sale_today" ||
-    kind === "sale_today" ||
-    kind === "launch_today"
-  ) {
-    return {
-      icon: FaCalendarCheck,
-      iconClassName: "text-[#2962FF]",
-      frameClassName:
-        "bg-[linear-gradient(180deg,#EFF5FF_0%,#E9F1FF_100%)] ring-1 ring-[#D8E5FF]",
-    };
-  }
-
-  if (kind === "upcoming_launch" || kind === "upcoming_sale" || group === "upcoming") {
-    return {
-      icon: FaBoxOpen,
-      iconClassName: "text-emerald-600",
-      frameClassName:
-        "bg-[linear-gradient(180deg,#ECFDF5_0%,#E5F9EF_100%)] ring-1 ring-emerald-100",
-    };
-  }
-
-  if (kind === "missing_info" || group === "update") {
-    return {
-      icon: FaFileAlt,
-      iconClassName: "text-violet-600",
-      frameClassName:
-        "bg-[linear-gradient(180deg,#F6F0FF_0%,#F1E9FF_100%)] ring-1 ring-violet-100",
-    };
-  }
-
-  if (kind === "released_recent" || group === "released") {
-    return {
-      icon: FaChartLine,
-      iconClassName: "text-slate-500",
-      frameClassName:
-        "bg-[linear-gradient(180deg,#F8FAFC_0%,#F1F5F9_100%)] ring-1 ring-slate-200",
-    };
-  }
-
-  return {
-    icon: FaShieldAlt,
-    iconClassName: "text-amber-500",
-    frameClassName:
-      "bg-[linear-gradient(180deg,#FFF7ED_0%,#FFF2E2_100%)] ring-1 ring-amber-100",
-  };
-};
-
-const NotificationPanel = ({
-  summary,
-  loading,
-  error,
-  onSelect,
-  onMarkAllRead,
-  onViewAll,
-  isMobile,
-}) => {
-  const items = summary?.items || [];
-  const visibleItems = items.slice(0, isMobile ? 4 : 6);
-
-  return (
-    <div
-      className={`absolute right-0 top-[calc(100%+12px)] z-50 overflow-hidden rounded-[22px] border border-slate-200/90 bg-white shadow-[0_28px_60px_rgba(15,23,42,0.12)] ${
-        isMobile
-          ? "w-[min(22rem,calc(100vw-1rem))]"
-          : "w-[min(43rem,calc(100vw-2rem))]"
-      }`}
-    >
-      <div className="pointer-events-none absolute left-auto right-8 top-0 h-4 w-4 -translate-y-1/2 rotate-45 border-l border-t border-slate-200 bg-white" />
-
-      <div className="relative flex items-center justify-between border-b border-slate-200 px-4 py-4 sm:px-5 sm:py-5">
-        <div className="sm:hidden absolute left-1/2 top-2 h-1 w-10 -translate-x-1/2 rounded-full bg-slate-200" />
-        <h3 className="pt-2 text-[1.05rem] font-semibold tracking-[-0.01em] text-slate-950 sm:pt-0">
-          Notifications
-        </h3>
-        <button
-          type="button"
-          onClick={onMarkAllRead}
-          className="pt-2 text-sm font-semibold text-[#315EFB] transition hover:text-[#2249D8] sm:pt-0"
-        >
-          Mark all as read
-        </button>
-      </div>
-
-      {loading ? (
-        <div className="flex min-h-[21rem] flex-col items-center justify-center px-5 py-10 text-center">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-[22px] bg-[linear-gradient(180deg,#F8FAFF_0%,#EEF3FF_100%)] text-[#315EFB] ring-1 ring-[#E1E9FF]">
-            <FaSpinner className="animate-spin text-lg" />
-          </div>
-          <p className="mt-4 text-base font-semibold text-slate-900">
-            Loading notifications
-          </p>
-          <p className="mt-1 text-sm text-slate-500">
-            Syncing the latest activity for your workspace.
-          </p>
-        </div>
-      ) : error && items.length === 0 ? (
-        <div className="flex min-h-[21rem] flex-col items-center justify-center px-5 py-10 text-center">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-[22px] bg-[linear-gradient(180deg,#FFF1F2_0%,#FFE7EA_100%)] text-rose-500 ring-1 ring-rose-100">
-            <FaExclamationTriangle className="text-lg" />
-          </div>
-          <p className="mt-4 text-base font-semibold text-slate-900">
-            Failed to load notifications
-          </p>
-          <p className="mt-2 max-w-[18rem] text-sm leading-6 text-slate-500">
-            {error}
-          </p>
-          <div className="mt-4 text-sm font-semibold text-[#315EFB]">
-            Tap the bell again to retry
-          </div>
-        </div>
-      ) : items.length === 0 ? (
-        <div className="flex min-h-[26rem] flex-col items-center justify-center px-5 py-10 text-center">
-          <div className="mx-auto flex h-28 w-28 items-center justify-center rounded-full bg-[radial-gradient(circle_at_top,#EEF2FF_0%,#F6F7FF_58%,#FBFCFF_100%)] text-[#8CA0FF] ring-1 ring-[#E9ECFF]">
-            <FaBell className="text-4xl" />
-          </div>
-          <p className="mt-7 text-[1.7rem] font-semibold tracking-[-0.02em] text-slate-950">
-            You're all caught up!
-          </p>
-          <p className="mt-3 max-w-[17rem] text-sm leading-6 text-slate-500">
-            No new notifications at the moment.
-          </p>
-        </div>
-      ) : (
-        <>
-          <div className="max-h-[34rem] overflow-y-auto [scrollbar-width:thin] [scrollbar-color:#CBD5E1_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-track]:bg-transparent">
-            {visibleItems.map((item) => {
-              const visual = getNotificationVisual(item);
-              const Icon = visual.icon;
-
-              return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => onSelect(item)}
-                className={`flex w-full items-start gap-3 border-b border-slate-100 px-4 py-4 text-left transition hover:bg-slate-50/80 sm:gap-4 sm:px-5 sm:py-5 ${
-                  item.is_read ? "bg-white" : "bg-blue-50/40"
-                }`}
-              >
-                <div
-                  className={`mt-0.5 flex h-14 w-14 shrink-0 items-center justify-center rounded-[18px] ${visual.frameClassName}`}
-                >
-                  <Icon className={`text-[1.35rem] ${visual.iconClassName}`} />
-                </div>
-                <div className="min-w-0 flex-1 pr-2">
-                  <div className="flex items-start justify-between gap-3">
-                    <p className="pr-2 text-base font-semibold tracking-[-0.01em] text-slate-950">
-                      {item.title}
-                    </p>
-                    <span className="shrink-0 text-sm text-slate-400">
-                      {item.whenLabel || "Now"}
-                    </span>
-                  </div>
-                  <p className="mt-2 text-sm leading-7 text-slate-600">
-                    {item.description}
-                  </p>
-                </div>
-                {!item.is_read ? (
-                  <div className="flex min-h-[3.5rem] shrink-0 items-center pl-1">
-                    <span className="h-2.5 w-2.5 rounded-full bg-[#2F63FF]" />
-                  </div>
-                ) : null}
-              </button>
-              );
-            })}
-          </div>
-          <div className="border-t border-slate-200 px-4 py-4 text-center sm:px-5 sm:py-5">
-            <button
-              type="button"
-              onClick={onViewAll}
-              className="inline-flex items-center gap-2 text-base font-semibold text-[#315EFB] transition hover:text-[#2249D8]"
-            >
-              View all notifications
-              <FaArrowRight className="text-sm" />
-            </button>
-          </div>
-        </>
-      )}
-    </div>
-  );
-};
-
 const UserMenu = ({ userName, role, onNavigate, onLogout }) => (
   <div className="absolute right-0 top-[calc(100%+12px)] z-50 w-[min(20rem,calc(100vw-1.5rem))] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_25px_55px_rgba(15,23,42,0.14)]">
     <div className="border-b border-slate-100 px-4 py-4">
@@ -419,12 +219,6 @@ const Navbar = ({ isMobile, onToggleSidebar, onLogout }) => {
   const navigate = useNavigate();
 
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [showNotifications, setShowNotifications] = useState(false);
-  const [notificationSummary, setNotificationSummary] = useState(EMPTY_SUMMARY);
-  const [notificationsLoading, setNotificationsLoading] = useState(false);
-  const [notificationError, setNotificationError] = useState("");
-  const [notificationsLoadedAt, setNotificationsLoadedAt] = useState(null);
-
   const [searchQuery, setSearchQuery] = useState("");
   const [suggestions, setSuggestions] = useState([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
@@ -435,7 +229,6 @@ const Navbar = ({ isMobile, onToggleSidebar, onLogout }) => {
   const searchTimer = useRef(null);
   const searchContainerRef = useRef(null);
   const searchInputRef = useRef(null);
-  const notificationRef = useRef(null);
   const userMenuRef = useRef(null);
 
   const email =
@@ -449,26 +242,7 @@ const Navbar = ({ isMobile, onToggleSidebar, onLogout }) => {
     );
   }, [location.pathname]);
 
-  const notificationCountLabel = useMemo(() => {
-    if (notificationSummary.total <= 0) return "";
-    return notificationSummary.total > 99
-      ? "99+"
-      : String(notificationSummary.total);
-  }, [notificationSummary.total]);
-
-  const shouldRefreshNotifications = useMemo(() => {
-    if (!notificationsLoadedAt) return true;
-    const lastUpdated =
-      notificationsLoadedAt instanceof Date
-        ? notificationsLoadedAt.getTime()
-        : new Date(notificationsLoadedAt).getTime();
-    return (
-      Number.isNaN(lastUpdated) || Date.now() - lastUpdated > 5 * 60 * 1000
-    );
-  }, [notificationsLoadedAt]);
-
   useEffect(() => {
-    setShowNotifications(false);
     setShowUserMenu(false);
     setShowSuggestions(false);
   }, [location.pathname]);
@@ -489,13 +263,6 @@ const Navbar = ({ isMobile, onToggleSidebar, onLogout }) => {
         setShowSuggestions(false);
       }
       if (
-        showNotifications &&
-        notificationRef.current &&
-        !notificationRef.current.contains(event.target)
-      ) {
-        setShowNotifications(false);
-      }
-      if (
         showUserMenu &&
         userMenuRef.current &&
         !userMenuRef.current.contains(event.target)
@@ -506,63 +273,7 @@ const Navbar = ({ isMobile, onToggleSidebar, onLogout }) => {
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [showNotifications, showSuggestions, showUserMenu]);
-
-  const loadNotifications = useCallback(async () => {
-    setNotificationsLoading(true);
-    setNotificationError("");
-
-    try {
-      const token = getAuthToken();
-      const res = await fetch(buildUrl("/api/admin/notifications/summary"), {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-
-      if (!res.ok) {
-        throw new Error(`Request failed with status ${res.status}`);
-      }
-
-      const data = await res.json();
-      setNotificationSummary({
-        total: Number(data?.unread_count) || 0,
-        items: (Array.isArray(data?.items) ? data.items : []).map((item) => ({
-          ...item,
-          description: item.message || "",
-          whenLabel: item.created_at
-            ? new Date(item.created_at).toLocaleString()
-            : "Now",
-        })),
-      });
-      setNotificationsLoadedAt(new Date());
-    } catch (error) {
-      console.error("Notification error:", error);
-      setNotificationError(error.message || "Failed to load notifications");
-    } finally {
-      setNotificationsLoading(false);
-    }
-  }, []);
-
-  const markAllNotificationsRead = useCallback(async () => {
-    try {
-      const token = getAuthToken();
-      const res = await fetch(
-        buildUrl("/api/admin/notifications/events/read-all"),
-        {
-          method: "PATCH",
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        },
-      );
-      if (!res.ok) throw new Error(`Request failed with status ${res.status}`);
-      await loadNotifications();
-    } catch (error) {
-      setNotificationError(error.message || "Could not mark notifications read");
-    }
-  }, [loadNotifications]);
-
-  useEffect(() => {
-    const timer = window.setInterval(loadNotifications, 5 * 60 * 1000);
-    return () => window.clearInterval(timer);
-  }, [loadNotifications]);
+  }, [showSuggestions, showUserMenu]);
 
   useEffect(() => {
     if (searchTimer.current) clearTimeout(searchTimer.current);
@@ -675,56 +386,10 @@ const Navbar = ({ isMobile, onToggleSidebar, onLogout }) => {
     ],
   );
 
-  const toggleNotifications = useCallback(() => {
-    const nextOpen = !showNotifications;
-    setShowNotifications(nextOpen);
-    setShowUserMenu(false);
-    setShowSuggestions(false);
-    if (nextOpen && shouldRefreshNotifications) {
-      loadNotifications();
-    }
-  }, [loadNotifications, shouldRefreshNotifications, showNotifications]);
-
   const toggleUserMenu = useCallback(() => {
     setShowUserMenu((prev) => !prev);
-    setShowNotifications(false);
     setShowSuggestions(false);
   }, []);
-
-  const viewAllNotifications = useCallback(() => {
-    setShowNotifications(false);
-    navigate("/admin/notifications");
-  }, [navigate]);
-
-  const handleReminderSelect = useCallback(
-    async (item) => {
-      setShowNotifications(false);
-      try {
-        const token = getAuthToken();
-        const res = await fetch(
-          buildUrl(`/api/admin/notifications/events/${item.id}/read`),
-          {
-            method: "PATCH",
-            headers: token ? { Authorization: `Bearer ${token}` } : {},
-          },
-        );
-        if (!res.ok) {
-          throw new Error(`Request failed with status ${res.status}`);
-        }
-      } catch (error) {
-        console.error("Notification read state update failed:", error);
-      }
-      loadNotifications();
-      if (item?.entity_type === "smartphone" && item?.entity_id) {
-        navigate(`/edit-mobile/${item.entity_id}`);
-      } else if (item?.entity_type === "news") {
-        navigate("/content/news-articles");
-      } else {
-        navigate("/admin/notifications");
-      }
-    },
-    [loadNotifications, navigate],
-  );
 
   const renderSearchBar = (mobile = false) => (
     <div className="relative min-w-0 flex-1" ref={searchContainerRef}>
@@ -787,10 +452,6 @@ const Navbar = ({ isMobile, onToggleSidebar, onLogout }) => {
     </div>
   );
 
-  const actionButtonBase = isMobile
-    ? "relative flex h-9 w-9 items-center justify-center rounded-xl bg-transparent text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
-    : "relative flex h-10 w-10 items-center justify-center rounded-xl bg-white text-slate-600 shadow-[0_10px_25px_rgba(15,23,42,0.05)] transition hover:bg-slate-50 hover:text-slate-900";
-
   if (isMobile) {
     return (
       <nav className="hooks-admin-topbar sticky top-0 z-40 border-b border-slate-200 bg-white shadow-[0_14px_35px_rgba(15,23,42,0.06)]">
@@ -830,32 +491,6 @@ const Navbar = ({ isMobile, onToggleSidebar, onLogout }) => {
               >
                 <FaSearch className="text-sm" />
               </button>
-
-              <div className="relative" ref={notificationRef}>
-                <button
-                  type="button"
-                  onClick={toggleNotifications}
-                  className={actionButtonBase}
-                >
-                  <FaBell className="text-sm" />
-                  {notificationCountLabel ? (
-                    <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-bold text-white">
-                      {notificationCountLabel}
-                    </span>
-                  ) : null}
-                </button>
-                {showNotifications ? (
-                  <NotificationPanel
-                    summary={notificationSummary}
-                    loading={notificationsLoading}
-                    error={notificationError}
-                    onSelect={handleReminderSelect}
-                    onMarkAllRead={markAllNotificationsRead}
-                    onViewAll={viewAllNotifications}
-                    isMobile
-                  />
-                ) : null}
-              </div>
 
               <div className="relative" ref={userMenuRef}>
                 <button
@@ -907,31 +542,6 @@ const Navbar = ({ isMobile, onToggleSidebar, onLogout }) => {
         <div className="min-w-0 flex-1">{renderSearchBar(false)}</div>
 
         <div className="flex items-center gap-3">
-          <div className="relative" ref={notificationRef}>
-            <button
-              type="button"
-              onClick={toggleNotifications}
-              className={actionButtonBase}
-            >
-              <FaBell className="text-sm" />
-              {notificationCountLabel ? (
-                <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-bold text-white">
-                  {notificationCountLabel}
-                </span>
-              ) : null}
-            </button>
-            {showNotifications ? (
-              <NotificationPanel
-                summary={notificationSummary}
-                loading={notificationsLoading}
-                error={notificationError}
-                onSelect={handleReminderSelect}
-                onMarkAllRead={markAllNotificationsRead}
-                onViewAll={viewAllNotifications}
-                isMobile={false}
-              />
-            ) : null}
-          </div>
 
           <div className="h-8 w-px bg-slate-200" />
 

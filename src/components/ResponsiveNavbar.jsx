@@ -3,7 +3,7 @@
  * Mobile-first responsive design with improved UX
  */
 import React, { useEffect, useRef, useState } from "react";
-import { FaBars, FaBell, FaSearch, FaSignOutAlt, FaTimes, FaUser } from "react-icons/fa";
+import { FaBars, FaSearch, FaSignOutAlt, FaTimes, FaUser } from "react-icons/fa";
 import PropTypes from "prop-types";
 
 const ResponsiveNavbar = ({
@@ -81,14 +81,6 @@ const ResponsiveNavbar = ({
           <FaSearch className="text-base text-slate-700" />
         </button>
 
-        <button
-          className="inline-flex items-center gap-2 rounded-2xl border border-slate-200/80 bg-slate-50/90 px-3 py-2 font-medium text-slate-600 shadow-sm transition-colors hover:border-slate-300 hover:bg-white hover:text-slate-900 relative"
-          aria-label="Notifications"
-        >
-          <FaBell className="text-base text-slate-700" />
-          <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-rose-500" />
-        </button>
-
         <div className="relative" ref={userMenuRef}>
           <button
             onClick={() => setShowUserMenu((prev) => !prev)}
@@ -162,4 +154,3 @@ ResponsiveNavbar.propTypes = {
 };
 
 export default ResponsiveNavbar;
-

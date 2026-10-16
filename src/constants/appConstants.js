@@ -38,12 +38,6 @@ export const PAGINATION = {
   PAGE_SIZE_OPTIONS: [10, 25, 50, 100],
 };
 
-// Notification Settings
-export const NOTIFICATIONS = {
-  TOAST_DURATION: 5000, // 5 seconds
-  DISMISSIBLE: true,
-};
-
 // Date Format
 export const DATE_FORMAT = "YYYY-MM-DD";
 export const DATETIME_FORMAT = "YYYY-MM-DD HH:mm:ss";
@@ -122,7 +116,6 @@ export default {
   FEATURES,
   API_CONFIG,
   PAGINATION,
-  NOTIFICATIONS,
   DATE_FORMAT,
   DATETIME_FORMAT,
   CACHE_CONFIG,

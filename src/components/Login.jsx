@@ -20,7 +20,6 @@ import MobileXLogo from "./Ui/hooklogo";
 const AUTH_NOTICE_STORAGE_KEY = "hooksAdminAuthNotice";
 const POST_LOGIN_REDIRECT_KEY = "hooksAdminPostLoginRedirect";
 const POST_LOGIN_REDIRECT_MAX_AGE_MS = 1000 * 60 * 30;
-const POST_LOGIN_UPDATES_POSTER_KEY = "hooksAdminShowLoginUpdatesPoster";
 const SESSION_USER_STORAGE_KEY = "hooksAdminSessionUser";
 
 const STEPS = {
@@ -862,7 +861,6 @@ const Login = ({ onLogin }) => {
     }
 
     try {
-      sessionStorage.setItem(POST_LOGIN_UPDATES_POSTER_KEY, "1");
       localStorage.setItem(SESSION_USER_STORAGE_KEY, JSON.stringify(data.user));
       if (data?.token) {
         localStorage.setItem("authToken", data.token);

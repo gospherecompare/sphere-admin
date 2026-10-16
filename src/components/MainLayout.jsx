@@ -371,18 +371,6 @@ const MainLayout = ({
                   path="/api-tester"
                   element={<ROUTE_CONFIG.apiTester.component />}
                 />
-                <Route
-                  path="/admin/notifications"
-                  element={
-                    <AccessGate
-                      allowedRoles={["admin"]}
-                      title="Notification center restricted"
-                      message="Only administrators can manage notification delivery and subscriber broadcasts."
-                    >
-                      <ROUTE_CONFIG.adminNotifications.component />
-                    </AccessGate>
-                  }
-                />
               </Routes>
             </Suspense>
 
