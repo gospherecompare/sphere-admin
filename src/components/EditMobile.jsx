@@ -5245,7 +5245,7 @@ const EditMobile = () => {
                             No published history for this source
                           </p>
                           <p className="mt-1 max-w-2xl text-xs leading-5 text-amber-800">
-                            Initialize an explicitly estimated baseline from the live price. This does not modify the live price or send price alerts.
+                            Initialize an explicitly estimated baseline from the live price. This does not modify the live price.
                           </p>
                         </div>
                         <div className="flex flex-wrap items-end gap-3">

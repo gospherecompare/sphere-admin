@@ -85,9 +85,6 @@ const BlogEditor = lazy(() => import("../components/Content/BlogEditor"));
 const GlobalSearchResults = lazy(
   () => import("../components/GlobalSearchResults"),
 );
-const AdminNotifications = lazy(
-  () => import("../components/AdminNotifications"),
-);
 
 /**
  * Route configuration object
@@ -356,11 +353,6 @@ export const ROUTE_CONFIG = {
   },
 
   // Utilities
-  adminNotifications: {
-    path: "/admin/notifications",
-    component: AdminNotifications,
-    label: "Notification Center",
-  },
   apiTester: {
     path: "/api-tester",
     component: ApiTester,

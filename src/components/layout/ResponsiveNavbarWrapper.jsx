@@ -27,7 +27,7 @@ export const ResponsiveNavbarWrapper = ({ children, logo, rightSection }) => {
         <div className="flex-1 flex items-center justify-between gap-4 min-w-0">
           {children}
           
-          {/* Right section (user menu, notifications, etc) */}
+          {/* Right section for user actions */}
           {rightSection && (
             <div className="flex items-center gap-2 md:gap-4 flex-shrink-0">
               {rightSection}
