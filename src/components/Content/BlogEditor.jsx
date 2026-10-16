@@ -45,6 +45,11 @@ import {
 import { buildUrl, getAuthToken } from "../../api";
 import { uploadToCloudinary } from "../../config/cloudinary";
 import { requestDeleteApproval } from "../../utils/deleteApproval";
+import {
+  isBlogPublishedAtInFuture,
+  parseBlogPublishedAt,
+  toBlogDateTimeLocalValue,
+} from "../../utils/blogDateTime";
 import { getAuthorOptions, syncRbacState } from "../../utils/rbacStore";
 import { useToast } from "../Ui/ToastProvider";
 import TiptapStoryEditor from "./TiptapStoryEditor";
@@ -202,10 +207,11 @@ const formatDateLabel = (value) => {
   }).format(date);
 };
 
-const formatDateParts = (value) => {
+const formatDateParts = (value, isPublishedAt = false) => {
   if (!value) return { dateLabel: "--", timeLabel: "" };
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return { dateLabel: "--", timeLabel: "" };
+  const date = isPublishedAt ? parseBlogPublishedAt(value) : new Date(value);
+  if (!date || Number.isNaN(date.getTime()))
+    return { dateLabel: "--", timeLabel: "" };
 
   return {
     dateLabel: new Intl.DateTimeFormat(undefined, {
@@ -221,9 +227,7 @@ const formatDateParts = (value) => {
 };
 
 const isFutureDateValue = (value) => {
-  if (!value) return false;
-  const timestamp = new Date(value).getTime();
-  return Number.isFinite(timestamp) && timestamp > Date.now();
+  return isBlogPublishedAtInFuture(value);
 };
 
 const isBlogRowPublished = (row) => {
@@ -1254,7 +1258,7 @@ const BlogEditor = () => {
       setFeatured(normalizeBoolean(existing.featured));
       setTrending(normalizeBoolean(existing.trending));
       setPinned(normalizeBoolean(existing.pinned));
-      setPublishedAt(toDateTimeLocalValue(existing.published_at));
+      setPublishedAt(toBlogDateTimeLocalValue(existing.published_at));
       setStatus(
         existing.is_published || existing.status === "published"
           ? "published"
@@ -1777,7 +1781,7 @@ const BlogEditor = () => {
       setFeatured(normalizeBoolean(article.featured));
       setTrending(normalizeBoolean(article.trending));
       setPinned(normalizeBoolean(article.pinned));
-      setPublishedAt(toDateTimeLocalValue(article.published_at));
+      setPublishedAt(toBlogDateTimeLocalValue(article.published_at));
       setStatus(
         article.is_published || article.status === "published"
           ? "published"
@@ -2212,7 +2216,9 @@ const BlogEditor = () => {
           is_published: nextIsPublished,
           status: nextStatus,
           published_at: nextIsPublished
-            ? publishedAt || getCurrentDateTimeLocalValue()
+            ? statusOverride === "published"
+              ? getCurrentDateTimeLocalValue()
+              : publishedAt || getCurrentDateTimeLocalValue()
             : null,
           content_template: contentForSave,
           token_map: tokenMap,
@@ -2286,7 +2292,7 @@ const BlogEditor = () => {
         setPinned(Boolean(data.blog.pinned));
       }
       if (typeof data?.blog?.published_at !== "undefined") {
-        setPublishedAt(toDateTimeLocalValue(data.blog.published_at));
+        setPublishedAt(toBlogDateTimeLocalValue(data.blog.published_at));
       }
       if (data?.blog?.token_map) {
         setTokenMap(data.blog.token_map);
@@ -2412,7 +2418,7 @@ const BlogEditor = () => {
       if (blogId === targetId || selectedLibraryId === targetId) {
         setStatus(nextIsPublished ? "published" : "draft");
         if (typeof data?.blog?.published_at !== "undefined") {
-          setPublishedAt(toDateTimeLocalValue(data.blog.published_at));
+          setPublishedAt(toBlogDateTimeLocalValue(data.blog.published_at));
         }
       }
 
@@ -2496,7 +2502,7 @@ const BlogEditor = () => {
           : "draft",
       );
       if (typeof activeRow.published_at !== "undefined") {
-        setPublishedAt(toDateTimeLocalValue(activeRow.published_at));
+        setPublishedAt(toBlogDateTimeLocalValue(activeRow.published_at));
       }
       if (typeof activeRow.author_name !== "undefined") {
         setAuthorName(activeRow.author_name || "");
@@ -3336,7 +3342,10 @@ const BlogEditor = () => {
                           ? getDefaultStoryCategory("product")
                           : getDefaultStoryCategory("general"));
                       const rowStatus = getListingStatusKey(row);
-                      const publishedDate = formatDateParts(row.published_at);
+                      const publishedDate = formatDateParts(
+                        row.published_at,
+                        true,
+                      );
                       const updatedDate = formatDateParts(row.updated_at);
                       const aiSummaryStatus = getAiSummaryStatusMeta(
                         row.ai_summary_status,
@@ -3584,7 +3593,10 @@ const BlogEditor = () => {
                         ? getDefaultStoryCategory("product")
                         : getDefaultStoryCategory("general"));
                     const rowStatus = getListingStatusKey(row);
-                    const publishedDate = formatDateParts(row.published_at);
+                    const publishedDate = formatDateParts(
+                      row.published_at,
+                      true,
+                    );
                     const updatedDate = formatDateParts(row.updated_at);
 
                     return (
@@ -4361,9 +4373,8 @@ const BlogEditor = () => {
                             className={composerFieldClassName}
                           />
                           <p className="mt-1.5 text-xs leading-5 text-slate-500">
-                            Leave empty to use the current date and time when
-                            publishing. Set a manual value to backdate or
-                            schedule.
+                            Publishing records the current date and time,
+                            replacing any previously saved value.
                           </p>
                         </div>
 
