@@ -3,11 +3,24 @@ import { FaSearch, FaSpinner, FaSyncAlt } from "react-icons/fa";
 import { buildUrl, getAuthToken } from "../../api";
 
 const PAGE_SIZE = 50;
+const INDIA_TIME_ZONE = "Asia/Kolkata";
 
 const formatDateTime = (value) => {
   if (!value) return "-";
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString();
+  return Number.isNaN(date.getTime())
+    ? String(value)
+    : new Intl.DateTimeFormat("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: true,
+        timeZone: INDIA_TIME_ZONE,
+        timeZoneName: "short",
+      }).format(date);
 };
 
 const CareerSubmissions = () => {

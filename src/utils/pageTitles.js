@@ -118,6 +118,11 @@ const TITLE_ROUTES = [
     "Identity Governance",
   ),
   routeMeta(
+    "/admin/email-updates",
+    "Email Subscriber Management",
+    "MobilesX Administration",
+  ),
+  routeMeta(
     "/account-management",
     "Account Settings Workspace",
     "System Administration",
