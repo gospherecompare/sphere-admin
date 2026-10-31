@@ -1304,7 +1304,7 @@ const AffiliatePlacementManager = () => {
                     name="title"
                     value={formData.title}
                     onChange={handleInputChange}
-                    placeholder="Lowest tracked price this week"
+                    placeholder="Limited-time offer on this model"
                     className={FIELD_CLASS}
                   />
                 </label>

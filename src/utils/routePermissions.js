@@ -376,6 +376,12 @@ export const ROUTE_ACCESS_RULES = [
       "Only administrators can manage the Gemini provider configuration.",
   },
   {
+    pattern: "/admin/email-updates",
+    allowedRoles: ["admin", "ceo"],
+    title: "Email subscriber access restricted",
+    message: "Only administrators can view and import subscriber addresses.",
+  },
+  {
     pattern: "/api-tester",
     requiredAnyPermissions: [
       "settings.api_tester.view",

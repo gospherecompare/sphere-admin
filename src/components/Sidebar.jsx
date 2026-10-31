@@ -309,6 +309,13 @@ const DESKTOP_SECTIONS = [
     title: "ADMIN",
     items: [
       {
+        label: "Email Subscribers",
+        icon: FaEnvelope,
+        path: "/admin/email-updates",
+        prefixes: ["/admin/email-updates"],
+        allowedRoles: ["admin", "ceo"],
+      },
+      {
         label: "Users",
         icon: FaUserCog,
         path: "/user-management",

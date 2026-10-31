@@ -8,6 +8,7 @@ import {
   FaCode,
   FaCog,
   FaDatabase,
+  FaEnvelope,
   FaImage,
   FaLaptop,
   FaMobileAlt,
@@ -20,6 +21,15 @@ import {
 } from "react-icons/fa";
 
 const routeMeta = [
+  {
+    test: (path) => path.startsWith("/admin/email-updates"),
+    eyebrow: "Administration",
+    title: "Email Subscribers",
+    description:
+      "Review newsletter subscribers and securely import opted-in email addresses.",
+    icon: FaEnvelope,
+    accent: "blue",
+  },
   {
     test: (path) => path.startsWith("/products/smartphones"),
     eyebrow: "Product Operations",

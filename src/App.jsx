@@ -47,6 +47,7 @@ import SearchPopularityReport from "./components/Reports/SearchPopularityReport"
 import CompareAnalytics from "./components/Reports/CompareAnalytics";
 import CareerSubmissions from "./components/Reports/CareerSubmissions";
 import ContactSubmissions from "./components/Reports/ContactSubmissions";
+import EmailSubscribers from "./components/Reports/EmailSubscribers";
 import BannerManager from "./components/BannerManager";
 import AffiliatePlacementManager from "./components/AffiliatePlacementManager";
 import EditLaptop from "./components/EditLaptop";
@@ -664,6 +665,18 @@ function App() {
                 message="Your account needs user-management permissions to open this workspace."
               >
                 <UserManagement />
+              </RouteAccessGate>
+            }
+          />
+          <Route
+            path="admin/email-updates"
+            element={
+              <RouteAccessGate
+                path="/admin/email-updates"
+                title="Email subscriber access restricted"
+                message="Only administrators can view and import subscriber addresses."
+              >
+                <EmailSubscribers />
               </RouteAccessGate>
             }
           />
